@@ -42,3 +42,12 @@ Then open http://localhost:3000. Try the health endpoint at `/api/health`.
 - Define your domain models and API routes under `src/app/api/*`.
 - Add UI components and pages under `src/app/*`.
 - If integrating Notion or other services, add a server-only SDK client in `src/lib/` and wire env vars via `.env.local`.
+
+run
+# From /workspaces/Dissertation
+npm ci
+npm run dev
+
+build
+npm run build
+npm start
