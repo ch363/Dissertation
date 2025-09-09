@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { theme } from '../../src/theme';
-import { ProgressBar, Option, PrimaryButton, SecondaryButton } from './_components';
+import { ProgressBar, Option, PrimaryButton } from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
 import { useState } from 'react';
 
@@ -37,7 +37,6 @@ export default function PreferredLearning() {
         <Option key={o.key} label={o.label} selected={selected.includes(o.key)} onPress={() => toggle(o.key)} />
       ))}
   <PrimaryButton title="Next" onPress={onNext} disabled={selected.length === 0} />
-  <SecondaryButton title="Back" onPress={() => router.back()} />
     </View>
   );
 }

@@ -25,7 +25,9 @@ export default function RootLayout() {
           headerTintColor: theme.colors.text,
           contentStyle: { backgroundColor: theme.colors.background },
         }}
-      />
+      >
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+      </Stack>
     </OnboardingProvider>
   );
 }

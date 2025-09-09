@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, TextInput } from 'react-native';
 import { router } from 'expo-router';
 import { theme } from '../../src/theme';
-import { ProgressBar, Option, PrimaryButton, SecondaryButton } from './_components';
+import { ProgressBar, Option, PrimaryButton } from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
 import { useState } from 'react';
 
@@ -40,7 +40,6 @@ export default function MotivationGoals() {
         />
       )}
   <PrimaryButton title="Next" onPress={onNext} disabled={!selected || (selected === 'other' && !otherText.trim())} />
-  <SecondaryButton title="Back" onPress={() => router.back()} />
     </View>
   );
 }
