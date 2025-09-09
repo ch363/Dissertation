@@ -6,7 +6,7 @@ import { PrimaryButton } from './_components';
 export default function OnboardingWelcome() {
   return (
     <View style={styles.container}>
-      <Image source={require('../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+  <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
       <Text style={styles.title}>Welcome to Fluentia</Text>
       <Text style={styles.body}>
         Please take a moment to complete our onboarding questions so we can tailor your learning experience to you.
