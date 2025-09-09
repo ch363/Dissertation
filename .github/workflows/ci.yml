@@ -1,4 +1,4 @@
-name: CI
+name: Mobile CI
 
 on:
   push:
@@ -7,8 +7,11 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  mobile:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -18,15 +21,13 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
+          cache-dependency-path: apps/mobile/package-lock.json
 
       - name: Install
-        run: npm ci
+        run: npm ci --no-audit --no-fund
 
       - name: Lint
         run: npm run lint --silent
 
       - name: Type check
         run: npm run type-check --silent
-
-      - name: Build
-        run: npm run build --silent

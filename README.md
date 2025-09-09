@@ -1,47 +1,48 @@
-# Dissertation App
+# Dissertation Mobile (React Native + Expo)
 
-A minimal, production-ready Next.js + TypeScript scaffold for your new app.
+This repo is mobile-only. It contains an Expo React Native app you can run on iOS (via Xcode or a simulator) and Android.
 
-## Quick start
+## Structure
+
+- `apps/mobile` – Expo app using `expo-router`
+	- `app/` – routes and screens (Welcome, Onboarding, Tabs: Learn/Progress/Profile)
+	- `src/theme.ts` – design system (Inter font, colors, spacing, radius, typography)
+
+## iOS quick start
 
 1) Install dependencies
 
 ```bash
-npm ci
+cd apps/mobile
+npm install
 ```
 
-2) Run the dev server
+2) Run on iOS Simulator with Xcode
 
 ```bash
-npm run dev
+npm run ios
 ```
 
-Then open http://localhost:3000. Try the health endpoint at `/api/health`.
+This will prebuild the native iOS project (Pods, Xcode project) and open it in the simulator. Ensure you have Xcode Command Line Tools installed.
 
-## Configuration
+Alternatively, start the dev server and use Expo Go on device:
 
-- Copy `.env.example` to `.env.local` and fill in values as needed. Public vars must be prefixed with `NEXT_PUBLIC_`.
-- Project uses ESLint and Prettier. CI runs lint, type-check, and build on pushes/PRs to `main`.
+```bash
+npm run start
+```
 
 ## Scripts
 
-- `npm run dev` – Start dev server
-- `npm run build` – Build for production
-- `npm start` – Start production server
-- `npm run lint` – Lint the project
-- `npm run type-check` – TypeScript type checking
+- `npm run start` – Start Metro bundler
+- `npm run ios` – Build and run iOS app via Xcode/simulator
+- `npm run android` – Build and run Android (if desired)
+- `npm run lint` – ESLint via `eslint-config-universe`
+- `npm run type-check` – TypeScript check (no emit)
 
-## Structure
+## Notes
 
-- `src/app` – App Router pages and API routes
-- `src/app/api/health` – Health check endpoint
-- `public` – Static assets
-
-## Next steps
-
-- Define your domain models and API routes under `src/app/api/*`.
-- Add UI components and pages under `src/app/*`.
-- If integrating Notion or other services, add a server-only SDK client in `src/lib/` and wire env vars via `.env.local`.
+- Fonts: Inter is loaded via `@expo-google-fonts/inter` in `app/_layout.tsx`.
+- When ready, add icons/splash assets and re-enable them in `apps/mobile/app.json`.
 
 run
 # From /workspaces/Dissertation
