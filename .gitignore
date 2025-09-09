@@ -31,3 +31,9 @@ Thumbs.db
 # Misc
 *.swp
 *.swo
+
+# Expo / React Native
+apps/mobile/.expo/
+apps/mobile/.expo-shared/
+apps/mobile/ios/
+apps/mobile/android/
