@@ -10,7 +10,7 @@ export default function Welcome() {
   <Text style={styles.title}>Fluentia</Text>
       <Text style={styles.subtitle}>Personalised learning, one step at a time.</Text>
 
-      <Link href="/onboarding/step-1" style={[styles.button, styles.primary]}>Get Started</Link>
+  <Link href="/auth/signup" style={[styles.button, styles.primary]}>Get Started</Link>
       <Link href="/(tabs)" style={[styles.button, styles.secondary]}>Log In</Link>
       <StatusBar style="auto" />
     </View>

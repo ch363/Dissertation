@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { OnboardingProvider } from '../src/onboarding/OnboardingContext';
 import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
@@ -17,12 +18,14 @@ export default function RootLayout() {
   if (!loaded) return null;
 
   return (
-    <Stack
-      screenOptions={{
-        headerStyle: { backgroundColor: theme.colors.background },
-        headerTintColor: theme.colors.text,
-        contentStyle: { backgroundColor: theme.colors.background },
-      }}
-    />
+    <OnboardingProvider>
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: theme.colors.background },
+          headerTintColor: theme.colors.text,
+          contentStyle: { backgroundColor: theme.colors.background },
+        }}
+      />
+    </OnboardingProvider>
   );
 }
