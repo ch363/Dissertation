@@ -1,4 +1,4 @@
-# Dissertation Mobile (React Native + Expo)
+# Fluentia Mobile (React Native + Expo)
 
 This repo is mobile-only. It contains an Expo React Native app you can run on iOS (via Xcode or a simulator) and Android.
 
@@ -45,7 +45,7 @@ npm run start
 - When ready, add icons/splash assets and re-enable them in `apps/mobile/app.json`.
 
 run
-# From /workspaces/Dissertation
+# From /workspaces/Fluentia
 npm ci
 npm run dev
 

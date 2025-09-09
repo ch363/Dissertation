@@ -7,7 +7,7 @@ export default function Welcome() {
   return (
     <View style={styles.container}>
       <Image source={{ uri: 'https://via.placeholder.com/96' }} style={styles.logo} />
-      <Text style={styles.title}>Dissertation</Text>
+  <Text style={styles.title}>Fluentia</Text>
       <Text style={styles.subtitle}>Personalised learning, one step at a time.</Text>
 
       <Link href="/onboarding/step-1" style={[styles.button, styles.primary]}>Get Started</Link>

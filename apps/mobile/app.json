@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Dissertation Mobile",
-    "slug": "dissertation-mobile",
-    "scheme": "dissertation",
+  "name": "Fluentia Mobile",
+  "slug": "fluentia-mobile",
+  "scheme": "fluentia",
     "version": "1.0.0",
     "orientation": "portrait",
     "splash": {
@@ -17,7 +17,7 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ch363.dissertation"
+  "bundleIdentifier": "com.ch363.fluentia"
     },
     "android": {
       "adaptiveIcon": {
