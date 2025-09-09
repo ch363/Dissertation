@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, TextInput } from 'react-native';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import { theme } from '../../src/theme';
-import { ProgressBar, Option } from './_components';
+import { ProgressBar, Option, PrimaryButton, SecondaryButton } from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
 import { useState } from 'react';
 
@@ -39,7 +39,8 @@ export default function MotivationGoals() {
           placeholderTextColor={theme.colors.mutedText}
         />
       )}
-      <Link href="#" onPress={onNext} style={styles.next}>Next</Link>
+  <PrimaryButton title="Next" onPress={onNext} disabled={!selected || (selected === 'other' && !otherText.trim())} />
+  <SecondaryButton title="Back" onPress={() => router.back()} />
     </View>
   );
 }
@@ -66,12 +67,5 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     marginTop: theme.spacing.sm,
   },
-  next: {
-    marginTop: theme.spacing.xl,
-    paddingVertical: 14,
-    textAlign: 'center',
-    backgroundColor: theme.colors.primary,
-    color: '#fff',
-    borderRadius: theme.radius.md,
-  },
+  // next button styles moved to shared components
 });

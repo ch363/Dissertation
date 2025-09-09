@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import { theme } from '../../src/theme';
-import { ProgressBar, Option } from './_components';
+import { ProgressBar, Option, PrimaryButton, SecondaryButton } from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
 import { useState } from 'react';
 
@@ -27,7 +27,8 @@ export default function SessionStyle() {
       {options.map((o) => (
         <Option key={o.key} label={o.label} selected={selected === o.key} onPress={() => setSelected(o.key)} />
       ))}
-      <Link href="#" onPress={onNext} style={styles.next}>Next</Link>
+  <PrimaryButton title="Next" onPress={onNext} disabled={!selected} />
+  <SecondaryButton title="Back" onPress={() => router.back()} />
     </View>
   );
 }
@@ -44,12 +45,5 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     marginBottom: theme.spacing.lg,
   },
-  next: {
-    marginTop: theme.spacing.xl,
-    paddingVertical: 14,
-    textAlign: 'center',
-    backgroundColor: theme.colors.primary,
-    color: '#fff',
-    borderRadius: theme.radius.md,
-  },
+  // next button styles moved to shared components
 });
