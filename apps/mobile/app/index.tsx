@@ -6,7 +6,7 @@ import { theme } from '../src/theme';
 export default function Welcome() {
   return (
     <View style={styles.container}>
-      <Image source={{ uri: 'https://via.placeholder.com/96' }} style={styles.logo} />
+      <Image source={require('../assets/logo.png')} style={styles.logo} resizeMode="contain" />
   <Text style={styles.title}>Fluentia</Text>
       <Text style={styles.subtitle}>Personalised learning, one step at a time.</Text>
 
@@ -26,11 +26,9 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
   },
   logo: {
-    width: 96,
-    height: 96,
+    width: 120,
+    height: 120,
     marginBottom: theme.spacing.lg,
-    borderRadius: theme.radius.round,
-    backgroundColor: theme.colors.card,
   },
   title: {
     fontFamily: theme.typography.bold,
