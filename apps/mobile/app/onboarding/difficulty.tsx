@@ -5,36 +5,27 @@ import { ProgressBar, Option } from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
 import { useState } from 'react';
 
-export default function Step2() {
+export default function Difficulty() {
   const { setAnswer } = useOnboarding();
-  const [selected, setSelected] = useState<string[]>([]);
-
-  const toggle = (key: string) => {
-    setSelected((prev) => {
-      const has = prev.includes(key);
-      const next = has ? prev.filter((k) => k !== key) : [...prev, key];
-      return next.slice(0, 2);
-    });
-  };
+  const [selected, setSelected] = useState<string | null>(null);
 
   const options = [
-    { key: 'visual', label: '👀 Seeing pictures, diagrams, or written text' },
-    { key: 'auditory', label: '👂 Hearing sounds or spoken words' },
-    { key: 'writing', label: '✍️ Writing/typing out answers' },
-    { key: 'acting', label: '🎭 Acting it out / speaking it aloud' },
+    { key: 'easy', label: '🙂 Keep it easy' },
+    { key: 'balanced', label: '⚖️ Balanced challenge' },
+    { key: 'hard', label: '🔥 Push me hard' },
   ];
 
   const onNext = () => {
-    setAnswer('learningStyles', selected);
-    router.push('/onboarding/memory-habits');
+    setAnswer('difficulty', selected ?? '');
+    router.push('/onboarding/gamification');
   };
 
   return (
     <View style={styles.container}>
-      <ProgressBar current={2} total={9} />
-      <Text style={styles.title}>Preferred Ways of Learning (choose up to 2)</Text>
+      <ProgressBar current={4} total={9} />
+      <Text style={styles.title}>Preferred difficulty</Text>
       {options.map((o) => (
-        <Option key={o.key} label={o.label} selected={selected.includes(o.key)} onPress={() => toggle(o.key)} />
+        <Option key={o.key} label={o.label} selected={selected === o.key} onPress={() => setSelected(o.key)} />
       ))}
       <Link href="#" onPress={onNext} style={styles.next}>Next</Link>
     </View>

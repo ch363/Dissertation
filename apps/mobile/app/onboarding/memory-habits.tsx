@@ -5,36 +5,28 @@ import { ProgressBar, Option } from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
 import { useState } from 'react';
 
-export default function Step2() {
+export default function MemoryHabits() {
   const { setAnswer } = useOnboarding();
-  const [selected, setSelected] = useState<string[]>([]);
-
-  const toggle = (key: string) => {
-    setSelected((prev) => {
-      const has = prev.includes(key);
-      const next = has ? prev.filter((k) => k !== key) : [...prev, key];
-      return next.slice(0, 2);
-    });
-  };
+  const [selected, setSelected] = useState<string | null>(null);
 
   const options = [
-    { key: 'visual', label: '👀 Seeing pictures, diagrams, or written text' },
-    { key: 'auditory', label: '👂 Hearing sounds or spoken words' },
-    { key: 'writing', label: '✍️ Writing/typing out answers' },
-    { key: 'acting', label: '🎭 Acting it out / speaking it aloud' },
+    { key: 'spaced', label: '🗓️ Spaced repetition (flashcards, reviews)' },
+    { key: 'mnemonics', label: '🧠 Mnemonics & stories' },
+    { key: 'immersion', label: '🌍 Context & immersion' },
+    { key: 'writing', label: '📝 Rewriting and note-taking' },
   ];
 
   const onNext = () => {
-    setAnswer('learningStyles', selected);
-    router.push('/onboarding/memory-habits');
+    setAnswer('memoryHabit', selected ?? '');
+    router.push('/onboarding/difficulty');
   };
 
   return (
     <View style={styles.container}>
-      <ProgressBar current={2} total={9} />
-      <Text style={styles.title}>Preferred Ways of Learning (choose up to 2)</Text>
+      <ProgressBar current={3} total={9} />
+      <Text style={styles.title}>How do you usually remember best?</Text>
       {options.map((o) => (
-        <Option key={o.key} label={o.label} selected={selected.includes(o.key)} onPress={() => toggle(o.key)} />
+        <Option key={o.key} label={o.label} selected={selected === o.key} onPress={() => setSelected(o.key)} />
       ))}
       <Link href="#" onPress={onNext} style={styles.next}>Next</Link>
     </View>
