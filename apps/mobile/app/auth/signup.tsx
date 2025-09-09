@@ -32,7 +32,7 @@ export default function SignUp() {
 
         <Pressable
           style={[styles.button, canContinue ? styles.primary : styles.disabled]}
-          onPress={() => router.push('/onboarding/step-1')}
+          onPress={() => router.push('/onboarding/motivation-goals')}
           disabled={!canContinue}
         >
           <Text style={styles.buttonText}>Continue</Text>
