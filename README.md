@@ -35,6 +35,27 @@ npm run start
 
 ## Notes
 
+## Contributing / PR Process
+
+All changes should land via Pull Requests to `main`.
+
+1. Create a feature branch:
+
+```
+git checkout -b feat/scope
+```
+
+2. Develop in `apps/mobile`, keep changes focused. Validate locally:
+
+```
+cd apps/mobile
+npm run ci # runs lint + type-check
+```
+
+3. Push your branch and open a PR. The GitHub Action `mobile-ci` will run on PRs that touch `apps/mobile` and must pass before merging.
+
+4. Use the PR template to include screenshots for UI changes.
+
 
 
 ### Backend (Supabase) Setup
