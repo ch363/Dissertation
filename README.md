@@ -4,7 +4,6 @@ This repo is mobile-only. It contains an Expo React Native app you can run on iO
 
 ## Structure
 
-- `apps/mobile` – Expo app using `expo-router`
 	- `app/` – routes and screens (Welcome, Onboarding, Tabs: Learn/Progress/Profile)
 	- `src/theme.ts` – design system (Inter font, colors, spacing, radius, typography)
 
@@ -33,17 +32,58 @@ npm run start
 
 ## Scripts
 
-- `npm run start` – Start Metro bundler
-- `npm run ios` – Build and run iOS app via Xcode/simulator
-- `npm run android` – Build and run Android (if desired)
-- `npm run lint` – ESLint via `eslint-config-universe`
-- `npm run type-check` – TypeScript check (no emit)
 
 ## Notes
 
-- Fonts: Inter is loaded via `@expo-google-fonts/inter` in `app/_layout.tsx`.
-- When ready, add icons/splash assets and re-enable them in `apps/mobile/app.json`.
 
+
+### Backend (Supabase) Setup
+
+1. Create a Supabase project at supabase.com and get your Project URL and anon key.
+2. In `apps/mobile/.env` (create from `.env.example`), set:
+
+```
+EXPO_PUBLIC_SUPABASE_URL=... 
+EXPO_PUBLIC_SUPABASE_ANON_KEY=...
+```
+
+3. In the Supabase SQL editor, run:
+
+```sql
+-- Profiles table keyed by auth.users
+create table if not exists public.profiles (
+	id uuid primary key references auth.users(id) on delete cascade,
+	name text,
+	created_at timestamp with time zone default now()
+);
+
+-- Onboarding answers stored as JSONB per user
+create table if not exists public.onboarding_answers (
+	user_id uuid primary key references auth.users(id) on delete cascade,
+	answers jsonb not null,
+	updated_at timestamp with time zone default now()
+);
+
+-- RLS
+alter table public.profiles enable row level security;
+alter table public.onboarding_answers enable row level security;
+
+create policy "Users can manage their profile" on public.profiles
+	for all using (auth.uid() = id) with check (auth.uid() = id);
+
+create policy "Users can upsert their answers" on public.onboarding_answers
+	for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+```
+
+4. Install deps in the mobile app:
+
+```
+cd apps/mobile
+npx expo install @react-native-async-storage/async-storage
+npm i @supabase/supabase-js
+```
+
+5. Run the app; sign up creates a Supabase user and profile; finishing onboarding saves answers.
 run
 # From /workspaces/Fluentia
 npm ci

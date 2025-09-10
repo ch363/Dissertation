@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 import { OnboardingProvider } from '../src/onboarding/OnboardingContext';
+import { AuthProvider } from '../src/providers/AuthProvider';
 import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
@@ -18,6 +19,7 @@ export default function RootLayout() {
   if (!loaded) return null;
 
   return (
+    <AuthProvider>
     <OnboardingProvider>
       <Stack
         screenOptions={{
@@ -29,5 +31,6 @@ export default function RootLayout() {
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       </Stack>
     </OnboardingProvider>
+    </AuthProvider>
   );
 }

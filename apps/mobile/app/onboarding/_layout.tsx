@@ -8,9 +8,14 @@ export default function OnboardingLayout() {
         headerStyle: { backgroundColor: theme.colors.background },
         headerTintColor: theme.colors.text,
         headerTitle: '',
-  headerBackVisible: false,
+        // Show back by default for question screens
+        headerBackVisible: true,
+  headerBackTitle: 'Back',
         contentStyle: { backgroundColor: theme.colors.background },
       }}
-    />
+    >
+      <Stack.Screen name="welcome" options={{ headerBackVisible: false }} />
+  <Stack.Screen name="completion" options={{ title: '' }} />
+    </Stack>
   );
 }

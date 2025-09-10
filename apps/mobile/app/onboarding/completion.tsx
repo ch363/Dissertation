@@ -3,16 +3,18 @@ import { router } from 'expo-router';
 import { theme } from '../../src/theme';
 import { PrimaryButton } from './_components';
 
-export default function OnboardingWelcome() {
+export default function OnboardingCompletion() {
   return (
     <View style={styles.container}>
       <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
-      <Text style={styles.headline}>Learn Italian,{"\n"}your way.</Text>
-  <Text style={styles.subtext}>Just a few quick questions to{"\n"}personalize your learning experience (1–2 mins)</Text>
-      <Image source={require('../../assets/colosseum.png')} style={styles.colosseum} resizeMode="contain" />
+      <Text style={styles.headline}>Thanks for completing the setup</Text>
+      <Text style={styles.subtext}>
+        We’ll use your answers to tailor Fluentia to your goals and learning style.
+      </Text>
+
       <PrimaryButton
-        title="Start My Journey"
-        onPress={() => router.push('/onboarding/motivation-goals')}
+        title="Continue"
+        onPress={() => router.replace('/(tabs)')}
         style={styles.cta}
         textStyle={styles.ctaText}
       />
@@ -27,32 +29,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.xl,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   logo: {
-  width: 140,
-  height: 140,
-    marginTop: theme.spacing.xs,
+    width: 120,
+    height: 120,
     marginBottom: theme.spacing.lg,
   },
   headline: {
     fontFamily: theme.typography.bold,
-    fontSize: 34,
+    fontSize: 28,
     color: theme.colors.text,
     marginBottom: theme.spacing.md,
     textAlign: 'center',
-    lineHeight: 40,
   },
   subtext: {
     fontFamily: theme.typography.regular,
     fontSize: 16,
     color: theme.colors.mutedText,
     textAlign: 'center',
-    marginBottom: theme.spacing.xl,
-  },
-  colosseum: {
-    width: 240,
-    height: 220,
-    marginTop: theme.spacing.lg,
     marginBottom: theme.spacing.xl,
   },
   cta: {

@@ -1,33 +1,35 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { theme } from '../../src/theme';
-import { ProgressBar, Option, PrimaryButton } from './_components';
+import { Stepper, Option, PrimaryButton, StickyCTA, WhyWeAskLink } from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
-import { useState } from 'react';
 
 export default function SessionStyle() {
-  const { setAnswer } = useOnboarding();
-  const [selected, setSelected] = useState<string | null>(null);
+  const { answers, setAnswerAndSave } = useOnboarding();
+  const selected = answers.sessionStyle ?? null;
 
   const options = [
-    { key: 'short', label: '⏱️ Short bursts (5–10 min)' },
-    { key: 'focused', label: '🎯 Focused blocks (20–30 min)' },
-    { key: 'deep', label: '🧠 Deep sessions (45+ min)' },
+    { key: 'short', icon: '⏱️', label: 'Short bursts (5–10 min)' },
+    { key: 'focused', icon: '🎯', label: 'Focused blocks (20–30 min)' },
+    { key: 'deep', icon: '🧠', label: 'Deep sessions (45+ min)' },
   ];
 
-  const onNext = () => {
-    setAnswer('sessionStyle', selected ?? '');
-    router.push('/onboarding/tone');
-  };
+  const onNext = () => router.push('/onboarding/tone');
+  const onSkip = () => router.push('/onboarding/tone');
 
   return (
     <View style={styles.container}>
-      <ProgressBar current={7} total={9} />
+      <Stepper current={7} total={9} />
       <Text style={styles.title}>Session style</Text>
+      <WhyWeAskLink />
       {options.map((o) => (
-        <Option key={o.key} label={o.label} selected={selected === o.key} onPress={() => setSelected(o.key)} />
+        <Option key={o.key} label={o.label} selected={selected === o.key} onPress={() => setAnswerAndSave('sessionStyle', o.key)} icon={o.icon} />
       ))}
-  <PrimaryButton title="Next" onPress={onNext} disabled={!selected} />
+      <StickyCTA>
+        <PrimaryButton title="Next" onPress={onNext} disabled={!selected} />
+        <View style={{ height: 8 }} />
+        <PrimaryButton title="Skip / Not sure" onPress={onSkip} />
+      </StickyCTA>
     </View>
   );
 }

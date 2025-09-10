@@ -1,34 +1,36 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { theme } from '../../src/theme';
-import { ProgressBar, Option, PrimaryButton } from './_components';
+import { Stepper, Option, PrimaryButton, StickyCTA, WhyWeAskLink } from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
-import { useState } from 'react';
 
 export default function MemoryHabits() {
-  const { setAnswer } = useOnboarding();
-  const [selected, setSelected] = useState<string | null>(null);
+  const { answers, setAnswerAndSave } = useOnboarding();
+  const selected = answers.memoryHabit ?? null;
 
   const options = [
-    { key: 'spaced', label: '🗓️ Spaced repetition (flashcards, reviews)' },
-    { key: 'mnemonics', label: '🧠 Mnemonics & stories' },
-    { key: 'immersion', label: '🌍 Context & immersion' },
-    { key: 'writing', label: '📝 Rewriting and note-taking' },
+    { key: 'spaced', icon: '🗓️', label: 'Spaced repetition (flashcards, reviews)' },
+    { key: 'mnemonics', icon: '🧠', label: 'Mnemonics & stories' },
+    { key: 'immersion', icon: '🌍', label: 'Context & immersion' },
+    { key: 'writing', icon: '📝', label: 'Rewriting and note-taking' },
   ];
 
-  const onNext = () => {
-    setAnswer('memoryHabit', selected ?? '');
-    router.push('/onboarding/difficulty');
-  };
+  const onNext = () => router.push('/onboarding/difficulty');
+  const onSkip = () => router.push('/onboarding/difficulty');
 
   return (
     <View style={styles.container}>
-      <ProgressBar current={3} total={9} />
+      <Stepper current={3} total={9} />
       <Text style={styles.title}>How do you usually remember best?</Text>
+      <WhyWeAskLink />
       {options.map((o) => (
-        <Option key={o.key} label={o.label} selected={selected === o.key} onPress={() => setSelected(o.key)} />
+        <Option key={o.key} label={o.label} selected={selected === o.key} onPress={() => setAnswerAndSave('memoryHabit', o.key)} icon={o.icon} />
       ))}
-  <PrimaryButton title="Next" onPress={onNext} disabled={!selected} />
+      <StickyCTA>
+        <PrimaryButton title="Next" onPress={onNext} disabled={!selected} />
+        <View style={{ height: 8 }} />
+        <PrimaryButton title="Skip / Not sure" onPress={onSkip} />
+      </StickyCTA>
     </View>
   );
 }

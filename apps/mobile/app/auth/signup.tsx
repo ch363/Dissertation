@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Pressable, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Pressable, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import { Link, router } from 'expo-router';
+import { signUpWithEmail } from '../../src/lib/auth';
 import { theme } from '../../src/theme';
 
 export default function SignUp() {
@@ -8,11 +9,27 @@ export default function SignUp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const canContinue = name.trim() && email.trim() && password.length >= 6;
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const canContinue = name.trim() && email.trim() && password.length >= 6 && !loading;
+
+  async function handleContinue() {
+    try {
+      setLoading(true);
+      setErrorMsg(null);
+  await signUpWithEmail(name.trim(), email.trim(), password);
+      router.push('/onboarding/welcome');
+    } catch (e: any) {
+      setErrorMsg(e?.message ?? 'Sign up failed');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <KeyboardAvoidingView behavior={Platform.select({ ios: 'padding', android: undefined })} style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+  <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
         <Text style={styles.title}>Create your account</Text>
 
         <View style={styles.formGroup}>
@@ -30,12 +47,13 @@ export default function SignUp() {
           <TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder="At least 6 characters" secureTextEntry placeholderTextColor={theme.colors.mutedText} />
         </View>
 
+        {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
         <Pressable
           style={[styles.button, canContinue ? styles.primary : styles.disabled]}
-          onPress={() => router.push('/onboarding/welcome')}
+          onPress={handleContinue}
           disabled={!canContinue}
         >
-          <Text style={styles.buttonText}>Continue</Text>
+          <Text style={styles.buttonText}>{loading ? 'Creating account…' : 'Continue'}</Text>
         </Pressable>
 
         <Link href="/" style={styles.secondaryLink}>Back to Home</Link>
@@ -50,6 +68,12 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     backgroundColor: theme.colors.background,
     justifyContent: 'center',
+  },
+  logo: {
+    width: 96,
+    height: 96,
+    alignSelf: 'center',
+    marginBottom: theme.spacing.md,
   },
   title: {
     fontFamily: theme.typography.bold,
@@ -95,5 +119,10 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
     textAlign: 'center',
     color: theme.colors.secondary,
+  },
+  error: {
+    color: theme.colors.error,
+    textAlign: 'center',
+    marginBottom: theme.spacing.sm,
   },
 });

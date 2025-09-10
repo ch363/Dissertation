@@ -1,42 +1,42 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { theme } from '../../src/theme';
-import { ProgressBar, Option, PrimaryButton } from './_components';
+import { Stepper, Option, PrimaryButton, StickyCTA, WhyWeAskLink } from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
-import { useState } from 'react';
 
 export default function PreferredLearning() {
-  const { setAnswer } = useOnboarding();
-  const [selected, setSelected] = useState<string[]>([]);
+  const { answers, setAnswerAndSave } = useOnboarding();
+  const selected = answers.learningStyles ?? [];
 
   const toggle = (key: string) => {
-    setSelected((prev) => {
-      const has = prev.includes(key);
-      const next = has ? prev.filter((k) => k !== key) : [...prev, key];
-      return next.slice(0, 2);
-    });
+    const has = selected.includes(key);
+    const next = (has ? selected.filter((k) => k !== key) : [...selected, key]).slice(0, 2);
+    setAnswerAndSave('learningStyles', next);
   };
 
   const options = [
-    { key: 'visual', label: '👀 Seeing pictures, diagrams, or written text' },
-    { key: 'auditory', label: '👂 Hearing sounds or spoken words' },
-    { key: 'writing', label: '✍️ Writing/typing out answers' },
-    { key: 'acting', label: '🎭 Acting it out / speaking it aloud' },
+    { key: 'visual', icon: '👀', label: 'Seeing pictures, diagrams, or written text' },
+    { key: 'auditory', icon: '👂', label: 'Hearing sounds or spoken words' },
+    { key: 'writing', icon: '✍️', label: 'Writing/typing out answers' },
+    { key: 'acting', icon: '🎭', label: 'Acting it out / speaking it aloud' },
   ];
 
-  const onNext = () => {
-    setAnswer('learningStyles', selected);
-    router.push('/onboarding/memory-habits');
-  };
+  const onNext = () => router.push('/onboarding/memory-habits');
+  const onSkip = () => router.push('/onboarding/memory-habits');
 
   return (
     <View style={styles.container}>
-      <ProgressBar current={2} total={9} />
+      <Stepper current={2} total={9} />
       <Text style={styles.title}>Preferred Ways of Learning (choose up to 2)</Text>
+      <WhyWeAskLink />
       {options.map((o) => (
-        <Option key={o.key} label={o.label} selected={selected.includes(o.key)} onPress={() => toggle(o.key)} />
+        <Option key={o.key} label={o.label} selected={selected.includes(o.key)} onPress={() => toggle(o.key)} icon={o.icon} multiple />
       ))}
-  <PrimaryButton title="Next" onPress={onNext} disabled={selected.length === 0} />
+      <StickyCTA>
+        <PrimaryButton title="Next" onPress={onNext} disabled={selected.length === 0} />
+        <View style={{ height: 8 }} />
+        <PrimaryButton title="Skip / Not sure" onPress={onSkip} />
+      </StickyCTA>
     </View>
   );
 }

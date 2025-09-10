@@ -1,45 +1,41 @@
-import { View, Text, StyleSheet, TextInput } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { theme } from '../../src/theme';
-import { ProgressBar, Option, PrimaryButton } from './_components';
+import { Stepper, Option, PrimaryButton, StickyCTA, WhyWeAskLink } from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
-import { useState } from 'react';
 
 export default function MotivationGoals() {
-  const { setAnswer } = useOnboarding();
-  const [selected, setSelected] = useState<string | null>(null);
-  const [otherText, setOtherText] = useState('');
+  const { answers, setAnswerAndSave } = useOnboarding();
+  const selected = answers.motivation?.key ?? null;
 
   const options = [
-    { key: 'travel', label: '🛫 For travel' },
-    { key: 'family', label: '👨‍👩‍👧 To connect with family/friends' },
-    { key: 'study', label: '🎓 For study/career' },
-    { key: 'fun', label: '🎮 For fun/personal growth' },
-    { key: 'other', label: '✨ Other (type in)' },
+    { key: 'travel', icon: '🛫', label: 'For travel' },
+    { key: 'family', icon: '👨‍👩‍👧', label: 'To connect with family/friends' },
+    { key: 'study', icon: '🎓', label: 'For study/career' },
+    { key: 'fun', icon: '🎮', label: 'For fun/personal growth' },
   ];
 
   const onNext = () => {
-    setAnswer('motivation', selected === 'other' ? { key: selected, otherText } : { key: selected ?? '' });
+    // Already saved on selection; proceed
+    router.push('/onboarding/preferred-learning');
+  };
+  const onSkip = () => {
     router.push('/onboarding/preferred-learning');
   };
 
   return (
     <View style={styles.container}>
-      <ProgressBar current={1} total={9} />
+      <Stepper current={1} total={9} />
       <Text style={styles.title}>Motivation & Goals</Text>
+      <WhyWeAskLink />
       {options.map((o) => (
-        <Option key={o.key} label={o.label} selected={selected === o.key} onPress={() => setSelected(o.key)} />
+        <Option key={o.key} label={o.label} selected={selected === o.key} onPress={() => { setAnswerAndSave('motivation', { key: o.key }); }} icon={o.icon} />
       ))}
-      {selected === 'other' && (
-        <TextInput
-          style={styles.input}
-          placeholder="Tell us your goal"
-          value={otherText}
-          onChangeText={setOtherText}
-          placeholderTextColor={theme.colors.mutedText}
-        />
-      )}
-  <PrimaryButton title="Next" onPress={onNext} disabled={!selected || (selected === 'other' && !otherText.trim())} />
+      <StickyCTA>
+        <PrimaryButton title="Next" onPress={onNext} disabled={!selected} />
+        <View style={{ height: 8 }} />
+        <PrimaryButton title="Skip / Not sure" onPress={onSkip} />
+      </StickyCTA>
     </View>
   );
 }
