@@ -2,24 +2,47 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, Switch, Pressable } from 'react-native';
 import { theme as baseTheme } from '../src/theme';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
+import { useCallback } from 'react';
 import { useAppTheme } from '../src/providers/ThemeProvider';
 
 export default function SettingsScreen() {
   const { theme, isDark, setMode } = useAppTheme();
+  const navigation = useNavigation();
+  // If this screen is rendered inside tab bar, no custom back button
+  const showBack = typeof navigation?.canGoBack === 'function' && navigation.canGoBack();
+
+  const handleBack = useCallback(() => {
+    try {
+      // Prefer going back if we have a stack history
+      // @ts-ignore - navigation type from expo-router bridges React Navigation
+      if (navigation?.canGoBack?.() === true) {
+        // @ts-ignore
+        navigation.goBack();
+        return;
+      }
+    } catch {}
+    try {
+      router.replace('/(tabs)/home');
+    } catch {
+      router.push('/(tabs)/home');
+    }
+  }, [navigation]);
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         {/* Top-right back arrow to return to Home */}
-        <Pressable
+  {showBack && (
+  <Pressable
           accessibilityRole="button"
           accessibilityLabel="Back to Home"
           hitSlop={12}
-          onPress={() => router.replace('/(tabs)/home')}
+          onPress={handleBack}
           style={styles.backBtn}
         >
           <Ionicons name="chevron-back" size={22} color={theme.colors.mutedText} />
-        </Pressable>
+  </Pressable>
+  )}
 
         <Text style={[styles.title, { color: theme.colors.text }]}>Settings</Text>
         <View style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
@@ -51,6 +74,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
+  zIndex: 10,
   },
   title: { fontFamily: baseTheme.typography.bold, fontSize: 22, color: baseTheme.colors.text, marginBottom: baseTheme.spacing.lg },
   row: {
