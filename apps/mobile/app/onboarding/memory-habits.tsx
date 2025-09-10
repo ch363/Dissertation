@@ -1,8 +1,9 @@
-import { View, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { theme } from '../../src/theme';
+import { View, Text, StyleSheet } from 'react-native';
+
 import { Stepper, Option, PrimaryButton, StickyCTA, WhyWeAskLink } from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
+import { theme } from '../../src/theme';
 
 export default function MemoryHabits() {
   const { answers, setAnswerAndSave } = useOnboarding();
@@ -24,7 +25,13 @@ export default function MemoryHabits() {
       <Text style={styles.title}>How do you usually remember best?</Text>
       <WhyWeAskLink />
       {options.map((o) => (
-        <Option key={o.key} label={o.label} selected={selected === o.key} onPress={() => setAnswerAndSave('memoryHabit', o.key)} icon={o.icon} />
+        <Option
+          key={o.key}
+          label={o.label}
+          selected={selected === o.key}
+          onPress={() => setAnswerAndSave('memoryHabit', o.key)}
+          icon={o.icon}
+        />
       ))}
       <StickyCTA>
         <PrimaryButton title="Next" onPress={onNext} disabled={!selected} />

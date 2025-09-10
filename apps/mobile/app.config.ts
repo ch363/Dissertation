@@ -1,7 +1,7 @@
-import type { ExpoConfig } from 'expo/config';
-import path from 'path';
-import fs from 'fs';
 import dotenv from 'dotenv';
+import type { ExpoConfig } from 'expo/config';
+import fs from 'fs';
+import path from 'path';
 
 // Load environment variables from common locations
 const loadEnv = () => {

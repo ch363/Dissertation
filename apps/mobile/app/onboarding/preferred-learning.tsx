@@ -1,8 +1,9 @@
-import { View, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { theme } from '../../src/theme';
+import { View, Text, StyleSheet } from 'react-native';
+
 import { Stepper, Option, PrimaryButton, StickyCTA, WhyWeAskLink } from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
+import { theme } from '../../src/theme';
 
 export default function PreferredLearning() {
   const { answers, setAnswerAndSave } = useOnboarding();
@@ -30,7 +31,14 @@ export default function PreferredLearning() {
       <Text style={styles.title}>Preferred Ways of Learning (choose up to 2)</Text>
       <WhyWeAskLink />
       {options.map((o) => (
-        <Option key={o.key} label={o.label} selected={selected.includes(o.key)} onPress={() => toggle(o.key)} icon={o.icon} multiple />
+        <Option
+          key={o.key}
+          label={o.label}
+          selected={selected.includes(o.key)}
+          onPress={() => toggle(o.key)}
+          icon={o.icon}
+          multiple
+        />
       ))}
       <StickyCTA>
         <PrimaryButton title="Next" onPress={onNext} disabled={selected.length === 0} />
