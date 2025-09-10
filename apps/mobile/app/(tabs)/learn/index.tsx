@@ -1,80 +1,83 @@
 import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
-import { theme } from '../../../src/theme';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { theme as baseTheme } from '../../../src/theme';
+import { useAppTheme } from '../../../src/providers/ThemeProvider';
 
 export default function Learn() {
+  const { theme } = useAppTheme();
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={styles.card}>
         <Image source={{ uri: 'https://via.placeholder.com/300x160' }} style={styles.cardImage} />
-        <Text style={styles.cardTitle}>Flashcards</Text>
-        <Text style={styles.cardSubtitle}>Practice with images and words</Text>
-        <Pressable style={[styles.button, styles.primary]}><Text style={styles.buttonText}>Start</Text></Pressable>
+          <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Flashcards</Text>
+          <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>Practice with images and words</Text>
+          <Pressable style={[styles.button, { backgroundColor: theme.colors.primary }]}><Text style={styles.buttonText}>Start</Text></Pressable>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Multiple Choice</Text>
-        <Text style={styles.cardSubtitle}>Colourful answer buttons</Text>
-        <Pressable style={[styles.button, styles.secondary]}><Text style={styles.buttonText}>Start</Text></Pressable>
+        <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Multiple Choice</Text>
+        <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>Colourful answer buttons</Text>
+        <Pressable style={[styles.button, { backgroundColor: theme.colors.secondary }]}><Text style={styles.buttonText}>Start</Text></Pressable>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Typing Prompt</Text>
-        <Text style={styles.cardSubtitle}>Type the translation</Text>
-        <Pressable style={[styles.button, styles.primary]}><Text style={styles.buttonText}>Start</Text></Pressable>
+        <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Typing Prompt</Text>
+        <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>Type the translation</Text>
+        <Pressable style={[styles.button, { backgroundColor: theme.colors.primary }]}><Text style={styles.buttonText}>Start</Text></Pressable>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Audio Prompt</Text>
-        <Text style={styles.cardSubtitle}>Speak your answer</Text>
-        <Pressable style={[styles.button, styles.secondary]}><Text style={styles.buttonText}>Start</Text></Pressable>
+        <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Audio Prompt</Text>
+        <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>Speak your answer</Text>
+        <Pressable style={[styles.button, { backgroundColor: theme.colors.secondary }]}><Text style={styles.buttonText}>Start</Text></Pressable>
       </View>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: baseTheme.colors.background,
+  },
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-    padding: theme.spacing.lg,
+    backgroundColor: baseTheme.colors.background,
+    padding: baseTheme.spacing.lg,
   },
   card: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.lg,
+    backgroundColor: baseTheme.colors.card,
+    borderRadius: baseTheme.radius.lg,
+    padding: baseTheme.spacing.lg,
+    marginBottom: baseTheme.spacing.lg,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: baseTheme.colors.border,
   },
   cardImage: {
     width: '100%',
     height: 160,
-    borderRadius: theme.radius.md,
-    marginBottom: theme.spacing.md,
+    borderRadius: baseTheme.radius.md,
+    marginBottom: baseTheme.spacing.md,
   },
   cardTitle: {
-    fontFamily: theme.typography.semiBold,
+    fontFamily: baseTheme.typography.semiBold,
     fontSize: 20,
-    color: theme.colors.text,
+    color: baseTheme.colors.text,
   },
   cardSubtitle: {
-    fontFamily: theme.typography.regular,
-    color: theme.colors.mutedText,
-    marginBottom: theme.spacing.md,
+    fontFamily: baseTheme.typography.regular,
+    color: baseTheme.colors.mutedText,
+    marginBottom: baseTheme.spacing.md,
   },
   button: {
     paddingVertical: 12,
-    borderRadius: theme.radius.md,
+    borderRadius: baseTheme.radius.md,
     alignItems: 'center',
-  },
-  primary: {
-    backgroundColor: theme.colors.primary,
-  },
-  secondary: {
-    backgroundColor: theme.colors.secondary,
   },
   buttonText: {
     color: '#fff',
-    fontFamily: theme.typography.semiBold,
+    fontFamily: baseTheme.typography.semiBold,
   },
 });

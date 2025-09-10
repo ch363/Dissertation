@@ -1,61 +1,67 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { theme } from '../../../src/theme';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { theme as baseTheme } from '../../../src/theme';
+import { useAppTheme } from '../../../src/providers/ThemeProvider';
 
 export default function Progress() {
+  const { theme } = useAppTheme();
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Your Progress</Text>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <Text style={[styles.title, { color: theme.colors.text }]}>Your Progress</Text>
       <View style={styles.circle} />
-      <Text style={styles.subtitle}>XP: 320 • Streak: 12🔥</Text>
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Suggested: Flashcards</Text>
-        <Text style={styles.cardSubtitle}>Keep the streak alive!</Text>
+      <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>XP: 320 • Streak: 12🔥</Text>
+      <View style={[styles.card, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+        <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Suggested: Flashcards</Text>
+        <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>Keep the streak alive!</Text>
       </View>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: baseTheme.colors.background },
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-    padding: theme.spacing.lg,
+    backgroundColor: baseTheme.colors.background,
+    padding: baseTheme.spacing.lg,
     alignItems: 'center',
   },
   title: {
-    fontFamily: theme.typography.bold,
+    fontFamily: baseTheme.typography.bold,
     fontSize: 22,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.lg,
+    color: baseTheme.colors.text,
+    marginBottom: baseTheme.spacing.lg,
   },
   circle: {
     width: 140,
     height: 140,
     borderRadius: 70,
     borderWidth: 10,
-    borderColor: theme.colors.primary,
-    marginBottom: theme.spacing.md,
+    borderColor: baseTheme.colors.primary,
+    marginBottom: baseTheme.spacing.md,
   },
   subtitle: {
-    fontFamily: theme.typography.regular,
-    color: theme.colors.mutedText,
-    marginBottom: theme.spacing.lg,
+    fontFamily: baseTheme.typography.regular,
+    color: baseTheme.colors.mutedText,
+    marginBottom: baseTheme.spacing.lg,
   },
   card: {
     width: '100%',
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.lg,
+    backgroundColor: baseTheme.colors.card,
+    borderRadius: baseTheme.radius.lg,
+    padding: baseTheme.spacing.lg,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: baseTheme.colors.border,
   },
   cardTitle: {
-    fontFamily: theme.typography.semiBold,
+    fontFamily: baseTheme.typography.semiBold,
     fontSize: 18,
-    color: theme.colors.text,
+    color: baseTheme.colors.text,
   },
   cardSubtitle: {
-    fontFamily: theme.typography.regular,
-    color: theme.colors.mutedText,
+    fontFamily: baseTheme.typography.regular,
+    color: baseTheme.colors.mutedText,
   },
 });

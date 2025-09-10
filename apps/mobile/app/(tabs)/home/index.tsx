@@ -2,18 +2,21 @@ import { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Image, Pressable, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { theme } from '../../../src/theme';
+import { theme as baseTheme } from '../../../src/theme';
+import { useAppTheme } from '../../../src/providers/ThemeProvider';
 import { getCurrentUser } from '../../../src/lib/auth';
-import { getCompletedModules, markModuleCompleted } from '../../../src/lib/progress';
+import { getCompletedModules } from '../../../src/lib/progress';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
+  const { theme, isDark } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const [name, setName] = useState<string>('');
   const [completed, setCompleted] = useState<string[]>([]);
 
   useEffect(() => {
     (async () => {
       const user = await getCurrentUser();
-      // Prefer profile name from user metadata
       const metaName = (user?.user_metadata as any)?.name as string | undefined;
       const fallback = user?.email?.split('@')[0] ?? 'Learner';
       setName(metaName || fallback || 'Learner');
@@ -23,28 +26,38 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <View style={styles.container}>
-      {/* Curved top background */}
-      <View style={styles.topBg} />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        {/* Curved top background */}
+        <View style={[styles.topBg, { backgroundColor: isDark ? '#0F1C2A' : '#EAF4FF' }]} />
 
-      {/* Centered logo + title */}
-      <View style={styles.logoRow}>
-        <Image source={require('../../../assets/logo.png')} style={styles.logoXL} resizeMode="contain" />
-        <Pressable accessibilityRole="button" accessibilityLabel="Settings" hitSlop={10} style={styles.settingsBtn}>
+        {/* Floating settings button at the top-right */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open Settings"
+          onPress={() => router.push('/settings')}
+          hitSlop={12}
+          style={styles.settingsFloating}
+        >
           <Ionicons name="settings-outline" size={22} color={theme.colors.mutedText} />
         </Pressable>
+
+        {/* Centered logo + title */}
+        <View style={[styles.logoRow, { marginTop: Math.max(insets.top, 12) + 8 }]}>
+          <Image source={require('../../../assets/logo.png')} style={styles.logoXL} resizeMode="contain" />
+        </View>
+        <Text style={[styles.brand, { color: theme.colors.text }]}>Fluentia</Text>
+
+        {/* Flowing connectors behind modules */}
+        <ModuleFlowBackdrop color={isDark ? 'rgba(70,100,130,0.35)' : 'rgba(203,230,250,0.65)'} />
+
+        {/* Modules list */}
+        <ModuleList completed={completed} onLocked={() => Alert.alert('Locked', 'Complete the previous module to unlock this one.')} />
       </View>
-      <Text style={styles.brand}>Fluentia</Text>
-
-      {/* Flowing connectors behind modules */}
-      <ModuleFlowBackdrop />
-
-      {/* Modules list */}
-      <ModuleList completed={completed} onLocked={() => Alert.alert('Locked', 'Complete the previous module to unlock this one.')} />
-    </View>
+    </SafeAreaView>
   );
 }
-function ModuleFlowBackdrop() {
+function ModuleFlowBackdrop({ color }: { color: string }) {
   // Bezier-like path following the module stack using rotated segments
   const anchors = [
     { x: 300, y: 160 },
@@ -64,7 +77,7 @@ function ModuleFlowBackdrop() {
             left: s.cx - s.thickness / 2,
             width: s.thickness,
             height: s.len,
-            backgroundColor: 'rgba(203,230,250,0.65)',
+            backgroundColor: color,
             borderRadius: s.thickness / 2,
             transform: [{ rotate: `${s.angle}rad` }],
           }}
@@ -75,6 +88,7 @@ function ModuleFlowBackdrop() {
 }
 
 function ModuleList({ completed, onLocked }: { completed: string[]; onLocked: () => void }) {
+  const { isDark } = useAppTheme();
   const modules = [
     { title: 'Basics', slug: 'basics', icon: 'star' as const },
     { title: 'Common Phrases', slug: 'common-phrases', icon: 'ellipse' as const },
@@ -82,16 +96,16 @@ function ModuleList({ completed, onLocked }: { completed: string[]; onLocked: ()
     { title: 'Food', slug: 'food', icon: 'lock-closed' as const },
   ];
 
-  const isUnlocked = (index: number, slug: string) => {
+  const isUnlocked = (index: number) => {
     if (index === 0) return true;
     const prevSlug = modules[index - 1].slug;
     return completed.includes(prevSlug);
   };
 
   return (
-    <View style={{ marginTop: theme.spacing.lg }}>
+    <View style={{ marginTop: baseTheme.spacing.lg }}>
       {modules.map((m, idx) => {
-        const unlocked = isUnlocked(idx, m.slug);
+        const unlocked = isUnlocked(idx);
         const disabled = !unlocked;
         return (
           <Pressable
@@ -99,14 +113,16 @@ function ModuleList({ completed, onLocked }: { completed: string[]; onLocked: ()
             onPress={() => (disabled ? onLocked() : router.push(`/course/${m.slug}`))}
             accessibilityRole="button"
             accessibilityState={{ disabled }}
-            style={[styles.modulePill, disabled && styles.modulePillLocked]}
+            style={[
+              styles.modulePill,
+              { backgroundColor: isDark ? 'rgba(70,120,150,0.4)' : '#B7EBFF' },
+              disabled && styles.modulePillLocked,
+            ]}
           >
-            {/* Left circular icon */}
-            <View style={[styles.moduleIconCircle, disabled && { opacity: 0.5 }]}> 
+            <View style={[styles.moduleIconCircle, { backgroundColor: isDark ? '#27566c' : '#8DE0F7' }, disabled && { opacity: 0.5 }]}> 
               <Ionicons name={m.icon} size={18} color={'#0E607D'} />
             </View>
-            <Text style={[styles.moduleTitle, disabled && { color: '#72839B' }]}>{m.title}</Text>
-            {/* Shine overlay to mimic gradient */}
+            <Text style={[styles.moduleTitle, { color: isDark ? '#D6E1EA' : '#0D1B2A' }, disabled && { opacity: 0.7 }]}>{m.title}</Text>
             <View style={styles.moduleShine} />
           </Pressable>
         );
@@ -147,18 +163,20 @@ function buildSegments(points: { x: number; y: number }[]) {
 }
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1 },
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.lg,
+    backgroundColor: baseTheme.colors.background,
+    paddingHorizontal: baseTheme.spacing.lg,
+    paddingTop: baseTheme.spacing.lg,
   },
+  // Background for the top section
   topBg: {
     position: 'absolute',
-    top: -180,
-    right: -120,
-    width: 380,
-    height: 280,
+    top: -220,
+    right: -160,
+    width: 480,
+    height: 360,
     backgroundColor: '#EAF4FF',
     borderBottomLeftRadius: 280,
     borderBottomRightRadius: 280,
@@ -169,15 +187,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
   },
-  logoXL: { width: 72, height: 72, marginTop: 4 },
-  settingsBtn: {
+  logoXL: { width: 96, height: 96, marginTop: 0 },
+  settingsFloating: {
     position: 'absolute',
-    right: 0,
-    top: 6,
+    right: 16,
+    top: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
-  brand: { marginTop: 8, fontFamily: theme.typography.bold, fontSize: 32, color: theme.colors.text },
+  brand: { marginTop: 8, fontFamily: baseTheme.typography.bold, fontSize: 34, color: baseTheme.colors.text, textAlign: 'center' },
   flowBackdrop: { position: 'absolute', left: 0, right: 0, top: 140, bottom: 0 },
-  pathContainer: { marginTop: theme.spacing.lg, height: 320, width: '100%' },
+  pathContainer: { marginTop: baseTheme.spacing.lg, height: 320, width: '100%' },
   node: {
     position: 'absolute',
     width: 62,
@@ -243,9 +267,9 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   moduleTitle: {
-    fontFamily: theme.typography.semiBold,
+    fontFamily: baseTheme.typography.semiBold,
     fontSize: 20,
-    color: '#0D1B2A',
+  color: '#0D1B2A',
   },
   moduleShine: {
     position: 'absolute',

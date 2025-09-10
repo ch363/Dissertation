@@ -1,51 +1,54 @@
 import { View, Text, StyleSheet, Switch } from 'react-native';
-import { theme } from '../../../src/theme';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { theme as baseTheme } from '../../../src/theme';
+import { useAppTheme } from '../../../src/providers/ThemeProvider';
 
 export default function Profile() {
+  const { theme } = useAppTheme();
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Profile & Settings</Text>
-      <View style={styles.row}>
-        <Text style={styles.label}>Dark Mode</Text>
-        <Switch value={false} onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <Text style={[styles.title, { color: theme.colors.text }]}>Profile & Settings</Text>
+  {/* Theme toggles moved to Settings */}
+        <View style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+          <Text style={[styles.label, { color: theme.colors.text }]}>Adaptivity</Text>
+          <Switch value={true} onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />
+        </View>
+        <View style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+          <Text style={[styles.label, { color: theme.colors.text }]}>Notifications</Text>
+          <Switch value={true} onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />
+        </View>
       </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>Adaptivity</Text>
-        <Switch value={true} onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>Notifications</Text>
-        <Switch value={true} onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />
-      </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: baseTheme.colors.background },
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-    padding: theme.spacing.lg,
+    backgroundColor: baseTheme.colors.background,
+    padding: baseTheme.spacing.lg,
   },
   title: {
-    fontFamily: theme.typography.bold,
+    fontFamily: baseTheme.typography.bold,
     fontSize: 22,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.lg,
+    color: baseTheme.colors.text,
+    marginBottom: baseTheme.spacing.lg,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
+    backgroundColor: baseTheme.colors.card,
+    borderRadius: baseTheme.radius.md,
+    padding: baseTheme.spacing.md,
+    marginBottom: baseTheme.spacing.md,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: baseTheme.colors.border,
   },
   label: {
-    fontFamily: theme.typography.regular,
-    color: theme.colors.text,
+    fontFamily: baseTheme.typography.regular,
+    color: baseTheme.colors.text,
   },
 });
