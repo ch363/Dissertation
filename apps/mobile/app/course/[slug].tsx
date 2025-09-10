@@ -1,6 +1,7 @@
 import { useLocalSearchParams, router } from 'expo-router';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { theme } from '../../src/theme';
+import { markModuleCompleted } from '../../src/lib/progress';
 
 export default function CourseDetail() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -13,6 +14,16 @@ export default function CourseDetail() {
 
       <Pressable style={[styles.button, styles.primary]} onPress={() => router.push('/(tabs)/learn')}>
         <Text style={styles.buttonText}>Start</Text>
+      </Pressable>
+
+      <Pressable
+        style={[styles.button, styles.secondary]}
+        onPress={async () => {
+          await markModuleCompleted((slug || '').toString());
+          router.replace('/(tabs)/home');
+        }}
+      >
+        <Text style={styles.buttonText}>Mark Complete</Text>
       </Pressable>
     </View>
   );
@@ -42,5 +53,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   primary: { backgroundColor: theme.colors.primary },
+  secondary: { backgroundColor: theme.colors.secondary, marginTop: theme.spacing.md },
   buttonText: { color: '#fff', fontFamily: theme.typography.semiBold },
 });
