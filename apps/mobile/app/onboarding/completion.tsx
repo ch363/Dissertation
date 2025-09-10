@@ -1,7 +1,8 @@
-import { View, Text, StyleSheet, Image } from 'react-native';
 import { router } from 'expo-router';
-import { theme } from '../../src/theme';
+import { View, Text, StyleSheet, Image } from 'react-native';
+
 import { PrimaryButton } from './_components';
+import { theme } from '../../src/theme';
 
 export default function OnboardingCompletion() {
   return (

@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
+
 import { theme } from '../../../src/theme';
 
 export default function Learn() {
@@ -8,25 +9,33 @@ export default function Learn() {
         <Image source={{ uri: 'https://via.placeholder.com/300x160' }} style={styles.cardImage} />
         <Text style={styles.cardTitle}>Flashcards</Text>
         <Text style={styles.cardSubtitle}>Practice with images and words</Text>
-        <Pressable style={[styles.button, styles.primary]}><Text style={styles.buttonText}>Start</Text></Pressable>
+        <Pressable style={[styles.button, styles.primary]}>
+          <Text style={styles.buttonText}>Start</Text>
+        </Pressable>
       </View>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Multiple Choice</Text>
         <Text style={styles.cardSubtitle}>Colourful answer buttons</Text>
-        <Pressable style={[styles.button, styles.secondary]}><Text style={styles.buttonText}>Start</Text></Pressable>
+        <Pressable style={[styles.button, styles.secondary]}>
+          <Text style={styles.buttonText}>Start</Text>
+        </Pressable>
       </View>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Typing Prompt</Text>
         <Text style={styles.cardSubtitle}>Type the translation</Text>
-        <Pressable style={[styles.button, styles.primary]}><Text style={styles.buttonText}>Start</Text></Pressable>
+        <Pressable style={[styles.button, styles.primary]}>
+          <Text style={styles.buttonText}>Start</Text>
+        </Pressable>
       </View>
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Audio Prompt</Text>
         <Text style={styles.cardSubtitle}>Speak your answer</Text>
-        <Pressable style={[styles.button, styles.secondary]}><Text style={styles.buttonText}>Start</Text></Pressable>
+        <Pressable style={[styles.button, styles.secondary]}>
+          <Text style={styles.buttonText}>Start</Text>
+        </Pressable>
       </View>
     </View>
   );

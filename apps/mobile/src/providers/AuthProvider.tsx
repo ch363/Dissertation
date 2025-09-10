@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+
 import { supabase } from '../lib/supabase';
 
 type AuthContextType = { user: any | null; loading: boolean };

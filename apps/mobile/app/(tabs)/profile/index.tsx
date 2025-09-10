@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, Switch } from 'react-native';
+
 import { theme } from '../../../src/theme';
 
 export default function Profile() {
@@ -7,15 +8,19 @@ export default function Profile() {
       <Text style={styles.title}>Profile & Settings</Text>
       <View style={styles.row}>
         <Text style={styles.label}>Dark Mode</Text>
-        <Switch value={false} onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />
+        <Switch
+          value={false}
+          onValueChange={() => {}}
+          trackColor={{ true: theme.colors.primary }}
+        />
       </View>
       <View style={styles.row}>
         <Text style={styles.label}>Adaptivity</Text>
-        <Switch value={true} onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />
+        <Switch value onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />
       </View>
       <View style={styles.row}>
         <Text style={styles.label}>Notifications</Text>
-        <Switch value={true} onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />
+        <Switch value onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />
       </View>
     </View>
   );

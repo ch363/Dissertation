@@ -1,17 +1,22 @@
-import { Link, Stack } from 'expo-router';
+import { Link } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, StyleSheet, Image } from 'react-native';
+
 import { theme } from '../src/theme';
 
 export default function Welcome() {
   return (
     <View style={styles.container}>
       <Image source={require('../assets/logo.png')} style={styles.logo} resizeMode="contain" />
-  <Text style={styles.title}>Fluentia</Text>
+      <Text style={styles.title}>Fluentia</Text>
       <Text style={styles.subtitle}>Personalised learning, one step at a time.</Text>
 
-  <Link href="/auth/signup" style={[styles.button, styles.primary]}>Get Started</Link>
-      <Link href="/(tabs)" style={[styles.button, styles.secondary]}>Log In</Link>
+      <Link href="/auth/signup" style={[styles.button, styles.primary]}>
+        Get Started
+      </Link>
+      <Link href="/(tabs)" style={[styles.button, styles.secondary]}>
+        Log In
+      </Link>
       <StatusBar style="auto" />
     </View>
   );
