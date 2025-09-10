@@ -1,14 +1,12 @@
 import { Tabs } from 'expo-router';
-import { Image, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { theme as baseTheme } from '../../src/theme';
 import { useAppTheme } from '../../src/providers/ThemeProvider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
   const visibleNames = new Set(['home/index', 'learn/index', 'profile/index', 'settings']);
   const visibleRoutes = state.routes.filter((r: any) => visibleNames.has(r.name));
   return (
@@ -61,7 +59,6 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 export default function TabsLayout() {
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
 
   // Approx bar height to position wave right above it
   const barPaddingTop = baseTheme.spacing.sm;
@@ -103,9 +100,11 @@ export default function TabsLayout() {
       </Tabs>
       {/* Wave overlay positioned above the tab bar */}
       <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: barHeight - 14, zIndex: 999 }}>
-        <Svg width={width} height={80} viewBox="0 0 360 80" preserveAspectRatio="none">
-          <Path d="M0 64 C 90 24, 180 72, 270 32 S 360 56, 360 30 L 360 0 L 0 0 Z" fill={baseTheme.colors.primary} opacity={0.18} />
-        </Svg>
+        <Image
+          source={require('../../assets/Footer_wave.png')}
+          style={{ width: '100%', height: 90 }}
+          resizeMode="stretch"
+        />
       </View>
     </View>
   );
