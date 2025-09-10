@@ -1,17 +1,47 @@
-import { Link, Stack } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { router, Link } from 'expo-router';
+import { getCurrentUser } from '../src/lib/auth';
+import { hasOnboarding } from '../src/lib/onboardingRepo';
+import { View, Text, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text, StyleSheet, Image } from 'react-native';
 import { theme } from '../src/theme';
 
-export default function Welcome() {
+export default function Index() {
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const user = await getCurrentUser();
+        if (!user) {
+          // Show login/signup screen
+          return;
+        }
+        const done = await hasOnboarding(user.id);
+        if (!done) {
+          router.replace('/onboarding/welcome');
+        } else {
+          router.replace('/(tabs)/home');
+        }
+      } finally {
+        setChecking(false);
+      }
+    })();
+  }, []);
+
   return (
     <View style={styles.container}>
+      {checking && (
+        <View style={{ position: 'absolute', top: 12, right: 12 }}>
+          <ActivityIndicator color={theme.colors.primary} />
+        </View>
+      )}
       <Image source={require('../assets/logo.png')} style={styles.logo} resizeMode="contain" />
-  <Text style={styles.title}>Fluentia</Text>
+      <Text style={styles.title}>Fluentia</Text>
       <Text style={styles.subtitle}>Personalised learning, one step at a time.</Text>
 
-  <Link href="/auth/signup" style={[styles.button, styles.primary]}>Get Started</Link>
-      <Link href="/(tabs)" style={[styles.button, styles.secondary]}>Log In</Link>
+      <Link href="/auth/signup" style={[styles.button, styles.primary]}>Get Started</Link>
+      <Link href="/auth/login" style={[styles.button, styles.secondary]}>Log In</Link>
       <StatusBar style="auto" />
     </View>
   );

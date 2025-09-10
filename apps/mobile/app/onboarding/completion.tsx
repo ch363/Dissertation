@@ -14,7 +14,7 @@ export default function OnboardingCompletion() {
 
       <PrimaryButton
         title="Continue"
-        onPress={() => router.replace('/(tabs)')}
+        onPress={() => router.replace('/(tabs)/home')}
         style={styles.cta}
         textStyle={styles.ctaText}
       />

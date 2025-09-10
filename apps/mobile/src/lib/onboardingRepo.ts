@@ -19,3 +19,16 @@ export async function saveOnboarding(userId: string, answers: OnboardingAnswers)
   const { error } = await supabase.from('onboarding_answers').upsert(payload, { onConflict: 'user_id' });
   if (error) throw error;
 }
+
+export async function hasOnboarding(userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('onboarding_answers')
+    .select('user_id')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error && error.code !== 'PGRST116') {
+    // PGRST116: No rows found for maybeSingle
+    throw error;
+  }
+  return !!data;
+}
