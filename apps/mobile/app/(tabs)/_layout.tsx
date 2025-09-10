@@ -3,7 +3,7 @@ import { Image, Pressable, StyleSheet, View, useWindowDimensions } from 'react-n
 import { theme as baseTheme } from '../../src/theme';
 import { useAppTheme } from '../../src/providers/ThemeProvider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const { theme } = useAppTheme();
@@ -102,21 +102,9 @@ export default function TabsLayout() {
       />
       </Tabs>
       {/* Wave overlay positioned above the tab bar */}
-      <View
-        pointerEvents="none"
-        style={{ position: 'absolute', left: 0, right: 0, bottom: barHeight - 14, zIndex: 999 }}
-      >
+      <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: barHeight - 14, zIndex: 999 }}>
         <Svg width={width} height={80} viewBox="0 0 360 80" preserveAspectRatio="none">
-          <Defs>
-            <LinearGradient id="waveGrad" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={baseTheme.colors.primary} stopOpacity="0.35" />
-              <Stop offset="1" stopColor={baseTheme.colors.primary} stopOpacity="0" />
-            </LinearGradient>
-          </Defs>
-          <Path
-            d="M0 64 C 90 24, 180 72, 270 32 S 360 56, 360 30 L 360 0 L 0 0 Z"
-            fill="url(#waveGrad)"
-          />
+          <Path d="M0 64 C 90 24, 180 72, 270 32 S 360 56, 360 30 L 360 0 L 0 0 Z" fill={baseTheme.colors.primary} opacity={0.18} />
         </Svg>
       </View>
     </View>
@@ -145,3 +133,4 @@ const styles = StyleSheet.create({
   height: 48,
   },
 });
+

@@ -1,0 +1,45 @@
+# Project Configuration
+# This file contains project-wide configuration settings
+
+project:
+  name: "Fluentia Project"
+  version: "0.1.0"
+  author: "Callum Herzog"
+  description: "Comprehensive dissertation project with structured development workflow"
+  
+  # Project structure
+  structure:
+    source_dir: "src"
+    test_dir: "tests"
+    docs_dir: "docs"
+    tools_dir: "tools"
+    config_dir: "config"
+
+  # Development settings
+  development:
+    default_branch: "main"
+    development_branch: "develop"
+    feature_branch_prefix: "feature/"
+    bugfix_branch_prefix: "bugfix/"
+    hotfix_branch_prefix: "hotfix/"
+    
+  # Quality gates
+  quality:
+    min_test_coverage: 80
+    max_complexity: 10
+    code_review_required: true
+    automated_testing: true
+
+  # Documentation
+  documentation:
+    feature_specs_required: true
+    bug_reports_required: true
+    api_documentation: true
+    user_documentation: true
+
+  # Process
+  process:
+    issue_tracking: true
+    code_review_process: true
+    release_management: true
+    continuous_integration: true

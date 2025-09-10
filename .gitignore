@@ -1,36 +1,88 @@
 # Dependencies
 node_modules/
 
-# Next.js
-.next/
+# Build outputs
+build/
+dist/
 out/
+
+# Next.js (if present)
+.next/
 .next-static/
 
 # Logs
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Env files
+# Environment variables
 .env
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
 .env.*.local
 
-# Editor
+# IDE / Editor
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+
+# OS files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
 # Coverage
 coverage/
+*.lcov
+.nyc_output/
 
-# OS
-Thumbs.db
+# Caches
+.npm/
+.eslintcache
+.yarn-integrity
 
-# Misc
-*.swp
-*.swo
+# Temp
+tmp/
+temp/
+
+# Language-specific
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+*.class
+target/
+
+*.o
+*.so
+*.dylib
+*.exe
+*.out
+*.app
+
+# Pack artifacts
+*.tgz
+
+# Docs build output
+docs/_build/
+site/
 
 # Expo / React Native
 apps/mobile/.expo/
