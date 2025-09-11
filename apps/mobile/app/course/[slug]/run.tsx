@@ -4,6 +4,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { theme as baseTheme } from '../../../src/theme';
 import { useAppTheme } from '../../../src/providers/ThemeProvider';
 import { markModuleCompleted } from '../../../src/lib/progress';
+import { insertLessonAttempt } from '../../../src/lib/lessonAttempts';
 
 type Choice = string;
 type Question = {
@@ -72,6 +73,9 @@ export default function CourseRun() {
       ...prev,
       { questionId: q.id, choice, correct: isCorrect, at: Date.now() },
     ]);
+    // Fire-and-forget persistence; ignore errors for UX smoothness
+    const courseSlug = String(slug || 'basics');
+    insertLessonAttempt({ course_slug: courseSlug, question_id: q.id, choice, correct: isCorrect }).catch(() => {});
   };
 
   // Animation state

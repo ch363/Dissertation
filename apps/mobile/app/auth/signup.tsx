@@ -17,8 +17,12 @@ export default function SignUp() {
     try {
       setLoading(true);
       setErrorMsg(null);
-  await signUpWithEmail(name.trim(), email.trim(), password);
-      router.push('/onboarding/welcome');
+  const { needsVerification } = await signUpWithEmail(name.trim(), email.trim(), password);
+      if (needsVerification) {
+        router.replace({ pathname: '/auth/verify-email', params: { email: email.trim() } });
+      } else {
+        router.push('/onboarding/welcome');
+      }
     } catch (e: any) {
       setErrorMsg(e?.message ?? 'Sign up failed');
     } finally {

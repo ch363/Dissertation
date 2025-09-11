@@ -34,7 +34,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     storage: AsyncStorage,
     persistSession: true,
     autoRefreshToken: true,
-  // Use implicit flow to avoid WebCrypto requirement in RN
+  // Use implicit flow (no WebCrypto/native dependency)
   flowType: 'implicit',
     detectSessionInUrl: false,
   },

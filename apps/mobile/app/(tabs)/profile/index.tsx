@@ -2,13 +2,27 @@ import { View, Text, StyleSheet, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme as baseTheme } from '../../../src/theme';
 import { useAppTheme } from '../../../src/providers/ThemeProvider';
+import { useEffect, useState } from 'react';
+import { supabase } from '../../../src/lib/supabase';
 
 export default function Profile() {
   const { theme } = useAppTheme();
+  const [displayName, setDisplayName] = useState<string>('');
+
+  useEffect(() => {
+    (async () => {
+      const { data: u } = await supabase.auth.getUser();
+      const id = u.user?.id;
+      if (!id) return;
+      const { data: prof } = await supabase.from('profiles').select('name').eq('id', id).maybeSingle();
+      const name = prof?.name || u.user?.user_metadata?.name || u.user?.email || 'Profile';
+      setDisplayName(String(name));
+    })();
+  }, []);
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <Text style={[styles.title, { color: theme.colors.text }]}>Profile</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>{displayName}</Text>
 
         {/* Progress Section */}
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Your Progress</Text>

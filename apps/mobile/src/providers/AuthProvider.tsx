@@ -1,5 +1,8 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ensureProfileSeed } from '../lib/profile';
+import { PENDING_PROFILE_NAME_KEY } from '../lib/auth';
 
 type AuthContextType = { user: any | null; loading: boolean };
 const AuthCtx = createContext<AuthContextType>({ user: null, loading: true });
@@ -10,13 +13,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user ?? null);
+    supabase.auth.getSession().then(async ({ data }) => {
+      const u = data.session?.user ?? null;
+      setUser(u);
       setLoading(false);
+      if (u) {
+        try {
+          const pending = await AsyncStorage.getItem(PENDING_PROFILE_NAME_KEY);
+          await ensureProfileSeed(pending || undefined);
+          if (pending) await AsyncStorage.removeItem(PENDING_PROFILE_NAME_KEY);
+        } catch {}
+      }
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user?.id) {
+        try {
+          const pending = await AsyncStorage.getItem(PENDING_PROFILE_NAME_KEY);
+          await ensureProfileSeed(pending || undefined);
+          if (pending) await AsyncStorage.removeItem(PENDING_PROFILE_NAME_KEY);
+        } catch {}
+      }
     });
     return () => {
       sub.subscription.unsubscribe();

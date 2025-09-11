@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useNavigation } from 'expo-router';
 import { useCallback } from 'react';
 import { useAppTheme } from '../src/providers/ThemeProvider';
+import { supabase } from '../src/lib/supabase';
 
 export default function SettingsScreen() {
   const { theme, isDark, setMode } = useAppTheme();
@@ -57,6 +58,30 @@ export default function SettingsScreen() {
           <Text style={[styles.label, { color: theme.colors.text }]}>Notifications</Text>
           <Switch value={true} onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />
         </View>
+
+        {/* Developer tools */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open DB Health"
+          onPress={() => router.push('/db-health')}
+          style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}
+        >
+          <Text style={[styles.label, { color: theme.colors.text }]}>DB Health</Text>
+          <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Sign out"
+          onPress={async () => {
+            await supabase.auth.signOut();
+            router.replace('/');
+          }}
+          style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}
+        >
+          <Text style={[styles.label, { color: theme.colors.text }]}>Sign out</Text>
+          <Ionicons name="log-out-outline" size={18} color={theme.colors.mutedText} />
+        </Pressable>
       </View>
     </SafeAreaView>
   );
