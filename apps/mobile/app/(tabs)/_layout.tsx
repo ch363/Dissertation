@@ -20,7 +20,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
           paddingBottom: 8 + Math.max(insets.bottom - 20, 0),
         },
       ]}
-  > 
+  >
       {visibleRoutes.map((route: any) => {
         const index = state.routes.findIndex((r: any) => r.key === route.key);
         const isFocused = state.index === index;
@@ -101,7 +101,7 @@ export default function TabsLayout() {
       {/* Wave overlay positioned above the tab bar */}
       <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: barHeight - 14, zIndex: 999 }}>
         <Image
-          source={require('../../assets/Footer_wave.png')}
+          source={require('../../assets/Footer_wave_transparent.png')}
           style={{ width: '100%', height: 90 }}
           resizeMode="stretch"
         />
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-around',
   paddingHorizontal: baseTheme.spacing.lg,
-  paddingTop: baseTheme.spacing.sm,
+  paddingTop: baseTheme.spacing.lg,
     borderTopWidth: 1,
   borderTopLeftRadius: 40,
   borderTopRightRadius: 40,
