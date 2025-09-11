@@ -1,9 +1,32 @@
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Image, ActivityIndicator, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { theme } from '../../src/theme';
 import { PrimaryButton } from './_components';
+import { useOnboarding } from '../../src/onboarding/OnboardingContext';
+import { getCurrentUser } from '../../src/lib/auth';
+import { saveOnboarding } from '../../src/lib/onboardingRepo';
+import { useState } from 'react';
 
 export default function OnboardingCompletion() {
+  const { answers, reset } = useOnboarding();
+  const [saving, setSaving] = useState(false);
+
+  async function onContinue() {
+    try {
+      setSaving(true);
+      const user = await getCurrentUser();
+      if (user) {
+        await saveOnboarding(user.id, answers);
+      }
+      reset();
+      router.replace('/(tabs)/home');
+    } catch (e: any) {
+      Alert.alert('Save failed', e?.message || 'Could not save your onboarding yet. We will retry in the background.');
+      router.replace('/(tabs)/home');
+    } finally {
+      setSaving(false);
+    }
+  }
   return (
     <View style={styles.container}>
       <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
@@ -11,13 +34,16 @@ export default function OnboardingCompletion() {
       <Text style={styles.subtext}>
         We’ll use your answers to tailor Fluentia to your goals and learning style.
       </Text>
-
-      <PrimaryButton
-        title="Continue"
-        onPress={() => router.replace('/(tabs)/home')}
-        style={styles.cta}
-        textStyle={styles.ctaText}
-      />
+      {saving ? (
+        <ActivityIndicator color={theme.colors.primary} />
+      ) : (
+        <PrimaryButton
+          title="Continue"
+          onPress={onContinue}
+          style={styles.cta}
+          textStyle={styles.ctaText}
+        />
+      )}
     </View>
   );
 }

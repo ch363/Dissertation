@@ -29,6 +29,7 @@ export default function SettingsScreen() {
       router.push('/(tabs)/home');
     }
   }, [navigation]);
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -54,6 +55,15 @@ export default function SettingsScreen() {
             trackColor={{ true: theme.colors.primary }}
           />
         </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open Speech Settings"
+          onPress={() => router.push('/speech')}
+          style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}
+        >
+          <Text style={[styles.label, { color: theme.colors.text }]}>Speech</Text>
+          <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
+        </Pressable>
         <View style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
           <Text style={[styles.label, { color: theme.colors.text }]}>Notifications</Text>
           <Switch value={true} onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />

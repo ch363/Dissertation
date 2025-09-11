@@ -1,10 +1,12 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, SafeAreaView, Image, Animated, Easing, LayoutChangeEvent } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { theme as baseTheme } from '../../../src/theme';
 import { useAppTheme } from '../../../src/providers/ThemeProvider';
 import { markModuleCompleted } from '../../../src/lib/progress';
 import { insertLessonAttempt } from '../../../src/lib/lessonAttempts';
+import { getTtsEnabled, getTtsRate } from '../../../src/lib/prefs';
+import * as SafeSpeech from '../../../src/lib/speech';
 
 type Choice = string;
 type Question = {
@@ -113,6 +115,29 @@ export default function CourseRun() {
     setChoicePos((prev) => ({ ...prev, [key]: { x, y, w, h } }));
   };
 
+  // Clean up speech when leaving the screen
+  useEffect(() => {
+    return () => {
+      try {
+  SafeSpeech.stop();
+      } catch {}
+    };
+  }, []);
+
+  // Speak the completed sentence after a correct selection animation
+  const speakCompletedSentence = async (answer: string) => {
+    try {
+      const enabled = await getTtsEnabled();
+      if (!enabled) return;
+  const sentence = `${q.sentencePrefix} ${answer} ${q.sentenceSuffix}`.replace(/\s+/g, ' ').trim();
+  const rate = await getTtsRate();
+  await SafeSpeech.stop();
+  await SafeSpeech.speak(sentence, { language: 'it-IT', rate });
+    } catch {
+      // no-op
+    }
+  };
+
   const animateToBlank = (text: string) => {
     const start = choicePos[text];
     if (!start || !blankPos) return false;
@@ -143,7 +168,9 @@ export default function CourseRun() {
       setAnimating(false);
       setAnimVisible(false);
       setHiddenChoice(null);
-      setSelected(text); // now lock in the correct answer
+  setSelected(text); // now lock in the correct answer
+  // After animation completes, speak the sentence
+  speakCompletedSentence(text);
     });
     return true;
   };
@@ -156,6 +183,7 @@ export default function CourseRun() {
       if (!ok) {
         // Fallback if positions not ready
         setSelected(c);
+  speakCompletedSentence(c);
       }
     } else {
       recordAttempt(c, false);
@@ -170,6 +198,8 @@ export default function CourseRun() {
 
   const onNext = async () => {
     if (!selected) return;
+  // Stop any ongoing speech when advancing
+  try { await SafeSpeech.stop(); } catch {}
     if (!isLast) {
       setIndex((i) => i + 1);
       setSelected(null);
