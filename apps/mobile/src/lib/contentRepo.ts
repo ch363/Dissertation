@@ -28,7 +28,10 @@ export type ClozeTemplateRow = {
   enabled: boolean;
 };
 
-export async function fetchSentences(languageCode: string, opts?: { limit?: number; difficulty?: number }) {
+export async function fetchSentences(
+  languageCode: string,
+  opts?: { limit?: number; difficulty?: number }
+) {
   const q = supabase
     .from('sentences')
     .select('*')
@@ -56,7 +59,9 @@ export async function fetchSentenceWithTranslation(
   if (opts?.limit != null) q.limit(opts.limit);
   const { data, error } = await q;
   if (error) throw error;
-  return data as (SentenceRow & { sentence_translations: Pick<SentenceTranslationRow, 'text' | 'target_language_code'>[] })[];
+  return data as (SentenceRow & {
+    sentence_translations: Pick<SentenceTranslationRow, 'text' | 'target_language_code'>[];
+  })[];
 }
 
 export async function fetchClozeTemplates(

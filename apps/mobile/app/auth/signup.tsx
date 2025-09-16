@@ -1,6 +1,17 @@
-import { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Pressable, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import { Link, router } from 'expo-router';
+import { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  Pressable,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Image,
+} from 'react-native';
+
 import { signUpWithEmail } from '@/modules/auth';
 import { theme } from '@/theme';
 
@@ -17,7 +28,7 @@ export default function SignUp() {
     try {
       setLoading(true);
       setErrorMsg(null);
-  const { needsVerification } = await signUpWithEmail(name.trim(), email.trim(), password);
+      const { needsVerification } = await signUpWithEmail(name.trim(), email.trim(), password);
       if (needsVerification) {
         router.replace({ pathname: '/auth/verify-email', params: { email: email.trim() } });
       } else {
@@ -31,24 +42,48 @@ export default function SignUp() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.select({ ios: 'padding', android: undefined })} style={{ flex: 1 }}>
+    <KeyboardAvoidingView
+      behavior={Platform.select({ ios: 'padding', android: undefined })}
+      style={{ flex: 1 }}
+    >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-  <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+        <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
         <Text style={styles.title}>Create your account</Text>
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Name</Text>
-          <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Your name" placeholderTextColor={theme.colors.mutedText} />
+          <TextInput
+            style={styles.input}
+            value={name}
+            onChangeText={setName}
+            placeholder="Your name"
+            placeholderTextColor={theme.colors.mutedText}
+          />
         </View>
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Email</Text>
-          <TextInput style={styles.input} value={email} onChangeText={setEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" placeholderTextColor={theme.colors.mutedText} />
+          <TextInput
+            style={styles.input}
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@example.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            placeholderTextColor={theme.colors.mutedText}
+          />
         </View>
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Password</Text>
-          <TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder="At least 6 characters" secureTextEntry placeholderTextColor={theme.colors.mutedText} />
+          <TextInput
+            style={styles.input}
+            value={password}
+            onChangeText={setPassword}
+            placeholder="At least 6 characters"
+            secureTextEntry
+            placeholderTextColor={theme.colors.mutedText}
+          />
         </View>
 
         {errorMsg ? <Text style={styles.error}>{errorMsg}</Text> : null}
@@ -60,7 +95,9 @@ export default function SignUp() {
           <Text style={styles.buttonText}>{loading ? 'Creating account…' : 'Continue'}</Text>
         </Pressable>
 
-        <Link href="/" style={styles.secondaryLink}>Back to Home</Link>
+        <Link href="/" style={styles.secondaryLink}>
+          Back to Home
+        </Link>
       </ScrollView>
     </KeyboardAvoidingView>
   );

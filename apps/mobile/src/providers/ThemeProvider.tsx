@@ -1,6 +1,7 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Appearance } from 'react-native';
+
 import { darkTheme, lightTheme, Theme } from '../theme';
 
 type ThemeMode = 'light' | 'dark' | 'system';
@@ -21,7 +22,9 @@ const STORAGE_KEY = 'app:themeMode';
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const initialSystem = Appearance.getColorScheme();
   const [mode, setModeState] = useState<ThemeMode>('system');
-  const [systemScheme, setSystemScheme] = useState<'light' | 'dark'>((initialSystem ?? 'light') === 'dark' ? 'dark' : 'light');
+  const [systemScheme, setSystemScheme] = useState<'light' | 'dark'>(
+    (initialSystem ?? 'light') === 'dark' ? 'dark' : 'light'
+  );
 
   useEffect(() => {
     (async () => {
@@ -47,11 +50,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const setMode = useCallback((m: ThemeMode | ((prev: ThemeMode) => ThemeMode)) => {
-    setModeState((prev) => (typeof m === 'function' ? (m as (p: ThemeMode) => ThemeMode)(prev) : m));
-    const next = typeof m === 'function' ? (m as (p: ThemeMode) => ThemeMode)(mode) : m;
-    AsyncStorage.setItem(STORAGE_KEY, next).catch(() => {});
-  }, [mode]);
+  const setMode = useCallback(
+    (m: ThemeMode | ((prev: ThemeMode) => ThemeMode)) => {
+      setModeState((prev) =>
+        typeof m === 'function' ? (m as (p: ThemeMode) => ThemeMode)(prev) : m
+      );
+      const next = typeof m === 'function' ? (m as (p: ThemeMode) => ThemeMode)(mode) : m;
+      AsyncStorage.setItem(STORAGE_KEY, next).catch(() => {});
+    },
+    [mode]
+  );
 
   const toggleTheme = useCallback(() => {
     setMode((prev: ThemeMode) => {

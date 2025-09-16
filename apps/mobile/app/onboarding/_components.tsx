@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, Modal } from 'react-native';
 import type { AccessibilityRole } from 'react-native';
+
 import { theme } from '@/theme';
 
 export function ProgressBar({ current, total }: { current: number; total: number }) {
@@ -18,7 +19,11 @@ export function ProgressBar({ current, total }: { current: number; total: number
 
 export function Stepper({ current, total }: { current: number; total: number }) {
   return (
-    <View style={styles.stepperWrap} accessibilityRole="header" accessibilityLabel={`Step ${current} of ${total}`}>
+    <View
+      style={styles.stepperWrap}
+      accessibilityRole="header"
+      accessibilityLabel={`Step ${current} of ${total}`}
+    >
       <Text style={styles.stepperText}>{`Step ${current} of ${total}`}</Text>
       <ProgressBar current={current} total={total} />
     </View>
@@ -42,24 +47,36 @@ export function Option({
     <Pressable
       onPress={onPress}
       style={[styles.option, selected && styles.optionSelected]}
-  accessibilityRole={(multiple ? 'checkbox' : 'radio') as AccessibilityRole}
+      accessibilityRole={(multiple ? 'checkbox' : 'radio') as AccessibilityRole}
       accessibilityState={{ checked: !!selected }}
       accessibilityLabel={label}
       hitSlop={8}
     >
       <View style={styles.optionInner}>
-        <View style={styles.optionIconCol}>{icon ? <Text style={styles.optionIcon}>{icon}</Text> : null}</View>
+        <View style={styles.optionIconCol}>
+          {icon ? <Text style={styles.optionIcon}>{icon}</Text> : null}
+        </View>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
-            {label}
-          </Text>
+          <Text style={[styles.optionText, selected && styles.optionTextSelected]}>{label}</Text>
         </View>
       </View>
     </Pressable>
   );
 }
 
-export function PrimaryButton({ title, onPress, disabled, style, textStyle }: { title: string; onPress: () => void; disabled?: boolean; style?: any; textStyle?: any }) {
+export function PrimaryButton({
+  title,
+  onPress,
+  disabled,
+  style,
+  textStyle,
+}: {
+  title: string;
+  onPress: () => void;
+  disabled?: boolean;
+  style?: any;
+  textStyle?: any;
+}) {
   return (
     <Pressable
       onPress={onPress}
@@ -69,7 +86,7 @@ export function PrimaryButton({ title, onPress, disabled, style, textStyle }: { 
       accessibilityRole="button"
       hitSlop={8}
     >
-  <Text style={[styles.primaryBtnText, textStyle]}>{title}</Text>
+      <Text style={[styles.primaryBtnText, textStyle]}>{title}</Text>
     </Pressable>
   );
 }
@@ -85,7 +102,7 @@ export function SecondaryButton({ title, onPress }: { title: string; onPress: ()
 export function StickyCTA({ children }: { children: React.ReactNode }) {
   return (
     <View style={styles.stickyWrap}>
-  <View style={styles.fade} />
+      <View style={styles.fade} />
       <View style={styles.stickyInner}>{children}</View>
     </View>
   );
@@ -102,10 +119,20 @@ export function WhyWeAskLink() {
         <View style={styles.sheetBackdrop}>
           <Pressable style={{ flex: 1 }} onPress={() => setOpen(false)} />
           <View style={styles.sheet} accessibilityRole={'dialog' as AccessibilityRole}>
-            <View style={{ height: 4, width: 40, backgroundColor: '#ddd', borderRadius: 2, alignSelf: 'center', marginBottom: 12 }} />
+            <View
+              style={{
+                height: 4,
+                width: 40,
+                backgroundColor: '#ddd',
+                borderRadius: 2,
+                alignSelf: 'center',
+                marginBottom: 12,
+              }}
+            />
             <Text style={styles.sheetTitle}>Why we ask</Text>
             <Text style={styles.sheetBody}>
-              We use your answers to tailor lessons and practice. You can change any of these later in Settings.
+              We use your answers to tailor lessons and practice. You can change any of these later
+              in Settings.
             </Text>
             <PrimaryButton title="Got it" onPress={() => setOpen(false)} />
           </View>
@@ -228,12 +255,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-  height: 80,
-  backgroundColor: theme.colors.background,
-  shadowColor: '#000',
-  shadowOpacity: 0.08,
-  shadowRadius: 10,
-  shadowOffset: { width: 0, height: -4 },
+    height: 80,
+    backgroundColor: theme.colors.background,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: -4 },
   },
   stickyInner: {
     padding: theme.spacing.lg,

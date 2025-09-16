@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useMemo, useRef, useState } from 'react';
+
 import { getCurrentUser } from '../lib/auth';
 import { saveOnboarding } from '../lib/onboardingRepo';
 
@@ -17,7 +18,10 @@ export type OnboardingAnswers = {
 type Ctx = {
   answers: OnboardingAnswers;
   setAnswer: <K extends keyof OnboardingAnswers>(key: K, value: OnboardingAnswers[K]) => void;
-  setAnswerAndSave: <K extends keyof OnboardingAnswers>(key: K, value: OnboardingAnswers[K]) => void;
+  setAnswerAndSave: <K extends keyof OnboardingAnswers>(
+    key: K,
+    value: OnboardingAnswers[K]
+  ) => void;
   reset: () => void;
 };
 
@@ -33,7 +37,7 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const user = await getCurrentUser();
       if (!user) return;
       await saveOnboarding(user.id, next);
-    } catch (_e) {
+    } catch {
       if (attempt < 3) {
         const delay = [1000, 2000, 5000][attempt] ?? 5000;
         retryRef.current && clearTimeout(retryRef.current);
@@ -42,19 +46,22 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }
 
-  const api = useMemo<Ctx>(() => ({
-    answers,
-    setAnswer: (key, value) => setAnswers((prev) => ({ ...prev, [key]: value })),
-    setAnswerAndSave: (key, value) => {
-      setAnswers((prev) => {
-        const next = { ...prev, [key]: value };
-        // optimistic update then persist
-        persist(next);
-        return next;
-      });
-    },
-    reset: () => setAnswers({}),
-  }), [answers]);
+  const api = useMemo<Ctx>(
+    () => ({
+      answers,
+      setAnswer: (key, value) => setAnswers((prev) => ({ ...prev, [key]: value })),
+      setAnswerAndSave: (key, value) => {
+        setAnswers((prev) => {
+          const next = { ...prev, [key]: value };
+          // optimistic update then persist
+          persist(next);
+          return next;
+        });
+      },
+      reset: () => setAnswers({}),
+    }),
+    [answers]
+  );
 
   return <OnboardingContext.Provider value={api}>{children}</OnboardingContext.Provider>;
 };

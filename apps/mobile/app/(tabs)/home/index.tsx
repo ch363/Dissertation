@@ -1,17 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Image, Pressable, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { theme as baseTheme } from '@/theme';
-import { useAppTheme } from '../../../src/providers/ThemeProvider';
+import { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, Image, Pressable, Alert } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { getCurrentUser } from '../../../src/lib/auth';
 import { getCompletedModules } from '../../../src/lib/progress';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppTheme } from '../../../src/providers/ThemeProvider';
+
+import { theme as baseTheme } from '@/theme';
 
 export default function HomeScreen() {
   const { theme, isDark } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const [name, setName] = useState<string>('');
+  // Removed unused 'name' state
+  const [, setName] = useState<string>('');
   const [completed, setCompleted] = useState<string[]>([]);
 
   useEffect(() => {
@@ -44,7 +47,11 @@ export default function HomeScreen() {
 
         {/* Centered logo + title */}
         <View style={[styles.logoRow, { marginTop: Math.max(insets.top, 12) + 8 }]}>
-          <Image source={require('../../../assets/logo.png')} style={styles.logoXL} resizeMode="contain" />
+          <Image
+            source={require('../../../assets/logo.png')}
+            style={styles.logoXL}
+            resizeMode="contain"
+          />
         </View>
         <Text style={[styles.brand, { color: theme.colors.text }]}>Fluentia</Text>
 
@@ -52,7 +59,10 @@ export default function HomeScreen() {
         <ModuleFlowBackdrop color={isDark ? 'rgba(70,100,130,0.35)' : 'rgba(203,230,250,0.65)'} />
 
         {/* Modules list */}
-        <ModuleList completed={completed} onLocked={() => Alert.alert('Locked', 'Complete the previous module to unlock this one.')} />
+        <ModuleList
+          completed={completed}
+          onLocked={() => Alert.alert('Locked', 'Complete the previous module to unlock this one.')}
+        />
       </View>
     </SafeAreaView>
   );
@@ -119,10 +129,24 @@ function ModuleList({ completed, onLocked }: { completed: string[]; onLocked: ()
               disabled && styles.modulePillLocked,
             ]}
           >
-            <View style={[styles.moduleIconCircle, { backgroundColor: isDark ? '#27566c' : '#8DE0F7' }, disabled && { opacity: 0.5 }]}> 
-              <Ionicons name={m.icon} size={18} color={'#0E607D'} />
+            <View
+              style={[
+                styles.moduleIconCircle,
+                { backgroundColor: isDark ? '#27566c' : '#8DE0F7' },
+                disabled && { opacity: 0.5 },
+              ]}
+            >
+              <Ionicons name={m.icon} size={18} color="#0E607D" />
             </View>
-            <Text style={[styles.moduleTitle, { color: isDark ? '#D6E1EA' : '#0D1B2A' }, disabled && { opacity: 0.7 }]}>{m.title}</Text>
+            <Text
+              style={[
+                styles.moduleTitle,
+                { color: isDark ? '#D6E1EA' : '#0D1B2A' },
+                disabled && { opacity: 0.7 },
+              ]}
+            >
+              {m.title}
+            </Text>
             <View style={styles.moduleShine} />
           </Pressable>
         );
@@ -132,7 +156,8 @@ function ModuleList({ completed, onLocked }: { completed: string[]; onLocked: ()
 }
 
 function buildSegments(points: { x: number; y: number }[]) {
-  if (points.length < 2) return [] as { cx: number; cy: number; len: number; angle: number; thickness: number }[];
+  if (points.length < 2)
+    return [] as { cx: number; cy: number; len: number; angle: number; thickness: number }[];
   const thickness = 26;
   const segs: { cx: number; cy: number; len: number; angle: number; thickness: number }[] = [];
   for (let i = 0; i < points.length - 1; i++) {
@@ -199,7 +224,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'transparent',
   },
-  brand: { marginTop: 8, fontFamily: baseTheme.typography.bold, fontSize: 34, color: baseTheme.colors.text, textAlign: 'center' },
+  brand: {
+    marginTop: 8,
+    fontFamily: baseTheme.typography.bold,
+    fontSize: 34,
+    color: baseTheme.colors.text,
+    textAlign: 'center',
+  },
   flowBackdrop: { position: 'absolute', left: 0, right: 0, top: 140, bottom: 0 },
   pathContainer: { marginTop: baseTheme.spacing.lg, height: 320, width: '100%' },
   node: {
@@ -269,7 +300,7 @@ const styles = StyleSheet.create({
   moduleTitle: {
     fontFamily: baseTheme.typography.semiBold,
     fontSize: 20,
-  color: '#0D1B2A',
+    color: '#0D1B2A',
   },
   moduleShine: {
     position: 'absolute',

@@ -1,11 +1,13 @@
-import { View, Text, StyleSheet, Image, ActivityIndicator, Alert } from 'react-native';
 import { router } from 'expo-router';
-import { theme } from '@/theme';
+import { useState } from 'react';
+import { View, Text, StyleSheet, Image, ActivityIndicator, Alert } from 'react-native';
+
 import { PrimaryButton } from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
+
 import { getCurrentUser } from '@/modules/auth';
 import { saveOnboarding } from '@/modules/onboarding';
-import { useState } from 'react';
+import { theme } from '@/theme';
 
 export default function OnboardingCompletion() {
   const { answers, reset } = useOnboarding();
@@ -21,7 +23,10 @@ export default function OnboardingCompletion() {
       reset();
       router.replace('/(tabs)/home');
     } catch (e: any) {
-      Alert.alert('Save failed', e?.message || 'Could not save your onboarding yet. We will retry in the background.');
+      Alert.alert(
+        'Save failed',
+        e?.message || 'Could not save your onboarding yet. We will retry in the background.'
+      );
       router.replace('/(tabs)/home');
     } finally {
       setSaving(false);

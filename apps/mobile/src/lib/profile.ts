@@ -34,7 +34,8 @@ export async function ensureProfileSeed(name?: string) {
   const id = u.user?.id;
   if (!id) return null; // not signed in yet (e.g., email confirm flow)
   // Prefer provided name, then auth metadata name, otherwise null
-  const preferredName = (name && String(name).trim()) ||
+  const preferredName =
+    (name && String(name).trim()) ||
     (u.user?.user_metadata?.name && String(u.user.user_metadata.name).trim()) ||
     null;
 

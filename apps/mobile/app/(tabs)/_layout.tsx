@@ -1,8 +1,9 @@
 import { Tabs } from 'expo-router';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
-import { theme as baseTheme } from '@/theme';
-import { useAppTheme } from '@/modules/settings';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { useAppTheme } from '@/modules/settings';
+import { theme as baseTheme } from '@/theme';
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const { theme } = useAppTheme();
@@ -20,12 +21,16 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
           paddingBottom: 8 + Math.max(insets.bottom - 20, 0),
         },
       ]}
-  >
+    >
       {visibleRoutes.map((route: any) => {
         const index = state.routes.findIndex((r: any) => r.key === route.key);
         const isFocused = state.index === index;
         const onPress = () => {
-          const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
           if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name);
         };
         const onLongPress = () => navigation.emit({ type: 'tabLongPress', target: route.key });
@@ -57,7 +62,6 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 }
 
 export default function TabsLayout() {
-  const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
 
   // Approx bar height to position wave right above it
@@ -69,37 +73,40 @@ export default function TabsLayout() {
   return (
     <View style={{ flex: 1 }}>
       <Tabs tabBar={(props) => <CustomTabBar {...props} />} screenOptions={{ headerShown: false }}>
-      <Tabs.Screen
-        name="home/index"
-        options={{
-          title: 'Home',
-          href: '/(tabs)/home',
-        }}
-      />
-      <Tabs.Screen
-        name="learn/index"
-        options={{
-          title: 'Learn',
-          href: '/(tabs)/learn',
-        }}
-      />
-      <Tabs.Screen
-        name="profile/index"
-        options={{
-          title: 'Profile',
-          href: '/(tabs)/profile',
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Settings',
-          href: '/(tabs)/settings',
-        }}
-      />
+        <Tabs.Screen
+          name="home/index"
+          options={{
+            title: 'Home',
+            href: '/(tabs)/home',
+          }}
+        />
+        <Tabs.Screen
+          name="learn/index"
+          options={{
+            title: 'Learn',
+            href: '/(tabs)/learn',
+          }}
+        />
+        <Tabs.Screen
+          name="profile/index"
+          options={{
+            title: 'Profile',
+            href: '/(tabs)/profile',
+          }}
+        />
+        <Tabs.Screen
+          name="settings"
+          options={{
+            title: 'Settings',
+            href: '/(tabs)/settings',
+          }}
+        />
       </Tabs>
       {/* Wave overlay positioned above the tab bar */}
-      <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: barHeight - 14, zIndex: 999 }}>
+      <View
+        pointerEvents="none"
+        style={{ position: 'absolute', left: 0, right: 0, bottom: barHeight - 14, zIndex: 999 }}
+      >
         <Image
           source={require('../../assets/Footer_wave_transparent.png')}
           style={{ width: '100%', height: 90 }}
@@ -115,12 +122,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-  paddingHorizontal: baseTheme.spacing.lg,
-  paddingTop: baseTheme.spacing.lg,
+    paddingHorizontal: baseTheme.spacing.lg,
+    paddingTop: baseTheme.spacing.lg,
     borderTopWidth: 1,
-  borderTopLeftRadius: 40,
-  borderTopRightRadius: 40,
-  overflow: 'visible',
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    overflow: 'visible',
   },
   tabItem: {
     flex: 1,
@@ -128,8 +135,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   icon: {
-  width: 48,
-  height: 48,
+    width: 48,
+    height: 48,
   },
 });
-

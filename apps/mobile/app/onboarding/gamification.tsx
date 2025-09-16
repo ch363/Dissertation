@@ -1,8 +1,10 @@
-import { View, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { theme } from '@/theme';
+import { View, Text, StyleSheet } from 'react-native';
+
 import { Stepper, Option, PrimaryButton, StickyCTA, WhyWeAskLink } from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
+
+import { theme } from '@/theme';
 
 export default function Gamification() {
   const { answers, setAnswerAndSave } = useOnboarding();
@@ -23,7 +25,13 @@ export default function Gamification() {
       <Text style={styles.title}>Gamification preference</Text>
       <WhyWeAskLink />
       {options.map((o) => (
-        <Option key={o.key} label={o.label} selected={selected === o.key} onPress={() => setAnswerAndSave('gamification', o.key)} icon={o.icon} />
+        <Option
+          key={o.key}
+          label={o.label}
+          selected={selected === o.key}
+          onPress={() => setAnswerAndSave('gamification', o.key)}
+          icon={o.icon}
+        />
       ))}
       <StickyCTA>
         <PrimaryButton title="Next" onPress={onNext} disabled={!selected} />

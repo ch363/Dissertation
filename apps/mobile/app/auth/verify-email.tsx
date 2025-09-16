@@ -1,10 +1,17 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLocalSearchParams, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Linking } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
-import { theme } from '@/theme';
+
+import {
+  PENDING_LOGIN_EMAIL_KEY,
+  PENDING_LOGIN_PASSWORD_KEY,
+  resendVerificationEmail,
+  signInWithEmail,
+  getSession,
+} from '@/modules/auth';
 import { ensureProfileSeed } from '@/modules/profile';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { PENDING_LOGIN_EMAIL_KEY, PENDING_LOGIN_PASSWORD_KEY, resendVerificationEmail, signInWithEmail, getSession } from '@/modules/auth';
+import { theme } from '@/theme';
 
 export default function VerifyEmail() {
   const { email } = useLocalSearchParams<{ email?: string }>();
@@ -25,7 +32,7 @@ export default function VerifyEmail() {
       setLoading(true);
       setErr(null);
       setMsg(null);
-  await resendVerificationEmail(String(email || ''));
+      await resendVerificationEmail(String(email || ''));
       setMsg('Verification email sent.');
     } catch (e: any) {
       setErr(e?.message || 'Failed to resend.');
@@ -38,16 +45,21 @@ export default function VerifyEmail() {
     try {
       setLoading(true);
       setErr(null);
-      const [emailKv, passKv] = await AsyncStorage.multiGet([PENDING_LOGIN_EMAIL_KEY, PENDING_LOGIN_PASSWORD_KEY]);
+      const [emailKv, passKv] = await AsyncStorage.multiGet([
+        PENDING_LOGIN_EMAIL_KEY,
+        PENDING_LOGIN_PASSWORD_KEY,
+      ]);
       const savedEmail = emailKv?.[1] || '';
       const savedPass = passKv?.[1] || '';
       if (!savedEmail || !savedPass) {
         setErr('No saved credentials. Please sign up again.');
         return;
       }
-      const res = await signInWithEmail(savedEmail, savedPass).catch((e: any) => { throw e; });
-  const session = await getSession();
-  if (session) {
+      await signInWithEmail(savedEmail, savedPass).catch((e: any) => {
+        throw e;
+      });
+      const session = await getSession();
+      if (session) {
         if (!navigating) {
           setNavigating(true);
           await ensureProfileSeed();
@@ -60,7 +72,9 @@ export default function VerifyEmail() {
     } catch (e: any) {
       const msg = e?.message || '';
       if (/confirm/i.test(msg)) {
-        setErr('Supabase email confirmations are enabled. Disable them in Auth → Email → Confirm email to use bypass.');
+        setErr(
+          'Supabase email confirmations are enabled. Disable them in Auth → Email → Confirm email to use bypass.'
+        );
       } else {
         setErr(msg || 'Bypass failed.');
       }
@@ -74,14 +88,19 @@ export default function VerifyEmail() {
       setLoading(true);
       setErr(null);
       // Dev bypass: attempt a direct sign-in with saved credentials
-      const [emailKv, passKv] = await AsyncStorage.multiGet([PENDING_LOGIN_EMAIL_KEY, PENDING_LOGIN_PASSWORD_KEY]);
+      const [emailKv, passKv] = await AsyncStorage.multiGet([
+        PENDING_LOGIN_EMAIL_KEY,
+        PENDING_LOGIN_PASSWORD_KEY,
+      ]);
       const savedEmail = emailKv?.[1] || '';
       const savedPass = passKv?.[1] || '';
       if (savedEmail && savedPass) {
-        try { await signInWithEmail(savedEmail, savedPass); } catch {}
+        try {
+          await signInWithEmail(savedEmail, savedPass);
+        } catch {}
       }
-  const session = await getSession();
-  if (session) {
+      const session = await getSession();
+      if (session) {
         if (!navigating) {
           setNavigating(true);
           await ensureProfileSeed();
@@ -103,14 +122,19 @@ export default function VerifyEmail() {
       if (!mounted || navigating) return;
       try {
         // Dev: also try sign-in silently from stored creds on each poll
-        const [emailKv, passKv] = await AsyncStorage.multiGet([PENDING_LOGIN_EMAIL_KEY, PENDING_LOGIN_PASSWORD_KEY]);
+        const [emailKv, passKv] = await AsyncStorage.multiGet([
+          PENDING_LOGIN_EMAIL_KEY,
+          PENDING_LOGIN_PASSWORD_KEY,
+        ]);
         const savedEmail = emailKv?.[1] || '';
         const savedPass = passKv?.[1] || '';
         if (savedEmail && savedPass) {
-          try { await signInWithEmail(savedEmail, savedPass); } catch {}
+          try {
+            await signInWithEmail(savedEmail, savedPass);
+          } catch {}
         }
-  const session = await getSession();
-  if (session) {
+        const session = await getSession();
+        if (session) {
           setNavigating(true);
           await ensureProfileSeed();
           await AsyncStorage.multiRemove([PENDING_LOGIN_EMAIL_KEY, PENDING_LOGIN_PASSWORD_KEY]);
@@ -128,7 +152,8 @@ export default function VerifyEmail() {
     <View style={styles.container}>
       <Text style={styles.title}>Please verify your email</Text>
       <Text style={styles.subtitle}>
-        We sent a verification link to {email || 'your email'}. Open your inbox and confirm, then return here.
+        We sent a verification link to {email || 'your email'}. Open your inbox and confirm, then
+        return here.
       </Text>
       {msg ? <Text style={styles.msg}>{msg}</Text> : null}
       {err ? <Text style={styles.err}>{err}</Text> : null}
@@ -141,10 +166,14 @@ export default function VerifyEmail() {
       <Pressable style={[styles.button, styles.primary]} onPress={onIConfirmed} disabled={loading}>
         <Text style={styles.buttonText}>{loading ? 'Checking…' : 'I’ve confirmed'}</Text>
       </Pressable>
-      <Pressable style={[styles.button, styles.secondary]} onPress={tryDevBypass} disabled={loading}>
+      <Pressable
+        style={[styles.button, styles.secondary]}
+        onPress={tryDevBypass}
+        disabled={loading}
+      >
         <Text style={styles.buttonText}>{loading ? 'Bypassing…' : 'Skip verification (dev)'}</Text>
       </Pressable>
-  <Text style={styles.hint}>We’re checking automatically every few seconds.</Text>
+      <Text style={styles.hint}>We’re checking automatically every few seconds.</Text>
       <Pressable onPress={() => router.replace('/')}>
         <Text style={styles.link}>Back to Home</Text>
       </Pressable>
@@ -153,12 +182,27 @@ export default function VerifyEmail() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: theme.spacing.lg, backgroundColor: theme.colors.background, justifyContent: 'center' },
-  title: { fontFamily: theme.typography.bold, fontSize: 22, color: theme.colors.text, textAlign: 'center' },
+  container: {
+    flex: 1,
+    padding: theme.spacing.lg,
+    backgroundColor: theme.colors.background,
+    justifyContent: 'center',
+  },
+  title: {
+    fontFamily: theme.typography.bold,
+    fontSize: 22,
+    color: theme.colors.text,
+    textAlign: 'center',
+  },
   subtitle: { marginTop: theme.spacing.sm, color: theme.colors.mutedText, textAlign: 'center' },
   msg: { color: theme.colors.secondary, marginTop: theme.spacing.sm, textAlign: 'center' },
   err: { color: theme.colors.error, marginTop: theme.spacing.sm, textAlign: 'center' },
-  button: { marginTop: theme.spacing.md, paddingVertical: 14, borderRadius: theme.radius.md, alignItems: 'center' },
+  button: {
+    marginTop: theme.spacing.md,
+    paddingVertical: 14,
+    borderRadius: theme.radius.md,
+    alignItems: 'center',
+  },
   primary: { backgroundColor: theme.colors.primary },
   secondary: { backgroundColor: theme.colors.secondary },
   buttonText: { color: '#fff', fontFamily: theme.typography.semiBold },

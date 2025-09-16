@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme as baseTheme } from '@/theme';
-import { useAppTheme } from '../../../src/providers/ThemeProvider';
-import { useEffect, useState } from 'react';
+
 import { supabase } from '../../../src/lib/supabase';
+import { useAppTheme } from '../../../src/providers/ThemeProvider';
+
+import { theme as baseTheme } from '@/theme';
 
 export default function Profile() {
   const { theme } = useAppTheme();
@@ -14,7 +16,11 @@ export default function Profile() {
       const { data: u } = await supabase.auth.getUser();
       const id = u.user?.id;
       if (!id) return;
-      const { data: prof } = await supabase.from('profiles').select('name').eq('id', id).maybeSingle();
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', id)
+        .maybeSingle();
       const name = prof?.name || u.user?.user_metadata?.name || u.user?.email || 'Profile';
       setDisplayName(String(name));
     })();
@@ -27,21 +33,44 @@ export default function Profile() {
         {/* Progress Section */}
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Your Progress</Text>
         <View style={[styles.progressCircle, { borderColor: theme.colors.primary }]} />
-        <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>XP: 320 • Streak: 12🔥</Text>
-        <View style={[styles.card, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
-          <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Suggested: Flashcards</Text>
-          <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>Keep the streak alive!</Text>
+        <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
+          XP: 320 • Streak: 12🔥
+        </Text>
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+          ]}
+        >
+          <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
+            Suggested: Flashcards
+          </Text>
+          <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>
+            Keep the streak alive!
+          </Text>
         </View>
 
         {/* Settings Section */}
-        <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>Settings</Text>
-        <View style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>
+          Settings
+        </Text>
+        <View
+          style={[
+            styles.row,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+          ]}
+        >
           <Text style={[styles.label, { color: theme.colors.text }]}>Adaptivity</Text>
-          <Switch value={true} onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />
+          <Switch value onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />
         </View>
-        <View style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+        <View
+          style={[
+            styles.row,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+          ]}
+        >
           <Text style={[styles.label, { color: theme.colors.text }]}>Notifications</Text>
-          <Switch value={true} onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />
+          <Switch value onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />
         </View>
       </View>
     </SafeAreaView>

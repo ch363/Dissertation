@@ -1,15 +1,23 @@
-import { View, Text, StyleSheet, Image } from 'react-native';
 import { router } from 'expo-router';
-import { theme } from '@/theme';
+import { View, Text, StyleSheet, Image } from 'react-native';
+
 import { PrimaryButton } from './_components';
+
+import { theme } from '@/theme';
 
 export default function OnboardingWelcome() {
   return (
     <View style={styles.container}>
       <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
-      <Text style={styles.headline}>Learn Italian,{"\n"}your way.</Text>
-  <Text style={styles.subtext}>Just a few quick questions to{"\n"}personalize your learning experience (1–2 mins)</Text>
-      <Image source={require('../../assets/colosseum.png')} style={styles.colosseum} resizeMode="contain" />
+      <Text style={styles.headline}>Learn Italian,{'\n'}your way.</Text>
+      <Text style={styles.subtext}>
+        Just a few quick questions to{'\n'}personalize your learning experience (1–2 mins)
+      </Text>
+      <Image
+        source={require('../../assets/colosseum.png')}
+        style={styles.colosseum}
+        resizeMode="contain"
+      />
       <PrimaryButton
         title="Start My Journey"
         onPress={() => router.push('/onboarding/motivation-goals')}
@@ -29,8 +37,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-  width: 140,
-  height: 140,
+    width: 140,
+    height: 140,
     marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.lg,
   },

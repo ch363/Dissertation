@@ -10,7 +10,9 @@ export async function speak(text: string, options?: SpeakOptions) {
   try {
     const Speech = await import('expo-speech');
     // Ensure any current speech is stopped before speaking
-    try { await Speech.stop(); } catch {}
+    try {
+      await Speech.stop();
+    } catch {}
     Speech.speak(text, options);
   } catch {
     // no-op if not available

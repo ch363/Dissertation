@@ -2,8 +2,8 @@
 import 'react-native-url-polyfill/auto';
 import 'react-native-get-random-values';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
 import { createClient } from '@supabase/supabase-js';
+import Constants from 'expo-constants';
 
 // Resolve config from ENV or Expo extra
 const extra =
@@ -34,8 +34,8 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     storage: AsyncStorage,
     persistSession: true,
     autoRefreshToken: true,
-  // Use implicit flow (no WebCrypto/native dependency)
-  flowType: 'implicit',
+    // Use implicit flow (no WebCrypto/native dependency)
+    flowType: 'implicit',
     detectSessionInUrl: false,
   },
 });
@@ -43,7 +43,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 export async function saveOnboarding(name: string, answers: any) {
   const { error } = await supabase.rpc('upsert_onboarding', {
     p_name: name,
-    p_answers: answers
+    p_answers: answers,
   });
   if (error) throw error;
 }
@@ -53,4 +53,3 @@ export async function fetchDueItems(limit = 30) {
   if (error) throw error;
   return data; // array of items
 }
-

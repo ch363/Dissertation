@@ -1,12 +1,24 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, SafeAreaView, Image, Animated, Easing, LayoutChangeEvent } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { theme as baseTheme } from '@/theme';
-import { useAppTheme } from '../../../src/providers/ThemeProvider';
-import { markModuleCompleted } from '../../../src/lib/progress';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  SafeAreaView,
+  Image,
+  Animated,
+  Easing,
+  LayoutChangeEvent,
+} from 'react-native';
+
 import { insertLessonAttempt } from '../../../src/lib/lessonAttempts';
 import { getTtsEnabled, getTtsRate } from '../../../src/lib/prefs';
+import { markModuleCompleted } from '../../../src/lib/progress';
 import * as SafeSpeech from '../../../src/lib/speech';
+import { useAppTheme } from '../../../src/providers/ThemeProvider';
+
+import { theme as baseTheme } from '@/theme';
 
 type Choice = string;
 type Question = {
@@ -63,7 +75,6 @@ export default function CourseRun() {
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<Choice | null>(null);
   const q = questions[index];
-  const correct = selected ? selected === q.answer : null;
   const isLast = index === questions.length - 1;
 
   // Track attempts for future backend persistence
@@ -77,7 +88,12 @@ export default function CourseRun() {
     ]);
     // Fire-and-forget persistence; ignore errors for UX smoothness
     const courseSlug = String(slug || 'basics');
-    insertLessonAttempt({ course_slug: courseSlug, question_id: q.id, choice, correct: isCorrect }).catch(() => {});
+    insertLessonAttempt({
+      course_slug: courseSlug,
+      question_id: q.id,
+      choice,
+      correct: isCorrect,
+    }).catch(() => {});
   };
 
   // Animation state
@@ -87,8 +103,15 @@ export default function CourseRun() {
 
   const [sentenceRowPos, setSentenceRowPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [choicesPos, setChoicesPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [blankPos, setBlankPos] = useState<{ x: number; y: number; w: number; h: number }>({ x: 0, y: 0, w: 0, h: 0 });
-  const [choicePos, setChoicePos] = useState<Record<string, { x: number; y: number; w: number; h: number }>>({});
+  const [blankPos, setBlankPos] = useState<{ x: number; y: number; w: number; h: number }>({
+    x: 0,
+    y: 0,
+    w: 0,
+    h: 0,
+  });
+  const [choicePos, setChoicePos] = useState<
+    Record<string, { x: number; y: number; w: number; h: number }>
+  >({});
 
   const [animVisible, setAnimVisible] = useState(false);
   const [animText, setAnimText] = useState('');
@@ -119,7 +142,7 @@ export default function CourseRun() {
   useEffect(() => {
     return () => {
       try {
-  SafeSpeech.stop();
+        SafeSpeech.stop();
       } catch {}
     };
   }, []);
@@ -129,10 +152,12 @@ export default function CourseRun() {
     try {
       const enabled = await getTtsEnabled();
       if (!enabled) return;
-  const sentence = `${q.sentencePrefix} ${answer} ${q.sentenceSuffix}`.replace(/\s+/g, ' ').trim();
-  const rate = await getTtsRate();
-  await SafeSpeech.stop();
-  await SafeSpeech.speak(sentence, { language: 'it-IT', rate });
+      const sentence = `${q.sentencePrefix} ${answer} ${q.sentenceSuffix}`
+        .replace(/\s+/g, ' ')
+        .trim();
+      const rate = await getTtsRate();
+      await SafeSpeech.stop();
+      await SafeSpeech.speak(sentence, { language: 'it-IT', rate });
     } catch {
       // no-op
     }
@@ -161,16 +186,26 @@ export default function CourseRun() {
         useNativeDriver: false,
       }),
       Animated.sequence([
-        Animated.timing(flyScale, { toValue: 1.15, duration: 220, easing: Easing.out(Easing.quad), useNativeDriver: false }),
-        Animated.timing(flyScale, { toValue: 1.0, duration: 280, easing: Easing.inOut(Easing.quad), useNativeDriver: false }),
+        Animated.timing(flyScale, {
+          toValue: 1.15,
+          duration: 220,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+        Animated.timing(flyScale, {
+          toValue: 1.0,
+          duration: 280,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: false,
+        }),
       ]),
     ]).start(() => {
       setAnimating(false);
       setAnimVisible(false);
       setHiddenChoice(null);
-  setSelected(text); // now lock in the correct answer
-  // After animation completes, speak the sentence
-  speakCompletedSentence(text);
+      setSelected(text); // now lock in the correct answer
+      // After animation completes, speak the sentence
+      speakCompletedSentence(text);
     });
     return true;
   };
@@ -183,7 +218,7 @@ export default function CourseRun() {
       if (!ok) {
         // Fallback if positions not ready
         setSelected(c);
-  speakCompletedSentence(c);
+        speakCompletedSentence(c);
       }
     } else {
       recordAttempt(c, false);
@@ -198,8 +233,10 @@ export default function CourseRun() {
 
   const onNext = async () => {
     if (!selected) return;
-  // Stop any ongoing speech when advancing
-  try { await SafeSpeech.stop(); } catch {}
+    // Stop any ongoing speech when advancing
+    try {
+      await SafeSpeech.stop();
+    } catch {}
     if (!isLast) {
       setIndex((i) => i + 1);
       setSelected(null);
@@ -215,28 +252,43 @@ export default function CourseRun() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}> 
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}> 
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         {/* Top logo */}
         <View style={styles.logoWrap}>
-          <Image source={require('../../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+          <Image
+            source={require('../../../assets/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
         </View>
 
-  {/* Title */}
+        {/* Title */}
         <Text style={[styles.title, { color: theme.colors.text }]}>{q.title}</Text>
 
-  {/* Dev counter */}
-  <Text style={[styles.devCounter, { color: theme.colors.mutedText }]}>Wrong: {wrongCount} • Total: {totalCount} • Q {index + 1}/{questions.length}</Text>
+        {/* Dev counter */}
+        <Text style={[styles.devCounter, { color: theme.colors.mutedText }]}>
+          Wrong: {wrongCount} • Total: {totalCount} • Q {index + 1}/{questions.length}
+        </Text>
 
         {/* Sentence with blank */}
         <View style={styles.sentenceRow} ref={sentenceRowRef} onLayout={onSentenceRowLayout}>
-          <Text style={[styles.sentenceText, { color: theme.colors.text }]}>{q.sentencePrefix} </Text>
-          <View ref={blankRef} onLayout={onBlankLayout} style={[styles.blank, { backgroundColor: isDark ? '#354763' : '#CFE6FF' }]}>
+          <Text style={[styles.sentenceText, { color: theme.colors.text }]}>
+            {q.sentencePrefix}{' '}
+          </Text>
+          <View
+            ref={blankRef}
+            onLayout={onBlankLayout}
+            style={[styles.blank, { backgroundColor: isDark ? '#354763' : '#CFE6FF' }]}
+          >
             <Text style={[styles.blankText, { color: theme.colors.text }]}>
               {selected === q.answer ? q.answer : q.blankLabel}
             </Text>
           </View>
-          <Text style={[styles.sentenceText, { color: theme.colors.text }]}> {q.sentenceSuffix}</Text>
+          <Text style={[styles.sentenceText, { color: theme.colors.text }]}>
+            {' '}
+            {q.sentenceSuffix}
+          </Text>
         </View>
 
         {/* Choices */}
@@ -249,14 +301,21 @@ export default function CourseRun() {
             const borderColor = isCorrectSel
               ? '#28a745'
               : isWrongSel
-              ? '#dc3545'
-              : theme.colors.border;
+                ? '#dc3545'
+                : theme.colors.border;
             return (
               <Pressable
                 key={c}
                 onPress={() => onChoose(c)}
                 onLayout={onChoiceLayout(c)}
-                style={[styles.choiceBtn, { backgroundColor: bg, borderColor, opacity: hiddenChoice === c && animVisible ? 0 : 1 }]}
+                style={[
+                  styles.choiceBtn,
+                  {
+                    backgroundColor: bg,
+                    borderColor,
+                    opacity: hiddenChoice === c && animVisible ? 0 : 1,
+                  },
+                ]}
               >
                 <Text style={[styles.choiceText, { color: theme.colors.text }]}>{c}</Text>
               </Pressable>
@@ -268,7 +327,12 @@ export default function CourseRun() {
         {animVisible && (
           <Animated.View
             pointerEvents="none"
-            style={{ position: 'absolute', left: flyXY.x, top: flyXY.y, transform: [{ scale: flyScale }] }}
+            style={{
+              position: 'absolute',
+              left: flyXY.x,
+              top: flyXY.y,
+              transform: [{ scale: flyScale }],
+            }}
           >
             <Text style={[styles.choiceText, { color: theme.colors.text }]}>{animText}</Text>
           </Animated.View>
@@ -279,7 +343,10 @@ export default function CourseRun() {
           <Pressable
             disabled={!selected}
             onPress={onNext}
-            style={[styles.primaryBtn, { backgroundColor: selected ? theme.colors.primary : '#9bb8ff' }]}
+            style={[
+              styles.primaryBtn,
+              { backgroundColor: selected ? theme.colors.primary : '#9bb8ff' },
+            ]}
           >
             <Text style={styles.primaryBtnText}>{isLast ? 'Finish' : 'Next'}</Text>
           </Pressable>
@@ -300,7 +367,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginVertical: baseTheme.spacing.md,
   },
-  sentenceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  sentenceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
   sentenceText: { fontFamily: baseTheme.typography.bold, fontSize: 28 },
   blank: {
     paddingHorizontal: 8,

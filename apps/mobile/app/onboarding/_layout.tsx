@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+
 import { theme } from '@/theme';
 
 export default function OnboardingLayout() {
@@ -10,12 +11,12 @@ export default function OnboardingLayout() {
         headerTitle: '',
         // Show back by default for question screens
         headerBackVisible: true,
-  headerBackTitle: 'Back',
+        headerBackTitle: 'Back',
         contentStyle: { backgroundColor: theme.colors.background },
       }}
     >
       <Stack.Screen name="welcome" options={{ headerBackVisible: false }} />
-  <Stack.Screen name="completion" options={{ title: '' }} />
+      <Stack.Screen name="completion" options={{ title: '' }} />
     </Stack>
   );
 }

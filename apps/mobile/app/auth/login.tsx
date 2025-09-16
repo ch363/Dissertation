@@ -1,12 +1,14 @@
+import { Ionicons } from '@expo/vector-icons';
+import { router, useNavigation } from 'expo-router';
 import { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Alert, Pressable } from 'react-native';
-import { router, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { theme } from '@/theme';
+
 import { PrimaryButton } from '../onboarding/_components';
+
 import { signInWithEmail } from '@/modules/auth';
 import { hasOnboarding } from '@/modules/onboarding';
+import { theme } from '@/theme';
 
 export default function Login() {
   const navigation = useNavigation();
@@ -35,7 +37,7 @@ export default function Login() {
         router.replace('/onboarding/welcome');
       } else {
         router.replace('/(tabs)/home');
-        }
+      }
     } catch (e: any) {
       Alert.alert('Login failed', e.message ?? 'Please try again');
     } finally {
@@ -46,7 +48,12 @@ export default function Login() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerRow}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={goBack} style={styles.headerBack}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Back"
+          onPress={goBack}
+          style={styles.headerBack}
+        >
           <Ionicons name="chevron-back" size={22} color={theme.colors.mutedText} />
         </Pressable>
         <Text style={styles.title}>Log in</Text>
@@ -59,8 +66,18 @@ export default function Login() {
         keyboardType="email-address"
         style={styles.input}
       />
-      <TextInput value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry style={styles.input} />
-      <PrimaryButton title={loading ? 'Logging in…' : 'Log in'} onPress={onLogin} disabled={!email || !password || loading} />
+      <TextInput
+        value={password}
+        onChangeText={setPassword}
+        placeholder="Password"
+        secureTextEntry
+        style={styles.input}
+      />
+      <PrimaryButton
+        title={loading ? 'Logging in…' : 'Log in'}
+        onPress={onLogin}
+        disabled={!email || !password || loading}
+      />
       {loading && (
         <Text style={{ color: theme.colors.mutedText, marginTop: 8, fontSize: 12 }}>
           This can take a few seconds…

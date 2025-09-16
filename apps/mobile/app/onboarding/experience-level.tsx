@@ -1,10 +1,12 @@
-import { View, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { theme } from '@/theme';
+import { View, Text, StyleSheet } from 'react-native';
+
 import { Stepper, Option, PrimaryButton, StickyCTA, WhyWeAskLink } from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
+
 import { getCurrentUser } from '@/modules/auth';
 import { saveOnboarding } from '@/modules/onboarding';
+import { theme } from '@/theme';
 
 export default function ExperienceLevel() {
   const { setAnswerAndSave, answers } = useOnboarding();
@@ -18,13 +20,13 @@ export default function ExperienceLevel() {
 
   const onFinish = async () => {
     setAnswerAndSave('experience', selected ?? '');
-  try {
+    try {
       const user = await getCurrentUser();
       if (user) {
         await saveOnboarding(user.id, { ...answers, experience: selected ?? '' });
       }
-  } catch {}
-  router.replace('/onboarding/completion');
+    } catch {}
+    router.replace('/onboarding/completion');
   };
   const onSkip = () => router.replace('/onboarding/completion');
 
@@ -34,7 +36,15 @@ export default function ExperienceLevel() {
       <Text style={styles.title}>What’s your experience level?</Text>
       <WhyWeAskLink />
       {options.map((o) => (
-        <Option key={o.key} label={o.label} selected={selected === o.key} onPress={() => { setAnswerAndSave('experience', o.key); }} icon={o.icon} />
+        <Option
+          key={o.key}
+          label={o.label}
+          selected={selected === o.key}
+          onPress={() => {
+            setAnswerAndSave('experience', o.key);
+          }}
+          icon={o.icon}
+        />
       ))}
       <StickyCTA>
         <PrimaryButton title="Finish" onPress={onFinish} disabled={!selected} />

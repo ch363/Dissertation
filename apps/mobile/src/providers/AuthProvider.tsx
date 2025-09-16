@@ -1,8 +1,9 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ensureProfileSeed } from '../lib/profile';
+import { createContext, useContext, useEffect, useState } from 'react';
+
 import { PENDING_PROFILE_NAME_KEY } from '../lib/auth';
+import { ensureProfileSeed } from '../lib/profile';
+import { supabase } from '../lib/supabase';
 
 type AuthContextType = { user: any | null; loading: boolean };
 const AuthCtx = createContext<AuthContextType>({ user: null, loading: true });

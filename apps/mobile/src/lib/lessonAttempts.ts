@@ -10,7 +10,9 @@ export type LessonAttempt = {
   created_at?: string;
 };
 
-export async function insertLessonAttempt(entry: Omit<LessonAttempt, 'id' | 'created_at' | 'user_id'>) {
+export async function insertLessonAttempt(
+  entry: Omit<LessonAttempt, 'id' | 'created_at' | 'user_id'>
+) {
   const { data: u } = await supabase.auth.getUser();
   const user_id = u.user?.id;
   if (!user_id) throw new Error('Not authenticated');

@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
 import { router, Link } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, Image, ActivityIndicator } from 'react-native';
+
 import { getCurrentUser } from '@/modules/auth';
 import { hasOnboarding } from '@/modules/onboarding';
-import { View, Text, StyleSheet, Image, ActivityIndicator } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { theme } from '@/theme';
 
 export default function Index() {
@@ -40,8 +41,12 @@ export default function Index() {
       <Text style={styles.title}>Fluentia</Text>
       <Text style={styles.subtitle}>Personalised learning, one step at a time.</Text>
 
-      <Link href="/auth/signup" style={[styles.button, styles.primary]}>Get Started</Link>
-      <Link href="/auth/login" style={[styles.button, styles.secondary]}>Log In</Link>
+      <Link href="/auth/signup" style={[styles.button, styles.primary]}>
+        Get Started
+      </Link>
+      <Link href="/auth/login" style={[styles.button, styles.secondary]}>
+        Log In
+      </Link>
       <StatusBar style="auto" />
     </View>
   );

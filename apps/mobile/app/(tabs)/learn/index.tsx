@@ -1,37 +1,55 @@
 import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme as baseTheme } from '@/theme';
+
 import { useAppTheme } from '../../../src/providers/ThemeProvider';
+
+import { theme as baseTheme } from '@/theme';
 
 export default function Learn() {
   const { theme } = useAppTheme();
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.card}>
-        <Image source={{ uri: 'https://via.placeholder.com/300x160' }} style={styles.cardImage} />
+        <View style={styles.card}>
+          <Image source={{ uri: 'https://via.placeholder.com/300x160' }} style={styles.cardImage} />
           <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Flashcards</Text>
-          <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>Practice with images and words</Text>
-          <Pressable style={[styles.button, { backgroundColor: theme.colors.primary }]}><Text style={styles.buttonText}>Start</Text></Pressable>
-      </View>
+          <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>
+            Practice with images and words
+          </Text>
+          <Pressable style={[styles.button, { backgroundColor: theme.colors.primary }]}>
+            <Text style={styles.buttonText}>Start</Text>
+          </Pressable>
+        </View>
 
-      <View style={styles.card}>
-        <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Multiple Choice</Text>
-        <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>Colourful answer buttons</Text>
-        <Pressable style={[styles.button, { backgroundColor: theme.colors.secondary }]}><Text style={styles.buttonText}>Start</Text></Pressable>
-      </View>
+        <View style={styles.card}>
+          <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Multiple Choice</Text>
+          <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>
+            Colourful answer buttons
+          </Text>
+          <Pressable style={[styles.button, { backgroundColor: theme.colors.secondary }]}>
+            <Text style={styles.buttonText}>Start</Text>
+          </Pressable>
+        </View>
 
-      <View style={styles.card}>
-        <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Typing Prompt</Text>
-        <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>Type the translation</Text>
-        <Pressable style={[styles.button, { backgroundColor: theme.colors.primary }]}><Text style={styles.buttonText}>Start</Text></Pressable>
-      </View>
+        <View style={styles.card}>
+          <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Typing Prompt</Text>
+          <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>
+            Type the translation
+          </Text>
+          <Pressable style={[styles.button, { backgroundColor: theme.colors.primary }]}>
+            <Text style={styles.buttonText}>Start</Text>
+          </Pressable>
+        </View>
 
-      <View style={styles.card}>
-        <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Audio Prompt</Text>
-        <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>Speak your answer</Text>
-        <Pressable style={[styles.button, { backgroundColor: theme.colors.secondary }]}><Text style={styles.buttonText}>Start</Text></Pressable>
-      </View>
+        <View style={styles.card}>
+          <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Audio Prompt</Text>
+          <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>
+            Speak your answer
+          </Text>
+          <Pressable style={[styles.button, { backgroundColor: theme.colors.secondary }]}>
+            <Text style={styles.buttonText}>Start</Text>
+          </Pressable>
+        </View>
       </View>
     </SafeAreaView>
   );

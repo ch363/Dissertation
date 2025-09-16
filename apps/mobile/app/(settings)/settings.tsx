@@ -1,11 +1,12 @@
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, Switch, Pressable } from 'react-native';
-import { theme as baseTheme } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useNavigation } from 'expo-router';
 import { useCallback } from 'react';
-import { useAppTheme } from '@/modules/settings';
+import { View, Text, StyleSheet, Switch, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { signOut } from '@/modules/auth';
+import { useAppTheme } from '@/modules/settings';
+import { theme as baseTheme } from '@/theme';
 
 export default function SettingsScreen() {
   const { theme, isDark, setMode } = useAppTheme();
@@ -31,8 +32,8 @@ export default function SettingsScreen() {
   }, [navigation]);
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}> 
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}> 
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         {/* Top-right back arrow to return to Home */}
         {showBack && (
           <Pressable
@@ -47,7 +48,12 @@ export default function SettingsScreen() {
         )}
 
         <Text style={[styles.title, { color: theme.colors.text }]}>Settings</Text>
-        <View style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}> 
+        <View
+          style={[
+            styles.row,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+          ]}
+        >
           <Text style={[styles.label, { color: theme.colors.text }]}>Dark Mode</Text>
           <Switch
             value={isDark}
@@ -59,14 +65,22 @@ export default function SettingsScreen() {
           accessibilityRole="button"
           accessibilityLabel="Open Speech Settings"
           onPress={() => router.push('/speech')}
-          style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}
+          style={[
+            styles.row,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+          ]}
         >
           <Text style={[styles.label, { color: theme.colors.text }]}>Speech</Text>
           <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
         </Pressable>
-        <View style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}> 
+        <View
+          style={[
+            styles.row,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+          ]}
+        >
           <Text style={[styles.label, { color: theme.colors.text }]}>Notifications</Text>
-          <Switch value={true} onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />
+          <Switch value onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />
         </View>
 
         {/* Developer tools */}
@@ -74,7 +88,10 @@ export default function SettingsScreen() {
           accessibilityRole="button"
           accessibilityLabel="Open DB Health"
           onPress={() => router.push('/db-health')}
-          style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}
+          style={[
+            styles.row,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+          ]}
         >
           <Text style={[styles.label, { color: theme.colors.text }]}>DB Health</Text>
           <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
@@ -87,7 +104,10 @@ export default function SettingsScreen() {
             await signOut();
             router.replace('/');
           }}
-          style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}
+          style={[
+            styles.row,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+          ]}
         >
           <Text style={[styles.label, { color: theme.colors.text }]}>Sign out</Text>
           <Ionicons name="log-out-outline" size={18} color={theme.colors.mutedText} />
@@ -99,7 +119,11 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: baseTheme.colors.background },
-  container: { flex: 1, backgroundColor: baseTheme.colors.background, padding: baseTheme.spacing.lg },
+  container: {
+    flex: 1,
+    backgroundColor: baseTheme.colors.background,
+    padding: baseTheme.spacing.lg,
+  },
   backBtn: {
     position: 'absolute',
     right: 16,
@@ -111,7 +135,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 10,
   },
-  title: { fontFamily: baseTheme.typography.bold, fontSize: 22, color: baseTheme.colors.text, marginBottom: baseTheme.spacing.lg },
+  title: {
+    fontFamily: baseTheme.typography.bold,
+    fontSize: 22,
+    color: baseTheme.colors.text,
+    marginBottom: baseTheme.spacing.lg,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

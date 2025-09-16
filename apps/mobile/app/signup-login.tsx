@@ -1,5 +1,6 @@
-import { View, Text, StyleSheet } from 'react-native';
 import { Link } from 'expo-router';
+import { View, Text, StyleSheet } from 'react-native';
+
 import { theme } from '@/theme';
 
 export default function SignupLogin() {
@@ -7,8 +8,12 @@ export default function SignupLogin() {
     <View style={styles.container}>
       <Text style={styles.title}>Welcome to Fluentia</Text>
       <Text style={styles.subtitle}>Create an account or log in to continue.</Text>
-      <Link href="/auth/signup" style={[styles.button, styles.primary]}>Create account</Link>
-      <Link href="/auth/login" style={[styles.button, styles.secondary]}>Log in</Link>
+      <Link href="/auth/signup" style={[styles.button, styles.primary]}>
+        Create account
+      </Link>
+      <Link href="/auth/login" style={[styles.button, styles.secondary]}>
+        Log in
+      </Link>
     </View>
   );
 }

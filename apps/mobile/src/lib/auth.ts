@@ -1,8 +1,9 @@
-import { supabase } from './supabase';
-import { upsertMyProfile, ensureProfileSeed } from './profile';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
+
+import { upsertMyProfile, ensureProfileSeed } from './profile';
+import { supabase } from './supabase';
 
 export const PENDING_PROFILE_NAME_KEY = '@pending_profile_name';
 export const PENDING_LOGIN_EMAIL_KEY = '@pending_login_email';
@@ -12,9 +13,12 @@ export async function signUpWithEmail(name: string, email: string, password: str
   const envRedirect = process.env.EXPO_PUBLIC_SUPABASE_REDIRECT_URL as string | undefined;
   const fallbackRedirect = Linking.createURL('auth/callback');
   // On native, always use app deep link to avoid localhost/https issues from env
-  const redirectTo = Platform.OS === 'web'
-    ? (envRedirect && envRedirect.length > 0 ? envRedirect : fallbackRedirect)
-    : fallbackRedirect;
+  const redirectTo =
+    Platform.OS === 'web'
+      ? envRedirect && envRedirect.length > 0
+        ? envRedirect
+        : fallbackRedirect
+      : fallbackRedirect;
   // Persist minimal creds for dev bypass on verify screen (cleared after sign-in)
   await AsyncStorage.multiSet([
     [PENDING_PROFILE_NAME_KEY, name ?? ''],
@@ -32,7 +36,10 @@ export async function signUpWithEmail(name: string, email: string, password: str
     const msg = (error.message || '').toLowerCase();
     // If the user already exists, try to sign in with the provided password
     if (msg.includes('already registered') || msg.includes('already exists')) {
-      const { data: sdata, error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
+      const { data: sdata, error: signInErr } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       if (signInErr) {
         // Wrong password or blocked user
         throw signInErr;
@@ -41,7 +48,11 @@ export async function signUpWithEmail(name: string, email: string, password: str
         const metaName = (sdata.user?.user_metadata as any)?.name;
         const bestName = (name && name.trim()) || (metaName && String(metaName).trim()) || null;
         await upsertMyProfile({ name: bestName });
-        await AsyncStorage.multiRemove([PENDING_PROFILE_NAME_KEY, PENDING_LOGIN_EMAIL_KEY, PENDING_LOGIN_PASSWORD_KEY]);
+        await AsyncStorage.multiRemove([
+          PENDING_PROFILE_NAME_KEY,
+          PENDING_LOGIN_EMAIL_KEY,
+          PENDING_LOGIN_PASSWORD_KEY,
+        ]);
       } catch {}
       return { user: sdata.user, needsVerification: false };
     }
@@ -51,10 +62,14 @@ export async function signUpWithEmail(name: string, email: string, password: str
   try {
     const { data: sess } = await supabase.auth.getSession();
     if (sess.session?.user?.id) {
-  const metaName = (sess.session.user.user_metadata as any)?.name;
-  const bestName = (name && name.trim()) || (metaName && String(metaName).trim()) || null;
-  await upsertMyProfile({ name: bestName });
-  await AsyncStorage.multiRemove([PENDING_PROFILE_NAME_KEY, PENDING_LOGIN_EMAIL_KEY, PENDING_LOGIN_PASSWORD_KEY]);
+      const metaName = (sess.session.user.user_metadata as any)?.name;
+      const bestName = (name && name.trim()) || (metaName && String(metaName).trim()) || null;
+      await upsertMyProfile({ name: bestName });
+      await AsyncStorage.multiRemove([
+        PENDING_PROFILE_NAME_KEY,
+        PENDING_LOGIN_EMAIL_KEY,
+        PENDING_LOGIN_PASSWORD_KEY,
+      ]);
     } else {
       // No session yet (e.g., email confirmation required) — skip for now.
     }
@@ -71,7 +86,10 @@ export async function signUpWithEmail(name: string, email: string, password: str
 export async function signInWithEmail(email: string, password: string) {
   function withTimeout<T>(p: Promise<T>, ms = 12000): Promise<T> {
     return new Promise<T>((resolve, reject) => {
-      const t = setTimeout(() => reject(new Error('Login timed out. Please check your connection and try again.')), ms);
+      const t = setTimeout(
+        () => reject(new Error('Login timed out. Please check your connection and try again.')),
+        ms
+      );
       p.then((v) => {
         clearTimeout(t);
         resolve(v);

@@ -1,9 +1,10 @@
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { theme } from '@/theme';
-import { router, useLocalSearchParams } from 'expo-router';
-import { ensureProfileSeed } from '@/modules/profile';
+
 import { getSession, exchangeCodeForSession } from '@/modules/auth';
+import { ensureProfileSeed } from '@/modules/profile';
+import { theme } from '@/theme';
 
 export default function AuthCallback() {
   const [msg, setMsg] = useState<string>('Completing sign in…');
@@ -42,7 +43,12 @@ export default function AuthCallback() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.background },
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.background,
+  },
   msg: { marginTop: 12, color: theme.colors.text },
   err: { marginTop: 12, color: theme.colors.error },
 });

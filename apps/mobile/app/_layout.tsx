@@ -1,12 +1,15 @@
+import {
+  useFonts,
+  Inter_400Regular,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from '@expo-google-fonts/inter';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ThemeProvider, useAppTheme } from '../src/providers/ThemeProvider';
+
 import { OnboardingProvider } from '../src/onboarding/OnboardingContext';
 import { AuthProvider } from '../src/providers/AuthProvider';
-import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
-import { useEffect } from 'react';
-import { Platform } from 'react-native';
-import { theme } from '@/theme';
+import { ThemeProvider, useAppTheme } from '../src/providers/ThemeProvider';
 
 export default function RootLayout() {
   // Load fonts
@@ -16,13 +19,13 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-    <OnboardingProvider>
-      <ThemeProvider>
-        <SafeAreaProvider>
-          <ThemedStack />
-        </SafeAreaProvider>
-      </ThemeProvider>
-    </OnboardingProvider>
+      <OnboardingProvider>
+        <ThemeProvider>
+          <SafeAreaProvider>
+            <ThemedStack />
+          </SafeAreaProvider>
+        </ThemeProvider>
+      </OnboardingProvider>
     </AuthProvider>
   );
 }

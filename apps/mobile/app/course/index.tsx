@@ -1,14 +1,21 @@
-import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Link } from 'expo-router';
+import { View, Text, StyleSheet } from 'react-native';
+
 import { theme } from '@/theme';
 
 export default function CourseIndex() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Courses</Text>
-      <Link href="/course/basics" style={[styles.button, styles.primary]}>Basics</Link>
-      <Link href="/course/conversation" style={[styles.button, styles.secondary]}>Conversation</Link>
-      <Link href="/course/milestones" style={[styles.button, styles.primary]}>Milestones</Link>
+      <Link href="/course/basics" style={[styles.button, styles.primary]}>
+        Basics
+      </Link>
+      <Link href="/course/conversation" style={[styles.button, styles.secondary]}>
+        Conversation
+      </Link>
+      <Link href="/course/milestones" style={[styles.button, styles.primary]}>
+        Milestones
+      </Link>
     </View>
   );
 }

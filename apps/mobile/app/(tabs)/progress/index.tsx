@@ -1,20 +1,33 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme as baseTheme } from '@/theme';
+
 import { useAppTheme } from '../../../src/providers/ThemeProvider';
+
+import { theme as baseTheme } from '@/theme';
 
 export default function Progress() {
   const { theme } = useAppTheme();
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Text style={[styles.title, { color: theme.colors.text }]}>Your Progress</Text>
-      <View style={styles.circle} />
-      <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>XP: 320 • Streak: 12🔥</Text>
-      <View style={[styles.card, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
-        <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Suggested: Flashcards</Text>
-        <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>Keep the streak alive!</Text>
-      </View>
+        <Text style={[styles.title, { color: theme.colors.text }]}>Your Progress</Text>
+        <View style={styles.circle} />
+        <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
+          XP: 320 • Streak: 12🔥
+        </Text>
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+          ]}
+        >
+          <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
+            Suggested: Flashcards
+          </Text>
+          <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>
+            Keep the streak alive!
+          </Text>
+        </View>
       </View>
     </SafeAreaView>
   );
