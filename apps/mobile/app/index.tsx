@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { router, Link } from 'expo-router';
-import { getCurrentUser } from '../src/lib/auth';
-import { hasOnboarding } from '../src/lib/onboardingRepo';
+import { getCurrentUser } from '@/modules/auth';
+import { hasOnboarding } from '@/modules/onboarding';
 import { View, Text, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { theme } from '@/theme';

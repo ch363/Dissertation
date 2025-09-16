@@ -1,9 +1,7 @@
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { theme } from '@/theme';
-import { Pressable } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
 
 export default function CourseLayout() {
   const router = useRouter();

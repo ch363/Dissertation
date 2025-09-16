@@ -3,5 +3,29 @@
   "extends": ["universe/native"],
   "rules": {
     "react/react-in-jsx-scope": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["app/**/*.{ts,tsx}", "app/**/**/*.tsx"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/lib/*"],
+                "message": "UI routes must import from '@/modules/*' facades, not '@/lib/*'."
+              }
+            ]
+          }
+        ]
+      }
+  },
+  {
+      "files": ["app/(dev)/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ]
 }
