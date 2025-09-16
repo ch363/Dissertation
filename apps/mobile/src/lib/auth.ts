@@ -105,3 +105,7 @@ export async function getSession() {
 export async function exchangeCodeForSession(code: string) {
   return supabase.auth.exchangeCodeForSession(code);
 }
+
+export async function signOut() {
+  await supabase.auth.signOut();
+}
