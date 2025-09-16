@@ -18,6 +18,9 @@
     "paths": {
       "@/*": [
         "src/*"
+      ],
+      "@/internal/*": [
+        "src/lib/*"
       ]
     },
     "types": [

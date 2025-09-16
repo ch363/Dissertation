@@ -13,8 +13,8 @@
           {
             "patterns": [
               {
-                "group": ["@/lib/*"],
-                "message": "UI routes must import from '@/modules/*' facades, not '@/lib/*'."
+                "group": ["@/lib/*", "@/internal/*"],
+                "message": "UI routes must import from '@/modules/*' facades, not '@/lib/*' or '@/internal/*'."
               }
             ]
           }
