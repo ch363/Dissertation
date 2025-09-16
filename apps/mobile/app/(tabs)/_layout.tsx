@@ -37,10 +37,10 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 
         // Map route to icon asset
         let source;
-  if (route.name === 'home/index') source = require('../../assets/Home_icon.png');
-  else if (route.name === 'learn/index') source = require('../../assets/Exercie_logo.png');
-  else if (route.name === 'profile') source = require('../../assets/Profile_logo.png');
-  else if (route.name === 'settings') source = require('../../assets/Settings_logo.png');
+        if (route.name === 'home/index') source = require('../../assets/Home_icon.png');
+        else if (route.name === 'learn/index') source = require('../../assets/Exercie_logo.png');
+        else if (route.name === 'profile') source = require('../../assets/Profile_logo.png');
+        else if (route.name === 'settings') source = require('../../assets/Settings_logo.png');
 
         return (
           <Pressable

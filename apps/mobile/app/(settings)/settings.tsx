@@ -63,9 +63,18 @@ export default function SettingsScreen() {
         )}
 
         <Text style={[styles.title, { color: theme.colors.text }]}>Settings</Text>
-        <View style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+        <View
+          style={[
+            styles.row,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+          ]}
+        >
           <Text style={[styles.label, { color: theme.colors.text }]}>Dark Mode</Text>
-          <Switch value={isDark} onValueChange={(v) => setMode(v ? 'dark' : 'light')} trackColor={{ true: theme.colors.primary }} />
+          <Switch
+            value={isDark}
+            onValueChange={(v) => setMode(v ? 'dark' : 'light')}
+            trackColor={{ true: theme.colors.primary }}
+          />
         </View>
         <Pressable
           accessibilityRole="button"
@@ -79,7 +88,12 @@ export default function SettingsScreen() {
           <Text style={[styles.label, { color: theme.colors.text }]}>Speech</Text>
           <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
         </Pressable>
-        <View style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+        <View
+          style={[
+            styles.row,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+          ]}
+        >
           <Text style={[styles.label, { color: theme.colors.text }]}>Adaptivity</Text>
           <Switch
             value={adaptivity}
@@ -91,7 +105,12 @@ export default function SettingsScreen() {
           />
         </View>
 
-        <View style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+        <View
+          style={[
+            styles.row,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+          ]}
+        >
           <Text style={[styles.label, { color: theme.colors.text }]}>Notifications</Text>
           <Switch
             value={notifications}

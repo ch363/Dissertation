@@ -1,12 +1,12 @@
+import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Link } from 'expo-router';
 
 import { supabase } from '../../../src/lib/supabase';
-import { useAppTheme } from '@/modules/settings';
-import { getProgressSummary, type ProgressSummary } from '@/modules/progress';
 
+import { getProgressSummary, type ProgressSummary } from '@/modules/progress';
+import { useAppTheme } from '@/modules/settings';
 import { theme as baseTheme } from '@/theme';
 
 export default function Profile() {
@@ -30,7 +30,7 @@ export default function Profile() {
       try {
         const snapshot = await getProgressSummary(id);
         setProgress(snapshot);
-      } catch (e) {
+      } catch {
         setProgress(null);
       }
     })();
@@ -42,7 +42,12 @@ export default function Profile() {
         <Text style={[styles.title, { color: theme.colors.text }]}>{displayName}</Text>
 
         {/* Progress summary */}
-        <View style={[styles.summary, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+        <View
+          style={[
+            styles.summary,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+          ]}
+        >
           <Text style={[styles.summaryTitle, { color: theme.colors.text }]}>Your Progress</Text>
           <Text style={[styles.summaryText, { color: theme.colors.mutedText }]}>
             {progress ? `XP: ${progress.xp} • Streak: ${progress.streak}🔥` : 'Loading…'}
@@ -55,11 +60,16 @@ export default function Profile() {
         </View>
 
         {/* Profile actions */}
-        <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>Account</Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>
+          Account
+        </Text>
         <Link href="/(tabs)/profile/edit" asChild>
           <Pressable
             accessibilityRole="button"
-            style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}
+            style={[
+              styles.row,
+              { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+            ]}
           >
             <Text style={[styles.label, { color: theme.colors.text }]}>Edit Profile</Text>
             <Text style={[styles.linkText, { color: theme.colors.mutedText }]}>›</Text>
@@ -69,7 +79,10 @@ export default function Profile() {
         <Link href="/(tabs)/profile/achievements" asChild>
           <Pressable
             accessibilityRole="button"
-            style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}
+            style={[
+              styles.row,
+              { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+            ]}
           >
             <Text style={[styles.label, { color: theme.colors.text }]}>Achievements</Text>
             <Text style={[styles.linkText, { color: theme.colors.mutedText }]}>›</Text>
@@ -79,7 +92,10 @@ export default function Profile() {
         <Link href="/(tabs)/profile/progress" asChild>
           <Pressable
             accessibilityRole="button"
-            style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}
+            style={[
+              styles.row,
+              { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+            ]}
           >
             <Text style={[styles.label, { color: theme.colors.text }]}>Progress Details</Text>
             <Text style={[styles.linkText, { color: theme.colors.mutedText }]}>›</Text>
