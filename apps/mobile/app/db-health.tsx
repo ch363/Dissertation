@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme as baseTheme } from '../src/theme';
+import { theme as baseTheme } from '@/theme';
 import { supabase } from '../src/lib/supabase';
 import { ensureProfileSeed } from '../src/lib/profile';
 import { Ionicons } from '@expo/vector-icons';

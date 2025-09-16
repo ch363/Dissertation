@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, Pressable, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import { Link, router } from 'expo-router';
-import { signUpWithEmail } from '../../src/lib/auth';
-import { theme } from '../../src/theme';
+import { signUpWithEmail } from '@/modules/auth';
+import { theme } from '@/theme';
 
 export default function SignUp() {
   const [name, setName] = useState('');

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, Modal } from 'react-native';
 import type { AccessibilityRole } from 'react-native';
-import { theme } from '../../src/theme';
+import { theme } from '@/theme';
 
 export function ProgressBar({ current, total }: { current: number; total: number }) {
   const safeCurrent = Number.isFinite(current) ? current : 0;

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Image, Pressable, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { theme as baseTheme } from '../../../src/theme';
+import { theme as baseTheme } from '@/theme';
 import { useAppTheme } from '../../../src/providers/ThemeProvider';
 import { getCurrentUser } from '../../../src/lib/auth';
 import { getCompletedModules } from '../../../src/lib/progress';

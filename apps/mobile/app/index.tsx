@@ -4,7 +4,7 @@ import { getCurrentUser } from '../src/lib/auth';
 import { hasOnboarding } from '../src/lib/onboardingRepo';
 import { View, Text, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { theme } from '../src/theme';
+import { theme } from '@/theme';
 
 export default function Index() {
   const [checking, setChecking] = useState(true);

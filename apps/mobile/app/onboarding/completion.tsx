@@ -1,10 +1,10 @@
 import { View, Text, StyleSheet, Image, ActivityIndicator, Alert } from 'react-native';
 import { router } from 'expo-router';
-import { theme } from '../../src/theme';
+import { theme } from '@/theme';
 import { PrimaryButton } from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
-import { getCurrentUser } from '../../src/lib/auth';
-import { saveOnboarding } from '../../src/lib/onboardingRepo';
+import { getCurrentUser } from '@/modules/auth';
+import { saveOnboarding } from '@/modules/onboarding';
 import { useState } from 'react';
 
 export default function OnboardingCompletion() {

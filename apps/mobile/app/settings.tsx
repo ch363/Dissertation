@@ -1,6 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, Switch, Pressable } from 'react-native';
-import { theme as baseTheme } from '../src/theme';
+import { theme as baseTheme } from '@/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useNavigation } from 'expo-router';
 import { useCallback } from 'react';

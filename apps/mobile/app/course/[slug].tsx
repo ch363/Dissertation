@@ -1,7 +1,7 @@
 import { useLocalSearchParams, router } from 'expo-router';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { theme } from '../../src/theme';
-import { markModuleCompleted } from '../../src/lib/progress';
+import { theme } from '@/theme';
+import { markModuleCompleted } from '@/modules/progress';
 
 export default function CourseDetail() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -11,6 +11,7 @@ export default function CourseDetail() {
     <View style={styles.container}>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.subtitle}>A tailored course based on your onboarding preferences.</Text>
+      
 
   <Pressable style={[styles.button, styles.primary]} onPress={() => router.push(`/course/${slug}/run`)}>
         <Text style={styles.buttonText}>Start</Text>

@@ -69,7 +69,19 @@ export async function signUpWithEmail(name: string, email: string, password: str
 }
 
 export async function signInWithEmail(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  function withTimeout<T>(p: Promise<T>, ms = 12000): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error('Login timed out. Please check your connection and try again.')), ms);
+      p.then((v) => {
+        clearTimeout(t);
+        resolve(v);
+      }).catch((e) => {
+        clearTimeout(t);
+        reject(e);
+      });
+    });
+  }
+  const { data, error } = await withTimeout(supabase.auth.signInWithPassword({ email, password }));
   if (error) throw error;
   return data.user;
 }
@@ -77,4 +89,19 @@ export async function signInWithEmail(email: string, password: string) {
 export async function getCurrentUser() {
   const { data } = await supabase.auth.getUser();
   return data.user ?? null;
+}
+
+// Light wrappers exposed via facade to avoid importing supabase in UI
+export async function resendVerificationEmail(email: string) {
+  const { error } = await supabase.auth.resend({ type: 'signup', email });
+  if (error) throw error;
+}
+
+export async function getSession() {
+  const { data } = await supabase.auth.getSession();
+  return data.session ?? null;
+}
+
+export async function exchangeCodeForSession(code: string) {
+  return supabase.auth.exchangeCodeForSession(code);
 }

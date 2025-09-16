@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { theme } from '../../src/theme';
+import { theme } from '@/theme';
 import { Stepper, Option, PrimaryButton, StickyCTA, WhyWeAskLink } from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
 

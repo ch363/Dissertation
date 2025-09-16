@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, SafeAreaView, Image, Animated, Easing, LayoutChangeEvent } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { theme as baseTheme } from '../../../src/theme';
+import { theme as baseTheme } from '@/theme';
 import { useAppTheme } from '../../../src/providers/ThemeProvider';
 import { markModuleCompleted } from '../../../src/lib/progress';
 import { insertLessonAttempt } from '../../../src/lib/lessonAttempts';

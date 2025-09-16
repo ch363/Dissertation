@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme as baseTheme } from '../../../src/theme';
+import { theme as baseTheme } from '@/theme';
 import { useAppTheme } from '../../../src/providers/ThemeProvider';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../../src/lib/supabase';

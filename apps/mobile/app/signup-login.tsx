@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { Link } from 'expo-router';
-import { theme } from '../src/theme';
+import { theme } from '@/theme';
 
 export default function SignupLogin() {
   return (

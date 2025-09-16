@@ -2,10 +2,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
-import { theme as baseTheme } from '../src/theme';
-import { useAppTheme } from '../src/providers/ThemeProvider';
+import { theme as baseTheme } from '@/theme';
+import { useAppTheme, getTtsEnabled, setTtsEnabled, getTtsRate, setTtsRate } from '@/modules/settings';
 import { useCallback, useEffect, useState } from 'react';
-import { getTtsEnabled, setTtsEnabled, getTtsRate, setTtsRate } from '../src/lib/prefs';
 import { router, useNavigation } from 'expo-router';
 
 export default function SpeechSettings() {

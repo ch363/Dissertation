@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { theme } from '../../src/theme';
-import { supabase } from '../../src/lib/supabase';
+import { theme } from '@/theme';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ensureProfileSeed } from '../../src/lib/profile';
+import { ensureProfileSeed } from '@/modules/profile';
+import { getSession, exchangeCodeForSession } from '@/modules/auth';
 
 export default function AuthCallback() {
   const [msg, setMsg] = useState<string>('Completing sign in…');
@@ -14,10 +14,10 @@ export default function AuthCallback() {
     (async () => {
       try {
         // Supabase JS handles implicit flow automatically if configured, but ensure session is present
-        const { data } = await supabase.auth.getSession();
-        if (!data.session && params && typeof params['code'] === 'string' && params['code'].length > 0) {
+        const session = await getSession();
+        if (!session && params && typeof params['code'] === 'string' && params['code'].length > 0) {
           // PKCE flow
-          await supabase.auth.exchangeCodeForSession(String(params['code']));
+          await exchangeCodeForSession(String(params['code']));
         }
         await ensureProfileSeed();
         router.replace('/(tabs)/home');

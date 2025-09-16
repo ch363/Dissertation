@@ -3,9 +3,10 @@ import { View, Text, StyleSheet, TextInput, Alert, Pressable } from 'react-nativ
 import { router, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../../src/theme';
+import { theme } from '@/theme';
 import { PrimaryButton } from '../onboarding/_components';
-import { signInWithEmail } from '../../src/lib/auth';
+import { signInWithEmail } from '@/modules/auth';
+import { hasOnboarding } from '@/modules/onboarding';
 
 export default function Login() {
   const navigation = useNavigation();
@@ -26,9 +27,15 @@ export default function Login() {
 
   async function onLogin() {
     try {
+      if (loading) return;
       setLoading(true);
-      await signInWithEmail(email.trim(), password);
-      router.replace('/');
+      const user = await signInWithEmail(email.trim(), password);
+      const done = await hasOnboarding(user.id);
+      if (!done) {
+        router.replace('/onboarding/welcome');
+      } else {
+        router.replace('/(tabs)/home');
+        }
     } catch (e: any) {
       Alert.alert('Login failed', e.message ?? 'Please try again');
     } finally {
@@ -54,6 +61,11 @@ export default function Login() {
       />
       <TextInput value={password} onChangeText={setPassword} placeholder="Password" secureTextEntry style={styles.input} />
       <PrimaryButton title={loading ? 'Logging in…' : 'Log in'} onPress={onLogin} disabled={!email || !password || loading} />
+      {loading && (
+        <Text style={{ color: theme.colors.mutedText, marginTop: 8, fontSize: 12 }}>
+          This can take a few seconds…
+        </Text>
+      )}
     </SafeAreaView>
   );
 }

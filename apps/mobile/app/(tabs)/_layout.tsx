@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
-import { theme as baseTheme } from '../../src/theme';
-import { useAppTheme } from '../../src/providers/ThemeProvider';
+import { theme as baseTheme } from '@/theme';
+import { useAppTheme } from '@/modules/settings';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function CustomTabBar({ state, descriptors, navigation }: any) {

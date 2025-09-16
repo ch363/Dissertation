@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Linking } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { theme } from '../../src/theme';
-import { supabase } from '../../src/lib/supabase';
-import { ensureProfileSeed } from '../../src/lib/profile';
+import { theme } from '@/theme';
+import { ensureProfileSeed } from '@/modules/profile';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { PENDING_LOGIN_EMAIL_KEY, PENDING_LOGIN_PASSWORD_KEY } from '../../src/lib/auth';
-import { signInWithEmail } from '../../src/lib/auth';
+import { PENDING_LOGIN_EMAIL_KEY, PENDING_LOGIN_PASSWORD_KEY, resendVerificationEmail, signInWithEmail, getSession } from '@/modules/auth';
 
 export default function VerifyEmail() {
   const { email } = useLocalSearchParams<{ email?: string }>();
@@ -27,8 +25,7 @@ export default function VerifyEmail() {
       setLoading(true);
       setErr(null);
       setMsg(null);
-      const { error } = await supabase.auth.resend({ type: 'signup', email: String(email || '') });
-      if (error) throw error;
+  await resendVerificationEmail(String(email || ''));
       setMsg('Verification email sent.');
     } catch (e: any) {
       setErr(e?.message || 'Failed to resend.');
@@ -49,8 +46,8 @@ export default function VerifyEmail() {
         return;
       }
       const res = await signInWithEmail(savedEmail, savedPass).catch((e: any) => { throw e; });
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
+  const session = await getSession();
+  if (session) {
         if (!navigating) {
           setNavigating(true);
           await ensureProfileSeed();
@@ -83,8 +80,8 @@ export default function VerifyEmail() {
       if (savedEmail && savedPass) {
         try { await signInWithEmail(savedEmail, savedPass); } catch {}
       }
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
+  const session = await getSession();
+  if (session) {
         if (!navigating) {
           setNavigating(true);
           await ensureProfileSeed();
@@ -112,8 +109,8 @@ export default function VerifyEmail() {
         if (savedEmail && savedPass) {
           try { await signInWithEmail(savedEmail, savedPass); } catch {}
         }
-        const { data } = await supabase.auth.getSession();
-        if (data.session) {
+  const session = await getSession();
+  if (session) {
           setNavigating(true);
           await ensureProfileSeed();
           await AsyncStorage.multiRemove([PENDING_LOGIN_EMAIL_KEY, PENDING_LOGIN_PASSWORD_KEY]);

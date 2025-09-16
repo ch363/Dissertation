@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { router } from 'expo-router';
-import { theme } from '../../src/theme';
+import { theme } from '@/theme';
 import { PrimaryButton } from './_components';
 
 export default function OnboardingWelcome() {
