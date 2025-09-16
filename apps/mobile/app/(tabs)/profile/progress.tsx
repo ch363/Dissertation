@@ -1,11 +1,11 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useAppTheme } from '../../../src/providers/ThemeProvider';
+import { useAppTheme } from '@/modules/settings';
 
 import { theme as baseTheme } from '@/theme';
 
-export default function Progress() {
+export default function ProfileProgress() {
   const { theme } = useAppTheme();
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
@@ -21,12 +21,8 @@ export default function Progress() {
             { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
           ]}
         >
-          <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
-            Suggested: Flashcards
-          </Text>
-          <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>
-            Keep the streak alive!
-          </Text>
+          <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Suggested: Flashcards</Text>
+          <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>Keep the streak alive!</Text>
         </View>
       </View>
     </SafeAreaView>

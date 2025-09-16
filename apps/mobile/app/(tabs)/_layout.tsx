@@ -8,7 +8,7 @@ import { theme as baseTheme } from '@/theme';
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const visibleNames = new Set(['home/index', 'learn/index', 'profile/index', 'settings']);
+  const visibleNames = new Set(['home/index', 'learn/index', 'profile', 'settings']);
   const visibleRoutes = state.routes.filter((r: any) => visibleNames.has(r.name));
   return (
     <View
@@ -37,10 +37,10 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 
         // Map route to icon asset
         let source;
-        if (route.name === 'home/index') source = require('../../assets/Home_icon.png');
-        else if (route.name === 'learn/index') source = require('../../assets/Exercie_logo.png');
-        else if (route.name === 'profile/index') source = require('../../assets/Profile_logo.png');
-        else if (route.name === 'settings') source = require('../../assets/Settings_logo.png');
+  if (route.name === 'home/index') source = require('../../assets/Home_icon.png');
+  else if (route.name === 'learn/index') source = require('../../assets/Exercie_logo.png');
+  else if (route.name === 'profile') source = require('../../assets/Profile_logo.png');
+  else if (route.name === 'settings') source = require('../../assets/Settings_logo.png');
 
         return (
           <Pressable
@@ -88,7 +88,7 @@ export default function TabsLayout() {
           }}
         />
         <Tabs.Screen
-          name="profile/index"
+          name="profile"
           options={{
             title: 'Profile',
             href: '/(tabs)/profile',

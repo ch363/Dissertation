@@ -1,15 +1,23 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useNavigation } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Switch, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { signOut } from '@/modules/auth';
-import { useAppTheme } from '@/modules/settings';
+import {
+  useAppTheme,
+  getAdaptivityEnabled,
+  setAdaptivityEnabled,
+  getNotificationsEnabled,
+  setNotificationsEnabled,
+} from '@/modules/settings';
 import { theme as baseTheme } from '@/theme';
 
 export default function SettingsScreen() {
   const { theme, isDark, setMode } = useAppTheme();
+  const [adaptivity, setAdaptivity] = useState<boolean>(true);
+  const [notifications, setNotifications] = useState<boolean>(true);
   const navigation = useNavigation();
   // If this screen is rendered inside tab bar, no custom back button
   const showBack = typeof navigation?.canGoBack === 'function' && navigation.canGoBack();
@@ -31,6 +39,13 @@ export default function SettingsScreen() {
     }
   }, [navigation]);
 
+  useEffect(() => {
+    (async () => {
+      setAdaptivity(await getAdaptivityEnabled());
+      setNotifications(await getNotificationsEnabled());
+    })();
+  }, []);
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -48,18 +63,9 @@ export default function SettingsScreen() {
         )}
 
         <Text style={[styles.title, { color: theme.colors.text }]}>Settings</Text>
-        <View
-          style={[
-            styles.row,
-            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
-          ]}
-        >
+        <View style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
           <Text style={[styles.label, { color: theme.colors.text }]}>Dark Mode</Text>
-          <Switch
-            value={isDark}
-            onValueChange={(v) => setMode(v ? 'dark' : 'light')}
-            trackColor={{ true: theme.colors.primary }}
-          />
+          <Switch value={isDark} onValueChange={(v) => setMode(v ? 'dark' : 'light')} trackColor={{ true: theme.colors.primary }} />
         </View>
         <Pressable
           accessibilityRole="button"
@@ -73,14 +79,28 @@ export default function SettingsScreen() {
           <Text style={[styles.label, { color: theme.colors.text }]}>Speech</Text>
           <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
         </Pressable>
-        <View
-          style={[
-            styles.row,
-            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
-          ]}
-        >
+        <View style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+          <Text style={[styles.label, { color: theme.colors.text }]}>Adaptivity</Text>
+          <Switch
+            value={adaptivity}
+            onValueChange={async (v) => {
+              setAdaptivity(v);
+              await setAdaptivityEnabled(v);
+            }}
+            trackColor={{ true: theme.colors.primary }}
+          />
+        </View>
+
+        <View style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
           <Text style={[styles.label, { color: theme.colors.text }]}>Notifications</Text>
-          <Switch value onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />
+          <Switch
+            value={notifications}
+            onValueChange={async (v) => {
+              setNotifications(v);
+              await setNotificationsEnabled(v);
+            }}
+            trackColor={{ true: theme.colors.primary }}
+          />
         </View>
 
         {/* Developer tools */}

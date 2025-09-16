@@ -15,6 +15,14 @@ export {
   getTtsRate,
   /** Persist TTS rate (clamped 0.5–1.0). */
   setTtsRate,
+  /** Read whether adaptivity is enabled (defaults to true). */
+  getAdaptivityEnabled,
+  /** Persist adaptivity enabled flag. */
+  setAdaptivityEnabled,
+  /** Read whether notifications are enabled (defaults to true). */
+  getNotificationsEnabled,
+  /** Persist notifications enabled flag. */
+  setNotificationsEnabled,
 } from '../../lib/prefs';
 
 /** Safe speech wrapper; methods are no-ops if native module is unavailable. */

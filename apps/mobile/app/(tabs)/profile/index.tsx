@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Switch } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Link } from 'expo-router';
 
 import { supabase } from '../../../src/lib/supabase';
-import { useAppTheme } from '../../../src/providers/ThemeProvider';
+import { useAppTheme } from '@/modules/settings';
+import { getProgressSummary, type ProgressSummary } from '@/modules/progress';
 
 import { theme as baseTheme } from '@/theme';
 
 export default function Profile() {
   const { theme } = useAppTheme();
   const [displayName, setDisplayName] = useState<string>('');
+  const [progress, setProgress] = useState<ProgressSummary | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -23,55 +26,65 @@ export default function Profile() {
         .maybeSingle();
       const name = prof?.name || u.user?.user_metadata?.name || u.user?.email || 'Profile';
       setDisplayName(String(name));
+      // Fetch compact progress summary
+      try {
+        const snapshot = await getProgressSummary(id);
+        setProgress(snapshot);
+      } catch (e) {
+        setProgress(null);
+      }
     })();
   }, []);
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <Text style={[styles.title, { color: theme.colors.text }]}>{displayName}</Text>
 
-        {/* Progress Section */}
-        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Your Progress</Text>
-        <View style={[styles.progressCircle, { borderColor: theme.colors.primary }]} />
-        <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
-          XP: 320 • Streak: 12🔥
-        </Text>
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
-          ]}
-        >
-          <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
-            Suggested: Flashcards
+        {/* Progress summary */}
+        <View style={[styles.summary, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+          <Text style={[styles.summaryTitle, { color: theme.colors.text }]}>Your Progress</Text>
+          <Text style={[styles.summaryText, { color: theme.colors.mutedText }]}>
+            {progress ? `XP: ${progress.xp} • Streak: ${progress.streak}🔥` : 'Loading…'}
           </Text>
-          <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>
-            Keep the streak alive!
-          </Text>
+          <Link href="/(tabs)/profile/progress" asChild>
+            <Pressable style={styles.linkButton} accessibilityRole="button" hitSlop={8}>
+              <Text style={[styles.linkText, { color: theme.colors.primary }]}>View details</Text>
+            </Pressable>
+          </Link>
         </View>
 
-        {/* Settings Section */}
-        <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>
-          Settings
-        </Text>
-        <View
-          style={[
-            styles.row,
-            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
-          ]}
-        >
-          <Text style={[styles.label, { color: theme.colors.text }]}>Adaptivity</Text>
-          <Switch value onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />
-        </View>
-        <View
-          style={[
-            styles.row,
-            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
-          ]}
-        >
-          <Text style={[styles.label, { color: theme.colors.text }]}>Notifications</Text>
-          <Switch value onValueChange={() => {}} trackColor={{ true: theme.colors.primary }} />
-        </View>
+        {/* Profile actions */}
+        <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>Account</Text>
+        <Link href="/(tabs)/profile/edit" asChild>
+          <Pressable
+            accessibilityRole="button"
+            style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}
+          >
+            <Text style={[styles.label, { color: theme.colors.text }]}>Edit Profile</Text>
+            <Text style={[styles.linkText, { color: theme.colors.mutedText }]}>›</Text>
+          </Pressable>
+        </Link>
+
+        <Link href="/(tabs)/profile/achievements" asChild>
+          <Pressable
+            accessibilityRole="button"
+            style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}
+          >
+            <Text style={[styles.label, { color: theme.colors.text }]}>Achievements</Text>
+            <Text style={[styles.linkText, { color: theme.colors.mutedText }]}>›</Text>
+          </Pressable>
+        </Link>
+
+        <Link href="/(tabs)/profile/progress" asChild>
+          <Pressable
+            accessibilityRole="button"
+            style={[styles.row, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}
+          >
+            <Text style={[styles.label, { color: theme.colors.text }]}>Progress Details</Text>
+            <Text style={[styles.linkText, { color: theme.colors.mutedText }]}>›</Text>
+          </Pressable>
+        </Link>
       </View>
     </SafeAreaView>
   );
@@ -95,34 +108,22 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginBottom: baseTheme.spacing.md,
   },
-  progressCircle: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    borderWidth: 10,
-    marginBottom: baseTheme.spacing.md,
-  },
-  subtitle: {
-    fontFamily: baseTheme.typography.regular,
-    color: baseTheme.colors.mutedText,
-    marginBottom: baseTheme.spacing.lg,
-  },
-  card: {
+  summary: {
     width: '100%',
-    backgroundColor: baseTheme.colors.card,
     borderRadius: baseTheme.radius.lg,
     padding: baseTheme.spacing.lg,
     borderWidth: 1,
+    marginBottom: baseTheme.spacing.lg,
     borderColor: baseTheme.colors.border,
   },
-  cardTitle: {
+  summaryTitle: {
     fontFamily: baseTheme.typography.semiBold,
-    fontSize: 18,
-    color: baseTheme.colors.text,
+    fontSize: 16,
+    marginBottom: baseTheme.spacing.xs,
   },
-  cardSubtitle: {
+  summaryText: {
     fontFamily: baseTheme.typography.regular,
-    color: baseTheme.colors.mutedText,
+    marginBottom: baseTheme.spacing.sm,
   },
   row: {
     flexDirection: 'row',
@@ -138,5 +139,13 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: baseTheme.typography.regular,
     color: baseTheme.colors.text,
+  },
+  linkButton: {
+    paddingHorizontal: baseTheme.spacing.md,
+    paddingVertical: baseTheme.spacing.sm,
+    borderRadius: baseTheme.radius.md,
+  },
+  linkText: {
+    fontFamily: baseTheme.typography.semiBold,
   },
 });
