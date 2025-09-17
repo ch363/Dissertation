@@ -61,8 +61,8 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
   },
   logo: {
-    width: 120,
-    height: 120,
+    width: 140,
+    height: 140,
     marginBottom: theme.spacing.lg,
   },
   title: {

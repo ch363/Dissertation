@@ -67,10 +67,8 @@ export default function DbHealth() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={{ padding: baseTheme.spacing.lg }}
-      >
+        <View>
+        <View style={styles.headerRow} />
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Back"
@@ -81,77 +79,86 @@ export default function DbHealth() {
         </Pressable>
         <Text style={styles.title}>DB Health</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
-        <View style={{ flexDirection: 'row', gap: 12, marginTop: baseTheme.spacing.sm }}>
-          <Pressable
-            style={[styles.chip, { backgroundColor: baseTheme.colors.card }]}
-            onPress={load}
-          >
-            <Text style={{ color: baseTheme.colors.text }}>Refresh</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.chip, { backgroundColor: baseTheme.colors.card }]}
-            onPress={async () => {
-              await ensureProfileSeed();
-              await load();
-            }}
-          >
-            <Text style={{ color: baseTheme.colors.text }}>Seed profile</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.chip, { backgroundColor: baseTheme.colors.card }]}
-            onPress={async () => {
-              // Repair missing profile name if we can infer it
-              const { data: u } = await supabase.auth.getUser();
-              const metaName = (u.user?.user_metadata as any)?.name || u.user?.email || '';
-              await ensureProfileSeed(metaName || undefined);
-              await load();
-            }}
-          >
-            <Text style={{ color: baseTheme.colors.text }}>Repair name</Text>
-          </Pressable>
         </View>
-        <Text style={styles.section}>Auth</Text>
-        <Text style={styles.code}>{JSON.stringify(sessionInfo, null, 2)}</Text>
-        <Text style={styles.section}>Profile</Text>
-        <Text style={styles.code}>{JSON.stringify(profile, null, 2)}</Text>
-        <Text style={styles.section}>Last Attempts (10)</Text>
-        <Text style={styles.code}>{JSON.stringify(attempts, null, 2)}</Text>
-      </ScrollView>
+
+        <ScrollView style={styles.container} contentContainerStyle={{ padding: baseTheme.spacing.lg }}>
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: baseTheme.spacing.sm }}>
+            <Pressable
+                style={[styles.chip, { backgroundColor: baseTheme.colors.card }]}
+                onPress={load}
+            >
+                <Text style={{ color: baseTheme.colors.text }}>Refresh</Text>
+            </Pressable>
+            <Pressable
+                style={[styles.chip, { backgroundColor: baseTheme.colors.card }]}
+                onPress={async () => {
+                await ensureProfileSeed();
+                await load();
+                }}
+            >
+                <Text style={{ color: baseTheme.colors.text }}>Seed profile</Text>
+            </Pressable>
+            <Pressable
+                style={[styles.chip, { backgroundColor: baseTheme.colors.card }]}
+                onPress={async () => {
+                // Repair missing profile name if we can infer it
+                const { data: u } = await supabase.auth.getUser();
+                const metaName = (u.user?.user_metadata as any)?.name || u.user?.email || '';
+                await ensureProfileSeed(metaName || undefined);
+                await load();
+                }}
+            >
+                <Text style={{ color: baseTheme.colors.text }}>Repair name</Text>
+            </Pressable>
+            </View>
+            <Text style={styles.section}>Auth</Text>
+            <Text style={styles.code}>{JSON.stringify(sessionInfo, null, 2)}</Text>
+            <Text style={styles.section}>Profile</Text>
+            <Text style={styles.code}>{JSON.stringify(profile, null, 2)}</Text>
+            <Text style={styles.section}>Last Attempts (10)</Text>
+            <Text style={styles.code}>{JSON.stringify(attempts, null, 2)}</Text>
+        </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: baseTheme.colors.background },
-  container: { flex: 1, backgroundColor: baseTheme.colors.background },
-  title: { fontFamily: baseTheme.typography.bold, fontSize: 22, color: baseTheme.colors.text },
-  section: {
-    marginTop: baseTheme.spacing.lg,
-    fontFamily: baseTheme.typography.semiBold,
-    color: baseTheme.colors.text,
-  },
-  error: { color: '#dc3545', marginTop: baseTheme.spacing.sm },
-  code: {
-    marginTop: baseTheme.spacing.sm,
-    fontFamily: baseTheme.typography.regular,
-    color: baseTheme.colors.mutedText,
-  },
-  chip: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: baseTheme.colors.border,
-  },
-  backBtn: {
-    position: 'absolute',
-    left: 16,
-    top: 8,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
-  },
+    safeArea: { flex: 1, backgroundColor: baseTheme.colors.background },
+    container: { flex: 1, backgroundColor: baseTheme.colors.background },
+    title: { fontFamily: baseTheme.typography.bold, fontSize: 22, color: baseTheme.colors.text },
+    section: {
+        marginTop: baseTheme.spacing.lg,
+        fontFamily: baseTheme.typography.semiBold,
+        color: baseTheme.colors.text,
+    },
+    error: { color: '#dc3545', marginTop: baseTheme.spacing.sm },
+    code: {
+        marginTop: baseTheme.spacing.sm,
+        fontFamily: baseTheme.typography.regular,
+        color: baseTheme.colors.mutedText,
+    },
+    chip: {
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: baseTheme.colors.border,
+    },
+    backBtn: {
+        position: 'absolute',
+        left: 16,
+        top: 8,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10,
+    },
+    headerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingBottom: baseTheme.spacing.md,
+    },
 });
