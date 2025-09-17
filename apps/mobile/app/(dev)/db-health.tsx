@@ -68,16 +68,18 @@ export default function DbHealth() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View>
-        <View style={styles.headerRow} />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          onPress={goBack}
-          style={styles.backBtn}
-        >
-          <Ionicons name="chevron-back" size={22} color={baseTheme.colors.mutedText} />
-        </Pressable>
-        <Text style={styles.title}>DB Health</Text>
+        <View style={styles.headerRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            onPress={goBack}
+            style={styles.backBtn}
+            hitSlop={8}
+          >
+            <Ionicons name="chevron-back" size={22} color={baseTheme.colors.mutedText} />
+          </Pressable>
+          <Text style={styles.title}>DB Health</Text>
+        </View>
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </View>
 
@@ -148,15 +150,14 @@ const styles = StyleSheet.create({
     borderColor: baseTheme.colors.border,
   },
   backBtn: {
-    position: 'absolute',
-    left: 16,
-    top: 8,
     width: 36,
     height: 36,
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,
+    borderWidth: 1,
+    borderColor: baseTheme.colors.border,
+    marginRight: 8,
   },
   headerRow: {
     flexDirection: 'row',
