@@ -55,9 +55,6 @@ export default function HomeScreen() {
         </View>
         <Text style={[styles.brand, { color: theme.colors.text }]}>Fluentia</Text>
 
-        {/* Flowing connectors behind modules */}
-        <ModuleFlowBackdrop color={isDark ? 'rgba(70,100,130,0.35)' : 'rgba(203,230,250,0.65)'} />
-
         {/* Modules list */}
         <ModuleList
           completed={completed}
@@ -65,35 +62,6 @@ export default function HomeScreen() {
         />
       </View>
     </SafeAreaView>
-  );
-}
-function ModuleFlowBackdrop({ color }: { color: string }) {
-  // Bezier-like path following the module stack using rotated segments
-  const anchors = [
-    { x: 300, y: 160 },
-    { x: 70, y: 260 },
-    { x: 320, y: 380 },
-    { x: 100, y: 520 },
-  ];
-  const segments = useMemo(() => buildSegments(anchors), []);
-  return (
-    <View pointerEvents="none" style={styles.flowBackdrop}>
-      {segments.map((s, i) => (
-        <View
-          key={i}
-          style={{
-            position: 'absolute',
-            top: s.cy - s.len / 2,
-            left: s.cx - s.thickness / 2,
-            width: s.thickness,
-            height: s.len,
-            backgroundColor: color,
-            borderRadius: s.thickness / 2,
-            transform: [{ rotate: `${s.angle}rad` }],
-          }}
-        />
-      ))}
-    </View>
   );
 }
 
@@ -153,38 +121,6 @@ function ModuleList({ completed, onLocked }: { completed: string[]; onLocked: ()
       })}
     </View>
   );
-}
-
-function buildSegments(points: { x: number; y: number }[]) {
-  if (points.length < 2)
-    return [] as { cx: number; cy: number; len: number; angle: number; thickness: number }[];
-  const thickness = 26;
-  const segs: { cx: number; cy: number; len: number; angle: number; thickness: number }[] = [];
-  for (let i = 0; i < points.length - 1; i++) {
-    const p = points[i];
-    const q = points[i + 1];
-    const dx = q.x - p.x;
-    const dy = q.y - p.y;
-    const steps = 16;
-    // Sample along straight segment and curve slightly by offsetting control
-    for (let t = 0; t < steps; t++) {
-      const u = t / steps;
-      const x1 = p.x + dx * u;
-      const y1 = p.y + dy * u;
-      const x2 = p.x + dx * (u + 1 / steps);
-      const y2 = p.y + dy * (u + 1 / steps);
-      // gentle sine offset to simulate curve
-      const offset = Math.sin(u * Math.PI) * 16;
-      const nx = -dy / Math.max(1, Math.hypot(dx, dy));
-      const ny = dx / Math.max(1, Math.hypot(dx, dy));
-      const px = (x1 + x2) / 2 + nx * offset;
-      const py = (y1 + y2) / 2 + ny * offset;
-      const angle = Math.atan2(y2 - y1, x2 - x1) + Math.PI / 2;
-      const len = Math.hypot(x2 - x1, y2 - y1);
-      segs.push({ cx: px, cy: py, len, angle, thickness });
-    }
-  }
-  return segs;
 }
 
 const styles = StyleSheet.create({
