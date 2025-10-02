@@ -36,3 +36,13 @@ export async function hasOnboarding(userId: string): Promise<boolean> {
   }
   return !!data;
 }
+
+export async function getOnboarding(userId: string): Promise<OnboardingAnswers | null> {
+  const { data, error } = await supabase
+    .from('onboarding_answers')
+    .select('answers')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error && error.code !== 'PGRST116') throw error;
+  return (data?.answers as OnboardingAnswers) ?? null;
+}

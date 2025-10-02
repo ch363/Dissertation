@@ -9,23 +9,53 @@ export type Profile = {
 };
 
 export async function getMyProfile() {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', (await supabase.auth.getUser()).data.user?.id)
-    .maybeSingle();
-  if (error) throw error;
-  return data as Profile | null;
+  const { data: u } = await supabase.auth.getUser();
+  const id = u.user?.id;
+  if (!id) return null;
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', id).maybeSingle();
+  if (error) {
+    // eslint-disable-next-line no-console
+    console.error('getMyProfile error', error);
+    throw error;
+  }
+  return (data as Profile) ?? null;
 }
 
 export async function upsertMyProfile(update: Partial<Profile>) {
   const { data: u } = await supabase.auth.getUser();
   const id = u.user?.id;
   if (!id) throw new Error('No user');
-  const payload = { id, ...update };
-  const { data, error } = await supabase.from('profiles').upsert(payload).select().single();
-  if (error) throw error;
-  return data as Profile;
+  // Remove undefined to avoid overwriting fields unintentionally
+  const payload: any = { id };
+  for (const [k, v] of Object.entries(update)) {
+    if (v !== undefined) payload[k] = v;
+  }
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .upsert(payload, { onConflict: 'id' })
+      .select()
+      .single();
+    if (error) throw error;
+    return data as Profile;
+  } catch {
+    // Fallback: attempt update if row exists
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(payload)
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as Profile;
+    } catch (inner) {
+      // Surface original error context
+      // eslint-disable-next-line no-console
+      console.error('upsertMyProfile failed', { payload, error: inner });
+      throw inner;
+    }
+  }
 }
 
 // Ensure a profile row exists for the current authenticated user

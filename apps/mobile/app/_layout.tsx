@@ -6,6 +6,7 @@ import {
 } from '@expo-google-fonts/inter';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 import { OnboardingProvider } from '../src/onboarding/OnboardingContext';
 import { AuthProvider } from '../src/providers/AuthProvider';
@@ -23,6 +24,7 @@ export default function RootLayout() {
         <ThemeProvider>
           <SafeAreaProvider>
             <ThemedStack />
+            <Toast />
           </SafeAreaProvider>
         </ThemeProvider>
       </OnboardingProvider>

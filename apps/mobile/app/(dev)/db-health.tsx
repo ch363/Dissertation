@@ -2,11 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useNavigation } from 'expo-router';
 import { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '@/lib/supabase';
 import { getSession } from '@/modules/auth';
-import { ensureProfileSeed } from '@/modules/profile';
+import { ensureProfileSeed, upsertMyProfile } from '@/modules/profile';
 import { theme as baseTheme } from '@/theme';
 
 export default function DbHealth() {
@@ -14,6 +15,8 @@ export default function DbHealth() {
   const [attempts, setAttempts] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [sessionInfo, setSessionInfo] = useState<any>(null);
+  const [schemaStatus, setSchemaStatus] = useState<'unknown'|'ok'|'missing_updated_at'|'unauth'|'error'>('unknown');
+  const [schemaMsg, setSchemaMsg] = useState<string>('');
   const navigation = useNavigation();
   const goBack = useCallback(() => {
     try {
@@ -55,6 +58,88 @@ export default function DbHealth() {
     }
   }
 
+  async function checkProfilesSchema() {
+    try {
+      setSchemaStatus('unknown');
+      setSchemaMsg('');
+      const { data: u } = await supabase.auth.getUser();
+      const id = u.user?.id;
+      if (!id) {
+        setSchemaStatus('unauth');
+        setSchemaMsg('Not signed in');
+        return;
+      }
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('updated_at, name')
+        .eq('id', id)
+        .maybeSingle();
+      if (error) {
+        if ((error as any).code === '42703') {
+          setSchemaStatus('missing_updated_at');
+          setSchemaMsg('Column updated_at is missing on profiles');
+          return;
+        }
+        setSchemaStatus('error');
+        setSchemaMsg(error.message || 'Error checking schema');
+        return;
+      }
+      // Optional: attempt a no-op update to exercise trigger
+      if (data) {
+        const { error: updErr } = await supabase
+          .from('profiles')
+          .update({ name: data.name })
+          .eq('id', id)
+          .select('updated_at')
+          .maybeSingle();
+        if (updErr && (updErr as any).code === '42703') {
+          setSchemaStatus('missing_updated_at');
+          setSchemaMsg('Trigger expects updated_at but column missing');
+          return;
+        }
+      }
+      setSchemaStatus('ok');
+      setSchemaMsg('profiles.updated_at exists; trigger likely OK');
+    } catch (e: any) {
+      setSchemaStatus('error');
+      setSchemaMsg(e?.message || 'Unknown error');
+    }
+  }
+
+  async function testProfileUpsert() {
+    try {
+      setError(null);
+      await ensureProfileSeed();
+      await upsertMyProfile({ name: profile?.name || 'Test User' });
+      await load();
+      setSchemaMsg('Upsert succeeded');
+    } catch (e: any) {
+      setSchemaMsg(e?.message || 'Upsert failed');
+    }
+  }
+
+  const SQL_FIX = `-- Ensure updated_at column exists on profiles
+alter table public.profiles
+  add column if not exists updated_at timestamptz default now();
+
+create or replace function public.set_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists profiles_set_updated_at on public.profiles;
+create trigger profiles_set_updated_at
+before update on public.profiles
+for each row execute function public.set_updated_at();`;
+
+  async function copySqlFix() {
+    await Clipboard.setStringAsync(SQL_FIX);
+    setSchemaMsg('SQL copied to clipboard');
+  }
+
   useEffect(() => {
     (async () => {
       try {
@@ -87,6 +172,24 @@ export default function DbHealth() {
         style={styles.container}
         contentContainerStyle={{ padding: baseTheme.spacing.lg }}
       >
+        <Text style={styles.section}>Profiles Schema Check</Text>
+        <View style={{ flexDirection: 'row', gap: 12, marginTop: baseTheme.spacing.sm, flexWrap: 'wrap' }}>
+          <Pressable style={[styles.chip, { backgroundColor: baseTheme.colors.card }]} onPress={checkProfilesSchema}>
+            <Text style={{ color: baseTheme.colors.text }}>Check profiles schema</Text>
+          </Pressable>
+          <Pressable style={[styles.chip, { backgroundColor: baseTheme.colors.card }]} onPress={testProfileUpsert}>
+            <Text style={{ color: baseTheme.colors.text }}>Test profile upsert</Text>
+          </Pressable>
+          <Pressable style={[styles.chip, { backgroundColor: baseTheme.colors.card }]} onPress={copySqlFix}>
+            <Text style={{ color: baseTheme.colors.text }}>Copy SQL fix</Text>
+          </Pressable>
+        </View>
+        {schemaStatus !== 'unknown' ? (
+          <Text style={[styles.code, { marginTop: baseTheme.spacing.xs }]}>
+            {schemaStatus.toUpperCase()}: {schemaMsg}
+          </Text>
+        ) : null}
+
         <View style={{ flexDirection: 'row', gap: 12, marginTop: baseTheme.spacing.sm }}>
           <Pressable
             style={[styles.chip, { backgroundColor: baseTheme.colors.card }]}
