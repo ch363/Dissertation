@@ -1,0 +1,14 @@
+import { ensureProfileSeed } from '@/modules/profile';
+import { hasOnboarding } from '@/modules/onboarding';
+
+/**
+ * Centralized post-auth flow resolution.
+ * Returns the route that should be loaded after a successful sign-in.
+ */
+export async function resolvePostAuthDestination(userId: string) {
+  // Ensure the profile row exists before routing anywhere that depends on it.
+  await ensureProfileSeed();
+  const onboardingDone = await hasOnboarding(userId);
+  return onboardingDone ? '/(tabs)/home' : '/onboarding/welcome';
+}
+

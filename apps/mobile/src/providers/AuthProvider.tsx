@@ -1,46 +1,42 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createContext, useContext, useEffect, useState } from 'react';
-
-import { PENDING_PROFILE_NAME_KEY } from '../lib/auth';
-import { ensureProfileSeed } from '../lib/profile';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
-type AuthContextType = { user: any | null; loading: boolean };
-const AuthCtx = createContext<AuthContextType>({ user: null, loading: true });
-export const useAuth = () => useContext(AuthCtx);
+type AuthCtx = {
+  session: Session | null;
+  loading: boolean;
+};
+
+const Ctx = createContext<AuthCtx>({ session: null, loading: true });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<any | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data }) => {
-      const u = data.session?.user ?? null;
-      setUser(u);
+    let mounted = true;
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mounted) return;
+      setSession(data.session ?? null);
       setLoading(false);
-      if (u) {
-        try {
-          const pending = await AsyncStorage.getItem(PENDING_PROFILE_NAME_KEY);
-          await ensureProfileSeed(pending || undefined);
-          if (pending) await AsyncStorage.removeItem(PENDING_PROFILE_NAME_KEY);
-        } catch {}
-      }
     });
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user?.id) {
-        try {
-          const pending = await AsyncStorage.getItem(PENDING_PROFILE_NAME_KEY);
-          await ensureProfileSeed(pending || undefined);
-          if (pending) await AsyncStorage.removeItem(PENDING_PROFILE_NAME_KEY);
-        } catch {}
-      }
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
     });
+
     return () => {
+      mounted = false;
       sub.subscription.unsubscribe();
     };
   }, []);
 
-  return <AuthCtx.Provider value={{ user, loading }}>{children}</AuthCtx.Provider>;
+  const value = useMemo(() => ({ session, loading }), [session, loading]);
+
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+export function useAuth() {
+  return useContext(Ctx);
 }

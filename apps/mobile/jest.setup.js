@@ -24,7 +24,9 @@ jest.mock('@supabase/supabase-js', () => ({
       getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'u1' } } }),
       getSession: jest.fn().mockResolvedValue({ data: { session: null } }),
       resend: jest.fn().mockResolvedValue({ error: null }),
-      exchangeCodeForSession: jest.fn().mockResolvedValue({}),
+      exchangeCodeForSession: jest
+        .fn()
+        .mockResolvedValue({ data: { session: { user: { id: 'u1' } } }, error: null }),
     },
     rpc: jest.fn().mockResolvedValue({ data: null, error: null }),
   }),

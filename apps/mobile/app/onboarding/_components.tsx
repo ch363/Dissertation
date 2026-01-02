@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, Modal } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Modal, ScrollView } from 'react-native';
 import type { AccessibilityRole } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { theme } from '@/theme';
 
@@ -14,6 +15,34 @@ export function ProgressBar({ current, total }: { current: number; total: number
       <View style={[styles.barFill, { flex: pct }]} />
       <View style={{ flex: 1 - pct }} />
     </View>
+  );
+}
+
+export function QuestionScreen({
+  children,
+  footer,
+}: {
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
+  const insets = useSafeAreaInsets();
+  const contentPaddingBottom = (footer ? theme.spacing.xl * 2.2 : theme.spacing.lg) + insets.bottom;
+  return (
+    <SafeAreaView style={styles.screen}>
+      <ScrollView
+        contentContainerStyle={[styles.screenContent, { paddingBottom: contentPaddingBottom }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {children}
+      </ScrollView>
+      {footer ? (
+        <View style={styles.stickyWrap}>
+          <View style={styles.fade} pointerEvents="none" />
+          <View style={[styles.stickyInner, { paddingBottom: theme.spacing.md + insets.bottom }]}>{footer}</View>
+        </View>
+      ) : null}
+    </SafeAreaView>
   );
 }
 
@@ -100,12 +129,7 @@ export function SecondaryButton({ title, onPress }: { title: string; onPress: ()
 }
 
 export function StickyCTA({ children }: { children: React.ReactNode }) {
-  return (
-    <View style={styles.stickyWrap}>
-      <View style={styles.fade} />
-      <View style={styles.stickyInner}>{children}</View>
-    </View>
-  );
+  return <View>{children}</View>;
 }
 
 export function WhyWeAskLink() {
@@ -143,6 +167,14 @@ export function WhyWeAskLink() {
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  screenContent: {
+    padding: theme.spacing.lg,
+    paddingBottom: theme.spacing.lg,
+  },
   stepperWrap: {
     marginBottom: theme.spacing.md,
   },

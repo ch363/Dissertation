@@ -1,55 +1,48 @@
 // Polyfills for React Native environment (URL, crypto.getRandomValues)
+import { AppState, Platform } from 'react-native';
 import 'react-native-url-polyfill/auto';
-import 'react-native-get-random-values';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createClient } from '@supabase/supabase-js';
 import Constants from 'expo-constants';
+import { createClient, processLock } from '@supabase/supabase-js';
 
-// Resolve config from ENV or Expo extra
 const extra =
-  ((Constants as any)?.expoConfig?.extra as any) ||
-  ((Constants as any)?.manifest?.extra as any) ||
-  ((Constants as any)?.manifest2?.extra as any) ||
+  (Constants?.expoConfig?.extra as Record<string, any> | undefined) ||
+  ((Constants as any)?.manifest?.extra as Record<string, any> | undefined) ||
   {};
-const SUPABASE_URL =
-  (process.env.EXPO_PUBLIC_SUPABASE_URL as string | undefined) ||
-  (process.env.NEXT_PUBLIC_SUPABASE_URL as string | undefined) ||
+
+const supabaseUrl =
+  process.env.EXPO_PUBLIC_SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
   (extra?.EXPO_PUBLIC_SUPABASE_URL as string | undefined) ||
-  (extra?.supabaseUrl as string | undefined);
+  (extra?.supabaseUrl as string | undefined) ||
+  '';
 
-const SUPABASE_ANON_KEY =
-  (process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string | undefined) ||
-  (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string | undefined) ||
+const supabaseAnonKey =
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   (extra?.EXPO_PUBLIC_SUPABASE_ANON_KEY as string | undefined) ||
-  (extra?.supabaseAnonKey as string | undefined);
+  (extra?.supabaseAnonKey as string | undefined) ||
+  '';
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
-    'Missing Supabase config. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in apps/mobile/.env or app.json extra.'
+    'Missing Supabase config. Ensure EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY are set (env or app.json extra).'
   );
 }
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: AsyncStorage,
-    persistSession: true,
+    ...(Platform.OS !== 'web' ? { storage: AsyncStorage } : {}),
     autoRefreshToken: true,
-    // Use implicit flow (no WebCrypto/native dependency)
-    flowType: 'implicit',
+    persistSession: true,
     detectSessionInUrl: false,
+    lock: processLock,
   },
 });
 
-export async function saveOnboarding(name: string, answers: any) {
-  const { error } = await supabase.rpc('upsert_onboarding', {
-    p_name: name,
-    p_answers: answers,
+if (Platform.OS !== 'web') {
+  AppState.addEventListener('change', (state) => {
+    if (state === 'active') supabase.auth.startAutoRefresh();
+    else supabase.auth.stopAutoRefresh();
   });
-  if (error) throw error;
-}
-
-export async function fetchDueItems(limit = 30) {
-  const { data, error } = await supabase.rpc('get_due_items', { limit_count: limit });
-  if (error) throw error;
-  return data; // array of items
 }

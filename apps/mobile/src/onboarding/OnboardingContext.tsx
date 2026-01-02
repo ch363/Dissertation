@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo, useRef, useState } from 'react';
 
-import { getCurrentUser } from '../lib/auth';
+import { getCurrentUser } from '@/modules/auth';
 import { saveOnboarding } from '../lib/onboardingRepo';
 
 export type OnboardingAnswers = {

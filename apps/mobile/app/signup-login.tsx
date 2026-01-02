@@ -8,10 +8,10 @@ export default function SignupLogin() {
     <View style={styles.container}>
       <Text style={styles.title}>Welcome to Fluentia</Text>
       <Text style={styles.subtitle}>Create an account or log in to continue.</Text>
-      <Link href="/auth/signup" style={[styles.button, styles.primary]}>
+      <Link href="/auth/sign-up" style={[styles.button, styles.primary]}>
         Create account
       </Link>
-      <Link href="/auth/login" style={[styles.button, styles.secondary]}>
+      <Link href="/auth/sign-in" style={[styles.button, styles.secondary]}>
         Log in
       </Link>
     </View>

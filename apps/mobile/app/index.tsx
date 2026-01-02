@@ -1,64 +1,71 @@
-import { router, Link } from 'expo-router';
+import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, ActivityIndicator } from 'react-native';
+import { useEffect } from 'react';
+import { View, Text, StyleSheet, Image, Pressable, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getCurrentUser } from '@/modules/auth';
 import { hasOnboarding } from '@/modules/onboarding';
+import { useAuth } from '@/providers/AuthProvider';
 import { theme } from '@/theme';
 
 export default function Index() {
-  const [checking, setChecking] = useState(true);
+  const { session, loading } = useAuth();
 
   useEffect(() => {
     (async () => {
-      try {
-        const user = await getCurrentUser();
-        if (!user) {
-          // Show login/signup screen
-          return;
-        }
-        const done = await hasOnboarding(user.id);
-        if (!done) {
-          router.replace('/onboarding/welcome');
-        } else {
-          router.replace('/(tabs)/home');
-        }
-      } finally {
-        setChecking(false);
+      if (loading) return;
+      if (session?.user?.id) {
+        const done = await hasOnboarding(session.user.id);
+        router.replace(done ? '/(tabs)/home' : '/onboarding/welcome');
       }
     })();
-  }, []);
+  }, [session, loading]);
+
+  const goSignUp = () => router.push('/auth/sign-up');
+  const goSignIn = () => router.push('/auth/sign-in');
 
   return (
-    <View style={styles.container}>
-      {checking && (
-        <View style={{ position: 'absolute', top: 12, right: 12 }}>
-          <ActivityIndicator color={theme.colors.primary} />
-        </View>
-      )}
-      <Image source={require('../assets/logo.png')} style={styles.logo} resizeMode="contain" />
-      <Text style={styles.title}>Fluentia</Text>
-      <Text style={styles.subtitle}>Personalised learning, one step at a time.</Text>
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.container}>
+        {loading && (
+          <View style={styles.spinner}>
+            <ActivityIndicator color={theme.colors.primary} />
+          </View>
+        )}
+        <Image source={require('../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+        <Text style={styles.title}>Fluentia</Text>
+        <Text style={styles.subtitle}>Personalised learning, one step at a time.</Text>
 
-      <Link href="/auth/signup" style={[styles.button, styles.primary]}>
-        Get Started
-      </Link>
-      <Link href="/auth/login" style={[styles.button, styles.secondary]}>
-        Log In
-      </Link>
-      <StatusBar style="auto" />
-    </View>
+        <View style={styles.buttons}>
+          <Pressable style={[styles.button, styles.primary]} onPress={goSignUp}>
+            <Text style={styles.buttonText}>Get Started</Text>
+          </Pressable>
+          <Pressable style={[styles.button, styles.secondary]} onPress={goSignIn}>
+            <Text style={styles.buttonText}>Log In</Text>
+          </Pressable>
+        </View>
+        <StatusBar style="auto" />
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: '#F5F7FB',
+  },
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
     alignItems: 'center',
     justifyContent: 'center',
     padding: theme.spacing.lg,
+    backgroundColor: '#F5F7FB',
+  },
+  spinner: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
   },
   logo: {
     width: 140,
@@ -67,30 +74,37 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: theme.typography.bold,
-    fontSize: 28,
+    fontSize: 32,
     color: theme.colors.text,
+    marginTop: theme.spacing.sm,
   },
   subtitle: {
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.xl,
     fontFamily: theme.typography.regular,
     color: theme.colors.mutedText,
+    textAlign: 'center',
+  },
+  buttons: {
+    width: '100%',
+    marginTop: theme.spacing.md,
+    gap: theme.spacing.md,
   },
   button: {
     width: '100%',
-    textAlign: 'center',
     paddingVertical: 14,
     borderRadius: theme.radius.md,
-    marginTop: theme.spacing.md,
-    fontFamily: theme.typography.semiBold,
-    overflow: 'hidden',
+    alignItems: 'center',
   },
   primary: {
     backgroundColor: theme.colors.primary,
-    color: '#fff',
   },
   secondary: {
     backgroundColor: theme.colors.secondary,
+  },
+  buttonText: {
     color: '#fff',
+    fontFamily: theme.typography.semiBold,
+    fontSize: 16,
   },
 });

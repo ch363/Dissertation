@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, Pressable, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { getCurrentUser } from '../../../src/lib/auth';
+import { getCurrentUser } from '@/modules/auth';
 import { getCompletedModules } from '../../../src/lib/progress';
 import { useAppTheme } from '../../../src/providers/ThemeProvider';
 

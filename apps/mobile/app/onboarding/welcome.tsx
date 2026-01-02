@@ -20,7 +20,7 @@ export default function OnboardingWelcome() {
       />
       <PrimaryButton
         title="Start My Journey"
-        onPress={() => router.push('/onboarding/motivation-goals')}
+        onPress={() => router.push('/onboarding/1_motivation-goals')}
         style={styles.cta}
         textStyle={styles.ctaText}
       />

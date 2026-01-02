@@ -1,7 +1,14 @@
 import { router } from 'expo-router';
-import { View, Text, StyleSheet } from 'react-native';
+import { Text, StyleSheet, View } from 'react-native';
 
-import { Stepper, Option, PrimaryButton, StickyCTA, WhyWeAskLink } from './_components';
+import {
+  Stepper,
+  Option,
+  PrimaryButton,
+  StickyCTA,
+  WhyWeAskLink,
+  QuestionScreen,
+} from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
 
 import { theme } from '@/theme';
@@ -23,11 +30,19 @@ export default function PreferredLearning() {
     { key: 'acting', icon: '🎭', label: 'Acting it out / speaking it aloud' },
   ];
 
-  const onNext = () => router.push('/onboarding/memory-habits');
-  const onSkip = () => router.push('/onboarding/memory-habits');
+  const onNext = () => router.push('/onboarding/3_memory-habits');
+  const onSkip = () => router.push('/onboarding/3_memory-habits');
 
   return (
-    <View style={styles.container}>
+    <QuestionScreen
+      footer={
+        <StickyCTA>
+          <PrimaryButton title="Next" onPress={onNext} disabled={selected.length === 0} />
+          <View style={{ height: 8 }} />
+          <PrimaryButton title="Skip / Not sure" onPress={onSkip} />
+        </StickyCTA>
+      }
+    >
       <Stepper current={2} total={9} />
       <Text style={styles.title}>Preferred Ways of Learning (choose up to 2)</Text>
       <WhyWeAskLink />
@@ -41,21 +56,11 @@ export default function PreferredLearning() {
           multiple
         />
       ))}
-      <StickyCTA>
-        <PrimaryButton title="Next" onPress={onNext} disabled={selected.length === 0} />
-        <View style={{ height: 8 }} />
-        <PrimaryButton title="Skip / Not sure" onPress={onSkip} />
-      </StickyCTA>
-    </View>
+    </QuestionScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-    padding: theme.spacing.lg,
-  },
   title: {
     fontFamily: theme.typography.semiBold,
     fontSize: 22,

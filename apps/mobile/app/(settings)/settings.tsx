@@ -141,7 +141,7 @@ export default function SettingsScreen() {
           accessibilityLabel="Sign out"
           onPress={async () => {
             await signOut();
-            router.replace('/');
+            router.replace('/auth/sign-in');
           }}
           style={[
             styles.row,

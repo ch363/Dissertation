@@ -1,7 +1,14 @@
 import { router } from 'expo-router';
-import { View, Text, StyleSheet } from 'react-native';
+import { Text, StyleSheet, View } from 'react-native';
 
-import { Stepper, Option, PrimaryButton, StickyCTA, WhyWeAskLink } from './_components';
+import {
+  Stepper,
+  Option,
+  PrimaryButton,
+  StickyCTA,
+  WhyWeAskLink,
+  QuestionScreen,
+} from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
 
 import { getCurrentUser } from '@/modules/auth';
@@ -31,7 +38,15 @@ export default function ExperienceLevel() {
   const onSkip = () => router.replace('/onboarding/completion');
 
   return (
-    <View style={styles.container}>
+    <QuestionScreen
+      footer={
+        <StickyCTA>
+          <PrimaryButton title="Finish" onPress={onFinish} disabled={!selected} />
+          <View style={{ height: 8 }} />
+          <PrimaryButton title="Skip / Not sure" onPress={onSkip} />
+        </StickyCTA>
+      }
+    >
       <Stepper current={9} total={9} />
       <Text style={styles.title}>What’s your experience level?</Text>
       <WhyWeAskLink />
@@ -46,21 +61,11 @@ export default function ExperienceLevel() {
           icon={o.icon}
         />
       ))}
-      <StickyCTA>
-        <PrimaryButton title="Finish" onPress={onFinish} disabled={!selected} />
-        <View style={{ height: 8 }} />
-        <PrimaryButton title="Skip / Not sure" onPress={onSkip} />
-      </StickyCTA>
-    </View>
+    </QuestionScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-    padding: theme.spacing.lg,
-  },
   title: {
     fontFamily: theme.typography.semiBold,
     fontSize: 22,
