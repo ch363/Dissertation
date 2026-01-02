@@ -60,6 +60,8 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=...
 ```
 
 3. In the Supabase SQL editor, run the schema policies for profiles and onboarding (see docs or ask to regenerate).
+4. Disable email confirmations for password auth (Supabase Dashboard → Auth → Email → Confirm email OFF) so sign-up returns an active session without magic links.
+5. If you enable password reset, allow `fluentia://auth/update-password` in the Supabase redirect allow list. The app sends reset emails to that deep link and handles updating the password inside the app.
 
 ---
 
