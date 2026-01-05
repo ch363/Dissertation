@@ -6,6 +6,8 @@ This repo uses a simple layering model for the mobile app (Expo Router + TypeScr
 - src/modules/* — Facades: the stable, public API surface for UI. Explicit named exports with small JSDoc.
 - src/lib/* — Internal implementation details (data access, platform APIs, storage). Considered private.
 - src/providers/* — Cross-cutting React providers (Auth, Theme) that modules may re-export.
+- src/viewmodels/* — UI-facing hooks that load/shape data for screens (e.g., progress summary, learning modes).
+- src/components/ui/* — Reusable design-system primitives (buttons, cards) used across screens.
 
 Aliases and enforcement:
 - @/* → src/*
@@ -15,11 +17,13 @@ Aliases and enforcement:
 Routing conventions:
 - Feature routes are grouped under app/(feature)/... and tabbed routes under app/(tabs)/...
 - A global error boundary is provided at app/_error.tsx.
+- Screens should consume theme via ThemeProvider/useAppTheme and avoid hardcoded colors.
 
 Testing and CI:
 - Jest with jest-expo; see existing facade smoke tests in __tests__/.
 - CI runs lint, type-check, and tests on PRs/pushes (see .github/workflows/ci.yml).
 - Developer scripts: lint, lint:fix, format, format:check, type-check, test.
+- E2E: Maestro smoke (`tests/e2e/maestro/signup-onboarding.yaml`) covers sign-up → onboarding → first lesson.
 
 ---
 
@@ -60,6 +64,7 @@ Touch src/lib/* when:
 - You’re implementing data/storage/platform code (Supabase queries, speech, prefs, etc.).
 - You’re changing internal logic or performance that shouldn’t leak to UI.
 - You’re adding a new repository/service.
+- Progress source of truth: Supabase table `user_progress` with local cache merge; keep fetch/merge logic in lib.
 
 Touch src/modules/* when:
 - You’re defining or evolving the public API used by UI.
@@ -70,11 +75,13 @@ Touch app/* when:
 - You’re creating or modifying screens, layouts, or navigation.
 - You’re composing facades to render UI and handle interactions.
 - You need a developer-only utility under app/(dev)/**.
+- Prefer consuming data via viewmodels/hooks instead of inline IIFEs; handle loading/error states with retries.
 
 Notes:
 - The ESLint rule blocks app/* from importing @/lib/* and @/internal/* to keep the boundary clean.
 - Use @/modules/* in UI; if something is missing from a facade, add/export it there rather than importing from lib.
 - Central error handling: use the global error screen and log unexpected issues via @/modules/logging → src/lib/logger.
+- Reusable UI: prefer components in src/components/ui/* or feature-specific components under src/components/<feature>/* to reduce style duplication and ensure theme compatibility.
 
 ---
 

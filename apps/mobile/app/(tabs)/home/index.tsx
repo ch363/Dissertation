@@ -193,10 +193,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#2FA9C7',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
   },
   nodeAccent: {
     position: 'absolute',
@@ -206,10 +202,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#6AD2E9',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
   },
   floatingBookmark: {
     position: 'absolute',
@@ -231,10 +223,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#006D8F',
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
     overflow: 'hidden',
   },
   modulePillLocked: {

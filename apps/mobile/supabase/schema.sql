@@ -276,3 +276,44 @@ create policy "Users can update their own onboarding"
   on public.onboarding_answers for update
   to authenticated
   using ( auth.uid() = user_id );
+
+-- Progress tracking (user_progress)
+create table if not exists public.user_progress (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  completed text[] not null default '{}',
+  version integer not null default 0,
+  updated_at timestamp with time zone not null default now()
+);
+
+alter table public.user_progress enable row level security;
+
+drop policy if exists "Users can view their progress" on public.user_progress;
+create policy "Users can view their progress"
+  on public.user_progress for select
+  to authenticated
+  using ( auth.uid() = user_id );
+
+drop policy if exists "Users can upsert their progress" on public.user_progress;
+create policy "Users can upsert their progress"
+  on public.user_progress for insert
+  to authenticated
+  with check ( auth.uid() = user_id );
+
+drop policy if exists "Users can update their progress" on public.user_progress;
+create policy "Users can update their progress"
+  on public.user_progress for update
+  to authenticated
+  using ( auth.uid() = user_id );
+
+create or replace function public.set_user_progress_updated_at()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_user_progress_updated_at on public.user_progress;
+create trigger trg_user_progress_updated_at
+before update on public.user_progress
+for each row execute function public.set_user_progress_updated_at();

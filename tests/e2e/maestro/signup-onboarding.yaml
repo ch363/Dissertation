@@ -1,0 +1,25 @@
+appId: com.fluentia.mobile
+name: signup-onboarding-first-lesson
+tags:
+  - smoke
+---
+- launchApp
+- tapOn: "Get Started"
+- tapOn: "Email"
+- tapOn: "Name"
+- inputText: "Test User"
+- tapOn: "Email"
+- inputText: "testuser+maestro@example.com"
+- tapOn: "Password"
+- inputText: "Sup3rStrong!"
+- tapOn: "Create Account"
+- waitForText: "Step 1 of 3"
+- tapOn: "Next"
+- waitForText: "Preferred learning"
+- tapOn: "Next"
+- waitForText: "Experience level"
+- tapOn: "Finish"
+- waitForText: "Basics"
+- tapOn: "Basics"
+- waitForText: "Lesson"
+

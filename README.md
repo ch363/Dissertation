@@ -67,6 +67,17 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=...
 4. Disable email confirmations for password auth (Supabase Dashboard → Auth → Email → Confirm email OFF) so sign-up returns an active session without magic links.
 5. If you enable password reset, allow `fluentia://auth/update-password` in the Supabase redirect allow list. The app sends reset emails to that deep link and handles updating the password inside the app.
 
+### Progress table
+
+- Create `user_progress` with RLS (see `apps/mobile/supabase/schema.sql`):
+  - Columns: `user_id` (PK → auth.users, cascade), `completed` text[], `version` int, `updated_at` timestamptz default now().
+  - Trigger `trg_user_progress_updated_at` keeps `updated_at` fresh.
+
+### Testing
+
+- Unit/component: `npm test` (Jest with Expo mocks). Key coverage: auth-flow, onboarding mapper/provider, progress repo, Home screen.
+- E2E (Maestro): `tests/e2e/maestro/signup-onboarding.yaml` for sign-up → onboarding → first lesson smoke.
+
 ---
 
 ## Project Docs (Monorepo)

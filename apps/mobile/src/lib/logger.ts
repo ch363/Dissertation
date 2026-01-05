@@ -13,7 +13,7 @@ export function logError(error: unknown, context?: LogContext) {
       stack: error instanceof Error ? error.stack : undefined,
       context,
     };
-    // For now, print to console. Hook up Sentry or a backend here if desired.
+    // For now, print to console. Hook up a backend here if desired.
     // eslint-disable-next-line no-console
     console.error('[AppError]', base);
   } catch {

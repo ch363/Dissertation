@@ -19,10 +19,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: baseTheme.radius.lg,
     padding: baseTheme.spacing.md,
-    // shadow perf: solid background + outer shadow
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
   },
 });

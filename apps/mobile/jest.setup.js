@@ -13,6 +13,11 @@ jest.mock('expo-constants', () => ({
   },
 }));
 
+// Mock vector icons to avoid native module load in tests
+jest.mock('@expo/vector-icons', () => ({
+  Ionicons: 'Ionicons',
+}));
+
 // Mock Supabase client to avoid network/native usage in tests
 jest.mock('@supabase/supabase-js', () => ({
   createClient: () => ({
