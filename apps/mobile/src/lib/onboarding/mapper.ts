@@ -73,3 +73,5 @@ export function buildOnboardingSubmission(answers: OnboardingAnswers): Onboardin
     savedAt: new Date().toISOString(),
   };
 }
+
+export { ONBOARDING_SCHEMA_VERSION };

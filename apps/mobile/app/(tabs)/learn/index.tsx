@@ -1,55 +1,51 @@
-import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Image, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useAppTheme } from '../../../src/providers/ThemeProvider';
-
+import { Button } from '@/components/ui/Button';
+import { SurfaceCard } from '@/components/ui/SurfaceCard';
+import { useAppTheme } from '@/providers/ThemeProvider';
 import { theme as baseTheme } from '@/theme';
+import { useLearningModes } from '@/viewmodels/learningModes';
 
 export default function Learn() {
   const { theme } = useAppTheme();
+  const { modes, loading, error, refresh } = useLearningModes();
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.card}>
-          <Image source={{ uri: 'https://via.placeholder.com/300x160' }} style={styles.cardImage} />
-          <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Flashcards</Text>
-          <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>
-            Practice with images and words
-          </Text>
-          <Pressable style={[styles.button, { backgroundColor: theme.colors.primary }]}>
-            <Text style={styles.buttonText}>Start</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Multiple Choice</Text>
-          <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>
-            Colourful answer buttons
-          </Text>
-          <Pressable style={[styles.button, { backgroundColor: theme.colors.secondary }]}>
-            <Text style={styles.buttonText}>Start</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Typing Prompt</Text>
-          <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>
-            Type the translation
-          </Text>
-          <Pressable style={[styles.button, { backgroundColor: theme.colors.primary }]}>
-            <Text style={styles.buttonText}>Start</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Audio Prompt</Text>
-          <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>
-            Speak your answer
-          </Text>
-          <Pressable style={[styles.button, { backgroundColor: theme.colors.secondary }]}>
-            <Text style={styles.buttonText}>Start</Text>
-          </Pressable>
-        </View>
+        {loading ? (
+          <View style={styles.stateRow}>
+            <ActivityIndicator color={theme.colors.primary} />
+            <Text style={[styles.stateText, { color: theme.colors.mutedText }]}>
+              Loading modes…
+            </Text>
+          </View>
+        ) : error ? (
+          <View style={styles.stateRow}>
+            <Text style={[styles.stateText, { color: theme.colors.error }]}>{error}</Text>
+            <Pressable style={styles.retryButton} onPress={refresh} accessibilityRole="button">
+              <Text style={styles.retryText}>Retry</Text>
+            </Pressable>
+          </View>
+        ) : (
+          modes.map((mode) => (
+            <SurfaceCard key={mode.key} style={{ marginBottom: baseTheme.spacing.lg }}>
+              {mode.image ? (
+                <Image source={{ uri: mode.image }} style={styles.cardImage} resizeMode="cover" />
+              ) : null}
+              <Text style={[styles.cardTitle, { color: theme.colors.text }]}>{mode.title}</Text>
+              <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>
+                {mode.subtitle}
+              </Text>
+              <Button
+                title={mode.cta}
+                variant={mode.variant === 'primary' ? 'primary' : 'secondary'}
+                onPress={() => {}}
+                style={{ marginTop: baseTheme.spacing.sm }}
+              />
+            </SurfaceCard>
+          ))
+        )}
       </View>
     </SafeAreaView>
   );
@@ -64,14 +60,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: baseTheme.colors.background,
     padding: baseTheme.spacing.lg,
-  },
-  card: {
-    backgroundColor: baseTheme.colors.card,
-    borderRadius: baseTheme.radius.lg,
-    padding: baseTheme.spacing.lg,
-    marginBottom: baseTheme.spacing.lg,
-    borderWidth: 1,
-    borderColor: baseTheme.colors.border,
   },
   cardImage: {
     width: '100%',
@@ -95,6 +83,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonText: {
+    color: '#fff',
+    fontFamily: baseTheme.typography.semiBold,
+  },
+  stateRow: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: baseTheme.spacing.sm,
+    paddingVertical: baseTheme.spacing.lg,
+  },
+  stateText: {
+    textAlign: 'center',
+    fontFamily: baseTheme.typography.regular,
+  },
+  retryButton: {
+    paddingHorizontal: baseTheme.spacing.md,
+    paddingVertical: baseTheme.spacing.sm,
+    backgroundColor: baseTheme.colors.primary,
+    borderRadius: baseTheme.radius.md,
+  },
+  retryText: {
     color: '#fff',
     fontFamily: baseTheme.typography.semiBold,
   },

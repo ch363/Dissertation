@@ -1,31 +1,35 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, Pressable, Alert } from 'react-native';
+import { useMemo } from 'react';
+import { View, Text, StyleSheet, Image, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { getCompletedModules } from '../../../src/lib/progress';
-import { useAppTheme } from '../../../src/providers/ThemeProvider';
-
+import { useAppTheme } from '@/providers/ThemeProvider';
 import { theme as baseTheme } from '@/theme';
+import { useProgressSummary } from '@/viewmodels/progress';
 
 export default function HomeScreen() {
   const { theme, isDark } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const [completed, setCompleted] = useState<string[]>([]);
-
-  useEffect(() => {
-    (async () => {
-      const done = await getCompletedModules();
-      setCompleted(done);
-    })();
-  }, []);
+  const { completed, loading, error, refresh } = useProgressSummary();
+  const onLocked = useMemo(
+    () => () => Alert.alert('Locked', 'Complete the previous module to unlock this one.'),
+    []
+  );
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         {/* Curved top background */}
-        <View style={[styles.topBg, { backgroundColor: isDark ? '#0F1C2A' : '#EAF4FF' }]} />
+        <View
+          style={[
+            styles.topBg,
+            {
+              backgroundColor: isDark ? theme.colors.card : theme.colors.secondary,
+              opacity: 0.25,
+            },
+          ]}
+        />
 
         {/* Floating settings button at the top-right */}
         <Pressable
@@ -49,17 +53,34 @@ export default function HomeScreen() {
         <Text style={[styles.brand, { color: theme.colors.text }]}>Fluentia</Text>
 
         {/* Modules list */}
-        <ModuleList
-          completed={completed}
-          onLocked={() => Alert.alert('Locked', 'Complete the previous module to unlock this one.')}
-        />
+        <View style={{ minHeight: 200 }}>
+          {loading ? (
+            <View style={styles.stateRow}>
+              <ActivityIndicator color={theme.colors.primary} />
+              <Text style={[styles.stateText, { color: theme.colors.mutedText }]}>
+                Loading your modules…
+              </Text>
+            </View>
+          ) : error ? (
+            <View style={styles.stateRow}>
+              <Text style={[styles.stateText, { color: theme.colors.error }]}>{error}</Text>
+              <Pressable accessibilityRole="button" onPress={refresh} style={styles.retryButton}>
+                <Text style={{ color: '#fff', fontFamily: baseTheme.typography.semiBold }}>
+                  Retry
+                </Text>
+              </Pressable>
+            </View>
+          ) : (
+            <ModuleList completed={completed} onLocked={onLocked} />
+          )}
+        </View>
       </View>
     </SafeAreaView>
   );
 }
 
 function ModuleList({ completed, onLocked }: { completed: string[]; onLocked: () => void }) {
-  const { isDark } = useAppTheme();
+  const { theme, isDark } = useAppTheme();
   const modules = [
     { title: 'Basics', slug: 'basics', icon: 'star' as const },
     { title: 'Common Phrases', slug: 'common-phrases', icon: 'ellipse' as const },
@@ -86,7 +107,9 @@ function ModuleList({ completed, onLocked }: { completed: string[]; onLocked: ()
             accessibilityState={{ disabled }}
             style={[
               styles.modulePill,
-              { backgroundColor: isDark ? 'rgba(70,120,150,0.4)' : '#B7EBFF' },
+              {
+                backgroundColor: isDark ? 'rgba(70,120,150,0.25)' : `${theme.colors.secondary}33`,
+              },
               disabled && styles.modulePillLocked,
             ]}
           >
@@ -238,5 +261,21 @@ const styles = StyleSheet.create({
     top: 0,
     height: '55%',
     backgroundColor: 'rgba(255,255,255,0.28)',
+  },
+  stateRow: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: baseTheme.spacing.sm,
+    paddingVertical: baseTheme.spacing.lg,
+  },
+  stateText: {
+    fontFamily: baseTheme.typography.regular,
+    textAlign: 'center',
+  },
+  retryButton: {
+    paddingHorizontal: baseTheme.spacing.md,
+    paddingVertical: baseTheme.spacing.sm,
+    backgroundColor: baseTheme.colors.primary,
+    borderRadius: baseTheme.radius.md,
   },
 });

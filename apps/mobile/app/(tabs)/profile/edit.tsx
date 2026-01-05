@@ -14,8 +14,8 @@ import Toast from 'react-native-toast-message';
 
 import { getCurrentUser } from '@/modules/auth';
 import { getOnboarding } from '@/modules/onboarding';
-import { upsertMyProfile, getMyProfile, ensureProfileSeed } from '@/modules/profile';
-import { uploadAvatar } from '@/modules/profile/avatar';
+import { ensureProfileSeed, getMyProfile, upsertMyProfile } from '@/modules/profile';
+import { uploadProfileAvatar } from '@/modules/profile/avatar';
 import { useAppTheme } from '@/modules/settings';
 import { theme as baseTheme } from '@/theme';
 
@@ -93,7 +93,7 @@ export default function EditProfileScreen() {
     if (!u?.id) return;
     try {
       setSaving(true);
-      const url = await uploadAvatar(uri, u.id);
+      const url = await uploadProfileAvatar(uri, u.id);
       await upsertMyProfile({ avatar_url: url });
       setAvatarUrl(url);
       showToast('Avatar updated');

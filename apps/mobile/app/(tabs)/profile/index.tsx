@@ -10,7 +10,7 @@ import { Card } from '@/components/profile/Card';
 import { ProfileHeader } from '@/components/profile/Header';
 import { ProgressBar } from '@/components/profile/ProgressBar';
 import { StatPill } from '@/components/profile/StatPill';
-import { refreshSignedAvatarUrlFromUrl } from '@/modules/profile/avatar';
+import { refreshAvatarUrl } from '@/modules/profile/avatar';
 import { getProgressSummary, type ProgressSummary } from '@/modules/progress';
 import { useAppTheme } from '@/modules/settings';
 import { theme as baseTheme } from '@/theme';
@@ -36,7 +36,7 @@ export default function Profile() {
       setDisplayName(String(name));
       if (prof?.avatar_url) {
         try {
-          const fresh = await refreshSignedAvatarUrlFromUrl(prof.avatar_url);
+          const fresh = await refreshAvatarUrl(prof.avatar_url);
           setAvatarUrl(fresh);
         } catch {
           setAvatarUrl(prof.avatar_url);
