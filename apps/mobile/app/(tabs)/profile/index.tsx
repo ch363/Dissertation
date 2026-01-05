@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { supabase } from '../../../src/lib/supabase';
+import { getSupabaseClient } from '../../../src/lib/supabase';
 
 import { Badge } from '@/components/profile/Badge';
 import { Card } from '@/components/profile/Card';
@@ -23,6 +23,7 @@ export default function Profile() {
 
   useEffect(() => {
     (async () => {
+      const supabase = getSupabaseClient();
       const { data: u } = await supabase.auth.getUser();
       const id = u.user?.id;
       if (!id) return;

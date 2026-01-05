@@ -13,7 +13,7 @@ import {
   updatePassword as updatePasswordClient,
 } from '@/lib/auth';
 import { resolvePostAuthDestination } from '@/lib/auth-flow';
-import { supabase } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 
 type SignUpResult = { user: User | null; session: Session | null };
 
@@ -42,6 +42,7 @@ export async function signUpWithEmail(
   email: string,
   password: string
 ): Promise<SignUpResult> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -58,11 +59,13 @@ export async function signUpWithEmail(
 }
 
 export async function getCurrentUser() {
+  const supabase = getSupabaseClient();
   const { data } = await supabase.auth.getUser();
   return data.user ?? null;
 }
 
 export async function getSession() {
+  const supabase = getSupabaseClient();
   const { data } = await supabase.auth.getSession();
   return data.session ?? null;
 }
@@ -72,6 +75,7 @@ export async function signOut() {
 }
 
 export async function setSessionFromEmailLink(accessToken: string, refreshToken: string) {
+  const supabase = getSupabaseClient();
   const { error, data } = await supabase.auth.setSession({
     access_token: accessToken,
     refresh_token: refreshToken,

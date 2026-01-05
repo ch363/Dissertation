@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { getSupabaseClient } from './supabase';
 
 export type SentenceRow = {
   id: number;
@@ -32,6 +32,7 @@ export async function fetchSentences(
   languageCode: string,
   opts?: { limit?: number; difficulty?: number }
 ) {
+  const supabase = getSupabaseClient();
   const q = supabase
     .from('sentences')
     .select('*')
@@ -49,6 +50,7 @@ export async function fetchSentenceWithTranslation(
   targetLanguageCode: string,
   opts?: { limit?: number; difficulty?: number }
 ) {
+  const supabase = getSupabaseClient();
   const q = supabase
     .from('sentences')
     .select('*, sentence_translations!inner(text, target_language_code)')
@@ -69,6 +71,7 @@ export async function fetchClozeTemplates(
   targetLanguageCode?: string,
   opts?: { limit?: number; level?: number }
 ) {
+  const supabase = getSupabaseClient();
   const q = supabase
     .from('cloze_templates')
     .select(

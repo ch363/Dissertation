@@ -5,7 +5,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { supabase } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 import { getSession } from '@/modules/auth';
 import { ensureProfileSeed, upsertMyProfile } from '@/modules/profile';
 import { theme as baseTheme } from '@/theme';
@@ -34,6 +34,7 @@ export default function DbHealth() {
 
   async function load() {
     try {
+      const supabase = getSupabaseClient();
       const session = await getSession();
       const { data: u } = await supabase.auth.getUser();
       setSessionInfo({ user: u.user, hasSession: !!session });
@@ -62,6 +63,7 @@ export default function DbHealth() {
 
   async function checkProfilesSchema() {
     try {
+      const supabase = getSupabaseClient();
       setSchemaStatus('unknown');
       setSchemaMsg('');
       const { data: u } = await supabase.auth.getUser();
@@ -228,6 +230,7 @@ for each row execute function public.set_updated_at();`;
             style={[styles.chip, { backgroundColor: baseTheme.colors.card }]}
             onPress={async () => {
               // Repair missing profile name if we can infer it
+              const supabase = getSupabaseClient();
               const { data: u } = await supabase.auth.getUser();
               const metaName = (u.user?.user_metadata as any)?.name || u.user?.email || '';
               await ensureProfileSeed(metaName || undefined);

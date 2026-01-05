@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { getSupabaseClient } from './supabase';
 
 function fileNameFromUri(uri: string) {
   const q = uri.split('?')[0];
@@ -6,6 +6,7 @@ function fileNameFromUri(uri: string) {
 }
 
 export async function uploadAvatar(fileUri: string, userId: string): Promise<string> {
+  const supabase = getSupabaseClient();
   const fileName = fileNameFromUri(fileUri);
   const path = `${userId}/${Date.now()}-${fileName}`;
   const res = await fetch(fileUri);
@@ -25,6 +26,7 @@ export async function uploadAvatar(fileUri: string, userId: string): Promise<str
 // If parsing fails or storage re-sign fails, returns the original url.
 export async function refreshSignedAvatarUrlFromUrl(url: string): Promise<string> {
   try {
+    const supabase = getSupabaseClient();
     const u = new URL(url);
     // Match /storage/v1/object/sign/avatars/<path>
     const parts = u.pathname.split('/');

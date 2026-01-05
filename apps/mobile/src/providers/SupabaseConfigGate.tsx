@@ -1,0 +1,108 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { useAppTheme } from './ThemeProvider';
+import { getSupabaseConfigStatus, initSupabaseClient, SupabaseConfigError } from '../lib/supabase';
+
+type ConfigStatus = ReturnType<typeof getSupabaseConfigStatus>;
+
+export function SupabaseConfigGate({ children }: { children: React.ReactNode }) {
+  const { theme } = useAppTheme();
+  const [status, setStatus] = useState<ConfigStatus>(() => getSupabaseConfigStatus());
+
+  const tryInit = useCallback(() => {
+    try {
+      initSupabaseClient();
+      setStatus(getSupabaseConfigStatus());
+    } catch (err) {
+      const missing = err instanceof SupabaseConfigError ? err.missing : [];
+      setStatus({
+        status: 'error',
+        message:
+          err instanceof Error
+            ? err.message
+            : 'Unable to initialize Supabase. Check environment configuration.',
+        missing,
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    tryInit();
+  }, [tryInit]);
+
+  const body = useMemo(() => {
+    if (status.status === 'pending') {
+      return (
+        <View style={styles.center}>
+          <ActivityIndicator color={theme.colors.primary} size="small" />
+          <Text style={[styles.message, { color: theme.colors.text, marginTop: theme.spacing.sm }]}>
+            Checking Supabase configuration…
+          </Text>
+        </View>
+      );
+    }
+
+    if (status.status === 'error') {
+      return (
+        <View style={styles.center}>
+          <Text style={[styles.title, { color: theme.colors.text }]}>Configuration needed</Text>
+          <Text style={[styles.message, { color: theme.colors.mutedText }]}>{status.message}</Text>
+          {status.missing?.length ? (
+            <Text style={[styles.code, { color: theme.colors.text }]}>
+              Missing: {status.missing.join(', ')}
+            </Text>
+          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            onPress={tryInit}
+            style={[
+              styles.button,
+              { backgroundColor: theme.colors.primary, marginTop: theme.spacing.md },
+            ]}
+          >
+            <Text style={{ color: '#fff', fontFamily: theme.typography.semiBold }}>Retry</Text>
+          </Pressable>
+        </View>
+      );
+    }
+
+    return children;
+  }, [children, status, theme, tryInit]);
+
+  return (
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+      {body}
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1 },
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  message: {
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  code: {
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  button: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+});

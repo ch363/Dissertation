@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { getSupabaseClient } from './supabase';
 
 export type LessonAttempt = {
   id?: number;
@@ -13,6 +13,7 @@ export type LessonAttempt = {
 export async function insertLessonAttempt(
   entry: Omit<LessonAttempt, 'id' | 'created_at' | 'user_id'>
 ) {
+  const supabase = getSupabaseClient();
   const { data: u } = await supabase.auth.getUser();
   const user_id = u.user?.id;
   if (!user_id) throw new Error('Not authenticated');

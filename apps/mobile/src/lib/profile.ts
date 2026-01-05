@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { getSupabaseClient } from './supabase';
 
 export type Profile = {
   id: string;
@@ -9,6 +9,7 @@ export type Profile = {
 };
 
 export async function getMyProfile() {
+  const supabase = getSupabaseClient();
   const { data: u } = await supabase.auth.getUser();
   const id = u.user?.id;
   if (!id) return null;
@@ -22,6 +23,7 @@ export async function getMyProfile() {
 }
 
 export async function upsertMyProfile(update: Partial<Profile>) {
+  const supabase = getSupabaseClient();
   const { data: u } = await supabase.auth.getUser();
   const id = u.user?.id;
   if (!id) throw new Error('No user');
@@ -60,6 +62,7 @@ export async function upsertMyProfile(update: Partial<Profile>) {
 
 // Ensure a profile row exists for the current authenticated user
 export async function ensureProfileSeed(name?: string) {
+  const supabase = getSupabaseClient();
   const { data: u } = await supabase.auth.getUser();
   const id = u.user?.id;
   if (!id) return null; // not signed in yet (e.g., email confirm flow)

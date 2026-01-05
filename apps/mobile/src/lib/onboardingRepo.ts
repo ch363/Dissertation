@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { getSupabaseClient } from './supabase';
 import type { OnboardingAnswers } from '../onboarding/OnboardingContext';
 import { buildOnboardingSubmission, type OnboardingSubmission } from '../onboarding/signals';
 
@@ -8,6 +8,7 @@ export type Profile = {
 };
 
 export async function upsertProfile(userId: string, name?: string) {
+  const supabase = getSupabaseClient();
   const { error } = await supabase
     .from('profiles')
     .upsert({ id: userId, name }, { onConflict: 'id' });
@@ -15,6 +16,7 @@ export async function upsertProfile(userId: string, name?: string) {
 }
 
 export async function saveOnboarding(userId: string, answers: OnboardingAnswers) {
+  const supabase = getSupabaseClient();
   const submission = buildOnboardingSubmission(answers);
   const payload = { user_id: userId, answers: submission };
   const { error } = await supabase
@@ -24,6 +26,7 @@ export async function saveOnboarding(userId: string, answers: OnboardingAnswers)
 }
 
 export async function hasOnboarding(userId: string): Promise<boolean> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('onboarding_answers')
     .select('user_id')
@@ -37,6 +40,7 @@ export async function hasOnboarding(userId: string): Promise<boolean> {
 }
 
 export async function getOnboarding(userId: string): Promise<OnboardingAnswers | null> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('onboarding_answers')
     .select('answers')
@@ -54,6 +58,7 @@ export async function getOnboarding(userId: string): Promise<OnboardingAnswers |
 export async function getOnboardingSubmission(
   userId: string
 ): Promise<OnboardingSubmission | null> {
+  const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('onboarding_answers')
     .select('answers')

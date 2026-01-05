@@ -10,6 +10,7 @@ import Toast from 'react-native-toast-message';
 
 import { OnboardingProvider } from '../src/onboarding/OnboardingContext';
 import { AuthProvider } from '../src/providers/AuthProvider';
+import { SupabaseConfigGate } from '../src/providers/SupabaseConfigGate';
 import { ThemeProvider, useAppTheme } from '../src/providers/ThemeProvider';
 
 export default function RootLayout() {
@@ -19,16 +20,18 @@ export default function RootLayout() {
   if (!loaded) return null;
 
   return (
-    <AuthProvider>
-      <OnboardingProvider>
-        <ThemeProvider>
-          <SafeAreaProvider>
-            <ThemedStack />
-            <Toast />
-          </SafeAreaProvider>
-        </ThemeProvider>
-      </OnboardingProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <SupabaseConfigGate>
+        <AuthProvider>
+          <OnboardingProvider>
+            <SafeAreaProvider>
+              <ThemedStack />
+              <Toast />
+            </SafeAreaProvider>
+          </OnboardingProvider>
+        </AuthProvider>
+      </SupabaseConfigGate>
+    </ThemeProvider>
   );
 }
 

@@ -1,7 +1,7 @@
 import type { Session } from '@supabase/supabase-js';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
-import { supabase } from '../lib/supabase';
+import { getSupabaseClient } from '../lib/supabase';
 
 type AuthCtx = {
   session: Session | null;
@@ -16,6 +16,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    const supabase = getSupabaseClient();
 
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
