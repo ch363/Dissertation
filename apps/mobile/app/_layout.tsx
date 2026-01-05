@@ -10,6 +10,7 @@ import Toast from 'react-native-toast-message';
 
 import { OnboardingProvider } from '../src/onboarding/OnboardingContext';
 import { AuthProvider } from '../src/providers/AuthProvider';
+import { RouteGuard } from '../src/providers/RouteGuard';
 import { SupabaseConfigGate } from '../src/providers/SupabaseConfigGate';
 import { ThemeProvider, useAppTheme } from '../src/providers/ThemeProvider';
 
@@ -24,10 +25,12 @@ export default function RootLayout() {
       <SupabaseConfigGate>
         <AuthProvider>
           <OnboardingProvider>
-            <SafeAreaProvider>
-              <ThemedStack />
-              <Toast />
-            </SafeAreaProvider>
+            <RouteGuard>
+              <SafeAreaProvider>
+                <ThemedStack />
+                <Toast />
+              </SafeAreaProvider>
+            </RouteGuard>
           </OnboardingProvider>
         </AuthProvider>
       </SupabaseConfigGate>
