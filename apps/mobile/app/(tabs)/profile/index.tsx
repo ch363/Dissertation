@@ -5,15 +5,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '../../../src/lib/supabase';
 
+import { Badge } from '@/components/profile/Badge';
+import { Card } from '@/components/profile/Card';
+import { ProfileHeader } from '@/components/profile/Header';
+import { ProgressBar } from '@/components/profile/ProgressBar';
+import { StatPill } from '@/components/profile/StatPill';
 import { refreshSignedAvatarUrlFromUrl } from '@/modules/profile/avatar';
 import { getProgressSummary, type ProgressSummary } from '@/modules/progress';
 import { useAppTheme } from '@/modules/settings';
 import { theme as baseTheme } from '@/theme';
-import { ProfileHeader } from '@/components/profile/Header';
-import { Card } from '@/components/profile/Card';
-import { StatPill } from '@/components/profile/StatPill';
-import { ProgressBar } from '@/components/profile/ProgressBar';
-import { Badge } from '@/components/profile/Badge';
 
 export default function Profile() {
   const { theme } = useAppTheme();
@@ -57,9 +57,7 @@ export default function Profile() {
         {/* Hero header */}
         <ProfileHeader
           title={displayName || 'Your Profile'}
-          subtitle={
-            progress ? `XP ${progress.xp} • Streak ${progress.streak}🔥` : 'Loading…'
-          }
+          subtitle={progress ? `XP ${progress.xp} • Streak ${progress.streak}🔥` : 'Loading…'}
           avatarUrl={avatarUrl}
           right={
             <Link href="/(tabs)/profile/edit" asChild>
@@ -89,17 +87,27 @@ export default function Profile() {
 
         {/* Progress card */}
         <Card style={{ marginTop: baseTheme.spacing.lg }}>
-          <Text style={[styles.summaryTitle, { color: theme.colors.text, marginBottom: 8 }]}>Next Level</Text>
+          <Text style={[styles.summaryTitle, { color: theme.colors.text, marginBottom: 8 }]}>
+            Next Level
+          </Text>
           <ProgressBar progress={progress ? ((progress.xp ?? 0) % 100) / 100 : 0} />
           <Link href="/(tabs)/profile/progress" asChild>
-            <Pressable style={[styles.linkButton, { alignSelf: 'flex-start' }]} accessibilityRole="button" hitSlop={8}>
-              <Text style={[styles.linkText, { color: theme.colors.primary }]}>View full progress</Text>
+            <Pressable
+              style={[styles.linkButton, { alignSelf: 'flex-start' }]}
+              accessibilityRole="button"
+              hitSlop={8}
+            >
+              <Text style={[styles.linkText, { color: theme.colors.primary }]}>
+                View full progress
+              </Text>
             </Pressable>
           </Link>
         </Card>
 
         {/* Achievements preview */}
-        <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>Achievements</Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>
+          Achievements
+        </Text>
         <Card>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             <Badge text="Daily Learner" />
@@ -108,14 +116,20 @@ export default function Profile() {
             <Badge text="Consistent" />
           </View>
           <Link href="/(tabs)/profile/achievements" asChild>
-            <Pressable style={[styles.linkButton, { alignSelf: 'flex-start' }]} accessibilityRole="button" hitSlop={8}>
+            <Pressable
+              style={[styles.linkButton, { alignSelf: 'flex-start' }]}
+              accessibilityRole="button"
+              hitSlop={8}
+            >
               <Text style={[styles.linkText, { color: theme.colors.primary }]}>See all</Text>
             </Pressable>
           </Link>
         </Card>
 
         {/* Account */}
-        <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>Account</Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>
+          Account
+        </Text>
         <Card>
           <Link href="/(tabs)/profile/edit" asChild>
             <Pressable accessibilityRole="button" style={styles.row}>

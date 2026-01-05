@@ -32,11 +32,5 @@ jobs:
       - name: Install
         run: npm ci --no-audit --no-fund
 
-      - name: Lint
-        run: npm run lint --silent
-
-      - name: Type check
-        run: npm run type-check --silent
-
-      - name: Tests
-        run: npm test -- --ci --reporters=default --reporters=github-actions
+      - name: CI (lint + type-check + tests)
+        run: npm run ci --silent

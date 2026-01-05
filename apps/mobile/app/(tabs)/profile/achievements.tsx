@@ -1,10 +1,10 @@
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Badge } from '@/components/profile/Badge';
+import { Card } from '@/components/profile/Card';
 import { useAppTheme } from '@/modules/settings';
 import { theme as baseTheme } from '@/theme';
-import { Card } from '@/components/profile/Card';
-import { Badge } from '@/components/profile/Badge';
 
 export default function AchievementsScreen() {
   const { theme } = useAppTheme();
@@ -21,10 +21,19 @@ export default function AchievementsScreen() {
           </View>
         </Card>
 
-        <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>All Badges</Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>
+          All Badges
+        </Text>
         <Card>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {['Daily Learner', 'Grammar Guru', 'Pronunciation Pro', 'Consistent', 'Storyteller', 'Flashcard Fan'].map((t) => (
+            {[
+              'Daily Learner',
+              'Grammar Guru',
+              'Pronunciation Pro',
+              'Consistent',
+              'Storyteller',
+              'Flashcard Fan',
+            ].map((t) => (
               <Badge key={t} text={t} />
             ))}
           </View>

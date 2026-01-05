@@ -51,7 +51,9 @@ export async function getOnboarding(userId: string): Promise<OnboardingAnswers |
   return stored as OnboardingAnswers;
 }
 
-export async function getOnboardingSubmission(userId: string): Promise<OnboardingSubmission | null> {
+export async function getOnboardingSubmission(
+  userId: string
+): Promise<OnboardingSubmission | null> {
   const { data, error } = await supabase
     .from('onboarding_answers')
     .select('answers')

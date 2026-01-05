@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, Pressable } from 'react-native';
+
 import { theme as baseTheme } from '@/theme';
 
 type Props = {
@@ -13,7 +14,12 @@ type Props = {
 export function ProfileHeader({ title, subtitle, avatarUrl, onAvatarPress, right }: Props) {
   return (
     <View style={styles.row}>
-      <Pressable onPress={onAvatarPress} hitSlop={8} style={styles.avatarWrap} accessibilityRole="button">
+      <Pressable
+        onPress={onAvatarPress}
+        hitSlop={8}
+        style={styles.avatarWrap}
+        accessibilityRole="button"
+      >
         {avatarUrl ? (
           <Image source={{ uri: avatarUrl }} style={styles.avatar} />
         ) : (

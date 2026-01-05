@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+
+import { saveOnboarding } from '../lib/onboardingRepo';
 
 import { getCurrentUser } from '@/modules/auth';
-import { saveOnboarding } from '../lib/onboardingRepo';
 
 export type OnboardingAnswers = {
   motivation?: { key: string; otherText?: string } | null;
@@ -32,7 +33,7 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const retryRef = useRef<NodeJS.Timeout | null>(null);
 
-  async function persist(next: OnboardingAnswers, attempt = 0) {
+  const persist = useCallback(async (next: OnboardingAnswers, attempt = 0) => {
     try {
       const user = await getCurrentUser();
       if (!user) return;
@@ -44,7 +45,7 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         retryRef.current = setTimeout(() => persist(next, attempt + 1), delay);
       }
     }
-  }
+  }, []);
 
   const api = useMemo<Ctx>(
     () => ({
@@ -60,7 +61,7 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       },
       reset: () => setAnswers({}),
     }),
-    [answers]
+    [answers, persist]
   );
 
   return <OnboardingContext.Provider value={api}>{children}</OnboardingContext.Provider>;

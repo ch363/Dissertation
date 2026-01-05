@@ -16,7 +16,10 @@ export default function VerifyEmail() {
           We sent a confirmation link to {email || 'your email address'}. Tap the link to activate
           your account, then log in.
         </Text>
-        <Pressable style={[styles.button, styles.primary]} onPress={() => router.replace('/auth/sign-in')}>
+        <Pressable
+          style={[styles.button, styles.primary]}
+          onPress={() => router.replace('/auth/sign-in')}
+        >
           <Text style={styles.buttonText}>Back to Log In</Text>
         </Pressable>
       </View>
@@ -55,4 +58,3 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.semiBold,
   },
 });
-

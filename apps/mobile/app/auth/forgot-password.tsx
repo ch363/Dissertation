@@ -2,7 +2,7 @@ import { Link } from 'expo-router';
 import { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, ActivityIndicator } from 'react-native';
 
-import { sendPasswordReset } from '@/lib/auth';
+import { sendPasswordReset } from '@/modules/auth';
 import { theme } from '@/theme';
 
 const emailRegex = /\S+@\S+\.\S+/;
@@ -123,4 +123,3 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
   },
 });
-

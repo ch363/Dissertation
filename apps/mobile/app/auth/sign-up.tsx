@@ -1,18 +1,9 @@
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  Pressable,
-  ScrollView,
-  Image,
-} from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { resolvePostAuthDestination } from '@/lib/auth-flow';
-import { signUpWithEmail } from '@/modules/auth';
+import { resolvePostAuthDestination, signUpWithEmail } from '@/modules/auth';
 import { theme } from '@/theme';
 
 const emailRegex = /\S+@\S+\.\S+/;
@@ -115,7 +106,9 @@ export default function SignUp() {
             onPress={handleSignUp}
             disabled={!canSubmit}
           >
-            <Text style={styles.buttonText}>{loading ? 'Creating account…' : 'Create Account'}</Text>
+            <Text style={styles.buttonText}>
+              {loading ? 'Creating account…' : 'Create Account'}
+            </Text>
           </Pressable>
 
           <Link href="/auth/sign-in" style={styles.link}>
@@ -206,4 +199,3 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
   },
 });
-

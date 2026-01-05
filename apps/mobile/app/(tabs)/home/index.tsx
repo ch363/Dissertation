@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, Pressable, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { getCurrentUser } from '@/modules/auth';
 import { getCompletedModules } from '../../../src/lib/progress';
 import { useAppTheme } from '../../../src/providers/ThemeProvider';
 
@@ -13,16 +12,10 @@ import { theme as baseTheme } from '@/theme';
 export default function HomeScreen() {
   const { theme, isDark } = useAppTheme();
   const insets = useSafeAreaInsets();
-  // Removed unused 'name' state
-  const [, setName] = useState<string>('');
   const [completed, setCompleted] = useState<string[]>([]);
 
   useEffect(() => {
     (async () => {
-      const user = await getCurrentUser();
-      const metaName = (user?.user_metadata as any)?.name as string | undefined;
-      const fallback = user?.email?.split('@')[0] ?? 'Learner';
-      setName(metaName || fallback || 'Learner');
       const done = await getCompletedModules();
       setCompleted(done);
     })();

@@ -3,9 +3,12 @@ import { Link, router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, ActivityIndicator } from 'react-native';
 
-import { resolvePostAuthDestination } from '@/lib/auth-flow';
-import { updatePassword } from '@/lib/auth';
-import { supabase } from '@/lib/supabase';
+import {
+  getCurrentUser,
+  resolvePostAuthDestination,
+  setSessionFromEmailLink,
+  updatePassword,
+} from '@/modules/auth';
 import { theme } from '@/theme';
 
 type TokenResult = { accessToken: string; refreshToken: string };
@@ -47,16 +50,14 @@ export default function UpdatePassword() {
         setProcessing(false);
         return;
       }
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
-      if (sessionError) {
-        setError(sessionError.message);
+      try {
+        await setSessionFromEmailLink(accessToken, refreshToken);
+        setSessionReady(true);
+      } catch (sessionError: any) {
+        setError(sessionError?.message ?? 'Unable to restore your session from the reset link.');
         setProcessing(false);
         return;
       }
-      setSessionReady(true);
       setProcessing(false);
     },
     [setProcessing]
@@ -86,7 +87,7 @@ export default function UpdatePassword() {
       setLoading(true);
       setError(null);
       const { user } = await updatePassword(newPassword);
-      const userId = user?.id || (await supabase.auth.getUser()).data.user?.id;
+      const userId = user?.id || (await getCurrentUser())?.id;
       if (userId) {
         const destination = await resolvePostAuthDestination(userId);
         router.replace(destination);
@@ -206,4 +207,3 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
   },
 });
-

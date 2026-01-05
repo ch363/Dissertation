@@ -2,10 +2,9 @@
  * Authentication facade — email/password only.
  * Supports optional email confirmation via emailRedirectTo.
  */
-import Constants from 'expo-constants';
 import type { Session, User } from '@supabase/supabase-js';
+import Constants from 'expo-constants';
 
-import { supabase } from '@/lib/supabase';
 import {
   sendPasswordReset,
   signInWithEmailPassword,
@@ -13,6 +12,8 @@ import {
   signUpWithEmailPassword,
   updatePassword as updatePasswordClient,
 } from '@/lib/auth';
+import { resolvePostAuthDestination } from '@/lib/auth-flow';
+import { supabase } from '@/lib/supabase';
 
 type SignUpResult = { user: User | null; session: Session | null };
 
@@ -70,9 +71,19 @@ export async function signOut() {
   await signOutClient();
 }
 
+export async function setSessionFromEmailLink(accessToken: string, refreshToken: string) {
+  const { error, data } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+  if (error) throw error;
+  return data.session ?? null;
+}
+
 export {
   sendPasswordReset,
   updatePasswordClient as updatePassword,
   signInWithEmailPassword,
   signUpWithEmailPassword,
+  resolvePostAuthDestination,
 };

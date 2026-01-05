@@ -1,5 +1,5 @@
-import { ensureProfileSeed } from '@/modules/profile';
 import { hasOnboarding } from '@/modules/onboarding';
+import { ensureProfileSeed } from '@/modules/profile';
 
 /**
  * Centralized post-auth flow resolution.
@@ -11,4 +11,3 @@ export async function resolvePostAuthDestination(userId: string) {
   const onboardingDone = await hasOnboarding(userId);
   return onboardingDone ? '/(tabs)/home' : '/onboarding/welcome';
 }
-

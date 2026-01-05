@@ -1,19 +1,10 @@
 import { router } from 'expo-router';
-import { Text, StyleSheet, View } from 'react-native';
 
-import {
-  Stepper,
-  Option,
-  PrimaryButton,
-  StickyCTA,
-  WhyWeAskLink,
-  QuestionScreen,
-} from './_components';
+import { OptionQuestion } from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
 
 import { getCurrentUser } from '@/modules/auth';
 import { saveOnboarding } from '@/modules/onboarding';
-import { theme } from '@/theme';
 
 export default function ExperienceLevel() {
   const { setAnswerAndSave, answers } = useOnboarding();
@@ -26,11 +17,12 @@ export default function ExperienceLevel() {
   ];
 
   const onFinish = async () => {
-    setAnswerAndSave('experience', selected ?? '');
+    const experienceValue = selected ?? '';
+    setAnswerAndSave('experience', experienceValue);
     try {
       const user = await getCurrentUser();
       if (user) {
-        await saveOnboarding(user.id, { ...answers, experience: selected ?? '' });
+        await saveOnboarding(user.id, { ...answers, experience: experienceValue });
       }
     } catch {}
     router.replace('/onboarding/completion');
@@ -38,39 +30,19 @@ export default function ExperienceLevel() {
   const onSkip = () => router.replace('/onboarding/completion');
 
   return (
-    <QuestionScreen
-      footer={
-        <StickyCTA>
-          <PrimaryButton title="Finish" onPress={onFinish} disabled={!selected} />
-          <View style={{ height: 8 }} />
-          <PrimaryButton title="Skip / Not sure" onPress={onSkip} />
-        </StickyCTA>
-      }
-    >
-      <Stepper current={9} total={9} />
-      <Text style={styles.title}>What’s your experience level?</Text>
-      <WhyWeAskLink />
-      {options.map((o) => (
-        <Option
-          key={o.key}
-          label={o.label}
-          selected={selected === o.key}
-          onPress={() => {
-            setAnswerAndSave('experience', o.key);
-          }}
-          icon={o.icon}
-        />
-      ))}
-    </QuestionScreen>
+    <OptionQuestion
+      step={9}
+      title="What’s your experience level?"
+      options={options}
+      selected={selected}
+      onChange={(next) => {
+        const nextKey = next[0];
+        if (nextKey) setAnswerAndSave('experience', nextKey);
+      }}
+      nextLabel="Finish"
+      onNext={onFinish}
+      onSkip={onSkip}
+      nextRoute="/onboarding/completion"
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  title: {
-    fontFamily: theme.typography.semiBold,
-    fontSize: 22,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.lg,
-  },
-  // next button styles moved to shared components
-});

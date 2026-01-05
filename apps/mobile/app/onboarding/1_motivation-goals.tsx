@@ -1,21 +1,8 @@
-import { router } from 'expo-router';
-import { Text, StyleSheet, View } from 'react-native';
-
-import {
-  Stepper,
-  Option,
-  PrimaryButton,
-  StickyCTA,
-  WhyWeAskLink,
-  QuestionScreen,
-} from './_components';
+import { OptionQuestion } from './_components';
 import { useOnboarding } from '../../src/onboarding/OnboardingContext';
-
-import { theme } from '@/theme';
 
 export default function MotivationGoals() {
   const { answers, setAnswerAndSave } = useOnboarding();
-  const selected = answers.motivation?.key ?? null;
 
   const options = [
     { key: 'travel', icon: '🛫', label: 'For travel' },
@@ -24,58 +11,17 @@ export default function MotivationGoals() {
     { key: 'fun', icon: '🎮', label: 'For fun/personal growth' },
   ];
 
-  const onNext = () => {
-    // Already saved on selection; proceed
-    router.push('/onboarding/2_preferred-learning');
-  };
-  const onSkip = () => {
-    router.push('/onboarding/2_preferred-learning');
-  };
-
   return (
-    <QuestionScreen
-      footer={
-        <StickyCTA>
-          <PrimaryButton title="Next" onPress={onNext} disabled={!selected} />
-          <View style={{ height: 8 }} />
-          <PrimaryButton title="Skip / Not sure" onPress={onSkip} />
-        </StickyCTA>
-      }
-    >
-      <Stepper current={1} total={9} />
-      <Text style={styles.title}>Motivation & Goals</Text>
-      <WhyWeAskLink />
-      {options.map((o) => (
-        <Option
-          key={o.key}
-          label={o.label}
-          selected={selected === o.key}
-          onPress={() => {
-            setAnswerAndSave('motivation', { key: o.key });
-          }}
-          icon={o.icon}
-        />
-      ))}
-    </QuestionScreen>
+    <OptionQuestion
+      step={1}
+      title="Motivation & Goals"
+      options={options}
+      selected={answers.motivation?.key}
+      onChange={(next) => {
+        const nextKey = next[0];
+        if (nextKey) setAnswerAndSave('motivation', { key: nextKey });
+      }}
+      nextRoute="/onboarding/2_preferred-learning"
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  title: {
-    fontFamily: theme.typography.semiBold,
-    fontSize: 22,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.lg,
-  },
-  input: {
-    backgroundColor: theme.colors.card,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: theme.colors.text,
-    marginTop: theme.spacing.sm,
-  },
-  // next button styles moved to shared components
-});

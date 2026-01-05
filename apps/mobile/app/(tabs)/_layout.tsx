@@ -18,7 +18,6 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
       style={[
         styles.tabBarWrapper,
         {
-   
           // solid background improves shadow perf
           backgroundColor: theme.colors.card,
           shadowColor: '#000',

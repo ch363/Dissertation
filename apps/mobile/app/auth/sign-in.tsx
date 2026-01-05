@@ -12,8 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { resolvePostAuthDestination } from '@/lib/auth-flow';
-import { signInWithEmailPassword } from '@/lib/auth';
+import { resolvePostAuthDestination, signInWithEmailPassword } from '@/modules/auth';
 import { theme } from '@/theme';
 
 const emailRegex = /\S+@\S+\.\S+/;
@@ -48,7 +47,11 @@ export default function SignIn() {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
-          <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+          <Image
+            source={require('../../assets/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.title}>Welcome back</Text>
           <Text style={styles.subtitle}>Choose how you’d like to continue</Text>
 

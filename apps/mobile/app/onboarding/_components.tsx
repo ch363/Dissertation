@@ -1,9 +1,13 @@
+import { router } from 'expo-router';
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, Modal, ScrollView } from 'react-native';
 import type { AccessibilityRole } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { theme } from '@/theme';
+
+type OptionItem = { key: string; label: string; icon?: string };
+type SelectedValue = string | string[] | null | undefined;
 
 export function ProgressBar({ current, total }: { current: number; total: number }) {
   const safeCurrent = Number.isFinite(current) ? current : 0;
@@ -39,7 +43,9 @@ export function QuestionScreen({
       {footer ? (
         <View style={styles.stickyWrap}>
           <View style={styles.fade} pointerEvents="none" />
-          <View style={[styles.stickyInner, { paddingBottom: theme.spacing.md + insets.bottom }]}>{footer}</View>
+          <View style={[styles.stickyInner, { paddingBottom: theme.spacing.md + insets.bottom }]}>
+            {footer}
+          </View>
         </View>
       ) : null}
     </SafeAreaView>
@@ -132,6 +138,14 @@ export function StickyCTA({ children }: { children: React.ReactNode }) {
   return <View>{children}</View>;
 }
 
+export function Spacer({ size = theme.spacing.sm }: { size?: number }) {
+  return <View style={{ height: size }} />;
+}
+
+export function QuestionTitle({ children }: { children: React.ReactNode }) {
+  return <Text style={styles.questionTitle}>{children}</Text>;
+}
+
 export function WhyWeAskLink() {
   const [open, setOpen] = React.useState(false);
   return (
@@ -166,6 +180,107 @@ export function WhyWeAskLink() {
   );
 }
 
+export function OptionQuestion({
+  step,
+  title,
+  options,
+  selected,
+  onChange,
+  nextRoute,
+  onNext,
+  onSkip,
+  nextLabel = 'Next',
+  showSkip = true,
+  totalSteps = 9,
+  multiple = false,
+  maxSelections,
+  canProceed,
+}: {
+  step: number;
+  title: string;
+  options: OptionItem[];
+  selected: SelectedValue;
+  onChange: (next: string[]) => void;
+  nextRoute?: string;
+  onNext?: () => void;
+  onSkip?: () => void;
+  nextLabel?: string;
+  showSkip?: boolean;
+  totalSteps?: number;
+  multiple?: boolean;
+  maxSelections?: number;
+  canProceed?: boolean;
+}) {
+  const selectedKeys = normalizeSelected(selected);
+  const allowAdvance = typeof canProceed === 'boolean' ? canProceed : selectedKeys.length > 0;
+
+  const goNext = React.useCallback(() => {
+    if (onNext) return onNext();
+    if (nextRoute) router.push(nextRoute);
+  }, [nextRoute, onNext]);
+
+  const goSkip = React.useCallback(() => {
+    if (onSkip) return onSkip();
+    if (nextRoute) router.push(nextRoute);
+  }, [nextRoute, onSkip]);
+
+  const handleSelect = (key: string) => {
+    const next = computeNextSelection(selectedKeys, key, multiple, maxSelections);
+    onChange(next);
+  };
+
+  return (
+    <QuestionScreen
+      footer={
+        <StickyCTA>
+          <PrimaryButton title={nextLabel} onPress={goNext} disabled={!allowAdvance} />
+          {showSkip ? (
+            <>
+              <Spacer size={8} />
+              <PrimaryButton title="Skip / Not sure" onPress={goSkip} />
+            </>
+          ) : null}
+        </StickyCTA>
+      }
+    >
+      <Stepper current={step} total={totalSteps} />
+      <QuestionTitle>{title}</QuestionTitle>
+      <WhyWeAskLink />
+      {options.map((o) => (
+        <Option
+          key={o.key}
+          label={o.label}
+          selected={selectedKeys.includes(o.key)}
+          onPress={() => handleSelect(o.key)}
+          icon={o.icon}
+          multiple={multiple}
+        />
+      ))}
+    </QuestionScreen>
+  );
+}
+
+export function normalizeSelected(value: SelectedValue): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  return [value];
+}
+
+export function computeNextSelection(
+  selected: string[],
+  key: string,
+  multiple: boolean,
+  maxSelections?: number
+): string[] {
+  if (!multiple) return [key];
+  const exists = selected.includes(key);
+  let next = exists ? selected.filter((k) => k !== key) : [...selected, key];
+  if (maxSelections && next.length > maxSelections) {
+    next = next.slice(next.length - maxSelections);
+  }
+  return next;
+}
+
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
@@ -185,6 +300,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: theme.typography.regular,
   },
+  questionTitle: {
+    fontFamily: theme.typography.semiBold,
+    fontSize: 22,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.lg,
+  },
   barWrap: {
     height: 8,
     borderRadius: 8,
@@ -200,7 +321,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12, // slightly reduced vertical padding
     paddingHorizontal: 16,
     borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.card,
+    backgroundColor: theme.colors.card || '#fff',
     borderWidth: 1,
     borderColor: theme.colors.border,
     marginBottom: theme.spacing.sm,
@@ -288,7 +409,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: 80,
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.background || '#fff',
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 10,

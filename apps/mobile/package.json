@@ -14,7 +14,8 @@
     "type-check": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
-    "ci": "npm run lint && npm run type-check && npm test -- --ci"
+    "ci": "npm run lint && npm run type-check && npm test -- --ci",
+    "prepare": "npx simple-git-hooks"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.2.3",
@@ -53,6 +54,10 @@
     "jest": "^29.7.0",
     "jest-expo": "^51.0.3",
     "prettier": "^3.3.3",
+    "simple-git-hooks": "^2.13.1",
     "typescript": "~5.3.3"
+  },
+  "simple-git-hooks": {
+    "pre-push": "cd \"$(git rev-parse --show-toplevel)/apps/mobile\" && npm run ci"
   }
 }

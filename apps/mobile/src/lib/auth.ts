@@ -31,4 +31,3 @@ export async function updatePassword(newPassword: string) {
   if (error) throw error;
   return data;
 }
-

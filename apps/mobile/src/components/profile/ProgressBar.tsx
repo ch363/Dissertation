@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { theme as baseTheme } from '@/theme';
 
 export function ProgressBar({ progress }: { progress: number }) {
   const pct = Math.max(0, Math.min(1, progress));

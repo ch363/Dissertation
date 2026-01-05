@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { router, useNavigation } from 'expo-router';
 import { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '@/lib/supabase';
@@ -15,7 +15,9 @@ export default function DbHealth() {
   const [attempts, setAttempts] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [sessionInfo, setSessionInfo] = useState<any>(null);
-  const [schemaStatus, setSchemaStatus] = useState<'unknown'|'ok'|'missing_updated_at'|'unauth'|'error'>('unknown');
+  const [schemaStatus, setSchemaStatus] = useState<
+    'unknown' | 'ok' | 'missing_updated_at' | 'unauth' | 'error'
+  >('unknown');
   const [schemaMsg, setSchemaMsg] = useState<string>('');
   const navigation = useNavigation();
   const goBack = useCallback(() => {
@@ -173,14 +175,30 @@ for each row execute function public.set_updated_at();`;
         contentContainerStyle={{ padding: baseTheme.spacing.lg }}
       >
         <Text style={styles.section}>Profiles Schema Check</Text>
-        <View style={{ flexDirection: 'row', gap: 12, marginTop: baseTheme.spacing.sm, flexWrap: 'wrap' }}>
-          <Pressable style={[styles.chip, { backgroundColor: baseTheme.colors.card }]} onPress={checkProfilesSchema}>
+        <View
+          style={{
+            flexDirection: 'row',
+            gap: 12,
+            marginTop: baseTheme.spacing.sm,
+            flexWrap: 'wrap',
+          }}
+        >
+          <Pressable
+            style={[styles.chip, { backgroundColor: baseTheme.colors.card }]}
+            onPress={checkProfilesSchema}
+          >
             <Text style={{ color: baseTheme.colors.text }}>Check profiles schema</Text>
           </Pressable>
-          <Pressable style={[styles.chip, { backgroundColor: baseTheme.colors.card }]} onPress={testProfileUpsert}>
+          <Pressable
+            style={[styles.chip, { backgroundColor: baseTheme.colors.card }]}
+            onPress={testProfileUpsert}
+          >
             <Text style={{ color: baseTheme.colors.text }}>Test profile upsert</Text>
           </Pressable>
-          <Pressable style={[styles.chip, { backgroundColor: baseTheme.colors.card }]} onPress={copySqlFix}>
+          <Pressable
+            style={[styles.chip, { backgroundColor: baseTheme.colors.card }]}
+            onPress={copySqlFix}
+          >
             <Text style={{ color: baseTheme.colors.text }}>Copy SQL fix</Text>
           </Pressable>
         </View>

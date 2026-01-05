@@ -1,4 +1,6 @@
 # Fluentia Mobile (React Native + Expo)
+[![Lint](https://img.shields.io/github/actions/workflow/status/ch363/Dissertation/ci.yml?branch=main&label=lint)](https://github.com/ch363/Dissertation/actions/workflows/ci.yml)
+[![Type Check](https://img.shields.io/github/actions/workflow/status/ch363/Dissertation/ci.yml?branch=main&label=type%20check)](https://github.com/ch363/Dissertation/actions/workflows/ci.yml)
 
 This repo is mobile-first. It contains an Expo React Native app you can run on iOS (simulator/device) and Android.
 
@@ -44,6 +46,8 @@ git checkout -b feat/scope
 cd apps/mobile
 npm run ci # runs lint + type-check
 ```
+
+Pre-push hook: running `npm install` in `apps/mobile` installs a pre-push hook (via simple-git-hooks) that executes `npm run ci` to mirror the CI gate.
 
 3. Push and open a PR. The GitHub Action `mobile-ci` will run on PRs that touch `apps/mobile` and must pass before merging.
 

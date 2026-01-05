@@ -37,7 +37,7 @@ export type ProgressSummary = {
  * implementation that derives XP from the count of completed modules.
  * Replace with a real repo (e.g., Supabase aggregation) when available.
  */
-export async function getProgressSummary(userId: string): Promise<ProgressSummary> {
+export async function getProgressSummary(_userId: string): Promise<ProgressSummary> {
   // Using local completed modules as a proxy for XP for now
   const completed = await getCompletedModules();
   const xp = completed.length * 20; // 20 XP per completed module (placeholder)

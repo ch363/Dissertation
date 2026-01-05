@@ -1,9 +1,9 @@
 // Polyfills for React Native environment (URL, crypto.getRandomValues)
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createClient, processLock } from '@supabase/supabase-js';
+import Constants from 'expo-constants';
 import { AppState, Platform } from 'react-native';
 import 'react-native-url-polyfill/auto';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
-import { createClient, processLock } from '@supabase/supabase-js';
 
 const extra =
   (Constants?.expoConfig?.extra as Record<string, any> | undefined) ||

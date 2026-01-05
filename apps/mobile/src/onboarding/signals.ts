@@ -55,7 +55,9 @@ export function buildOnboardingSubmission(answers: OnboardingAnswers): Onboardin
   const challengeWeight = difficultyWeights[answers.difficulty ?? ''] ?? 0.5;
   const prefersGamification = gamificationWeights[answers.gamification ?? ''] ?? null;
   const feedbackDepthScore = feedbackDepth[answers.feedback ?? ''] ?? null;
-  const sessionMinutesScore = answers.sessionStyle ? sessionMinutes[answers.sessionStyle] ?? null : null;
+  const sessionMinutesScore = answers.sessionStyle
+    ? (sessionMinutes[answers.sessionStyle] ?? null)
+    : null;
   const learningStyleFocus = answers.learningStyles ?? [];
 
   const tags: string[] = [];
@@ -89,4 +91,3 @@ export function buildOnboardingSubmission(answers: OnboardingAnswers): Onboardin
     savedAt: new Date().toISOString(),
   };
 }
-
