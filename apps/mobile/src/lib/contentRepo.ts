@@ -1,32 +1,12 @@
+import {
+  clozeTemplateExpandedSchema,
+  sentenceSchema,
+  sentenceWithTranslationSchema,
+  type ClozeTemplateExpandedDto,
+  type SentenceDto,
+  type SentenceWithTranslationDto,
+} from './schemas/content';
 import { getSupabaseClient } from './supabase';
-
-export type SentenceRow = {
-  id: number;
-  language_code: string;
-  text: string;
-  source: string | null;
-  difficulty: number | null;
-  audio_url: string | null;
-};
-
-export type SentenceTranslationRow = {
-  id: number;
-  sentence_id: number;
-  target_language_code: string;
-  text: string;
-  literal_gloss: string | null;
-};
-
-export type ClozeTemplateRow = {
-  id: number;
-  sentence_id: number;
-  blank_token_indices: number[];
-  distractors: string[] | null;
-  prompt: string | null;
-  explanation: string | null;
-  level: number | null;
-  enabled: boolean;
-};
 
 export async function fetchSentences(
   languageCode: string,
@@ -42,7 +22,7 @@ export async function fetchSentences(
   if (opts?.limit != null) q.limit(opts.limit);
   const { data, error } = await q;
   if (error) throw error;
-  return data as SentenceRow[];
+  return (data ?? []).map((row) => sentenceSchema.parse(row)) as SentenceDto[];
 }
 
 export async function fetchSentenceWithTranslation(
@@ -61,9 +41,9 @@ export async function fetchSentenceWithTranslation(
   if (opts?.limit != null) q.limit(opts.limit);
   const { data, error } = await q;
   if (error) throw error;
-  return data as (SentenceRow & {
-    sentence_translations: Pick<SentenceTranslationRow, 'text' | 'target_language_code'>[];
-  })[];
+  return (data ?? []).map((row) =>
+    sentenceWithTranslationSchema.parse(row)
+  ) as SentenceWithTranslationDto[];
 }
 
 export async function fetchClozeTemplates(
@@ -89,8 +69,7 @@ export async function fetchClozeTemplates(
   if (targetLanguageCode) q.eq('sentence_translations.target_language_code', targetLanguageCode);
   const { data, error } = await q;
   if (error) throw error;
-  return data as (ClozeTemplateRow & {
-    sentences: Pick<SentenceRow, 'id' | 'language_code' | 'text'>;
-    sentence_translations: Pick<SentenceTranslationRow, 'id' | 'target_language_code' | 'text'>[];
-  })[];
+  return (data ?? []).map((row) =>
+    clozeTemplateExpandedSchema.parse(row)
+  ) as ClozeTemplateExpandedDto[];
 }

@@ -1,12 +1,7 @@
+import { parseProfile, type ProfileDto } from './schemas/profile';
 import { getSupabaseClient } from './supabase';
 
-export type Profile = {
-  id: string;
-  name: string | null;
-  avatar_url: string | null;
-  created_at: string;
-  updated_at: string;
-};
+export type Profile = ProfileDto;
 
 export async function getMyProfile() {
   const supabase = getSupabaseClient();
@@ -19,7 +14,7 @@ export async function getMyProfile() {
     console.error('getMyProfile error', error);
     throw error;
   }
-  return (data as Profile) ?? null;
+  return data ? parseProfile(data) : null;
 }
 
 export async function upsertMyProfile(update: Partial<Profile>) {
@@ -50,7 +45,7 @@ export async function upsertMyProfile(update: Partial<Profile>) {
         .select()
         .single();
       if (error) throw error;
-      return data as Profile;
+      return parseProfile(data);
     } catch (inner) {
       // Surface original error context
       // eslint-disable-next-line no-console

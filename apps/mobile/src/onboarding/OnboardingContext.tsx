@@ -1,20 +1,9 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 
+import type { OnboardingAnswers } from '../lib/onboarding/schema';
 import { saveOnboarding } from '../lib/onboardingRepo';
 
 import { getCurrentUser } from '@/modules/auth';
-
-export type OnboardingAnswers = {
-  motivation?: { key: string; otherText?: string } | null;
-  learningStyles?: string[] | null; // up to 2
-  memoryHabit?: string | null;
-  difficulty?: string | null;
-  gamification?: string | null;
-  feedback?: string | null;
-  sessionStyle?: string | null;
-  tone?: string | null;
-  experience?: string | null;
-};
 
 type Ctx = {
   answers: OnboardingAnswers;

@@ -1,6 +1,10 @@
+import { buildOnboardingSubmission, normalizeOnboardingAnswers } from './onboarding/mapper';
+import {
+  parseOnboardingSubmission,
+  type OnboardingAnswers,
+  type OnboardingSubmission,
+} from './onboarding/schema';
 import { getSupabaseClient } from './supabase';
-import type { OnboardingAnswers } from '../onboarding/OnboardingContext';
-import { buildOnboardingSubmission, type OnboardingSubmission } from '../onboarding/signals';
 
 export type Profile = {
   id: string; // user id
@@ -47,12 +51,21 @@ export async function getOnboarding(userId: string): Promise<OnboardingAnswers |
     .eq('user_id', userId)
     .maybeSingle();
   if (error && error.code !== 'PGRST116') throw error;
-  const stored = data?.answers as any;
+  const stored = data?.answers as unknown;
   if (!stored) return null;
-  if (stored.raw) {
-    return (stored.raw as OnboardingAnswers) ?? null;
+  if ((stored as any).raw) {
+    try {
+      const submission = parseOnboardingSubmission(stored);
+      return submission.raw;
+    } catch {
+      return null;
+    }
   }
-  return stored as OnboardingAnswers;
+  try {
+    return normalizeOnboardingAnswers(stored);
+  } catch {
+    return null;
+  }
 }
 
 export async function getOnboardingSubmission(
@@ -65,5 +78,11 @@ export async function getOnboardingSubmission(
     .eq('user_id', userId)
     .maybeSingle();
   if (error && error.code !== 'PGRST116') throw error;
-  return (data?.answers as OnboardingSubmission) ?? null;
+  const stored = data?.answers as unknown;
+  if (!stored) return null;
+  try {
+    return parseOnboardingSubmission(stored);
+  } catch {
+    return null;
+  }
 }
