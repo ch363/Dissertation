@@ -247,7 +247,7 @@ export default function CourseRun() {
       // TODO: Persist attempts to backend here
       // console.log('Attempts', attempts);
       if (slug) await markModuleCompleted(String(slug));
-      router.replace('/(tabs)/home');
+      router.replace('/nav-bar/home');
     }
   };
 

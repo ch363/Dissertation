@@ -21,13 +21,13 @@ export default function OnboardingCompletion() {
         await saveOnboarding(user.id, answers);
       }
       reset();
-      router.replace('/(tabs)/home');
+      router.replace('/nav-bar/home');
     } catch (e: any) {
       Alert.alert(
         'Save failed',
         e?.message || 'Could not save your onboarding yet. We will retry in the background.'
       );
-      router.replace('/(tabs)/home');
+      router.replace('/nav-bar/home');
     } finally {
       setSaving(false);
     }

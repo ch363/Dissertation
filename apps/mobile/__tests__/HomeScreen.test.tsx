@@ -2,7 +2,7 @@ import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import renderer from 'react-test-renderer';
 
-import HomeScreen from '../app/(tabs)/home/index';
+import HomeScreen from '../app/home/index';
 
 import { ThemeProvider } from '@/providers/ThemeProvider';
 

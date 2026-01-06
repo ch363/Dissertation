@@ -42,7 +42,7 @@ export default function GlobalError() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Go home"
-        onPress={() => router.replace('/(tabs)/home')}
+        onPress={() => router.replace('/nav-bar/home')}
         style={[styles.button, styles.secondary]}
       >
         <Text style={styles.buttonText}>Go home</Text>

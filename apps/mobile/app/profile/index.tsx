@@ -3,15 +3,14 @@ import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getSupabaseClient } from '../../../src/lib/supabase';
-
 import { Badge } from '@/components/profile/Badge';
 import { Card } from '@/components/profile/Card';
 import { ProfileHeader } from '@/components/profile/Header';
 import { ProgressBar } from '@/components/profile/ProgressBar';
 import { StatPill } from '@/components/profile/StatPill';
-import { refreshAvatarUrl } from '@/modules/profile/avatar';
+import { getMyProfile } from '@/lib/profile';
 import { getProgressSummary, type ProgressSummary } from '@/modules/progress';
+import { refreshAvatarUrl } from '@/modules/profile/avatar';
 import { useAppTheme } from '@/modules/settings';
 import { theme as baseTheme } from '@/theme';
 
@@ -23,28 +22,22 @@ export default function Profile() {
 
   useEffect(() => {
     (async () => {
-      const supabase = getSupabaseClient();
-      const { data: u } = await supabase.auth.getUser();
-      const id = u.user?.id;
-      if (!id) return;
-      const { data: prof } = await supabase
-        .from('profiles')
-        .select('name, avatar_url')
-        .eq('id', id)
-        .maybeSingle();
-      const name = prof?.name || u.user?.user_metadata?.name || u.user?.email || 'Profile';
-      setDisplayName(String(name));
-      if (prof?.avatar_url) {
+      const profile = await getMyProfile();
+      const name =
+        profile?.name ||
+        profile?.id || // fallback on id if available
+        'Profile';
+      setDisplayName(String(name).trim());
+      if (profile?.avatar_url) {
         try {
-          const fresh = await refreshAvatarUrl(prof.avatar_url);
+          const fresh = await refreshAvatarUrl(profile.avatar_url);
           setAvatarUrl(fresh);
         } catch {
-          setAvatarUrl(prof.avatar_url);
+          setAvatarUrl(profile.avatar_url);
         }
       }
-      // Fetch compact progress summary
       try {
-        const snapshot = await getProgressSummary(id);
+        const snapshot = profile?.id ? await getProgressSummary(profile.id) : null;
         setProgress(snapshot);
       } catch {
         setProgress(null);
@@ -53,7 +46,7 @@ export default function Profile() {
   }, []);
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={[styles.safeArea]}>
       <ScrollView contentContainerStyle={{ padding: baseTheme.spacing.lg }}>
         {/* Hero header */}
         <ProfileHeader
@@ -61,7 +54,7 @@ export default function Profile() {
           subtitle={progress ? `XP ${progress.xp} • Streak ${progress.streak}🔥` : 'Loading…'}
           avatarUrl={avatarUrl}
           right={
-            <Link href="/(tabs)/profile/edit" asChild>
+            <Link href="/profile/edit" asChild>
               <Pressable
                 style={{
                   paddingHorizontal: 12,
@@ -92,7 +85,7 @@ export default function Profile() {
             Next Level
           </Text>
           <ProgressBar progress={progress ? ((progress.xp ?? 0) % 100) / 100 : 0} />
-          <Link href="/(tabs)/profile/progress" asChild>
+          <Link href="/profile/progress" asChild>
             <Pressable
               style={[styles.linkButton, { alignSelf: 'flex-start' }]}
               accessibilityRole="button"
@@ -116,7 +109,7 @@ export default function Profile() {
             <Badge text="Pronunciation Pro" />
             <Badge text="Consistent" />
           </View>
-          <Link href="/(tabs)/profile/achievements" asChild>
+          <Link href="/profile/achievements" asChild>
             <Pressable
               style={[styles.linkButton, { alignSelf: 'flex-start' }]}
               accessibilityRole="button"
@@ -132,13 +125,13 @@ export default function Profile() {
           Account
         </Text>
         <Card>
-          <Link href="/(tabs)/profile/edit" asChild>
+          <Link href="/profile/edit" asChild>
             <Pressable accessibilityRole="button" style={styles.row}>
               <Text style={[styles.label, { color: theme.colors.text }]}>Edit Profile</Text>
               <Text style={[styles.linkText, { color: theme.colors.mutedText }]}>›</Text>
             </Pressable>
           </Link>
-          <Link href="/(tabs)/profile/progress" asChild>
+          <Link href="/profile/progress" asChild>
             <Pressable accessibilityRole="button" style={styles.row}>
               <Text style={[styles.label, { color: theme.colors.text }]}>Progress Details</Text>
               <Text style={[styles.linkText, { color: theme.colors.mutedText }]}>›</Text>
@@ -151,7 +144,7 @@ export default function Profile() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: baseTheme.colors.background },
+  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   sectionTitle: {
     fontFamily: baseTheme.typography.semiBold,
     fontSize: 18,
@@ -181,3 +174,4 @@ const styles = StyleSheet.create({
     fontFamily: baseTheme.typography.semiBold,
   },
 });
+

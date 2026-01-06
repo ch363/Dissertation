@@ -45,7 +45,12 @@ export default function SpeechSettings() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         {showBack && (
-          <Pressable accessibilityRole="button" onPress={handleBack} style={styles.backBtn}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Back to Settings"
+            onPress={handleBack}
+            style={styles.backBtn}
+          >
             <Ionicons name="chevron-back" size={22} color={theme.colors.mutedText} />
           </Pressable>
         )}
@@ -92,7 +97,7 @@ export default function SpeechSettings() {
             thumbTintColor={theme.colors.primary}
           />
           <Text style={[styles.helper, { color: theme.colors.mutedText }]}>
-            Rate: {rate.toFixed(2)} (0.50–1.00)
+            Slower can improve clarity for new words.
           </Text>
         </View>
       </View>
@@ -108,15 +113,13 @@ const styles = StyleSheet.create({
     padding: baseTheme.spacing.lg,
   },
   backBtn: {
-    position: 'absolute',
-    right: 16,
-    top: 8,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,
+    marginBottom: baseTheme.spacing.lg,
+    alignSelf: 'flex-start',
   },
   title: {
     fontFamily: baseTheme.typography.bold,
@@ -124,25 +127,36 @@ const styles = StyleSheet.create({
     marginBottom: baseTheme.spacing.lg,
   },
   section: {
+    padding: baseTheme.spacing.lg,
+    borderRadius: baseTheme.radius.lg,
     borderWidth: 1,
-    borderRadius: baseTheme.radius.md,
-    padding: baseTheme.spacing.md,
   },
-  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  label: { fontFamily: baseTheme.typography.regular },
+  rowBetween: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  label: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 16,
+  },
+  helper: {
+    marginTop: baseTheme.spacing.sm,
+    fontFamily: baseTheme.typography.regular,
+    fontSize: 14,
+  },
   toggle: {
-    width: 40,
-    height: 24,
-    borderRadius: 12,
-    padding: 2,
+    width: 50,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
   },
   knob: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: '#fff',
     position: 'absolute',
-    top: 2,
   },
-  helper: { fontFamily: baseTheme.typography.regular, fontSize: 12, marginTop: 6 },
 });
+

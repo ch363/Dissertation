@@ -1,9 +1,5 @@
-import {
-  useFonts,
-  Inter_400Regular,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from '@expo-google-fonts/inter';
+import { useFonts } from '@expo-google-fonts/inter';
+import { Poppins_400Regular, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
 import { Stack } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -16,7 +12,11 @@ import { ThemeProvider, useAppTheme } from '../src/providers/ThemeProvider';
 
 export default function RootLayout() {
   // Load fonts
-  const [loaded] = useFonts({ Inter_400Regular, Inter_600SemiBold, Inter_700Bold });
+  const [loaded] = useFonts({
+    Poppins_400Regular,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+  });
 
   if (!loaded) return null;
 

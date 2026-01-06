@@ -33,9 +33,9 @@ export type Theme = {
 const spacing = { xs: 8, sm: 12, md: 16, lg: 24, xl: 32 } as const;
 const radius = { sm: 8, md: 12, lg: 16, round: 999 } as const;
 const typography = {
-  regular: 'Inter_400Regular',
-  semiBold: 'Inter_600SemiBold',
-  bold: 'Inter_700Bold',
+  regular: 'Poppins_400Regular',
+  semiBold: 'Poppins_600SemiBold',
+  bold: 'Poppins_700Bold',
 } as const;
 
 export const lightTheme: Theme = {

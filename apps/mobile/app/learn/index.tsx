@@ -11,8 +11,8 @@ export default function Learn() {
   const { theme } = useAppTheme();
   const { modes, loading, error, refresh } = useLearningModes();
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={[styles.safeArea]}>
+      <View style={[styles.container]}>
         {loading ? (
           <View style={styles.stateRow}>
             <ActivityIndicator color={theme.colors.primary} />
@@ -54,11 +54,11 @@ export default function Learn() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: baseTheme.colors.background,
+    backgroundColor: '#FFFFFF',
   },
   container: {
     flex: 1,
-    backgroundColor: baseTheme.colors.background,
+    backgroundColor: '#FFFFFF',
     padding: baseTheme.spacing.lg,
   },
   cardImage: {
@@ -107,3 +107,4 @@ const styles = StyleSheet.create({
     fontFamily: baseTheme.typography.semiBold,
   },
 });
+

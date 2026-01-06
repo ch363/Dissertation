@@ -24,7 +24,7 @@ export default function CourseDetail() {
         style={[styles.button, styles.secondary]}
         onPress={async () => {
           await markModuleCompleted((slug || '').toString());
-          router.replace('/(tabs)/home');
+          router.replace('/nav-bar/home');
         }}
       >
         <Text style={styles.buttonText}>Mark Complete</Text>

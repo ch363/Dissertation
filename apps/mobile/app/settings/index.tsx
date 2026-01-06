@@ -33,9 +33,9 @@ export default function SettingsScreen() {
       }
     } catch {}
     try {
-      router.replace('/(tabs)/home');
+      router.replace('/nav-bar/home');
     } catch {
-      router.push('/(tabs)/home');
+      router.push('/nav-bar/home');
     }
   }, [navigation]);
 
@@ -79,7 +79,7 @@ export default function SettingsScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Open Speech Settings"
-          onPress={() => router.push('/speech')}
+          onPress={() => router.push('/settings/speech')}
           style={[
             styles.row,
             { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
@@ -193,3 +193,4 @@ const styles = StyleSheet.create({
   },
   label: { fontFamily: baseTheme.typography.regular, color: baseTheme.colors.text },
 });
+

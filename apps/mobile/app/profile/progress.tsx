@@ -11,7 +11,7 @@ import { theme as baseTheme } from '@/theme';
 export default function ProfileProgress() {
   const { theme } = useAppTheme();
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={[styles.safeArea]}>
       <ScrollView contentContainerStyle={{ padding: baseTheme.spacing.lg }}>
         <Text style={[styles.title, { color: theme.colors.text }]}>Your Progress</Text>
         <View style={{ flexDirection: 'row', gap: 10, marginBottom: baseTheme.spacing.lg }}>
@@ -57,7 +57,7 @@ export default function ProfileProgress() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: baseTheme.colors.background },
+  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   title: {
     fontFamily: baseTheme.typography.bold,
     fontSize: 22,
@@ -79,3 +79,4 @@ const styles = StyleSheet.create({
     color: baseTheme.colors.mutedText,
   },
 });
+

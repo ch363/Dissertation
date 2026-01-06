@@ -29,7 +29,7 @@ export default function DbHealth() {
         return;
       }
     } catch {}
-    router.replace('/(tabs)/settings');
+    router.replace('/nav-bar/settings');
   }, [navigation]);
 
   async function load() {
