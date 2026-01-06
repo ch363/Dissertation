@@ -1,11 +1,9 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { useAppTheme } from '@/providers/ThemeProvider';
-import { theme as baseTheme } from '@/theme';
-
 import { DueTodayTile, DueTodayTileItem } from './DueTodayTile';
-import { CARD_RADIUS } from '../homeStyles';
+import { theme as baseTheme } from '@/theme';
+import { useAppTheme } from '@/providers/ThemeProvider';
 
 type Props = {
   items: DueTodayTileItem[];

@@ -7,15 +7,14 @@ import { getSupabaseConfigStatus, initSupabaseClient, SupabaseConfigError } from
 
 type ConfigStatus = ReturnType<typeof getSupabaseConfigStatus>;
 
-export function SupabaseConfigGate({ children }: { children: React.ReactNode }) {
-  const { theme } = useAppTheme();
+export function useSupabaseConfig() {
   const [status, setStatus] = useState<ConfigStatus>(() => getSupabaseConfigStatus());
 
-  const tryInit = useCallback(() => {
+  const retry = useCallback(() => {
     try {
       initSupabaseClient();
       setStatus(getSupabaseConfigStatus());
-    } catch (err) {
+    } catch (err: unknown) {
       const missing = err instanceof SupabaseConfigError ? err.missing : [];
       setStatus({
         status: 'error',
@@ -29,8 +28,15 @@ export function SupabaseConfigGate({ children }: { children: React.ReactNode }) 
   }, []);
 
   useEffect(() => {
-    tryInit();
-  }, [tryInit]);
+    retry();
+  }, [retry]);
+
+  return { status, retry };
+}
+
+export function SupabaseConfigGate({ children }: { children: React.ReactNode }) {
+  const { theme } = useAppTheme();
+  const { status, retry } = useSupabaseConfig();
 
   const body = useMemo(() => {
     if (status.status === 'pending') {
@@ -56,7 +62,7 @@ export function SupabaseConfigGate({ children }: { children: React.ReactNode }) 
           ) : null}
           <Pressable
             accessibilityRole="button"
-            onPress={tryInit}
+            onPress={retry}
             style={[
               styles.button,
               { backgroundColor: theme.colors.primary, marginTop: theme.spacing.md },
@@ -69,7 +75,7 @@ export function SupabaseConfigGate({ children }: { children: React.ReactNode }) 
     }
 
     return children;
-  }, [children, status, theme, tryInit]);
+  }, [children, status, theme, retry]);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>

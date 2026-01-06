@@ -1,4 +1,12 @@
-import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import type { OnboardingAnswers } from '../lib/onboarding/schema';
 import { saveOnboarding } from '../lib/onboardingRepo';
@@ -21,19 +29,41 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [answers, setAnswers] = useState<OnboardingAnswers>({});
 
   const retryRef = useRef<NodeJS.Timeout | null>(null);
+  const activeUserRef = useRef<string | null>(null);
 
-  const persist = useCallback(async (next: OnboardingAnswers, attempt = 0) => {
-    try {
-      const user = await getCurrentUser();
-      if (!user) return;
-      await saveOnboarding(user.id, next);
-    } catch {
-      if (attempt < 3) {
-        const delay = [1000, 2000, 5000][attempt] ?? 5000;
-        retryRef.current && clearTimeout(retryRef.current);
-        retryRef.current = setTimeout(() => persist(next, attempt + 1), delay);
+  const persist = useCallback(
+    async (next: OnboardingAnswers, attempt = 0, targetUserId?: string) => {
+      try {
+        const user = targetUserId ? { id: targetUserId } : await getCurrentUser();
+        const currentUserId = user?.id ?? null;
+        if (!currentUserId) return;
+
+        // Prevent persisting answers for a different user than the one currently active.
+        if (activeUserRef.current && activeUserRef.current !== currentUserId) {
+          return;
+        }
+
+        activeUserRef.current = currentUserId;
+        await saveOnboarding(currentUserId, next);
+      } catch {
+        if (attempt < 3) {
+          const delay = [1000, 2000, 5000][attempt] ?? 5000;
+          retryRef.current && clearTimeout(retryRef.current);
+          const retryUserId = activeUserRef.current ?? undefined;
+          retryRef.current = setTimeout(() => persist(next, attempt + 1, retryUserId), delay);
+        }
       }
-    }
+    },
+    []
+  );
+
+  useEffect(() => {
+    return () => {
+      if (retryRef.current) {
+        clearTimeout(retryRef.current);
+        retryRef.current = null;
+      }
+    };
   }, []);
 
   const api = useMemo<Ctx>(

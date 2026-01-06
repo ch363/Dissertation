@@ -14,7 +14,7 @@ describe('auth-flow resolver', () => {
   it('routes to home when onboarding complete', async () => {
     hasOnboarding.mockResolvedValue(true);
     const dest = await resolvePostAuthDestination('user-1');
-    expect(dest).toBe('/(tabs)/home');
+    expect(dest).toBe('/nav-bar/home');
   });
 
   it('routes to onboarding when not complete', async () => {

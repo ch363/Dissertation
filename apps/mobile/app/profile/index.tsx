@@ -8,9 +8,9 @@ import { Card } from '@/components/profile/Card';
 import { ProfileHeader } from '@/components/profile/Header';
 import { ProgressBar } from '@/components/profile/ProgressBar';
 import { StatPill } from '@/components/profile/StatPill';
-import { getMyProfile } from '@/lib/profile';
-import { getProgressSummary, type ProgressSummary } from '@/modules/progress';
+import { getMyProfile } from '@/modules/profile';
 import { refreshAvatarUrl } from '@/modules/profile/avatar';
+import { getProgressSummary, type ProgressSummary } from '@/modules/progress';
 import { useAppTheme } from '@/modules/settings';
 import { theme as baseTheme } from '@/theme';
 
@@ -46,84 +46,55 @@ export default function Profile() {
   }, []);
 
   return (
-    <SafeAreaView style={[styles.safeArea]}>
-      <ScrollView contentContainerStyle={{ padding: baseTheme.spacing.lg }}>
-        {/* Hero header */}
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.content}>
         <ProfileHeader
           title={displayName || 'Your Profile'}
           subtitle={progress ? `XP ${progress.xp} • Streak ${progress.streak}🔥` : 'Loading…'}
           avatarUrl={avatarUrl}
           right={
             <Link href="/profile/edit" asChild>
-              <Pressable
-                style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  borderRadius: 12,
-                  backgroundColor: theme.colors.card,
-                  borderWidth: 1,
-                  borderColor: theme.colors.border,
-                }}
-                accessibilityRole="button"
-              >
+              <Pressable style={styles.editButton} accessibilityRole="button">
                 <Text style={{ color: theme.colors.text }}>Edit</Text>
               </Pressable>
             </Link>
           }
         />
 
-        {/* Quick stats */}
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: baseTheme.spacing.lg }}>
+        <View style={styles.quickStats}>
           <StatPill label="Level" value={progress ? String(progress.level ?? 1) : '-'} />
           <StatPill label="XP" value={progress ? String(progress.xp) : '-'} />
           <StatPill label="Streak" value={progress ? String(progress.streak) : '-'} />
         </View>
 
-        {/* Progress card */}
-        <Card style={{ marginTop: baseTheme.spacing.lg }}>
+        <Card style={styles.cardSpacing}>
           <Text style={[styles.summaryTitle, { color: theme.colors.text, marginBottom: 8 }]}>
             Next Level
           </Text>
           <ProgressBar progress={progress ? ((progress.xp ?? 0) % 100) / 100 : 0} />
           <Link href="/profile/progress" asChild>
-            <Pressable
-              style={[styles.linkButton, { alignSelf: 'flex-start' }]}
-              accessibilityRole="button"
-              hitSlop={8}
-            >
-              <Text style={[styles.linkText, { color: theme.colors.primary }]}>
-                View full progress
-              </Text>
+            <Pressable style={[styles.linkButton, styles.linkStart]} accessibilityRole="button" hitSlop={8}>
+              <Text style={[styles.linkText, { color: theme.colors.primary }]}>View full progress</Text>
             </Pressable>
           </Link>
         </Card>
 
-        {/* Achievements preview */}
-        <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>
-          Achievements
-        </Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>Achievements</Text>
         <Card>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          <View style={styles.badges}>
             <Badge text="Daily Learner" />
             <Badge text="Grammar Guru" />
             <Badge text="Pronunciation Pro" />
             <Badge text="Consistent" />
           </View>
           <Link href="/profile/achievements" asChild>
-            <Pressable
-              style={[styles.linkButton, { alignSelf: 'flex-start' }]}
-              accessibilityRole="button"
-              hitSlop={8}
-            >
+            <Pressable style={[styles.linkButton, styles.linkStart]} accessibilityRole="button" hitSlop={8}>
               <Text style={[styles.linkText, { color: theme.colors.primary }]}>See all</Text>
             </Pressable>
           </Link>
         </Card>
 
-        {/* Account */}
-        <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>
-          Account
-        </Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>Account</Text>
         <Card>
           <Link href="/profile/edit" asChild>
             <Pressable accessibilityRole="button" style={styles.row}>
@@ -145,6 +116,20 @@ export default function Profile() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
+  content: { padding: baseTheme.spacing.lg },
+  editButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: baseTheme.colors.border,
+  },
+  quickStats: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: baseTheme.spacing.lg,
+  },
   sectionTitle: {
     fontFamily: baseTheme.typography.semiBold,
     fontSize: 18,
@@ -170,8 +155,11 @@ const styles = StyleSheet.create({
     paddingVertical: baseTheme.spacing.sm,
     borderRadius: baseTheme.radius.md,
   },
+  linkStart: { alignSelf: 'flex-start' },
   linkText: {
     fontFamily: baseTheme.typography.semiBold,
   },
+  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  cardSpacing: { marginTop: baseTheme.spacing.lg },
 });
 

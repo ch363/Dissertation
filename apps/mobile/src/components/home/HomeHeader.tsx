@@ -36,7 +36,7 @@ export function HomeHeader({ onPressSettings }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
     position: 'relative',
   },
@@ -51,8 +51,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logo: {
-    width: 70,
-    height: 70,
+    width: 55,
+    height: 55,
   },
   title: {
     marginTop: 2,

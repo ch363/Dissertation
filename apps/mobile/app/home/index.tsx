@@ -1,20 +1,19 @@
+import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HomeHeader } from '@/components/home/HomeHeader';
+import { WelcomeContinueCard } from '@/components/home/WelcomeContinueCard';
 import { DueTodayGrid } from '@/components/home/due-today/DueTodayGrid';
 import type { DueTodayTileItem } from '@/components/home/due-today/DueTodayTile';
 import { PickPathList } from '@/components/home/pick-path/PickPathList';
-import { WelcomeContinueCard } from '@/components/home/WelcomeContinueCard';
-import { getMyProfile } from '@/lib/profile';
+import { getMyProfile } from '@/modules/profile';
 import { useAppTheme } from '@/providers/ThemeProvider';
 import { theme as baseTheme } from '@/theme';
 
 export default function HomeScreen() {
   const { theme } = useAppTheme();
-  const insets = useSafeAreaInsets();
   const [displayName, setDisplayName] = useState<string | null>(null);
 
   const dueTodayItems: DueTodayTileItem[] = [
@@ -90,7 +89,7 @@ export default function HomeScreen() {
           headerLabel="Pick a path"
         />
 
-        {/* Spacer to avoid overlap with tab bar wave */}
+        {/* Spacer to avoid overlap with the tab bar */}
         <View style={{ height: baseTheme.spacing.xl }} />
       </ScrollView>
     </SafeAreaView>

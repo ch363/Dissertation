@@ -25,10 +25,10 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
       style={[
         styles.tabBarWrapper,
         {
-          backgroundColor: theme.colors.card,
+          backgroundColor: '#FFFFFF',
           shadowColor: '#0D1B2A',
-          paddingBottom: insets.bottom + baseTheme.spacing.xs,
           paddingTop: baseTheme.spacing.xs,
+          paddingBottom: insets.bottom + baseTheme.spacing.xs, // paint safe area
         },
       ]}
     >
@@ -98,6 +98,8 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     justifyContent: 'flex-end',
+    backgroundColor: '#FFFFFF',
+
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     zIndex: 2,
@@ -111,8 +113,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: baseTheme.spacing.sm,
+
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
+    backgroundColor: '#FFFFFF',
   },
 });
 

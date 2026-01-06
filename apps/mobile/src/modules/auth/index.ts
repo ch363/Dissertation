@@ -3,7 +3,6 @@
  * Supports optional email confirmation via emailRedirectTo.
  */
 import type { Session, User } from '@supabase/supabase-js';
-import Constants from 'expo-constants';
 
 import {
   sendPasswordReset,
@@ -13,24 +12,10 @@ import {
   updatePassword as updatePasswordClient,
 } from '@/lib/auth';
 import { resolvePostAuthDestination } from '@/lib/auth-flow';
+import { getSupabaseRedirectUrl } from '@/lib/config';
 import { getSupabaseClient } from '@/lib/supabase';
 
 type SignUpResult = { user: User | null; session: Session | null };
-
-function getEmailRedirectUrl() {
-  const extra =
-    (Constants?.expoConfig?.extra as Record<string, any> | undefined) ||
-    ((Constants as any)?.manifest?.extra as Record<string, any> | undefined) ||
-    {};
-
-  return (
-    process.env.EXPO_PUBLIC_SUPABASE_REDIRECT_URL ||
-    process.env.NEXT_PUBLIC_SUPABASE_REDIRECT_URL ||
-    (extra?.EXPO_PUBLIC_SUPABASE_REDIRECT_URL as string | undefined) ||
-    (extra?.supabaseRedirectUrl as string | undefined) ||
-    'fluentia://auth/sign-in'
-  );
-}
 
 export async function signInWithEmail(email: string, password: string) {
   const { user } = await signInWithEmailPassword(email, password);
@@ -48,7 +33,7 @@ export async function signUpWithEmail(
     password,
     options: {
       data: name ? { name } : undefined,
-      emailRedirectTo: getEmailRedirectUrl(),
+      emailRedirectTo: getSupabaseRedirectUrl(),
     },
   });
   if (error) throw error;

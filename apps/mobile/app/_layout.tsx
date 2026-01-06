@@ -1,14 +1,10 @@
 import { useFonts } from '@expo-google-fonts/inter';
 import { Poppins_400Regular, Poppins_600SemiBold, Poppins_700Bold } from '@expo-google-fonts/poppins';
 import { Stack } from 'expo-router';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
-import { OnboardingProvider } from '../src/onboarding/OnboardingContext';
-import { AuthProvider } from '../src/providers/AuthProvider';
-import { RouteGuard } from '../src/providers/RouteGuard';
-import { SupabaseConfigGate } from '../src/providers/SupabaseConfigGate';
-import { ThemeProvider, useAppTheme } from '../src/providers/ThemeProvider';
+import { AppProviders } from '../src/providers/AppProviders';
+import { useAppTheme } from '../src/providers/ThemeProvider';
 
 export default function RootLayout() {
   // Load fonts
@@ -21,20 +17,10 @@ export default function RootLayout() {
   if (!loaded) return null;
 
   return (
-    <ThemeProvider>
-      <SupabaseConfigGate>
-        <AuthProvider>
-          <OnboardingProvider>
-            <RouteGuard>
-              <SafeAreaProvider>
-                <ThemedStack />
-                <Toast />
-              </SafeAreaProvider>
-            </RouteGuard>
-          </OnboardingProvider>
-        </AuthProvider>
-      </SupabaseConfigGate>
-    </ThemeProvider>
+    <AppProviders>
+      <ThemedStack />
+      <Toast />
+    </AppProviders>
   );
 }
 
@@ -50,6 +36,7 @@ function ThemedStack() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="nav-bar" options={{ headerShown: false }} />
       <Stack.Screen name="auth/sign-in" options={{ headerShown: false }} />
       <Stack.Screen name="auth/sign-up" options={{ headerShown: false }} />
       <Stack.Screen name="auth/forgot-password" options={{ headerShown: false }} />
