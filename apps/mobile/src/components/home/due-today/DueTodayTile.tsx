@@ -2,9 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { useAppTheme } from '@/providers/ThemeProvider';
-import { theme as baseTheme } from '@/theme';
 import { CARD_BORDER, CARD_RADIUS, softShadow } from '../homeStyles';
+
+import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { theme as baseTheme } from '@/services/theme/tokens';
 
 export type DueTodayTileItem = {
   title: string;
@@ -12,6 +13,8 @@ export type DueTodayTileItem = {
   eta: string;
   icon: keyof typeof Ionicons.glyphMap;
   route: string;
+  locked?: boolean;
+  lockCopy?: string;
 };
 
 type Props = {
@@ -98,4 +101,3 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 });
-

@@ -1,20 +1,20 @@
-import { resolvePostAuthDestination } from '@/lib/auth-flow';
+import { resolvePostAuthDestination } from '@/features/auth/flows/resolvePostAuthDestination';
 
-jest.mock('@/modules/profile', () => ({
+jest.mock('@/api/profile', () => ({
   ensureProfileSeed: jest.fn().mockResolvedValue(null),
 }));
 
-jest.mock('@/modules/onboarding', () => ({
+jest.mock('@/api/onboarding', () => ({
   hasOnboarding: jest.fn(),
 }));
 
 describe('auth-flow resolver', () => {
-  const hasOnboarding = require('@/modules/onboarding').hasOnboarding as jest.Mock;
+  const hasOnboarding = require('@/api/onboarding').hasOnboarding as jest.Mock;
 
   it('routes to home when onboarding complete', async () => {
     hasOnboarding.mockResolvedValue(true);
     const dest = await resolvePostAuthDestination('user-1');
-    expect(dest).toBe('/nav-bar/home');
+    expect(dest).toBe('/(nav-bar)/home');
   });
 
   it('routes to onboarding when not complete', async () => {

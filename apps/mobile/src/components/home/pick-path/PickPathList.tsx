@@ -2,10 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { SurfaceCard } from '@/components/ui/SurfaceCard';
-import { useAppTheme } from '@/providers/ThemeProvider';
-import { theme as baseTheme } from '@/theme';
 import { CARD_BORDER, OUTER_CARD_RADIUS, softShadow } from '../homeStyles';
+
+import { SurfaceCard } from '@/components/ui/SurfaceCard';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { theme as baseTheme } from '@/services/theme/tokens';
 
 type PathItem = {
   title: string;
@@ -58,9 +59,13 @@ export function PickPathList({ items, onPressItem, headerLabel }: Props) {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.title, { color: theme.colors.text }]}>{item.title}</Text>
-                    <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>{item.lessons}</Text>
+                    <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
+                      {item.lessons}
+                    </Text>
                     {disabled && item.lockCopy ? (
-                      <Text style={[styles.lockCopy, { color: theme.colors.mutedText }]}>{item.lockCopy}</Text>
+                      <Text style={[styles.lockCopy, { color: theme.colors.mutedText }]}>
+                        {item.lockCopy}
+                      </Text>
                     ) : null}
                   </View>
                 </View>
@@ -132,4 +137,3 @@ const styles = StyleSheet.create({
     marginLeft: 60,
   },
 });
-

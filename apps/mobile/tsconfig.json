@@ -16,12 +16,18 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "src/*"
-      ],
-      "@/internal/*": [
-        "src/lib/*"
-      ]
+      "@/*": ["src/*"],
+      "@/app/*": ["src/app/*"],
+      "@/screens/*": ["src/screens/*"],
+      "@/components/*": ["src/components/*"],
+      "@/services/*": ["src/services/*"],
+      "@/api/*": ["src/app/api/*"],
+      "@/server/*": ["src/server/*"],
+      "@/types/*": ["src/types/*"],
+      "@/hooks/*": ["src/hooks/*"],
+      "@/utils/*": ["src/utils/*"],
+      "@/features/*": ["src/features/*"],
+      "@/assets/*": ["assets/*"]
     },
     "types": [
       "react",
@@ -30,7 +36,6 @@
     ]
   },
   "include": [
-    "app",
     "src"
   ],
   "exclude": [

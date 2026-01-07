@@ -1,4 +1,5 @@
-import { useAppTheme, getTtsEnabled, setTtsEnabled } from '../src/modules/settings';
+import { getTtsEnabled, setTtsEnabled } from '@/services/preferences';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
 
 // Smoke tests to verify facade exports' shapes
 test('modules/settings exports useAppTheme', () => {

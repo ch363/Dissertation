@@ -1,5 +1,8 @@
-import { buildOnboardingSubmission, normalizeOnboardingAnswers } from '@/lib/onboarding/mapper';
-import { onboardingAnswersSchema } from '@/lib/onboarding/schema';
+import { onboardingAnswersSchema } from '@/features/onboarding/types/schema';
+import {
+  buildOnboardingSubmission,
+  normalizeOnboardingAnswers,
+} from '@/features/onboarding/utils/mapper';
 
 describe('onboarding mapper', () => {
   const baseAnswers = onboardingAnswersSchema.parse({

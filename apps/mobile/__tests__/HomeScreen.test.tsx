@@ -1,16 +1,15 @@
 import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import renderer from 'react-test-renderer';
+import HomeScreen from '@/features/home/screens/HomeScreen';
 
-import HomeScreen from '../app/home/index';
-
-import { ThemeProvider } from '@/providers/ThemeProvider';
+import { ThemeProvider } from '@/services/theme/ThemeProvider';
 
 jest.mock('expo-router', () => ({
   router: { push: jest.fn() },
 }));
 
-jest.mock('@/viewmodels/progress', () => ({
+jest.mock('@/features/progress/hooks/useProgressSummary', () => ({
   useProgressSummary: () => ({
     completed: ['basics'],
     loading: false,

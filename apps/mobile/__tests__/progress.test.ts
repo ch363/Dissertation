@@ -4,7 +4,7 @@ import {
   resetProgress,
   type ProgressSummary,
   getProgressSummary,
-} from '@/lib/progress';
+} from '@/api/progress';
 
 const mockUpsert = jest.fn();
 const mockSelect = jest.fn();
@@ -12,7 +12,7 @@ const mockEq = jest.fn();
 const mockMaybeSingle = jest.fn();
 const mockSingle = jest.fn();
 
-jest.mock('@/lib/supabase', () => ({
+jest.mock('@/api/supabase/client', () => ({
   getSupabaseClient: () => ({
     from: () => ({
       select: (...args: any[]) => {

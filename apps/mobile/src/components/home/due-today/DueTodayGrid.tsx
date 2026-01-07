@@ -2,8 +2,9 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DueTodayTile, DueTodayTileItem } from './DueTodayTile';
-import { theme as baseTheme } from '@/theme';
-import { useAppTheme } from '@/providers/ThemeProvider';
+
+import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { theme as baseTheme } from '@/services/theme/tokens';
 
 type Props = {
   items: DueTodayTileItem[];
@@ -64,4 +65,3 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
 });
-

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-import { theme as baseTheme } from '@/theme';
+import { theme as baseTheme } from '@/services/theme/tokens';
 
 export function StatPill({ label, value }: { label: string; value: string }) {
   return (

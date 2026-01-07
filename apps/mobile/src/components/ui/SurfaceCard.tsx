@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, ViewProps } from 'react-native';
 
-import { useAppTheme } from '@/providers/ThemeProvider';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
 
 type Props = ViewProps & {
   children: React.ReactNode;

@@ -9,4 +9,3 @@ export const softShadow = {
   shadowOffset: { width: 0, height: 12 },
   elevation: 5,
 };
-

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 
-import { theme as baseTheme } from '@/theme';
+import { theme as baseTheme } from '@/services/theme/tokens';
 
 type Props = {
   style?: ViewStyle;

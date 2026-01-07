@@ -2,9 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { useAppTheme } from '@/providers/ThemeProvider';
-import { theme as baseTheme } from '@/theme';
 import { CARD_BORDER, OUTER_CARD_RADIUS, softShadow } from './homeStyles';
+
+import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { theme as baseTheme } from '@/services/theme/tokens';
 
 type Props = {
   streakDays: number;
@@ -53,7 +54,9 @@ export function WelcomeContinueCard({
           <Ionicons name="flame" size={20} color="#D44F00" />
         </View>
         <View style={styles.metaTextWrap}>
-          <Text style={[styles.metaTitle, { color: theme.colors.text }]}>{`${streakDays} day streak`}</Text>
+          <Text
+            style={[styles.metaTitle, { color: theme.colors.text }]}
+          >{`${streakDays} day streak`}</Text>
           <Text style={[styles.metaSub, { color: '#5F6F86' }]}>
             {`Studied ${minutesToday} min today`}
           </Text>
@@ -199,4 +202,3 @@ const styles = StyleSheet.create({
     fontSize: 17,
   },
 });
-

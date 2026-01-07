@@ -2,8 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { useAppTheme } from '@/providers/ThemeProvider';
-import { theme as baseTheme } from '@/theme';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { theme as baseTheme } from '@/services/theme/tokens';
 
 type Props = {
   label: string;
@@ -69,4 +69,3 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 });
-

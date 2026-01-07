@@ -1,7 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
 
-import { useAppTheme } from '@/providers/ThemeProvider';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
 
 type Variant = 'primary' | 'secondary' | 'ghost';
 
