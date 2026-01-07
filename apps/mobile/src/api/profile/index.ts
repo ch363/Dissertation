@@ -1,5 +1,5 @@
-import { parseProfile, type ProfileDto } from '@/types/profile';
 import { getSupabaseClient } from '@/api/supabase/client';
+import { parseProfile, type ProfileDto } from '@/types/profile';
 
 export type Profile = ProfileDto;
 

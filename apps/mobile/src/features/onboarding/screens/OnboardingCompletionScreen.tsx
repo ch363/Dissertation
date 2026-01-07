@@ -3,9 +3,9 @@ import { useState } from 'react';
 import { View, Text, StyleSheet, Image, ActivityIndicator, Alert } from 'react-native';
 
 import { saveOnboarding } from '@/app/api/onboarding';
+import { PrimaryButton } from '@/components/onboarding/_components';
 import { getCurrentUser } from '@/features/auth/api';
 import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
-import { PrimaryButton } from '@/components/onboarding/_components';
 import { theme } from '@/services/theme/tokens';
 
 export default function OnboardingCompletion() {

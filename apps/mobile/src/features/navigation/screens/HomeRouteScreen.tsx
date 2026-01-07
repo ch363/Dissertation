@@ -3,12 +3,12 @@ import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { getMyProfile } from '@/api/profile';
 import { HomeHeader } from '@/components/home/HomeHeader';
 import { WelcomeContinueCard } from '@/components/home/WelcomeContinueCard';
 import { DueTodayGrid } from '@/components/home/due-today/DueTodayGrid';
 import type { DueTodayTileItem } from '@/components/home/due-today/DueTodayTile';
 import { PickPathList } from '@/components/home/pick-path/PickPathList';
-import { getMyProfile } from '@/api/profile';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
@@ -22,7 +22,14 @@ export default function HomeScreen() {
   ];
 
   const pickPaths: DueTodayTileItem[] = [
-    { title: 'Basics', lessons: '8 lessons', eta: '≈2 min', icon: 'star', locked: false, route: '/course/basics' },
+    {
+      title: 'Basics',
+      lessons: '8 lessons',
+      eta: '≈2 min',
+      icon: 'star',
+      locked: false,
+      route: '/course/basics',
+    },
     {
       title: 'Travel',
       lessons: '4 lessons',
@@ -121,4 +128,3 @@ const styles = StyleSheet.create({
     gap: baseTheme.spacing.md,
   },
 });
-

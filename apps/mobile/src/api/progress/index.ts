@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { logError } from '@/services/logging/logger';
 import { getSupabaseClient } from '@/api/supabase/client';
+import { logError } from '@/services/logging/logger';
 
 const CACHE_KEY = 'fluentia:progress:v2';
 const CACHE_VERSION = 2;

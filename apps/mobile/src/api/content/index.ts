@@ -1,3 +1,4 @@
+import { getSupabaseClient } from '@/api/supabase/client';
 import {
   clozeTemplateExpandedSchema,
   sentenceSchema,
@@ -6,7 +7,6 @@ import {
   type SentenceDto,
   type SentenceWithTranslationDto,
 } from '@/types/content';
-import { getSupabaseClient } from '@/api/supabase/client';
 
 export async function fetchSentences(
   languageCode: string,

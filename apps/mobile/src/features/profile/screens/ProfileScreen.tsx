@@ -5,12 +5,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getMyProfile } from '@/app/api/profile';
 import { getProgressSummary, type ProgressSummary } from '@/app/api/progress';
-import { refreshAvatarUrl } from '@/features/profile/api/avatar';
 import { Badge } from '@/components/profile/Badge';
 import { Card } from '@/components/profile/Card';
 import { ProfileHeader } from '@/components/profile/Header';
 import { ProgressBar } from '@/components/profile/ProgressBar';
 import { StatPill } from '@/components/profile/StatPill';
+import { refreshAvatarUrl } from '@/features/profile/api/avatar';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 

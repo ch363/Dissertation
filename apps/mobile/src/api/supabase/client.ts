@@ -4,7 +4,11 @@ import { createClient, processLock, type SupabaseClient } from '@supabase/supaba
 import { AppState, Platform } from 'react-native';
 import 'react-native-url-polyfill/auto';
 
-import { readSupabaseEnv, SupabaseConfigError, type SupabaseEnvConfig } from '@/services/env/supabaseConfig';
+import {
+  readSupabaseEnv,
+  SupabaseConfigError,
+  type SupabaseEnvConfig,
+} from '@/services/env/supabaseConfig';
 
 export { SupabaseConfigError } from '@/services/env/supabaseConfig';
 

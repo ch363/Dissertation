@@ -13,12 +13,11 @@ import {
 } from 'react-native';
 
 import { insertLessonAttempt } from '@/api/lessons/attempts';
-import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { markModuleCompleted } from '@/api/progress';
-import * as SafeSpeech from '@/services/tts';
+import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
-
 import { theme as baseTheme } from '@/services/theme/tokens';
+import * as SafeSpeech from '@/services/tts';
 
 type Choice = string;
 type Question = {

@@ -74,4 +74,3 @@ describe('auth facade (Supabase)', () => {
     await expect(signUpWithEmail(null, 'jane@example.com', 'secret123')).rejects.toThrow(err);
   });
 });
-

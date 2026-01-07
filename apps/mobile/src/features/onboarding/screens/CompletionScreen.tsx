@@ -3,10 +3,10 @@ import { useState } from 'react';
 import { View, Text, StyleSheet, Image, ActivityIndicator, Alert } from 'react-native';
 
 import { PrimaryButton } from './_components';
-import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 
-import { getCurrentUser } from '@/features/auth/api';
 import { saveOnboarding } from '@/api/onboarding';
+import { getCurrentUser } from '@/features/auth/api';
+import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 import { theme } from '@/services/theme/tokens';
 
 export default function OnboardingCompletion() {

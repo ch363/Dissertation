@@ -1,5 +1,5 @@
-import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 import { OptionQuestion } from '@/components/onboarding/_components';
+import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 
 export default function MotivationGoals() {
   const { answers, setAnswerAndSave } = useOnboarding();

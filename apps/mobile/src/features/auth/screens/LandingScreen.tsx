@@ -32,7 +32,11 @@ export default function LandingScreen() {
             <ActivityIndicator color={theme.colors.primary} />
           </View>
         )}
-        <Image source={require('../../../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+        <Image
+          source={require('../../../../assets/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <Text style={styles.title}>Fluentia</Text>
         <Text style={styles.subtitle}>Personalised learning, one step at a time.</Text>
 
@@ -108,4 +112,3 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 });
-

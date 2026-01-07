@@ -1,10 +1,10 @@
 import { router } from 'expo-router';
 
 import { OptionQuestion } from './_components';
-import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 
-import { getCurrentUser } from '@/features/auth/api';
 import { saveOnboarding } from '@/api/onboarding';
+import { getCurrentUser } from '@/features/auth/api';
+import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 
 export default function ExperienceLevel() {
   const { setAnswerAndSave, answers } = useOnboarding();
