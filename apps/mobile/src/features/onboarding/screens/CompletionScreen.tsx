@@ -34,11 +34,7 @@ export default function OnboardingCompletion() {
   }
   return (
     <View style={styles.container}>
-      <Image
-        source={require('../../../../assets/logo.png')}
-        style={styles.logo}
-        resizeMode="contain"
-      />
+      <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" />
       <Text style={styles.headline}>Thanks for completing the setup</Text>
       <Text style={styles.subtext}>
         We’ll use your answers to tailor Fluentia to your goals and learning style.

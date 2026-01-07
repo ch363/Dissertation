@@ -8,17 +8,13 @@ import { theme } from '@/services/theme/tokens';
 export default function OnboardingWelcome() {
   return (
     <View style={styles.container}>
-      <Image
-        source={require('../../../../assets/logo.png')}
-        style={styles.logo}
-        resizeMode="contain"
-      />
+      <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" />
       <Text style={styles.headline}>Learn Italian,{'\n'}your way.</Text>
       <Text style={styles.subtext}>
         Just a few quick questions to{'\n'}personalize your learning experience (1–2 mins)
       </Text>
       <Image
-        source={require('../../../../assets/colosseum.png')}
+        source={require('@/assets/colosseum.png')}
         style={styles.colosseum}
         resizeMode="contain"
       />

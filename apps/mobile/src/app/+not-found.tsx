@@ -1,29 +1,12 @@
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 
-import { logError } from '@/services/logging';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
-
-type ErrorParam = { error?: string };
 
 export default function GlobalError() {
   const router = useRouter();
   const { theme } = useAppTheme();
-  const params = useLocalSearchParams<ErrorParam>();
-
-  // The router provides the error via props in development; we rely on logError where possible.
-  useEffect(() => {
-    if (params?.error) {
-      try {
-        const parsed = JSON.parse(String(params.error));
-        logError(parsed);
-      } catch {
-        logError(params.error);
-      }
-    }
-  }, [params?.error]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>

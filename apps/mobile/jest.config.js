@@ -7,6 +7,7 @@ module.exports = {
     '^@/app/(.*)$': '<rootDir>/src/app/$1',
     '^@/screens/(.*)$': '<rootDir>/src/screens/$1',
     '^@/components/(.*)$': '<rootDir>/src/components/$1',
+    '^@/assets/(.*)$': '<rootDir>/assets/$1',
     '^@/services/(.*)$': '<rootDir>/src/services/$1',
     '^@/server/(.*)$': '<rootDir>/src/server/$1',
     '^@/types/(.*)$': '<rootDir>/src/types/$1',
