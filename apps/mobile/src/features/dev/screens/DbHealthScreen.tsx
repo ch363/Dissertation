@@ -5,9 +5,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { getSession } from '@/app/api/auth';
 import { ensureProfileSeed, upsertMyProfile } from '@/app/api/profile';
 import { getSupabaseClient } from '@/app/api/supabase/client';
-import { getSession } from '@/features/auth/api';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
 export default function DbHealth() {

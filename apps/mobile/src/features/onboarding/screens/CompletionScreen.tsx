@@ -4,8 +4,8 @@ import { View, Text, StyleSheet, Image, ActivityIndicator, Alert } from 'react-n
 
 import { PrimaryButton } from './_components';
 
-import { saveOnboarding } from '@/api/onboarding';
-import { getCurrentUser } from '@/features/auth/api';
+import { getCurrentUser } from '@/app/api/auth';
+import { saveOnboarding } from '@/app/api/onboarding';
 import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 import { theme } from '@/services/theme/tokens';
 

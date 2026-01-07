@@ -1,10 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 
-import {
-  getProgressSummary,
-  getCompletedModules,
-  type ProgressSummary,
-} from '@/features/progress/api';
+import { getProgressSummary, getCompletedModules, type ProgressSummary } from '@/app/api/progress';
 import { useAuth } from '@/services/auth/AuthProvider';
 
 export type ProgressViewModel = {

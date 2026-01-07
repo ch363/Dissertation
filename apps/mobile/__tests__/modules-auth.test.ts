@@ -1,4 +1,4 @@
-import { signInWithEmail } from '@/features/auth/api';
+import { signInWithEmail } from '@/app/api/auth';
 
 // Minimal smoke test to ensure the facade exports exist and are callable.
 // In CI this would be mocked; here we just assert the function type.

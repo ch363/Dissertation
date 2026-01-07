@@ -1,4 +1,4 @@
-export * from '@/features/onboarding/types/schema';
+export * from '@/types/onboarding';
 export {
   buildOnboardingSubmission,
   normalizeOnboardingAnswers,

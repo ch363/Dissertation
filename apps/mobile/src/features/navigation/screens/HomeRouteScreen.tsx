@@ -4,11 +4,11 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getMyProfile } from '@/api/profile';
-import { HomeHeader } from '@/components/home/HomeHeader';
-import { WelcomeContinueCard } from '@/components/home/WelcomeContinueCard';
-import { DueTodayGrid } from '@/components/home/due-today/DueTodayGrid';
-import type { DueTodayTileItem } from '@/components/home/due-today/DueTodayTile';
-import { PickPathList } from '@/components/home/pick-path/PickPathList';
+import { HomeHeader } from '@/features/home/components/HomeHeader';
+import { WelcomeContinueCard } from '@/features/home/components/WelcomeContinueCard';
+import { DueTodayGrid } from '@/features/home/components/due-today/DueTodayGrid';
+import type { DueTodayTileItem } from '@/features/home/components/due-today/DueTodayTile';
+import { PickPathList } from '@/features/home/components/pick-path/PickPathList';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 

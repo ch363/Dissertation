@@ -4,14 +4,14 @@ import TestRenderer, { act } from 'react-test-renderer';
 import {
   OnboardingProvider,
   useOnboarding,
-} from '@/features/onboarding/providers/OnboardingProvider';
+} from '../src/features/onboarding/providers/OnboardingProvider';
 
-jest.mock('@/features/auth/api', () => ({
+jest.mock('@/app/api/auth', () => ({
   getCurrentUser: jest.fn().mockResolvedValue({ id: 'user-1' }),
 }));
 
 const mockSaveOnboarding = jest.fn().mockResolvedValue(null);
-jest.mock('@/api/onboarding', () => ({
+jest.mock('@/app/api/onboarding', () => ({
   saveOnboarding: (...args: any[]) => mockSaveOnboarding(...args),
 }));
 

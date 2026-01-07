@@ -1,2 +1,2 @@
-// Deprecated path shim: re-export from feature onboarding schema for backward compatibility
+// Central onboarding types/schema export for shared consumers.
 export * from '@/features/onboarding/types/schema';

@@ -1,14 +1,14 @@
 import { getSupabaseClient } from '@/app/api/supabase/client';
 import {
+  buildOnboardingSubmission,
+  normalizeOnboardingAnswers,
+} from '@/features/onboarding/utils/mapper';
+import {
   ONBOARDING_SCHEMA_VERSION,
   parseOnboardingSubmission,
   type OnboardingAnswers,
   type OnboardingSubmission,
-} from '@/features/onboarding/types/schema';
-import {
-  buildOnboardingSubmission,
-  normalizeOnboardingAnswers,
-} from '@/features/onboarding/utils/mapper';
+} from '@/types/onboarding';
 
 export type Profile = {
   id: string; // user id

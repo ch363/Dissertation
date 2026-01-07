@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { resolvePostAuthDestination, signUpWithEmail } from '@/features/auth/api';
+import { resolvePostAuthDestination, signUpWithEmail } from '@/app/api/auth';
 import { theme } from '@/services/theme/tokens';
 
 const emailRegex = /\S+@\S+\.\S+/;

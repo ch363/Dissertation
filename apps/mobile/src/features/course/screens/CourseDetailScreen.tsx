@@ -1,7 +1,7 @@
 import { useLocalSearchParams, router } from 'expo-router';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 
-import { markModuleCompleted } from '@/features/progress/api';
+import { markModuleCompleted } from '@/app/api/progress';
 import { theme } from '@/services/theme/tokens';
 
 export default function CourseDetail() {

@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { resolvePostAuthDestination, signInWithEmailPassword } from '@/features/auth/api';
+import { resolvePostAuthDestination, signInWithEmailPassword } from '@/app/api/auth';
 import { theme } from '@/services/theme/tokens';
 
 const emailRegex = /\S+@\S+\.\S+/;

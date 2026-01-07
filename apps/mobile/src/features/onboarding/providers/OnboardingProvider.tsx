@@ -8,9 +8,9 @@ import React, {
   useState,
 } from 'react';
 
+import { getCurrentUser } from '@/app/api/auth';
 import { saveOnboarding } from '@/app/api/onboarding';
-import { getCurrentUser } from '@/features/auth/api';
-import type { OnboardingAnswers } from '@/features/onboarding/types/schema';
+import type { OnboardingAnswers } from '@/types/onboarding';
 
 type Ctx = {
   answers: OnboardingAnswers;

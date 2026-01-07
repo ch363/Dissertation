@@ -3,7 +3,7 @@ import {
   ONBOARDING_SCHEMA_VERSION,
   type OnboardingAnswers,
   type OnboardingSubmission,
-} from '@/features/onboarding/types/schema';
+} from '@/types/onboarding';
 
 const difficultyWeights: Record<string, number> = {
   easy: 0.25,

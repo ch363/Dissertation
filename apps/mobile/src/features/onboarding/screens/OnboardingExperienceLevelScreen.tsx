@@ -1,8 +1,8 @@
 import { router } from 'expo-router';
 
+import { getCurrentUser } from '@/app/api/auth';
 import { saveOnboarding } from '@/app/api/onboarding';
 import { OptionQuestion } from '@/components/onboarding/_components';
-import { getCurrentUser } from '@/features/auth/api';
 import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 
 export default function ExperienceLevel() {
