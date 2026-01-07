@@ -10,6 +10,7 @@ import { DueTodayGrid } from '@/features/home/components/due-today/DueTodayGrid'
 import type { DueTodayTileItem } from '@/features/home/components/due-today/DueTodayTile';
 import { PickPathList } from '@/features/home/components/pick-path/PickPathList';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { routes } from '@/services/navigation/routes';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
 export default function HomeScreen() {
@@ -74,7 +75,7 @@ export default function HomeScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <HomeHeader onPressSettings={() => router.push('/(nav-bar)/settings')} />
+        <HomeHeader onPressSettings={() => router.push(routes.tabs.settings.root)} />
 
         <WelcomeContinueCard
           streakDays={4}

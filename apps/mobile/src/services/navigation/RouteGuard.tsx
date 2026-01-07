@@ -4,6 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { resolvePostAuthDestination } from '@/features/auth/flows/resolvePostAuthDestination';
 import { useAuth } from '@/services/auth/AuthProvider';
+import { isPublicRootSegment } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 
 export function RouteGuard({ children }: { children: React.ReactNode }) {
@@ -13,10 +14,7 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
   const { theme } = useAppTheme();
 
   const pathname = useMemo(() => `/${segments.join('/')}`, [segments]);
-  const isPublic = useMemo(() => {
-    const root = segments[0];
-    return root === undefined || root === 'auth' || root === 'onboarding';
-  }, [segments]);
+  const isPublic = useMemo(() => isPublicRootSegment(segments[0]), [segments]);
 
   useEffect(() => {
     const redirectIfNeeded = async () => {

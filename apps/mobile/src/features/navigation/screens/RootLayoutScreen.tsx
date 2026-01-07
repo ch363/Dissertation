@@ -40,13 +40,9 @@ function ThemedStack() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
-      <Stack.Screen name="nav-bar" options={{ headerShown: false }} />
-      <Stack.Screen name="auth/sign-in" options={{ headerShown: false }} />
-      <Stack.Screen name="auth/sign-up" options={{ headerShown: false }} />
-      <Stack.Screen name="auth/forgot-password" options={{ headerShown: false }} />
-      <Stack.Screen name="auth/update-password" options={{ headerShown: false }} />
-      <Stack.Screen name="auth/verify-email" options={{ headerShown: false }} />
-      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
     </Stack>
   );
 }

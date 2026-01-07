@@ -15,6 +15,7 @@ import {
 import { insertLessonAttempt } from '@/api/lessons/attempts';
 import { markModuleCompleted } from '@/api/progress';
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
+import { routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
@@ -246,7 +247,7 @@ export default function CourseRun() {
       // TODO: Persist attempts to backend here
       // console.log('Attempts', attempts);
       if (slug) await markModuleCompleted(String(slug));
-      router.replace('/(nav-bar)/home');
+      router.replace(routes.tabs.home);
     }
   };
 

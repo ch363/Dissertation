@@ -12,6 +12,7 @@ import {
   getTtsRate,
   setTtsRate,
 } from '@/services/preferences/settings-facade';
+import { routes } from '@/services/navigation/routes';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
 export default function SpeechSettings() {
@@ -38,7 +39,7 @@ export default function SpeechSettings() {
         return;
       }
     } catch {}
-    router.replace('/(nav-bar)/settings');
+    router.replace(routes.tabs.settings.root);
   }, [navigation]);
 
   return (

@@ -1,5 +1,6 @@
 import { hasOnboarding } from '@/api/onboarding';
 import { ensureProfileSeed } from '@/api/profile';
+import { routes } from '@/services/navigation/routes';
 
 /**
  * Centralized post-auth flow resolution.
@@ -9,5 +10,5 @@ export async function resolvePostAuthDestination(userId: string) {
   // Ensure the profile row exists before routing anywhere that depends on it.
   await ensureProfileSeed();
   const onboardingDone = await hasOnboarding(userId);
-  return onboardingDone ? '/(nav-bar)/home' : '/onboarding/welcome';
+  return onboardingDone ? routes.tabs.home : routes.onboarding.welcome;
 }

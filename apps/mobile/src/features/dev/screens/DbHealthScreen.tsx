@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getSession } from '@/app/api/auth';
 import { ensureProfileSeed, upsertMyProfile } from '@/app/api/profile';
 import { getSupabaseClient } from '@/app/api/supabase/client';
+import { routes } from '@/services/navigation/routes';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
 export default function DbHealth() {
@@ -29,7 +30,7 @@ export default function DbHealth() {
         return;
       }
     } catch {}
-    router.replace('/(nav-bar)/settings');
+    router.replace(routes.tabs.settings.root);
   }, [navigation]);
 
   async function load() {

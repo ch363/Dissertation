@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 
 import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { routes } from '@/services/navigation/routes';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
 export default function GlobalError() {
@@ -25,7 +26,7 @@ export default function GlobalError() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Go home"
-        onPress={() => router.replace('/(nav-bar)/home')}
+        onPress={() => router.replace(routes.tabs.home)}
         style={[styles.button, styles.secondary]}
       >
         <Text style={styles.buttonText}>Go home</Text>

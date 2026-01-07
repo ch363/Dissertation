@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { hasOnboarding } from '@/app/api/onboarding';
 import { useAuth } from '@/services/auth/AuthProvider';
+import { routes } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 
 export default function LandingScreen() {
@@ -16,13 +17,13 @@ export default function LandingScreen() {
       if (loading) return;
       if (session?.user?.id) {
         const done = await hasOnboarding(session.user.id);
-        router.replace(done ? '/(nav-bar)/home' : '/onboarding/welcome');
+        router.replace(done ? routes.tabs.home : routes.onboarding.welcome);
       }
     })();
   }, [session, loading]);
 
-  const goSignUp = () => router.push('/sign-up');
-  const goSignIn = () => router.push('/sign-in');
+  const goSignUp = () => router.push(routes.auth.signUp);
+  const goSignIn = () => router.push(routes.auth.signIn);
 
   return (
     <SafeAreaView style={styles.safe}>

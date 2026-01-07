@@ -16,9 +16,9 @@ Aliases and enforcement:
 
 Routing conventions:
 - Top-level feature screens live under app/<feature>/... (e.g., app/home, app/learn, app/profile, app/settings).
-- The tab bar lives in app/nav-bar/_layout.tsx and re-exports the feature screens via app/nav-bar/{home,learn,profile,settings}.tsx.
+- The tab bar lives in app/(tabs)/_layout.tsx and re-exports the feature screens via app/(tabs)/{home,learn,profile,settings}.tsx.
 - Profile has its own nested stack at app/profile/_layout.tsx (routes: index, progress, edit, achievements).
-- Root landing (app/index.tsx) and post-auth routing send users to /nav-bar/home after onboarding.
+- Root landing (app/index.tsx) and post-auth routing send users to /(tabs)/home after onboarding.
 - A global error boundary is provided at app/_error.tsx.
 - Screens should consume theme via ThemeProvider/useAppTheme and avoid hardcoded colors.
 

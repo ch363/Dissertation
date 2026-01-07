@@ -2,6 +2,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 
 import { markModuleCompleted } from '@/app/api/progress';
+import { routeBuilders, routes } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 
 export default function CourseDetail() {
@@ -15,7 +16,7 @@ export default function CourseDetail() {
 
       <Pressable
         style={[styles.button, styles.primary]}
-        onPress={() => router.push(`/course/${slug}/run`)}
+        onPress={() => router.push(routeBuilders.courseRun(String(slug || '')))}
       >
         <Text style={styles.buttonText}>Start</Text>
       </Pressable>
@@ -24,7 +25,7 @@ export default function CourseDetail() {
         style={[styles.button, styles.secondary]}
         onPress={async () => {
           await markModuleCompleted((slug || '').toString());
-          router.replace('/(nav-bar)/home');
+          router.replace(routes.tabs.home);
         }}
       >
         <Text style={styles.buttonText}>Mark Complete</Text>

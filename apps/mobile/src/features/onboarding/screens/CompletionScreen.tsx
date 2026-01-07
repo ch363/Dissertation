@@ -7,6 +7,7 @@ import { PrimaryButton } from './_components';
 import { getCurrentUser } from '@/app/api/auth';
 import { saveOnboarding } from '@/app/api/onboarding';
 import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
+import { routes } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 
 export default function OnboardingCompletion() {
@@ -21,13 +22,13 @@ export default function OnboardingCompletion() {
         await saveOnboarding(user.id, answers);
       }
       reset();
-      router.replace('/(nav-bar)/home');
+      router.replace(routes.tabs.home);
     } catch (e: any) {
       Alert.alert(
         'Save failed',
         e?.message || 'Could not save your onboarding yet. We will retry in the background.'
       );
-      router.replace('/(nav-bar)/home');
+      router.replace(routes.tabs.home);
     } finally {
       setSaving(false);
     }

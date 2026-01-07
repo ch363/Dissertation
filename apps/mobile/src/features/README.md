@@ -6,15 +6,16 @@ Each feature owns its UI and keeps screens close to its logic. Route files under
 
 - Feature folder: `apps/mobile/src/features/<feature>/`
 - Screens live in `screens/`, with components/hooks alongside as needed.
-- Route wrappers stay in `apps/mobile/src/app` (e.g., `(nav-bar)/home.tsx` → `features/home/screens`).
+- Route wrappers stay in `apps/mobile/src/app` (e.g., `(tabs)/home.tsx` → `features/home/screens`).
 - Layout files (`_layout.tsx`) remain with the route segment, not inside `screens/`.
+- Navigation paths are centralized in `src/services/navigation/routes.ts`.
 
 ## Examples
 
 - Tabs  
-  - `(nav-bar)/home.tsx` → `features/home/screens/HomeScreen.tsx`
-  - `(nav-bar)/profile/*` → `features/profile/screens/*Screen.tsx`
-  - `(nav-bar)/settings/*` → `features/settings/screens/*Screen.tsx`
+  - `(tabs)/home.tsx` → `features/home/screens/HomeScreen.tsx`
+  - `(tabs)/profile/*` → `features/profile/screens/*Screen.tsx`
+  - `(tabs)/settings/*` → `features/settings/screens/*Screen.tsx`
 - Auth  
   - `(auth)/sign-in.tsx` → `features/auth/screens/SignInScreen.tsx`
 - Onboarding  

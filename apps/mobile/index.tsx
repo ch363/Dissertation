@@ -1,5 +1,6 @@
 import { hasOnboarding } from 'app/api/onboarding';
 import { useAuth } from 'app/services/auth/AuthProvider';
+import { routes } from 'app/services/navigation/routes';
 import { theme } from 'app/services/theme/tokens';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -15,13 +16,13 @@ export default function LandingScreen() {
       if (loading) return;
       if (session?.user?.id) {
         const done = await hasOnboarding(session.user.id);
-        router.replace(done ? '/nav-bar/home' : '/onboarding/welcome');
+        router.replace(done ? routes.tabs.home : routes.onboarding.welcome);
       }
     })();
   }, [session, loading]);
 
-  const goSignUp = () => router.push('/auth/sign-up');
-  const goSignIn = () => router.push('/auth/sign-in');
+  const goSignUp = () => router.push(routes.auth.signUp);
+  const goSignIn = () => router.push(routes.auth.signIn);
 
   return (
     <SafeAreaView style={styles.safe}>

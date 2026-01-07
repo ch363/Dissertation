@@ -12,6 +12,7 @@ import {
   getNotificationsEnabled,
   setNotificationsEnabled,
 } from '@/services/preferences/settings-facade';
+import { routes } from '@/services/navigation/routes';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
 export default function SettingsScreen() {
@@ -33,9 +34,9 @@ export default function SettingsScreen() {
       }
     } catch {}
     try {
-      router.replace('/(nav-bar)/home');
+      router.replace(routes.tabs.home);
     } catch {
-      router.push('/(nav-bar)/home');
+      router.push(routes.tabs.home);
     }
   }, [navigation]);
 
@@ -79,7 +80,7 @@ export default function SettingsScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Open Speech Settings"
-          onPress={() => router.push('/settings/speech')}
+          onPress={() => router.push(routes.tabs.settings.speech)}
           style={[
             styles.row,
             { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
