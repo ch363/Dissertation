@@ -23,7 +23,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const initialSystem = Appearance.getColorScheme();
   const [mode, setModeState] = useState<ThemeMode>('system');
   const [systemScheme, setSystemScheme] = useState<'light' | 'dark'>(
-    (initialSystem ?? 'light') === 'dark' ? 'dark' : 'light'
+    (initialSystem ?? 'light') === 'dark' ? 'dark' : 'light',
   );
 
   useEffect(() => {
@@ -53,12 +53,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setMode = useCallback(
     (m: ThemeMode | ((prev: ThemeMode) => ThemeMode)) => {
       setModeState((prev) =>
-        typeof m === 'function' ? (m as (p: ThemeMode) => ThemeMode)(prev) : m
+        typeof m === 'function' ? (m as (p: ThemeMode) => ThemeMode)(prev) : m,
       );
       const next = typeof m === 'function' ? (m as (p: ThemeMode) => ThemeMode)(mode) : m;
       AsyncStorage.setItem(STORAGE_KEY, next).catch(() => {});
     },
-    [mode]
+    [mode],
   );
 
   const toggleTheme = useCallback(() => {

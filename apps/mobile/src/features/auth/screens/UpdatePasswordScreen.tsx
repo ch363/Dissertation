@@ -60,7 +60,7 @@ export default function UpdatePassword() {
       }
       setProcessing(false);
     },
-    [setProcessing]
+    [setProcessing],
   );
 
   useEffect(() => {

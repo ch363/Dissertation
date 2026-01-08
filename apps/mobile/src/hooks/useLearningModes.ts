@@ -42,7 +42,7 @@ export function useLearningModes() {
         variant: 'secondary',
       },
     ],
-    []
+    [],
   );
 
   return { modes: data, loading: false, error: null, refresh: () => {} };

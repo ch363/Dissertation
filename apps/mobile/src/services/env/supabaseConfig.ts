@@ -42,7 +42,7 @@ function resolveSupabaseAnonKey(extra: Record<string, any>, override?: string) {
 }
 
 export function readSupabaseEnv(
-  overrides?: Partial<SupabaseEnvConfig>
+  overrides?: Partial<SupabaseEnvConfig>,
 ): SupabaseEnvConfig | SupabaseConfigError {
   const extra = readExtra();
 

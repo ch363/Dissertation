@@ -17,7 +17,7 @@ type Ctx = {
   setAnswer: <K extends keyof OnboardingAnswers>(key: K, value: OnboardingAnswers[K]) => void;
   setAnswerAndSave: <K extends keyof OnboardingAnswers>(
     key: K,
-    value: OnboardingAnswers[K]
+    value: OnboardingAnswers[K],
   ) => void;
   reset: () => void;
 };
@@ -53,7 +53,7 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
       }
     },
-    []
+    [],
   );
 
   useEffect(() => {
@@ -79,7 +79,7 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       },
       reset: () => setAnswers({}),
     }),
-    [answers, persist]
+    [answers, persist],
   );
 
   return <OnboardingContext.Provider value={api}>{children}</OnboardingContext.Provider>;

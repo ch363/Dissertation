@@ -1,8 +1,8 @@
 import { useRouter } from 'expo-router';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 
-import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { routes } from '@/services/navigation/routes';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
 export default function GlobalError() {

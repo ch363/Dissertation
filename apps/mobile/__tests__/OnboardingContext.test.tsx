@@ -28,7 +28,7 @@ describe('OnboardingProvider', () => {
       TestRenderer.create(
         <OnboardingProvider>
           <TestComponent onReady={(c) => (ctx = c)} />
-        </OnboardingProvider>
+        </OnboardingProvider>,
       );
     });
 
@@ -38,7 +38,7 @@ describe('OnboardingProvider', () => {
     });
     expect(mockSaveOnboarding).toHaveBeenCalledWith(
       'user-1',
-      expect.objectContaining({ difficulty: 'balanced' })
+      expect.objectContaining({ difficulty: 'balanced' }),
     );
   });
 });

@@ -8,6 +8,7 @@ export const routes = {
     root: '/(tabs)' as const,
     home: '/(tabs)/home' as const,
     learn: '/(tabs)/learn' as const,
+    review: '/(tabs)/learn/review' as const,
     profile: {
       root: '/(tabs)/profile' as const,
       index: '/(tabs)/profile' as const,
@@ -32,23 +33,37 @@ export const routes = {
     welcome: '/(onboarding)/welcome' as const,
     completion: '/(onboarding)/completion' as const,
   },
+  session: {
+    root: '/session' as const,
+  },
   course: {
     list: '/course' as const,
   },
   dev: {
     dbHealth: '/dev/db-health' as const,
   },
+  practice: {
+    flashcards: '/practice/flashcards' as const,
+    typing: '/practice/typing' as const,
+    listening: '/practice/listening' as const,
+  },
 } as const;
 
 export const routeBuilders = {
   courseDetail: (slug: string) => `/course/${slug}` as const,
   courseRun: (slug: string) => `/course/${slug}/run` as const,
+  lessonStart: (lessonId: string) => `/(tabs)/learn/${lessonId}/start` as const,
+  sessionDetail: (sessionId: string) => `/session/${sessionId}` as const,
+  sessionSummary: (sessionId: string) => `/session/${sessionId}/summary` as const,
 };
 
 export type StaticRoutePath = LeafPaths<typeof routes>;
 export type DynamicRoutePath =
   | ReturnType<typeof routeBuilders.courseDetail>
-  | ReturnType<typeof routeBuilders.courseRun>;
+  | ReturnType<typeof routeBuilders.courseRun>
+  | ReturnType<typeof routeBuilders.lessonStart>
+  | ReturnType<typeof routeBuilders.sessionDetail>
+  | ReturnType<typeof routeBuilders.sessionSummary>;
 export type RoutePath = StaticRoutePath | DynamicRoutePath;
 
 export const publicRootSegments = new Set<string>(PUBLIC_ROOT_SEGMENTS);
@@ -60,4 +75,3 @@ export const isPublicRootSegment = (segment?: string) => {
   const normalized = normalizeSegment(segment);
   return normalized === undefined || publicRootSegments.has(normalized);
 };
-

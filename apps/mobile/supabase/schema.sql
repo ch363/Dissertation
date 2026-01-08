@@ -1,319 +1,172 @@
--- Profiles table to store user info (1:1 with auth.users)
-create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  name text,
-  avatar_url text,
-  created_at timestamp with time zone default now(),
-  updated_at timestamp with time zone default now()
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.answers (
+  id integer NOT NULL DEFAULT nextval('answers_id_seq'::regclass),
+  question_id integer,
+  answer_text text NOT NULL,
+  is_correct boolean NOT NULL,
+  CONSTRAINT answers_pkey PRIMARY KEY (id),
+  CONSTRAINT answers_question_id_fkey FOREIGN KEY (question_id) REFERENCES public.questions(id)
 );
-
--- Keep updated_at fresh
-create or replace function public.set_updated_at()
-returns trigger language plpgsql as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$;
-
-drop trigger if exists profiles_set_updated_at on public.profiles;
-create trigger profiles_set_updated_at
-before update on public.profiles
-for each row execute function public.set_updated_at();
-
--- RLS
-alter table public.profiles enable row level security;
-
-drop policy if exists "Public profiles are viewable by logged in users" on public.profiles;
-create policy "Public profiles are viewable by logged in users"
-  on public.profiles for select
-  to authenticated
-  using ( true );
-
-drop policy if exists "Users can insert their own profile" on public.profiles;
-create policy "Users can insert their own profile"
-  on public.profiles for insert
-  to authenticated
-  with check ( auth.uid() = id );
-
-Drop policy if exists "Users can update their own profile" on public.profiles;
-create policy "Users can update their own profile"
-  on public.profiles for update
-  to authenticated
-  using ( auth.uid() = id );
-
--- Track lesson attempts per user
-create table if not exists public.lesson_attempts (
-  id bigserial primary key,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  course_slug text not null,
-  question_id text not null,
-  choice text not null,
-  correct boolean not null,
-  created_at timestamp with time zone default now()
-);
-
-alter table public.lesson_attempts enable row level security;
-
-drop policy if exists "Users can view their own attempts" on public.lesson_attempts;
-create policy "Users can view their own attempts"
-  on public.lesson_attempts for select
-  to authenticated
-  using ( auth.uid() = user_id );
-
--- =============================================
--- Teaching content scaffolding
--- =============================================
-
--- Content admins: allow selected users to write content via RLS
-create table if not exists public.content_admins (
-  user_id uuid primary key references auth.users(id) on delete cascade,
-  created_at timestamptz default now()
-);
-
-alter table public.content_admins enable row level security;
-
-drop policy if exists "Admins can read content_admins" on public.content_admins;
-create policy "Admins can read content_admins"
-  on public.content_admins for select
-  to authenticated
-  using ( exists (select 1 from public.content_admins ca where ca.user_id = auth.uid()) );
-
-drop policy if exists "Admins can upsert content_admins" on public.content_admins;
-create policy "Admins can upsert content_admins"
-  on public.content_admins for insert
-  to authenticated
-  with check ( exists (select 1 from public.content_admins ca where ca.user_id = auth.uid()) );
-
--- Languages catalog
-create table if not exists public.languages (
-  code text primary key, -- ISO 639-1 preferred (e.g., 'en', 'it')
-  name text not null
-);
-
-alter table public.languages enable row level security;
-
-drop policy if exists "Authenticated can read languages" on public.languages;
-create policy "Authenticated can read languages" on public.languages for select to authenticated using (true);
-
-drop policy if exists "Admins can write languages" on public.languages;
-create policy "Admins can write languages" on public.languages for all to authenticated using (
-  exists (select 1 from public.content_admins ca where ca.user_id = auth.uid())
-) with check (
-  exists (select 1 from public.content_admins ca where ca.user_id = auth.uid())
-);
-
--- Words/lemmas dictionary
-create table if not exists public.words (
-  id bigserial primary key,
-  language_code text not null references public.languages(code) on delete restrict,
-  text text not null,
-  lemma text,
-  pos text, -- e.g., NOUN, VERB, ADJ
-  ipa text,
-  audio_url text,
-  frequency int,
-  metadata jsonb default '{}'::jsonb,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
-  unique(language_code, text)
-);
-
-drop trigger if exists words_set_updated_at on public.words;
-create trigger words_set_updated_at before update on public.words for each row execute function public.set_updated_at();
-
-alter table public.words enable row level security;
-
-drop policy if exists "Authenticated can read words" on public.words;
-create policy "Authenticated can read words" on public.words for select to authenticated using (true);
-
-drop policy if exists "Admins can write words" on public.words;
-create policy "Admins can write words" on public.words for all to authenticated using (
-  exists (select 1 from public.content_admins ca where ca.user_id = auth.uid())
-) with check (
-  exists (select 1 from public.content_admins ca where ca.user_id = auth.uid())
-);
-
--- Sentences repository
-create table if not exists public.sentences (
-  id bigserial primary key,
-  language_code text not null references public.languages(code) on delete restrict,
-  text text not null,
-  source text, -- e.g., 'corpus', 'manual'
-  difficulty int default 1,
-  audio_url text,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-drop trigger if exists sentences_set_updated_at on public.sentences;
-create trigger sentences_set_updated_at before update on public.sentences for each row execute function public.set_updated_at();
-
-alter table public.sentences enable row level security;
-
-drop policy if exists "Authenticated can read sentences" on public.sentences;
-create policy "Authenticated can read sentences" on public.sentences for select to authenticated using (true);
-
-drop policy if exists "Admins can write sentences" on public.sentences;
-create policy "Admins can write sentences" on public.sentences for all to authenticated using (
-  exists (select 1 from public.content_admins ca where ca.user_id = auth.uid())
-) with check (
-  exists (select 1 from public.content_admins ca where ca.user_id = auth.uid())
-);
-
--- Tokenization of sentences for cloze or analysis
-create table if not exists public.sentence_tokens (
-  id bigserial primary key,
-  sentence_id bigint not null references public.sentences(id) on delete cascade,
-  token_index int not null, -- 0-based index
-  start_pos int,
-  end_pos int,
-  text text not null,
-  lemma text,
-  pos text,
-  word_id bigint references public.words(id) on delete set null,
-  unique(sentence_id, token_index)
-);
-
-alter table public.sentence_tokens enable row level security;
-
-drop policy if exists "Authenticated can read sentence_tokens" on public.sentence_tokens;
-create policy "Authenticated can read sentence_tokens" on public.sentence_tokens for select to authenticated using (true);
-
-drop policy if exists "Admins can write sentence_tokens" on public.sentence_tokens;
-create policy "Admins can write sentence_tokens" on public.sentence_tokens for all to authenticated using (
-  exists (select 1 from public.content_admins ca where ca.user_id = auth.uid())
-) with check (
-  exists (select 1 from public.content_admins ca where ca.user_id = auth.uid())
-);
-
--- Translations of sentences to target languages
-create table if not exists public.sentence_translations (
-  id bigserial primary key,
-  sentence_id bigint not null references public.sentences(id) on delete cascade,
-  target_language_code text not null references public.languages(code) on delete restrict,
-  text text not null,
-  literal_gloss text,
-  is_machine boolean default false,
-  created_at timestamptz default now(),
-  unique(sentence_id, target_language_code)
-);
-
-alter table public.sentence_translations enable row level security;
-
-drop policy if exists "Authenticated can read sentence_translations" on public.sentence_translations;
-create policy "Authenticated can read sentence_translations" on public.sentence_translations for select to authenticated using (true);
-
-drop policy if exists "Admins can write sentence_translations" on public.sentence_translations;
-create policy "Admins can write sentence_translations" on public.sentence_translations for all to authenticated using (
-  exists (select 1 from public.content_admins ca where ca.user_id = auth.uid())
-) with check (
-  exists (select 1 from public.content_admins ca where ca.user_id = auth.uid())
-);
-
--- Cloze templates derived from sentences
-create table if not exists public.cloze_templates (
-  id bigserial primary key,
-  sentence_id bigint not null references public.sentences(id) on delete cascade,
-  blank_token_indices int[] not null, -- which tokens are blanked
-  distractors text[] default '{}', -- optional distractor words
+CREATE TABLE public.cloze_templates (
+  id bigint NOT NULL DEFAULT nextval('cloze_templates_id_seq'::regclass),
+  sentence_id bigint NOT NULL,
+  blank_token_indices ARRAY NOT NULL,
+  distractors ARRAY DEFAULT '{}'::text[],
   prompt text,
   explanation text,
-  level int default 1,
-  enabled boolean default true,
-  created_at timestamptz default now()
+  level integer DEFAULT 1,
+  enabled boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT cloze_templates_pkey PRIMARY KEY (id),
+  CONSTRAINT cloze_templates_sentence_id_fkey FOREIGN KEY (sentence_id) REFERENCES public.sentences(id)
 );
-
-alter table public.cloze_templates enable row level security;
-
-drop policy if exists "Authenticated can read cloze_templates" on public.cloze_templates;
-create policy "Authenticated can read cloze_templates" on public.cloze_templates for select to authenticated using (true);
-
-drop policy if exists "Admins can write cloze_templates" on public.cloze_templates;
-create policy "Admins can write cloze_templates" on public.cloze_templates for all to authenticated using (
-  exists (select 1 from public.content_admins ca where ca.user_id = auth.uid())
-) with check (
-  exists (select 1 from public.content_admins ca where ca.user_id = auth.uid())
+CREATE TABLE public.content_admins (
+  user_id uuid NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT content_admins_pkey PRIMARY KEY (user_id),
+  CONSTRAINT content_admins_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
-
--- Useful indexes
-create index if not exists idx_words_lang_text on public.words(language_code, text);
-create index if not exists idx_sentences_lang_diff on public.sentences(language_code, difficulty);
-create index if not exists idx_sentence_translations_sentence_lang on public.sentence_translations(sentence_id, target_language_code);
-create index if not exists idx_sentence_tokens_sentence_idx on public.sentence_tokens(sentence_id, token_index);
-create index if not exists idx_cloze_templates_sentence on public.cloze_templates(sentence_id);
-
-drop policy if exists "Users can insert their own attempts" on public.lesson_attempts;
-create policy "Users can insert their own attempts"
-  on public.lesson_attempts for insert
-  to authenticated
-  with check ( auth.uid() = user_id );
-
--- Onboarding answers storage
-create table if not exists public.onboarding_answers (
-  user_id uuid primary key references auth.users(id) on delete cascade,
-  answers jsonb not null,
-  created_at timestamp with time zone default now(),
-  updated_at timestamp with time zone default now()
+CREATE TABLE public.languages (
+  code text NOT NULL,
+  name text NOT NULL,
+  CONSTRAINT languages_pkey PRIMARY KEY (code)
 );
-
-alter table public.onboarding_answers enable row level security;
-
-drop policy if exists "Users can view their own onboarding" on public.onboarding_answers;
-create policy "Users can view their own onboarding"
-  on public.onboarding_answers for select
-  to authenticated
-  using ( auth.uid() = user_id );
-
-drop policy if exists "Users can upsert their own onboarding" on public.onboarding_answers;
-create policy "Users can upsert their own onboarding"
-  on public.onboarding_answers for insert
-  to authenticated
-  with check ( auth.uid() = user_id );
-
-drop policy if exists "Users can update their own onboarding" on public.onboarding_answers;
-create policy "Users can update their own onboarding"
-  on public.onboarding_answers for update
-  to authenticated
-  using ( auth.uid() = user_id );
-
--- Progress tracking (user_progress)
-create table if not exists public.user_progress (
-  user_id uuid primary key references auth.users(id) on delete cascade,
-  completed text[] not null default '{}',
-  version integer not null default 0,
-  updated_at timestamp with time zone not null default now()
+CREATE TABLE public.lesson_attempts (
+  id bigint NOT NULL DEFAULT nextval('lesson_attempts_id_seq'::regclass),
+  user_id uuid NOT NULL,
+  course_slug text NOT NULL,
+  question_id text NOT NULL,
+  choice text NOT NULL,
+  correct boolean NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT lesson_attempts_pkey PRIMARY KEY (id),
+  CONSTRAINT lesson_attempts_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
-
-alter table public.user_progress enable row level security;
-
-drop policy if exists "Users can view their progress" on public.user_progress;
-create policy "Users can view their progress"
-  on public.user_progress for select
-  to authenticated
-  using ( auth.uid() = user_id );
-
-drop policy if exists "Users can upsert their progress" on public.user_progress;
-create policy "Users can upsert their progress"
-  on public.user_progress for insert
-  to authenticated
-  with check ( auth.uid() = user_id );
-
-drop policy if exists "Users can update their progress" on public.user_progress;
-create policy "Users can update their progress"
-  on public.user_progress for update
-  to authenticated
-  using ( auth.uid() = user_id );
-
-create or replace function public.set_user_progress_updated_at()
-returns trigger language plpgsql as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$;
-
-drop trigger if exists trg_user_progress_updated_at on public.user_progress;
-create trigger trg_user_progress_updated_at
-before update on public.user_progress
-for each row execute function public.set_user_progress_updated_at();
+CREATE TABLE public.lessons (
+  id integer NOT NULL DEFAULT nextval('lessons_id_seq'::regclass),
+  name text NOT NULL,
+  description text,
+  cefr_level text,
+  title text,
+  display_order integer DEFAULT 0,
+  CONSTRAINT lessons_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.media (
+  id integer NOT NULL DEFAULT nextval('media_id_seq'::regclass),
+  type text NOT NULL,
+  url text NOT NULL,
+  description text,
+  CONSTRAINT media_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.onboarding_answers (
+  user_id uuid NOT NULL,
+  answers jsonb NOT NULL,
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT onboarding_answers_pkey PRIMARY KEY (user_id),
+  CONSTRAINT onboarding_answers_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.profiles (
+  id uuid NOT NULL,
+  name text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.questions (
+  id integer NOT NULL DEFAULT nextval('questions_id_seq'::regclass),
+  lesson_id integer,
+  media_id integer,
+  type text NOT NULL,
+  question_text text,
+  prompt text,
+  media_url text,
+  CONSTRAINT questions_pkey PRIMARY KEY (id),
+  CONSTRAINT questions_lesson_id_fkey FOREIGN KEY (lesson_id) REFERENCES public.lessons(id),
+  CONSTRAINT questions_media_id_fkey FOREIGN KEY (media_id) REFERENCES public.media(id)
+);
+CREATE TABLE public.sentence_tokens (
+  id bigint NOT NULL DEFAULT nextval('sentence_tokens_id_seq'::regclass),
+  sentence_id bigint NOT NULL,
+  token_index integer NOT NULL,
+  start_pos integer,
+  end_pos integer,
+  text text NOT NULL,
+  lemma text,
+  pos text,
+  word_id bigint,
+  CONSTRAINT sentence_tokens_pkey PRIMARY KEY (id),
+  CONSTRAINT sentence_tokens_sentence_id_fkey FOREIGN KEY (sentence_id) REFERENCES public.sentences(id),
+  CONSTRAINT sentence_tokens_word_id_fkey FOREIGN KEY (word_id) REFERENCES public.words(id)
+);
+CREATE TABLE public.sentence_translations (
+  id bigint NOT NULL DEFAULT nextval('sentence_translations_id_seq'::regclass),
+  sentence_id bigint NOT NULL,
+  target_language_code text NOT NULL,
+  text text NOT NULL,
+  literal_gloss text,
+  is_machine boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT sentence_translations_pkey PRIMARY KEY (id),
+  CONSTRAINT sentence_translations_sentence_id_fkey FOREIGN KEY (sentence_id) REFERENCES public.sentences(id),
+  CONSTRAINT sentence_translations_target_language_code_fkey FOREIGN KEY (target_language_code) REFERENCES public.languages(code)
+);
+CREATE TABLE public.sentences (
+  id bigint NOT NULL DEFAULT nextval('sentences_id_seq'::regclass),
+  language_code text NOT NULL,
+  text text NOT NULL,
+  source text,
+  difficulty integer DEFAULT 1,
+  audio_url text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT sentences_pkey PRIMARY KEY (id),
+  CONSTRAINT sentences_language_code_fkey FOREIGN KEY (language_code) REFERENCES public.languages(code)
+);
+CREATE TABLE public.user_progress (
+  user_id integer NOT NULL,
+  question_id integer NOT NULL,
+  easiness numeric,
+  interval integer,
+  repetitions integer,
+  last_review date,
+  next_review date,
+  CONSTRAINT user_progress_pkey PRIMARY KEY (user_id, question_id),
+  CONSTRAINT user_progress_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT user_progress_question_id_fkey FOREIGN KEY (question_id) REFERENCES public.questions(id)
+);
+CREATE TABLE public.user_responses (
+  id integer NOT NULL DEFAULT nextval('user_responses_id_seq'::regclass),
+  user_id integer,
+  question_id integer,
+  accuracy boolean NOT NULL,
+  time_to_respond integer,
+  attempts integer,
+  error_type text,
+  answered_at timestamp with time zone,
+  CONSTRAINT user_responses_pkey PRIMARY KEY (id),
+  CONSTRAINT user_responses_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT user_responses_question_id_fkey FOREIGN KEY (question_id) REFERENCES public.questions(id)
+);
+CREATE TABLE public.users (
+  id integer NOT NULL DEFAULT nextval('users_id_seq'::regclass),
+  name text NOT NULL,
+  CONSTRAINT users_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.words (
+  id bigint NOT NULL DEFAULT nextval('words_id_seq'::regclass),
+  language_code text NOT NULL,
+  text text NOT NULL,
+  lemma text,
+  pos text,
+  ipa text,
+  audio_url text,
+  frequency integer,
+  metadata jsonb DEFAULT '{}'::jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT words_pkey PRIMARY KEY (id),
+  CONSTRAINT words_language_code_fkey FOREIGN KEY (language_code) REFERENCES public.languages(code)
+);

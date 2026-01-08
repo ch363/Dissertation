@@ -1,54 +1,56 @@
-import { View, Text, StyleSheet, Image, Pressable, ActivityIndicator } from 'react-native';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button } from '@/components/ui/Button';
-import { SurfaceCard } from '@/components/ui/SurfaceCard';
-import { useLearningModes } from '@/hooks/useLearningModes';
+import { ContinueLearningCard } from '@/components/learn/ContinueLearningCard';
+import { DiscoverCarousel } from '@/components/learn/DiscoverCarousel';
+import { LearnHeader } from '@/components/learn/LearnHeader';
+import { LearningPathCarousel } from '@/components/learn/LearningPathCarousel';
+import { ReviewSection } from '@/components/learn/ReviewSection';
+import { learnMock } from '@/features/learn/mock';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
-type LearningMode = ReturnType<typeof useLearningModes>['modes'][number];
-
-export default function Learn() {
+export default function LearnScreen() {
   const { theme } = useAppTheme();
-  const { modes, loading, error, refresh } = useLearningModes();
+  const router = useRouter();
+
   return (
-    <SafeAreaView style={[styles.safeArea]}>
-      <View style={[styles.container]}>
-        {loading ? (
-          <View style={styles.stateRow}>
-            <ActivityIndicator color={theme.colors.primary} />
-            <Text style={[styles.stateText, { color: theme.colors.mutedText }]}>
-              Loading modes…
-            </Text>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: baseTheme.spacing.xl }}
+      >
+        <LearnHeader />
+        <ContinueLearningCard data={learnMock.continueLesson} />
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/(tabs)/learn/list')}
+          style={({ pressed }) => [
+            styles.listCta,
+            {
+              borderColor: theme.colors.border,
+              backgroundColor: pressed ? '#f2f6ff' : '#fff',
+            },
+          ]}
+        >
+          <View style={styles.listCtaHeader}>
+            <Text style={[styles.listTitle, { color: theme.colors.text }]}>Browse all lessons</Text>
+            <Text style={[styles.listLink, { color: theme.colors.primary }]}>View</Text>
           </View>
-        ) : error ? (
-          <View style={styles.stateRow}>
-            <Text style={[styles.stateText, { color: theme.colors.error }]}>{error}</Text>
-            <Pressable style={styles.retryButton} onPress={refresh} accessibilityRole="button">
-              <Text style={styles.retryText}>Retry</Text>
-            </Pressable>
-          </View>
-        ) : (
-          modes.map((mode: LearningMode) => (
-            <SurfaceCard key={mode.key} style={{ marginBottom: baseTheme.spacing.lg }}>
-              {mode.image ? (
-                <Image source={{ uri: mode.image }} style={styles.cardImage} resizeMode="cover" />
-              ) : null}
-              <Text style={[styles.cardTitle, { color: theme.colors.text }]}>{mode.title}</Text>
-              <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>
-                {mode.subtitle}
-              </Text>
-              <Button
-                title={mode.cta}
-                variant={mode.variant === 'primary' ? 'primary' : 'secondary'}
-                onPress={() => {}}
-                style={{ marginTop: baseTheme.spacing.sm }}
-              />
-            </SurfaceCard>
-          ))
-        )}
-      </View>
+          <Text style={[styles.listSubtitle, { color: theme.colors.mutedText }]}>
+            Jump into A1 lessons and overviews
+          </Text>
+        </Pressable>
+        <LearningPathCarousel items={learnMock.learningPath} />
+        <ReviewSection
+          data={learnMock.review}
+          onStart={() => router.push('/(tabs)/learn/review')}
+        />
+        <DiscoverCarousel items={learnMock.discover} />
+        <View style={{ height: baseTheme.spacing.xl }} />
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -56,56 +58,34 @@ export default function Learn() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    padding: baseTheme.spacing.lg,
+  listCta: {
+    marginTop: baseTheme.spacing.lg,
+    marginHorizontal: baseTheme.spacing.lg,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: baseTheme.spacing.md,
+    gap: baseTheme.spacing.xs,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
   },
-  cardImage: {
-    width: '100%',
-    height: 160,
-    borderRadius: baseTheme.radius.md,
-    marginBottom: baseTheme.spacing.md,
-  },
-  cardTitle: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 20,
-    color: baseTheme.colors.text,
-  },
-  cardSubtitle: {
-    fontFamily: baseTheme.typography.regular,
-    color: baseTheme.colors.mutedText,
-    marginBottom: baseTheme.spacing.md,
-  },
-  button: {
-    paddingVertical: 12,
-    borderRadius: baseTheme.radius.md,
+  listCtaHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  buttonText: {
-    color: '#fff',
+  listTitle: {
     fontFamily: baseTheme.typography.semiBold,
+    fontSize: 16,
   },
-  stateRow: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: baseTheme.spacing.sm,
-    paddingVertical: baseTheme.spacing.lg,
+  listLink: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 14,
   },
-  stateText: {
-    textAlign: 'center',
+  listSubtitle: {
     fontFamily: baseTheme.typography.regular,
-  },
-  retryButton: {
-    paddingHorizontal: baseTheme.spacing.md,
-    paddingVertical: baseTheme.spacing.sm,
-    backgroundColor: baseTheme.colors.primary,
-    borderRadius: baseTheme.radius.md,
-  },
-  retryText: {
-    color: '#fff',
-    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 13,
   },
 });

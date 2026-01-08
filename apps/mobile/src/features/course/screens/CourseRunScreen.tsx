@@ -14,8 +14,8 @@ import {
 
 import { insertLessonAttempt } from '@/api/lessons/attempts';
 import { markModuleCompleted } from '@/api/progress';
-import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { routes } from '@/services/navigation/routes';
+import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
@@ -69,7 +69,7 @@ export default function CourseRun() {
         answer: 'sei',
       },
     ],
-    []
+    [],
   );
 
   const [index, setIndex] = useState(0);

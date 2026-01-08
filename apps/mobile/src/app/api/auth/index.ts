@@ -23,7 +23,7 @@ export async function signUpWithEmailPassword(email: string, password: string) {
 export async function signUpWithEmail(
   name: string | null,
   email: string,
-  password: string
+  password: string,
 ): Promise<SignUpResult> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase.auth.signUp({

@@ -11,7 +11,7 @@ export type LessonAttempt = {
 };
 
 export async function insertLessonAttempt(
-  entry: Omit<LessonAttempt, 'id' | 'created_at' | 'user_id'>
+  entry: Omit<LessonAttempt, 'id' | 'created_at' | 'user_id'>,
 ) {
   const supabase = getSupabaseClient();
   const { data: u } = await supabase.auth.getUser();

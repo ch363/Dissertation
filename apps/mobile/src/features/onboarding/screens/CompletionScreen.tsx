@@ -26,7 +26,7 @@ export default function OnboardingCompletion() {
     } catch (e: any) {
       Alert.alert(
         'Save failed',
-        e?.message || 'Could not save your onboarding yet. We will retry in the background.'
+        e?.message || 'Could not save your onboarding yet. We will retry in the background.',
       );
       router.replace(routes.tabs.home);
     } finally {

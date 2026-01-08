@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { routes } from '@/services/navigation/routes';
 import {
   useAppTheme,
   getTtsEnabled,
@@ -12,7 +13,6 @@ import {
   getTtsRate,
   setTtsRate,
 } from '@/services/preferences/settings-facade';
-import { routes } from '@/services/navigation/routes';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
 export default function SpeechSettings() {

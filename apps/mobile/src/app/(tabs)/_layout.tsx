@@ -10,13 +10,14 @@ import { theme as baseTheme } from '@/services/theme/tokens';
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const visibleRoutes = state.routes;
+  const allowed = new Set(['home/index', 'learn/index', 'settings', 'profile']);
+  const visibleRoutes = state.routes.filter((route: any) => allowed.has(route.name));
 
   const iconNameForRoute = (route: any) => {
     const rn: string = String(route.name ?? '');
     if (rn.includes('learn')) return 'book';
+    if (rn.includes('settings')) return 'cog';
     if (rn.includes('profile')) return 'person';
-    if (rn.includes('settings')) return 'settings';
     return 'home';
   };
 
@@ -84,8 +85,11 @@ export default function TabsLayout() {
       >
         <Tabs.Screen name="home/index" options={{ title: 'Home' }} />
         <Tabs.Screen name="learn/index" options={{ title: 'Learn' }} />
-        <Tabs.Screen name="profile" options={{ title: 'Progress' }} />
+        <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
         <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
+
+        {/* Hide non-tab routes from the bar but keep them routable */}
+        <Tabs.Screen name="learn/[lessonId]/start" options={{ href: null }} />
       </Tabs>
     </View>
   );

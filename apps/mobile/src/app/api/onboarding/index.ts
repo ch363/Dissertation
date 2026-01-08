@@ -73,7 +73,7 @@ export async function getOnboarding(userId: string): Promise<OnboardingAnswers |
 }
 
 export async function getOnboardingSubmission(
-  userId: string
+  userId: string,
 ): Promise<OnboardingSubmission | null> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase

@@ -9,8 +9,8 @@ import { WelcomeContinueCard } from '@/features/home/components/WelcomeContinueC
 import { DueTodayGrid } from '@/features/home/components/due-today/DueTodayGrid';
 import type { DueTodayTileItem } from '@/features/home/components/due-today/DueTodayTile';
 import { PickPathList } from '@/features/home/components/pick-path/PickPathList';
-import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { routes } from '@/services/navigation/routes';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
 export default function HomeScreen() {

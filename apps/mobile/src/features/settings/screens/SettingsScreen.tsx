@@ -5,6 +5,7 @@ import { View, Text, StyleSheet, Switch, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { signOut } from '@/app/api/auth';
+import { routes } from '@/services/navigation/routes';
 import {
   useAppTheme,
   getAdaptivityEnabled,
@@ -12,7 +13,6 @@ import {
   getNotificationsEnabled,
   setNotificationsEnabled,
 } from '@/services/preferences/settings-facade';
-import { routes } from '@/services/navigation/routes';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
 export default function SettingsScreen() {

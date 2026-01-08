@@ -9,16 +9,6 @@ jest.mock('expo-router', () => ({
   router: { push: jest.fn() },
 }));
 
-jest.mock('@/features/progress/hooks/useProgressSummary', () => ({
-  useProgressSummary: () => ({
-    completed: ['basics'],
-    loading: false,
-    error: null,
-    refresh: jest.fn(),
-    summary: { xp: 20, streak: 1, level: 1, updatedAt: Date.now() },
-  }),
-}));
-
 describe('HomeScreen', () => {
   it('renders modules list', () => {
     const tree = renderer
@@ -27,7 +17,7 @@ describe('HomeScreen', () => {
           <ThemeProvider>
             <HomeScreen />
           </ThemeProvider>
-        </SafeAreaProvider>
+        </SafeAreaProvider>,
       )
       .toJSON();
     expect(tree).toBeTruthy();

@@ -270,7 +270,7 @@ export function computeNextSelection(
   selected: string[],
   key: string,
   multiple: boolean,
-  maxSelections?: number
+  maxSelections?: number,
 ): string[] {
   if (!multiple) return [key];
   const exists = selected.includes(key);

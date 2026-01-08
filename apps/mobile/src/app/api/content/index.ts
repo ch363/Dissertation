@@ -10,7 +10,7 @@ import {
 
 export async function fetchSentences(
   languageCode: string,
-  opts?: { limit?: number; difficulty?: number }
+  opts?: { limit?: number; difficulty?: number },
 ) {
   const supabase = getSupabaseClient();
   const q = supabase
@@ -28,7 +28,7 @@ export async function fetchSentences(
 export async function fetchSentenceWithTranslation(
   languageCode: string,
   targetLanguageCode: string,
-  opts?: { limit?: number; difficulty?: number }
+  opts?: { limit?: number; difficulty?: number },
 ) {
   const supabase = getSupabaseClient();
   const q = supabase
@@ -42,14 +42,14 @@ export async function fetchSentenceWithTranslation(
   const { data, error } = await q;
   if (error) throw error;
   return (data ?? []).map((row) =>
-    sentenceWithTranslationSchema.parse(row)
+    sentenceWithTranslationSchema.parse(row),
   ) as SentenceWithTranslationDto[];
 }
 
 export async function fetchClozeTemplates(
   languageCode: string,
   targetLanguageCode?: string,
-  opts?: { limit?: number; level?: number }
+  opts?: { limit?: number; level?: number },
 ) {
   const supabase = getSupabaseClient();
   const q = supabase
@@ -59,7 +59,7 @@ export async function fetchClozeTemplates(
       *,
       sentences:sentence_id(id, language_code, text),
       sentence_translations:sentence_id(id, target_language_code, text)
-    `
+    `,
     )
     .eq('sentences.language_code', languageCode)
     .eq('enabled', true)
@@ -70,6 +70,6 @@ export async function fetchClozeTemplates(
   const { data, error } = await q;
   if (error) throw error;
   return (data ?? []).map((row) =>
-    clozeTemplateExpandedSchema.parse(row)
+    clozeTemplateExpandedSchema.parse(row),
   ) as ClozeTemplateExpandedDto[];
 }

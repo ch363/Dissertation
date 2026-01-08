@@ -1,6 +1,6 @@
 // Mock AsyncStorage with official mock
 jest.mock('@react-native-async-storage/async-storage', () =>
-  require('@react-native-async-storage/async-storage/jest/async-storage-mock')
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 
 // Minimal Expo Constants mock to satisfy supabase config resolution

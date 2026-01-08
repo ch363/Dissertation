@@ -30,14 +30,14 @@ export const clozeTemplateSchema = z.object({
 
 export const sentenceWithTranslationSchema = sentenceSchema.extend({
   sentence_translations: z.array(
-    sentenceTranslationSchema.pick({ text: true, target_language_code: true })
+    sentenceTranslationSchema.pick({ text: true, target_language_code: true }),
   ),
 });
 
 export const clozeTemplateExpandedSchema = clozeTemplateSchema.extend({
   sentences: sentenceSchema.pick({ id: true, language_code: true, text: true }),
   sentence_translations: z.array(
-    sentenceTranslationSchema.pick({ id: true, target_language_code: true, text: true })
+    sentenceTranslationSchema.pick({ id: true, target_language_code: true, text: true }),
   ),
 });
 
