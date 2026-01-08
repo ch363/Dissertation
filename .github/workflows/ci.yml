@@ -32,5 +32,8 @@ jobs:
       - name: Install
         run: npm ci --no-audit --no-fund
 
+      - name: Format check
+        run: npm run format:check --silent
+
       - name: CI (lint + type-check + tests)
         run: npm run ci --silent

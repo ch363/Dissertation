@@ -9,8 +9,9 @@ project:
   
   # Project structure
   structure:
-    source_dir: "src"
-    test_dir: "tests"
+    app_dir: "apps/mobile"
+    source_dir: "apps/mobile/src"
+    test_dir: "apps/mobile/__tests__"
     docs_dir: "docs"
     tools_dir: "tools"
     config_dir: "config"

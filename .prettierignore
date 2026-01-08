@@ -1,0 +1,14 @@
+node_modules
+.git
+.DS_Store
+.expo
+.expo-shared
+dist
+build
+coverage
+android
+ios
+apps/mobile/ios/Pods
+.turbo
+*.log
+*.lock

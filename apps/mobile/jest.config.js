@@ -9,7 +9,6 @@ module.exports = {
     '^@/components/(.*)$': '<rootDir>/src/components/$1',
     '^@/assets/(.*)$': '<rootDir>/assets/$1',
     '^@/services/(.*)$': '<rootDir>/src/services/$1',
-    '^@/server/(.*)$': '<rootDir>/src/server/$1',
     '^@/types/(.*)$': '<rootDir>/src/types/$1',
     '^@/hooks/(.*)$': '<rootDir>/src/hooks/$1',
     '^@/utils/(.*)$': '<rootDir>/src/utils/$1',
