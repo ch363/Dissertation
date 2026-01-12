@@ -1,0 +1,196 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}       
+
+enum KNOWLEDGE_LEVEL {
+  A1
+  A2
+  B1
+  B2
+  C1
+  C2
+}
+
+enum DELIVERY_METHOD {
+  FILL_BLANK
+  FLASHCARD
+  MULTIPLE_CHOICE
+  SPEECH_TO_TEXT
+  TEXT_TO_SPEECH
+  TEXT_TRANSLATION
+}
+
+model Module {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String    @db.VarChar
+  description String?   @db.VarChar
+  imageUrl    String?   @map("image_url") @db.VarChar
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  lessons Lesson[]
+
+  @@map("modules")
+}
+
+model Lesson {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title          String    @db.VarChar
+  description    String?   @db.VarChar
+  imageUrl       String?   @map("image_url") @db.VarChar
+  numberOfItems  Int       @default(0) @map("number_of_items")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  moduleId       String    @map("module_id") @db.Uuid
+  module         Module    @relation(fields: [moduleId], references: [id])
+
+  teachings      Teaching[]
+  userLessons    UserLesson[]
+
+  @@map("lessons")
+}
+
+model Teaching {
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  knowledgeLevel          KNOWLEDGE_LEVEL @map("knowledge_level")
+  emoji                   String?   @db.VarChar
+  userLanguageString      String    @map("user_language_string") @db.VarChar
+  learningLanguageString  String    @map("learning_language_string") @db.VarChar
+  learningLanguageAudioUrl String?  @map("learning_language_audio_url") @db.VarChar
+  tip                     String?   @db.VarChar
+  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt               DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  lessonId                String    @map("lesson_id") @db.Uuid
+  lesson                  Lesson    @relation(fields: [lessonId], references: [id])
+
+  questions               Question[]
+  userTeachingsCompleted  UserTeachingCompleted[]
+
+  @@map("teachings")
+}
+
+model Question {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  teachingId String   @map("teaching_id") @db.Uuid
+  teaching   Teaching @relation(fields: [teachingId], references: [id])
+
+  questionDeliveryMethods QuestionDeliveryMethod[]
+  userQuestionPerformance UserQuestionPerformance[]
+
+  @@map("questions")
+}
+
+model QuestionDeliveryMethod {
+  questionId      String          @map("question_id") @db.Uuid
+  deliveryMethod  DELIVERY_METHOD @map("delivery_method")
+
+  question        Question        @relation(fields: [questionId], references: [id])
+
+  @@unique([questionId, deliveryMethod])
+  @@index([deliveryMethod])
+  @@map("question_delivery_methods")
+}
+
+model User {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                  String?   @db.VarChar
+  knowledgePoints       Int       @default(0) @map("knowledge_points")
+  knowledgeLevel        KNOWLEDGE_LEVEL @default(A1) @map("knowledge_level")
+  preferredDeliveryMethod DELIVERY_METHOD? @map("preferred_delivery_method")
+
+  userDeliveryMethodScores     UserDeliveryMethodScore[]
+  userKnowledgeLevelProgress   UserKnowledgeLevelProgress[]
+  userLessons                  UserLesson[]
+  userTeachingsCompleted       UserTeachingCompleted[]
+  userQuestionPerformance      UserQuestionPerformance[]
+
+  @@map("users")
+}
+
+model UserDeliveryMethodScore {
+  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String          @map("user_id") @db.Uuid
+  deliveryMethod DELIVERY_METHOD @map("delivery_method")
+  score         Float           @default(0)
+  updatedAt     DateTime        @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  user          User            @relation(fields: [userId], references: [id])
+
+  @@unique([userId, deliveryMethod])
+  @@index([userId])
+  @@index([deliveryMethod])
+  @@map("user_delivery_method_scores")
+}
+
+model UserKnowledgeLevelProgress {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  value     Int
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  userId    String    @map("user_id") @db.Uuid
+
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("user_knowledge_level_progress")
+}
+
+model UserLesson {
+  userId            String  @map("user_id") @db.Uuid
+  lessonId          String  @map("lesson_id") @db.Uuid
+  completedTeachings Int     @default(0) @map("completed_teachings")
+
+  user              User    @relation(fields: [userId], references: [id])
+  lesson            Lesson  @relation(fields: [lessonId], references: [id])
+
+  @@unique([userId, lessonId])
+  @@index([userId])
+  @@index([lessonId])
+  @@map("user_lessons")
+}
+
+model UserTeachingCompleted {
+  userId    String    @map("user_id") @db.Uuid
+  teachingId String   @map("teaching_id") @db.Uuid
+
+  user      User      @relation(fields: [userId], references: [id])
+  teaching  Teaching  @relation(fields: [teachingId], references: [id])
+
+  @@unique([userId, teachingId])
+  @@index([userId])
+  @@index([teachingId])
+  @@map("user_teachings_completed")
+}
+
+model UserQuestionPerformance {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  questionId      String    @map("question_id") @db.Uuid
+  score           Int
+  timeToComplete  Int?      @map("time_to_complete")
+  percentageAccuracy Int?   @map("percentage_accuracy")
+  attempts        Int?
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  lastRevisedAt   DateTime? @map("last_revised_at") @db.Timestamp(6)
+  nextReviewDue   DateTime? @map("next_review_due") @db.Timestamp(6)
+
+  user            User      @relation(fields: [userId], references: [id])
+  question        Question  @relation(fields: [questionId], references: [id])
+
+  @@index([userId])
+  @@index([questionId])
+  @@index([userId, questionId])
+  @@index([nextReviewDue])
+  @@map("user_question_performance")
+}

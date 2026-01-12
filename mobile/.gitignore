@@ -85,7 +85,7 @@ docs/_build/
 site/
 
 # Expo / React Native
-apps/mobile/.expo/
-apps/mobile/.expo-shared/
-apps/mobile/ios/
-apps/mobile/android/
+.expo/
+.expo-shared/
+ios/
+android/
