@@ -51,7 +51,7 @@ model Lesson {
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
   moduleId       String    @map("module_id") @db.Uuid
-  module         Module    @relation(fields: [moduleId], references: [id])
+  module         Module    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
   teachings      Teaching[]
   userLessons    UserLesson[]
@@ -60,21 +60,21 @@ model Lesson {
 }
 
 model Teaching {
-  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  knowledgeLevel          KNOWLEDGE_LEVEL @map("knowledge_level")
-  emoji                   String?   @db.VarChar
-  userLanguageString      String    @map("user_language_string") @db.VarChar
-  learningLanguageString  String    @map("learning_language_string") @db.VarChar
-  learningLanguageAudioUrl String?  @map("learning_language_audio_url") @db.VarChar
-  tip                     String?   @db.VarChar
-  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt               DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  id                       String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  knowledgeLevel           KNOWLEDGE_LEVEL @map("knowledge_level")
+  emoji                    String?         @db.VarChar
+  userLanguageString       String          @map("user_language_string") @db.VarChar
+  learningLanguageString   String          @map("learning_language_string") @db.VarChar
+  learningLanguageAudioUrl String?         @map("learning_language_audio_url") @db.VarChar
+  tip                      String?         @db.VarChar
+  createdAt                DateTime        @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                DateTime        @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  lessonId                String    @map("lesson_id") @db.Uuid
-  lesson                  Lesson    @relation(fields: [lessonId], references: [id])
+  lessonId                 String          @map("lesson_id") @db.Uuid
+  lesson                   Lesson          @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
-  questions               Question[]
-  userTeachingsCompleted  UserTeachingCompleted[]
+  questions                Question[]
+  userTeachingsCompleted   UserTeachingCompleted[]
 
   @@map("teachings")
 }
@@ -83,7 +83,7 @@ model Question {
   id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
   teachingId String   @map("teaching_id") @db.Uuid
-  teaching   Teaching @relation(fields: [teachingId], references: [id])
+  teaching   Teaching @relation(fields: [teachingId], references: [id], onDelete: Cascade)
 
   questionDeliveryMethods QuestionDeliveryMethod[]
   userQuestionPerformance UserQuestionPerformance[]
@@ -91,19 +91,20 @@ model Question {
   @@map("questions")
 }
 
+
 model QuestionDeliveryMethod {
   questionId      String          @map("question_id") @db.Uuid
   deliveryMethod  DELIVERY_METHOD @map("delivery_method")
 
-  question        Question        @relation(fields: [questionId], references: [id])
+  question        Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
-  @@unique([questionId, deliveryMethod])
+  @@id([questionId, deliveryMethod])
   @@index([deliveryMethod])
   @@map("question_delivery_methods")
 }
 
 model User {
-  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id String @id @db.Uuid
   name                  String?   @db.VarChar
   knowledgePoints       Int       @default(0) @map("knowledge_points")
   knowledgeLevel        KNOWLEDGE_LEVEL @default(A1) @map("knowledge_level")
@@ -147,46 +148,50 @@ model UserKnowledgeLevelProgress {
 }
 
 model UserLesson {
-  userId            String  @map("user_id") @db.Uuid
-  lessonId          String  @map("lesson_id") @db.Uuid
-  completedTeachings Int     @default(0) @map("completed_teachings")
+  userId             String   @map("user_id") @db.Uuid
+  lessonId           String   @map("lesson_id") @db.Uuid
+  completedTeachings Int      @default(0) @map("completed_teachings")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  user              User    @relation(fields: [userId], references: [id])
-  lesson            Lesson  @relation(fields: [lessonId], references: [id])
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson             Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, lessonId])
+  @@id([userId, lessonId])
   @@index([userId])
   @@index([lessonId])
   @@map("user_lessons")
 }
 
+
 model UserTeachingCompleted {
-  userId    String    @map("user_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
   teachingId String   @map("teaching_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
-  user      User      @relation(fields: [userId], references: [id])
-  teaching  Teaching  @relation(fields: [teachingId], references: [id])
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teaching   Teaching @relation(fields: [teachingId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, teachingId])
+  @@id([userId, teachingId])
   @@index([userId])
   @@index([teachingId])
   @@map("user_teachings_completed")
 }
 
 model UserQuestionPerformance {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId          String    @map("user_id") @db.Uuid
-  questionId      String    @map("question_id") @db.Uuid
-  score           Int
-  timeToComplete  Int?      @map("time_to_complete")
-  percentageAccuracy Int?   @map("percentage_accuracy")
-  attempts        Int?
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  lastRevisedAt   DateTime? @map("last_revised_at") @db.Timestamp(6)
-  nextReviewDue   DateTime? @map("next_review_due") @db.Timestamp(6)
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String    @map("user_id") @db.Uuid
+  questionId         String    @map("question_id") @db.Uuid
+  score              Int
+  timeToComplete     Int?      @map("time_to_complete")
+  percentageAccuracy Int?      @map("percentage_accuracy")
+  attempts           Int?
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  lastRevisedAt      DateTime? @map("last_revised_at") @db.Timestamp(6)
+  nextReviewDue      DateTime? @map("next_review_due") @db.Timestamp(6)
 
-  user            User      @relation(fields: [userId], references: [id])
-  question        Question  @relation(fields: [questionId], references: [id])
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question           Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([questionId])
@@ -194,3 +199,4 @@ model UserQuestionPerformance {
   @@index([nextReviewDue])
   @@map("user_question_performance")
 }
+

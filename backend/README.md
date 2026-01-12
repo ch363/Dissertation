@@ -93,6 +93,87 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 - Website - [https://nestjs.com](https://nestjs.com/)
 - Twitter - [@nestframework](https://twitter.com/nestframework)
 
+## Fluentia Backend API
+
+### Auth Flow + /me Provisioning
+
+The backend uses **Supabase Auth** as the only identity provider. Authentication works as follows:
+
+1. **JWT Verification**: Every authenticated endpoint uses `SupabaseAuthGuard` which:
+   - Extracts the JWT token from the `Authorization: Bearer <token>` header
+   - Verifies the token using Supabase's JWT secret
+   - Extracts the user ID from the `sub` claim
+   - Attaches `req.user = { id: userId }` to the request
+
+2. **User Provisioning**: User provisioning is **business-layer only** (no database triggers):
+   - The canonical entrypoint is `GET /me`
+   - On first call, it upserts a `User` record with `id = authUid` (from JWT `sub`)
+   - `User.id` has NO default value - it must equal `auth.users.id` from Supabase
+   - Subsequent calls return the existing user
+
+3. **Data Ownership**: All progress operations are scoped to `req.user.id`:
+   - Client NEVER supplies `userId` in payloads
+   - User ID is derived from JWT only
+   - All progress tables enforce user scoping
+
+### Learn/Next Semantics
+
+The `GET /learn/next?lessonId=<uuid>` endpoint is the **single source of truth** for "what's next" within a chosen lesson. It follows this algorithm:
+
+1. **Validate & Ensure UserLesson**: 
+   - Validates `lessonId` is present
+   - Upserts `UserLesson` if it doesn't exist (implicitly starts the lesson)
+
+2. **Prioritize Due Reviews**:
+   - Finds all questions in the lesson
+   - Identifies which are due (`nextReviewDue <= now`)
+   - Deduplicates by question (keeps latest attempt per question)
+   - If due reviews exist, returns `type="review"` with the question + teaching payload
+
+3. **Return New Content**:
+   - If no due reviews, finds the next unanswered or least-practiced question
+   - Returns `type="new"` with question + teaching payload
+
+4. **Done State**:
+   - If all questions are completed, returns `type="done"`
+
+5. **Delivery Method Suggestion**:
+   - Uses `UserDeliveryMethodScore` preferences if available
+   - Falls back to first available delivery method for the question
+   - Returns `suggestedDeliveryMethod` in response
+
+**Response Shape**:
+```typescript
+{
+  type: "review" | "new" | "done",
+  lessonId: string,
+  teachingId?: string,
+  question?: {
+    id: string,
+    teachingId: string,
+    deliveryMethods: DELIVERY_METHOD[]
+  },
+  suggestedDeliveryMethod?: DELIVERY_METHOD,
+  rationale?: string
+}
+```
+
+### Environment Variables
+
+Copy `.env.example` to `.env` and fill in your Supabase credentials:
+- `SUPABASE_URL`: Your Supabase project URL
+- `SUPABASE_JWT_SECRET`: JWT secret for token verification (from Supabase Dashboard)
+- `SUPABASE_ANON_KEY`: Optional, for client-side operations
+- `SUPABASE_SERVICE_ROLE_KEY`: Optional, for admin operations (fallback for JWT verification)
+
+### Key Design Principles
+
+1. **Append-Only Logs**: `UserQuestionPerformance` is append-only (never updated, always inserted)
+2. **Immutable Markers**: `UserTeachingCompleted` is immutable (insert once, never updated)
+3. **Idempotency**: Progress operations are idempotent (calling twice doesn't duplicate data)
+4. **Transactional Integrity**: Multi-write operations use Prisma transactions
+5. **Cascade Deletes**: Content hierarchy (Module→Lesson→Teaching→Question) uses cascade deletes
+
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
