@@ -4,7 +4,7 @@ import TestRenderer, { act } from 'react-test-renderer';
 import {
   OnboardingProvider,
   useOnboarding,
-} from '../src/features/onboarding/providers/OnboardingProvider';
+} from '../features/onboarding/providers/OnboardingProvider';
 
 jest.mock('@/app/api/auth', () => ({
   getCurrentUser: jest.fn().mockResolvedValue({ id: 'user-1' }),
