@@ -24,9 +24,12 @@ export default function ExperienceLevel() {
         await saveOnboarding(user.id, { ...answers, experience: experienceValue });
       }
     } catch {}
-    router.replace('/onboarding/completion');
+    router.replace('/(onboarding)/completion');
   };
-  const onSkip = () => router.replace('/onboarding/completion');
+  const onSkip = () => {
+    setAnswerAndSave('experience', null);
+    router.replace('/(onboarding)/completion');
+  };
 
   return (
     <OptionQuestion
@@ -41,7 +44,7 @@ export default function ExperienceLevel() {
       nextLabel="Finish"
       onNext={onFinish}
       onSkip={onSkip}
-      nextRoute="/onboarding/completion"
+      nextRoute="/(onboarding)/completion"
     />
   );
 }

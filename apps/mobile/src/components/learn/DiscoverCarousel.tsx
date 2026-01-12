@@ -1,5 +1,7 @@
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+
+import { ScrollView } from '@/components/ui';
 
 import { DiscoverCard } from '@/features/learn/mock';
 import { useAppTheme } from '@/services/theme/ThemeProvider';

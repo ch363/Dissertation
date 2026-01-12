@@ -23,62 +23,55 @@ on conflict (id) do update set
   url = excluded.url,
   description = excluded.description;
 
--- Demo users
-insert into public.users (id, name) values
-  (1, 'Alice'),
-  (2, 'Bob')
-on conflict (id) do update set name = excluded.name;
-
 -- Questions (info + practice, teach-then-test)
-insert into public.questions (id, lesson_id, media_id, type, prompt, media_url) values
-  (1, 1, null, 'info', 'Ciao – Hello/Hi (informal greeting). Example: Maria saluta con \"Ciao!\" al suo amico.', null),
-  (2, 1, null, 'info', 'Buongiorno – Good morning / Hello (formal daytime greeting). Example: Dire \"Buongiorno\" al mattino.', null),
-  (3, 1, null, 'info', 'Buonasera – Good evening (greeting used in the afternoon/evening).', null),
-  (4, 1, null, 'info', 'Buonanotte – Good night (used when parting or going to sleep at night).', null),
-  (5, 1, null, 'info', 'Arrivederci – Goodbye (formal).', null),
-  (6, 1, null, 'info', 'Sì / No – Yes / No.', null),
-  (7, 1, null, 'info', 'Per favore – Please (used to politely request something).', null),
-  (8, 1, null, 'info', 'Grazie – Thank you. Example: \"Grazie per l''aiuto.\" (Thank you for the help.)', null),
-  (9, 1, null, 'info', 'Prego – You''re welcome (response to \"Grazie\").', null),
-  (10, 1, null, 'info', 'Mi scusi – Excuse me (to get attention or apologize, formal).', null),
-  (11, 1, null, 'info', 'Mi dispiace – I''m sorry (to apologize for a mistake).', null),
-  (12, 1, null, 'info', 'Come ti chiami? – What is your name? (informal).', null),
-  (13, 1, null, 'info', 'Mi chiamo ... – My name is ... Example: \"Mi chiamo Marco.\"', null),
-  (14, 1, null, 'info', 'Piacere (di conoscerti) – Nice to meet you.', null),
-  (15, 1, null, 'info', 'Come stai? – How are you? (informal).', null),
-  (16, 1, null, 'info', 'Sto bene, grazie. – I''m fine, thanks.', null),
-  (17, 1, null, 'multiple_choice', 'It''s 8:00 AM and you''re greeting your teacher. What do you say?', null),
-  (18, 1, null, 'multiple_choice', 'How do you ask someone''s name in Italian?', null),
-  (19, 1, null, 'fill_blank', 'Complete the dialogue: A: Come ti chiami? B: ________ (My name is Luca.)', null),
-  (20, 1, 2, 'multiple_choice', 'You meet someone new (see image). What Italian phrase do you say to greet them?', null),
-  (21, 1, null, 'multiple_choice', 'You receive a gift from a friend. What do you say?', null),
-  (22, 1, null, 'fill_blank', 'A: Grazie! B: ________.', null),
-  (23, 1, null, 'fill_blank', 'Complete the sentence: \"Sto ____, grazie.\" (I''m ____, thanks.)', null),
-  (24, 1, null, 'translate_en_to_it', 'Translate to Italian: \"Please.\"', null),
-  (25, 1, null, 'translate_it_to_en', 'Translate to English: \"Arrivederci.\"', null),
-  (26, 1, 3, 'listening', 'Listen to the audio and choose the phrase you hear.', 'https://upload.wikimedia.org/wikipedia/commons/transcoded/4/4a/It-buongiorno.ogg/It-buongiorno.ogg.mp3'),
-  (27, 1, null, 'multiple_choice', 'You want to get a stranger''s attention politely. What do you say?', null),
-  (28, 1, null, 'multiple_choice', 'You accidentally step on someone''s foot. How do you apologize?', null),
-  (29, 2, null, 'info', 'Dov''è il bagno? – Where is the bathroom?', null),
-  (30, 2, null, 'info', 'Un biglietto, per favore. – One ticket, please.', null),
-  (31, 2, null, 'info', 'Quanto costa? – How much does it cost?', null),
-  (32, 2, null, 'info', 'Vorrei un caffè, per favore. – I would like a coffee, please.', null),
-  (33, 2, null, 'info', 'Parla inglese? – Do you speak English? (formal you)', null),
-  (34, 2, null, 'info', 'Non capisco. – I don''t understand.', null),
-  (35, 2, null, 'info', 'Il conto, per favore. – The bill, please.', null),
-  (36, 2, 1, 'multiple_choice', 'What Italian phrase would you use to ask for this place?', null),
-  (37, 2, null, 'translate_it_to_en', 'Translate to English: \"Un biglietto, per favore.\"', null),
-  (38, 2, null, 'fill_blank', 'Complete the request: \"Vorrei __ caffè, per favore.\"', null),
-  (39, 2, null, 'translate_en_to_it', 'Translate to Italian: \"Do you speak English?\"', null),
-  (40, 2, null, 'translate_it_to_en', 'Translate to English: \"Non capisco.\"', null),
-  (41, 2, null, 'multiple_choice', 'Which Italian phrase means \"How much does it cost?\"', null),
-  (42, 2, null, 'multiple_choice', 'At a restaurant, you are ready to pay. What do you say to ask for the bill?', null)
+insert into public.questions (id, lesson_id, media_id, type, prompt) values
+  (1, 1, null, 'info', 'Ciao – Hello/Hi (informal greeting). Example: Maria saluta con \"Ciao!\" al suo amico.'),
+  (2, 1, null, 'info', 'Buongiorno – Good morning / Hello (formal daytime greeting). Example: Dire \"Buongiorno\" al mattino.'),
+  (3, 1, null, 'info', 'Buonasera – Good evening (greeting used in the afternoon/evening).'),
+  (4, 1, null, 'info', 'Buonanotte – Good night (used when parting or going to sleep at night).'),
+  (5, 1, null, 'info', 'Arrivederci – Goodbye (formal).'),
+  (6, 1, null, 'info', 'Sì / No – Yes / No.'),
+  (7, 1, null, 'info', 'Per favore – Please (used to politely request something).'),
+  (8, 1, null, 'info', 'Grazie – Thank you. Example: \"Grazie per l''aiuto.\" (Thank you for the help.)'),
+  (9, 1, null, 'info', 'Prego – You''re welcome (response to \"Grazie\").'),
+  (10, 1, null, 'info', 'Mi scusi – Excuse me (to get attention or apologize, formal).'),
+  (11, 1, null, 'info', 'Mi dispiace – I''m sorry (to apologize for a mistake).'),
+  (12, 1, null, 'info', 'Come ti chiami? – What is your name? (informal).'),
+  (13, 1, null, 'info', 'Mi chiamo ... – My name is ... Example: \"Mi chiamo Marco.\"'),
+  (14, 1, null, 'info', 'Piacere (di conoscerti) – Nice to meet you.'),
+  (15, 1, null, 'info', 'Come stai? – How are you? (informal).'),
+  (16, 1, null, 'info', 'Sto bene, grazie. – I''m fine, thanks.'),
+  (17, 1, null, 'multiple_choice', 'It''s 8:00 AM and you''re greeting your teacher. What do you say?'),
+  (18, 1, null, 'multiple_choice', 'How do you ask someone''s name in Italian?'),
+  (19, 1, null, 'fill_blank', 'Complete the dialogue: A: Come ti chiami? B: ________ (My name is Luca.)'),
+  (20, 1, 2, 'multiple_choice', 'You meet someone new (see image). What Italian phrase do you say to greet them?'),
+  (21, 1, null, 'multiple_choice', 'You receive a gift from a friend. What do you say?'),
+  (22, 1, null, 'fill_blank', 'A: Grazie! B: ________.'),
+  (23, 1, null, 'fill_blank', 'Complete the sentence: \"Sto ____, grazie.\" (I''m ____, thanks.)'),
+  (24, 1, null, 'translate_en_to_it', 'Translate to Italian: \"Please.\"'),
+  (25, 1, null, 'translate_it_to_en', 'Translate to English: \"Arrivederci.\"'),
+  (26, 1, 3, 'listening', 'Listen to the audio and choose the phrase you hear.'),
+  (27, 1, null, 'multiple_choice', 'You want to get a stranger''s attention politely. What do you say?'),
+  (28, 1, null, 'multiple_choice', 'You accidentally step on someone''s foot. How do you apologize?'),
+  (29, 2, null, 'info', 'Dov''è il bagno? – Where is the bathroom?'),
+  (30, 2, null, 'info', 'Un biglietto, per favore. – One ticket, please.'),
+  (31, 2, null, 'info', 'Quanto costa? – How much does it cost?'),
+  (32, 2, null, 'info', 'Vorrei un caffè, per favore. – I would like a coffee, please.'),
+  (33, 2, null, 'info', 'Parla inglese? – Do you speak English? (formal you)'),
+  (34, 2, null, 'info', 'Non capisco. – I don''t understand.'),
+  (35, 2, null, 'info', 'Il conto, per favore. – The bill, please.'),
+  (36, 2, 1, 'multiple_choice', 'What Italian phrase would you use to ask for this place?'),
+  (37, 2, null, 'translate_it_to_en', 'Translate to English: \"Un biglietto, per favore.\"'),
+  (38, 2, null, 'fill_blank', 'Complete the request: \"Vorrei __ caffè, per favore.\"'),
+  (39, 2, null, 'translate_en_to_it', 'Translate to Italian: \"Do you speak English?\"'),
+  (40, 2, null, 'translate_it_to_en', 'Translate to English: \"Non capisco.\"'),
+  (41, 2, null, 'multiple_choice', 'Which Italian phrase means \"How much does it cost?\"'),
+  (42, 2, null, 'multiple_choice', 'At a restaurant, you are ready to pay. What do you say to ask for the bill?')
 on conflict (id) do update set
   lesson_id = excluded.lesson_id,
   media_id = excluded.media_id,
   type = excluded.type,
-  prompt = excluded.prompt,
-  media_url = excluded.media_url;
+  prompt = excluded.prompt;
 
 -- Answers
 insert into public.answers (id, question_id, answer_text, is_correct) values
@@ -136,28 +129,6 @@ on conflict (id) do update set
   answer_text = excluded.answer_text,
   is_correct = excluded.is_correct;
 
--- User responses (demo)
-insert into public.user_responses (id, user_id, question_id, accuracy, time_to_respond, attempts, error_type, answered_at) values
-  (1, 1, 18, true, 5, 1, null, '2026-01-05 19:38:05'),
-  (2, 1, 38, true, 10, 2, 'spelling', '2026-01-05 19:40:00'),
-  (3, 2, 36, false, 8, 1, 'vocabulary', '2026-01-05 20:00:00')
-on conflict (id) do update set
-  user_id = excluded.user_id,
-  question_id = excluded.question_id,
-  accuracy = excluded.accuracy,
-  time_to_respond = excluded.time_to_respond,
-  attempts = excluded.attempts,
-  error_type = excluded.error_type,
-  answered_at = excluded.answered_at;
-
--- User progress (SM-2 fields)
-insert into public.user_progress (user_id, question_id, easiness, interval, repetitions, last_review, next_review) values
-  (1, 18, 2.50, 6, 3, '2026-01-05', '2026-01-11'),
-  (1, 38, 2.30, 1, 1, '2026-01-05', '2026-01-06'),
-  (2, 36, 2.50, 0, 0, '2026-01-05', '2026-01-05')
-on conflict (user_id, question_id) do update set
-  easiness = excluded.easiness,
-  interval = excluded.interval,
-  repetitions = excluded.repetitions,
-  last_review = excluded.last_review,
-  next_review = excluded.next_review;
+-- Note: user_responses and user_progress seed data removed
+-- These tables now require UUID user_ids from auth.users, which cannot be seeded
+-- Real user data will be created through the application

@@ -1,18 +1,22 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useMemo } from 'react';
+import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { buildLessonSessionPlan, makeSessionId } from '@/features/session/sessionBuilder';
+import { makeSessionId } from '@/features/session/sessionBuilder';
 import { routeBuilders } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 
 export default function LessonStartScreen() {
   const params = useLocalSearchParams<{ lessonId?: string }>();
   const lessonId = (params.lessonId as string | undefined) ?? 'demo';
+  const [lessonTitle, setLessonTitle] = useState<string>('Lesson');
+  const [cardCount, setCardCount] = useState<number>(0);
 
-  const sessionId = useMemo(() => makeSessionId('learn'), []);
-  const planPreview = useMemo(() => buildLessonSessionPlan(lessonId), [lessonId]);
+  // TODO: Replace with new API business layer
+  // All learning API calls have been removed - screens are ready for new implementation
+
+  const sessionId = makeSessionId('learn');
 
   const handleStart = () => {
     router.push({
@@ -24,10 +28,8 @@ export default function LessonStartScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.card}>
-        <Text style={styles.title}>{planPreview.title}</Text>
-        <Text style={styles.subtitle}>
-          {planPreview.cards.length} cards • Mix of teach and practice cards
-        </Text>
+        <Text style={styles.title}>{lessonTitle}</Text>
+        <Text style={styles.subtitle}>{cardCount} cards • Mix of teach and practice cards</Text>
         <Pressable style={styles.primary} onPress={handleStart}>
           <Text style={styles.primaryLabel}>Start session</Text>
         </Pressable>

@@ -1,5 +1,5 @@
 import { useRouter, useSegments } from 'expo-router';
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { resolvePostAuthDestination } from '@/features/auth/flows/resolvePostAuthDestination';
@@ -12,17 +12,41 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const segments = useSegments();
   const { theme } = useAppTheme();
+  const redirectingRef = useRef(false);
 
   const pathname = useMemo(() => `/${segments.join('/')}`, [segments]);
   const isPublic = useMemo(() => isPublicRootSegment(segments[0]), [segments]);
 
   useEffect(() => {
     const redirectIfNeeded = async () => {
-      if (loading || error || !session?.user?.id) return;
-      if (!isPublic) return;
-      const dest = await resolvePostAuthDestination(session.user.id);
-      if (dest && dest !== pathname) {
-        router.replace(dest);
+      if (loading || error || !session?.user?.id) {
+        redirectingRef.current = false;
+        return;
+      }
+      if (!isPublic) {
+        redirectingRef.current = false;
+        return;
+      }
+      // Prevent multiple simultaneous redirects
+      if (redirectingRef.current) return;
+
+      try {
+        redirectingRef.current = true;
+        const dest = await resolvePostAuthDestination(session.user.id);
+        // Only redirect if destination is different from current path
+        if (dest && dest !== pathname) {
+          router.replace(dest);
+        }
+      } catch (err) {
+        // Log error but don't break navigation
+        // If there's an error checking onboarding, default to showing onboarding
+        console.error('RouteGuard: Error resolving post-auth destination', err);
+        // Don't redirect on error - let user stay on current page
+      } finally {
+        // Reset redirect flag after a short delay to allow navigation to complete
+        setTimeout(() => {
+          redirectingRef.current = false;
+        }, 100);
       }
     };
     redirectIfNeeded();

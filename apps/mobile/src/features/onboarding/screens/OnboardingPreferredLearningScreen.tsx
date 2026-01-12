@@ -1,3 +1,5 @@
+import { router } from 'expo-router';
+
 import { OptionQuestion } from '@/components/onboarding/_components';
 import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 
@@ -18,7 +20,11 @@ export default function PreferredLearning() {
       options={options}
       selected={answers.learningStyles ?? []}
       onChange={(next) => setAnswerAndSave('learningStyles', next.slice(0, 2))}
-      nextRoute="/onboarding/3_memory-habits"
+      onSkip={() => {
+        setAnswerAndSave('learningStyles', null);
+        router.push('/(onboarding)/3_memory-habits');
+      }}
+      nextRoute="/(onboarding)/3_memory-habits"
       multiple
       maxSelections={2}
     />

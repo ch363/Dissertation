@@ -1,7 +1,9 @@
 import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ScrollView } from '@/components/ui';
 
 import { getMyProfile } from '@/app/api/profile';
 import { refreshSignedAvatarUrlFromUrl as refreshAvatarUrl } from '@/app/api/profile/avatar';

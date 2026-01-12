@@ -1,3 +1,5 @@
+import { router } from 'expo-router';
+
 import { OptionQuestion } from '@/components/onboarding/_components';
 import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 
@@ -20,7 +22,11 @@ export default function Gamification() {
         const nextKey = next[0];
         if (nextKey) setAnswerAndSave('gamification', nextKey);
       }}
-      nextRoute="/onboarding/6_feedback-style"
+      onSkip={() => {
+        setAnswerAndSave('gamification', null);
+        router.push('/(onboarding)/6_feedback-style');
+      }}
+      nextRoute="/(onboarding)/6_feedback-style"
     />
   );
 }

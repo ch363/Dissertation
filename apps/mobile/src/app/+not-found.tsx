@@ -1,6 +1,9 @@
 import { useRouter } from 'expo-router';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { useState } from 'react';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 
+import { getCurrentUser } from '@/app/api/auth';
+import { resolvePostAuthDestination } from '@/features/auth/flows/resolvePostAuthDestination';
 import { routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -8,6 +11,28 @@ import { theme as baseTheme } from '@/services/theme/tokens';
 export default function GlobalError() {
   const router = useRouter();
   const { theme } = useAppTheme();
+  const [checkingOnboarding, setCheckingOnboarding] = useState(false);
+
+  const handleGoHome = async () => {
+    try {
+      setCheckingOnboarding(true);
+      const user = await getCurrentUser();
+      if (user?.id) {
+        // Check onboarding status and route appropriately
+        const destination = await resolvePostAuthDestination(user.id);
+        router.replace(destination);
+      } else {
+        // No user - go to sign in
+        router.replace(routes.auth.signIn);
+      }
+    } catch (err) {
+      console.error('GlobalError: Error checking onboarding', err);
+      // On error, default to onboarding to be safe
+      router.replace('/(onboarding)/welcome');
+    } finally {
+      setCheckingOnboarding(false);
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -26,10 +51,15 @@ export default function GlobalError() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Go home"
-        onPress={() => router.replace(routes.tabs.home)}
-        style={[styles.button, styles.secondary]}
+        onPress={handleGoHome}
+        disabled={checkingOnboarding}
+        style={[styles.button, styles.secondary, checkingOnboarding && styles.disabled]}
       >
-        <Text style={styles.buttonText}>Go home</Text>
+        {checkingOnboarding ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Go home</Text>
+        )}
       </Pressable>
     </View>
   );
@@ -65,5 +95,8 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontFamily: baseTheme.typography.semiBold,
+  },
+  disabled: {
+    opacity: 0.6,
   },
 });

@@ -26,8 +26,8 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
       style={[
         styles.tabBarWrapper,
         {
-          backgroundColor: '#FFFFFF',
-          shadowColor: '#0D1B2A',
+          backgroundColor: theme.colors.background,
+          shadowColor: theme.colors.text,
           paddingTop: baseTheme.spacing.xs,
           paddingBottom: insets.bottom + baseTheme.spacing.xs, // paint safe area
         },
@@ -71,16 +71,18 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 }
 
 export default function TabsLayout() {
+  const { theme } = useAppTheme();
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Tabs
         initialRouteName="home/index"
         tabBar={(props) => <CustomTabBar {...props} />}
         screenOptions={{
           headerShown: false,
-          // Also enforce white bar background (we use a custom bar, but keep defaults consistent)
-          tabBarStyle: { backgroundColor: '#FFFFFF' },
-          tabBarBackground: () => <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />,
+          tabBarStyle: { backgroundColor: theme.colors.background },
+          tabBarBackground: () => (
+            <View style={{ flex: 1, backgroundColor: theme.colors.background }} />
+          ),
         }}
       >
         <Tabs.Screen name="home/index" options={{ title: 'Home' }} />
@@ -102,8 +104,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     justifyContent: 'flex-end',
-    backgroundColor: '#FFFFFF',
-
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     zIndex: 2,
@@ -117,9 +117,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: baseTheme.spacing.sm,
-
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
-    backgroundColor: '#FFFFFF',
   },
 });

@@ -1,7 +1,9 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ScrollView } from '@/components/ui';
 
 import { ContinueLearningCard } from '@/components/learn/ContinueLearningCard';
 import { DiscoverCarousel } from '@/components/learn/DiscoverCarousel';
@@ -16,6 +18,9 @@ export default function LearnScreen() {
   const { theme } = useAppTheme();
   const router = useRouter();
 
+  // TODO: Replace with new API business layer
+  // All learning API calls have been removed - screens are ready for new implementation
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <ScrollView
@@ -24,6 +29,13 @@ export default function LearnScreen() {
       >
         <LearnHeader />
         <ContinueLearningCard data={learnMock.continueLesson} />
+        <LearningPathCarousel items={learnMock.learningPath} />
+        <ReviewSection
+          data={learnMock.review}
+          onStart={() => router.push('/(tabs)/learn/review')}
+        />
+        <DiscoverCarousel items={learnMock.discover} />
+        <View style={{ height: baseTheme.spacing.xl }} />
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push('/(tabs)/learn/list')}
@@ -43,13 +55,6 @@ export default function LearnScreen() {
             Jump into A1 lessons and overviews
           </Text>
         </Pressable>
-        <LearningPathCarousel items={learnMock.learningPath} />
-        <ReviewSection
-          data={learnMock.review}
-          onStart={() => router.push('/(tabs)/learn/review')}
-        />
-        <DiscoverCarousel items={learnMock.discover} />
-        <View style={{ height: baseTheme.spacing.xl }} />
       </ScrollView>
     </SafeAreaView>
   );

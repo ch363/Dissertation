@@ -1,5 +1,6 @@
+import * as Linking from 'expo-linking';
 import { Link, router } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,24 +8,127 @@ import {
   TextInput,
   Pressable,
   ActivityIndicator,
-  ScrollView,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { resolvePostAuthDestination, signInWithEmailPassword } from '@/app/api/auth';
+import { ScrollView } from '@/components/ui';
+
+import {
+  resolvePostAuthDestination,
+  resolvePostLoginDestination,
+  setSessionFromEmailLink,
+  signInWithEmailPassword,
+} from '@/app/api/auth';
 import { theme } from '@/services/theme/tokens';
 
 const emailRegex = /\S+@\S+\.\S+/;
+
+type TokenResult = { accessToken: string; refreshToken: string };
+
+const parseTokens = (raw?: string | null): TokenResult => {
+  if (!raw) return { accessToken: '', refreshToken: '' };
+  try {
+    const normalized = raw.startsWith('http') ? raw : raw.replace('fluentia://', 'https://');
+    const url = new URL(normalized);
+    const combined = `${url.search}${url.hash}`.replace('#', '&');
+    const params = new URLSearchParams(combined);
+    return {
+      accessToken: params.get('access_token') || '',
+      refreshToken: params.get('refresh_token') || '',
+    };
+  } catch {
+    return { accessToken: '', refreshToken: '' };
+  }
+};
 
 export default function SignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [processingEmailCallback, setProcessingEmailCallback] = useState(false);
+
+  const url = Linking.useURL();
 
   const trimmedEmail = email.trim();
   const canSubmit = emailRegex.test(trimmedEmail) && password.length >= 6 && !loading;
+
+  // Handle email confirmation callback
+  const handleEmailConfirmation = useCallback(async (incomingUrl?: string | null) => {
+    if (!incomingUrl) return;
+    setProcessingEmailCallback(true);
+    setError(null);
+    const { accessToken, refreshToken } = parseTokens(incomingUrl);
+    if (!accessToken || !refreshToken) {
+      // No tokens in URL, this is a normal sign-in screen load
+      setProcessingEmailCallback(false);
+      return;
+    }
+    try {
+      console.log('SignIn: Processing email confirmation callback', {
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+      });
+      await setSessionFromEmailLink(accessToken, refreshToken);
+      console.log('SignIn: Session set successfully');
+
+      // Wait a moment for session to be available
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Get the user ID from the session
+      const { getCurrentUser } = await import('@/app/api/auth');
+      const user = await getCurrentUser();
+      console.log('SignIn: Got user after email confirmation', {
+        userId: user?.id,
+        hasUser: !!user,
+      });
+
+      if (user?.id) {
+        console.log('SignIn: Email confirmed, redirecting to destination');
+        const destination = await resolvePostAuthDestination(user.id);
+        console.log('SignIn: Resolved destination', destination);
+        router.replace(destination);
+      } else {
+        // User not found - might need to wait for session to propagate
+        console.warn('SignIn: User not found immediately, waiting and retrying...');
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const retryUser = await getCurrentUser();
+        if (retryUser?.id) {
+          const destination = await resolvePostAuthDestination(retryUser.id);
+          router.replace(destination);
+        } else {
+          throw new Error(
+            'Unable to get user after email confirmation. Please try signing in manually.',
+          );
+        }
+      }
+    } catch (sessionError: any) {
+      console.error('SignIn: Error processing email confirmation', {
+        error: sessionError,
+        message: sessionError?.message,
+        code: sessionError?.code,
+      });
+      // Don't show error screen - redirect to sign-in with error message
+      setProcessingEmailCallback(false);
+      setError('Email confirmation failed. Please try signing in with your email and password.');
+      // Give user a chance to see the error, then they can sign in manually
+    }
+  }, []);
+
+  useEffect(() => {
+    Linking.getInitialURL().then((initial) => {
+      if (initial) {
+        handleEmailConfirmation(initial);
+      }
+    });
+  }, [handleEmailConfirmation]);
+
+  useEffect(() => {
+    if (url) {
+      handleEmailConfirmation(url);
+    }
+  }, [url, handleEmailConfirmation]);
 
   const handleSignIn = async () => {
     if (!canSubmit) return;
@@ -34,7 +138,8 @@ export default function SignIn() {
       const { session } = await signInWithEmailPassword(trimmedEmail, password);
       const userId = session?.user?.id;
       if (!userId) throw new Error('No session returned. Please try again.');
-      const destination = await resolvePostAuthDestination(userId);
+      // Login always goes to home - existing users should not see onboarding again
+      const destination = await resolvePostLoginDestination(userId);
       router.replace(destination);
     } catch (e: any) {
       setError(e?.message ?? 'Unable to sign in. Please try again.');
@@ -43,9 +148,26 @@ export default function SignIn() {
     }
   };
 
+  // Show loading state while processing email confirmation
+  if (processingEmailCallback) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={[styles.subtitle, { marginTop: theme.spacing.md }]}>
+            Confirming your email...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.card}>
           <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" />
           <Text style={styles.title}>Welcome back</Text>

@@ -4,7 +4,6 @@ import React from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getSupabaseClient } from '@/app/api/supabase/client';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
@@ -39,45 +38,13 @@ const fallbackLessons: LessonRow[] = [
 export default function LessonListScreen() {
   const { theme } = useAppTheme();
   const router = useRouter();
-  const [lessons, setLessons] = React.useState<LessonRow[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const [lessons, setLessons] = React.useState<LessonRow[]>(fallbackLessons);
+  const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [progress] = React.useState<ProgressState>({ completedLessonIds: ['basics'] });
+  const [progress, setProgress] = React.useState<ProgressState>({ completedLessonIds: [] });
 
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const supabase = getSupabaseClient();
-        const { data, error: fetchError } = await supabase
-          .from('lessons')
-          .select('id,title,name,description,display_order')
-          .order('display_order', { ascending: true });
-        if (fetchError) throw fetchError;
-        const normalized =
-          data?.map((row: any) => ({
-            id: row.id,
-            title: row.title ?? row.name ?? 'Lesson',
-            description: row.description,
-            sortOrder: row.display_order ?? row.id,
-            display_order: row.display_order,
-          })) ?? [];
-        if (!cancelled) setLessons(normalized.length ? normalized : fallbackLessons);
-      } catch (err: any) {
-        if (!cancelled) {
-          setError(err?.message ?? 'Unable to load lessons');
-          setLessons(fallbackLessons);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // TODO: Replace with new API business layer
+  // All learning API calls have been removed - screens are ready for new implementation
 
   const highestCompletedOrder = React.useMemo(() => {
     if (!lessons.length) return 0;

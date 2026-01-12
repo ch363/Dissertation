@@ -17,7 +17,7 @@ export default function LandingScreen() {
       if (loading) return;
       if (session?.user?.id) {
         const done = await hasOnboarding(session.user.id);
-        router.replace(done ? routes.tabs.home : routes.onboarding.welcome);
+        router.replace(done ? routes.tabs.home : '/(onboarding)/welcome');
       }
     })();
   }, [session, loading]);

@@ -1,26 +1,37 @@
-import { router } from 'expo-router';
+import { router, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { View, Text, StyleSheet, Image, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { hasOnboarding } from '@/app/api/onboarding';
+import { resolvePostAuthDestination } from '@/features/auth/flows/resolvePostAuthDestination';
 import { useAuth } from '@/services/auth/AuthProvider';
 import { routes } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 
 export default function LandingScreen() {
   const { session, loading } = useAuth();
+  const segments = useSegments();
+  const isOnboarding = segments[0] === 'onboarding';
 
+  // Redirect authenticated users to their appropriate destination
+  // (RouteGuard only handles public routes, so we need to handle index route here)
+  // Skip redirects when already on onboarding routes - let onboarding stack handle its own navigation
   useEffect(() => {
+    if (loading || !session?.user?.id || isOnboarding) return;
     (async () => {
-      if (loading) return;
-      if (session?.user?.id) {
-        const done = await hasOnboarding(session.user.id);
-        router.replace(done ? routes.tabs.home : routes.onboarding.welcome);
+      try {
+        const dest = await resolvePostAuthDestination(session.user.id);
+        if (dest) {
+          router.replace(dest);
+        }
+      } catch (err) {
+        // If there's an error, default to onboarding
+        console.error('LandingScreen: Error resolving destination', err);
+        router.replace('/(onboarding)/welcome');
       }
     })();
-  }, [session, loading]);
+  }, [session, loading, isOnboarding]);
 
   const goSignUp = () => router.push(routes.auth.signUp);
   const goSignIn = () => router.push(routes.auth.signIn);
@@ -28,11 +39,6 @@ export default function LandingScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        {loading && (
-          <View style={styles.spinner}>
-            <ActivityIndicator color={theme.colors.primary} />
-          </View>
-        )}
         <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" />
         <Text style={styles.title}>Fluentia</Text>
         <Text style={styles.subtitle}>Personalised learning, one step at a time.</Text>
@@ -62,11 +68,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: theme.spacing.lg,
     backgroundColor: '#F5F7FB',
-  },
-  spinner: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
   },
   logo: {
     width: 140,

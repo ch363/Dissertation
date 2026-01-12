@@ -1,9 +1,10 @@
 import { router } from 'expo-router';
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, Modal, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Modal } from 'react-native';
 import type { AccessibilityRole } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ScrollView } from '@/components/ui';
 import { theme } from '@/services/theme/tokens';
 
 type OptionItem = { key: string; label: string; icon?: string };

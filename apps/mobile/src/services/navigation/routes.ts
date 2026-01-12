@@ -73,5 +73,7 @@ const normalizeSegment = (segment?: string) =>
 
 export const isPublicRootSegment = (segment?: string) => {
   const normalized = normalizeSegment(segment);
-  return normalized === undefined || publicRootSegments.has(normalized);
+  // Only consider routes public if they explicitly match public segments
+  // undefined/empty segments (like index route) should not be considered public
+  return normalized !== undefined && publicRootSegments.has(normalized);
 };

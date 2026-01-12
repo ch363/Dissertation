@@ -1,3 +1,5 @@
+import { router } from 'expo-router';
+
 import { OptionQuestion } from '@/components/onboarding/_components';
 import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 
@@ -21,7 +23,11 @@ export default function MemoryHabits() {
         const nextKey = next[0];
         if (nextKey) setAnswerAndSave('memoryHabit', nextKey);
       }}
-      nextRoute="/onboarding/4_difficulty"
+      onSkip={() => {
+        setAnswerAndSave('memoryHabit', null);
+        router.push('/(onboarding)/4_difficulty');
+      }}
+      nextRoute="/(onboarding)/4_difficulty"
     />
   );
 }

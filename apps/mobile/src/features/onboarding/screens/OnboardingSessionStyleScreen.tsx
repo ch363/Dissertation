@@ -1,3 +1,5 @@
+import { router } from 'expo-router';
+
 import { OptionQuestion } from '@/components/onboarding/_components';
 import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 
@@ -20,7 +22,11 @@ export default function SessionStyle() {
         const nextKey = next[0];
         if (nextKey) setAnswerAndSave('sessionStyle', nextKey);
       }}
-      nextRoute="/onboarding/8_tone"
+      onSkip={() => {
+        setAnswerAndSave('sessionStyle', null);
+        router.push('/(onboarding)/8_tone');
+      }}
+      nextRoute="/(onboarding)/8_tone"
     />
   );
 }

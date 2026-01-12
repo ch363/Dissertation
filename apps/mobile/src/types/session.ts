@@ -21,6 +21,8 @@ export type TeachCard = BaseCard & {
     phrase: string;
     translation?: string;
     mediaUrl?: string;
+    usageNote?: string;
+    emoji?: string;
   };
 };
 

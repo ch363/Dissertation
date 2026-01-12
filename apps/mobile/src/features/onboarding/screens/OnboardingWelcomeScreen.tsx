@@ -19,7 +19,10 @@ export default function OnboardingWelcome() {
       />
       <PrimaryButton
         title="Start My Journey"
-        onPress={() => router.push('/onboarding/1_motivation-goals')}
+        onPress={() => {
+          // Navigate to first onboarding question; use replace to prevent back to welcome
+          router.replace('/(onboarding)/1_motivation-goals');
+        }}
         style={styles.cta}
         textStyle={styles.ctaText}
       />

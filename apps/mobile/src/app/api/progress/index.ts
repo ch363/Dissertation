@@ -5,7 +5,7 @@ import { logError } from '@/services/logging/logger';
 
 const CACHE_KEY = 'fluentia:progress:v2';
 const CACHE_VERSION = 2;
-const TABLE = 'user_progress';
+const TABLE = 'module_completion';
 
 type ProgressRecord = {
   completed: string[];

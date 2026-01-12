@@ -1,9 +1,10 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { getSupabaseClient } from '@/app/api/supabase/client';
+import { ScrollView } from '@/components/ui';
+
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
@@ -28,78 +29,24 @@ export default function LessonOverviewScreen() {
   const { theme } = useAppTheme();
   const router = useRouter();
 
-  const [lesson, setLesson] = React.useState<LessonRow | null>(null);
+  // TODO: Replace with new API business layer
+  // All learning API calls have been removed - screens are ready for new implementation
+
+  const [lesson, setLesson] = React.useState<LessonRow | null>(
+    lessonId
+      ? {
+          id: String(lessonId),
+          title: 'Lesson overview',
+          description: 'Overview placeholder',
+          sortOrder: 1,
+        }
+      : null,
+  );
   const [infos, setInfos] = React.useState<InfoRow[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [prefetching, setPrefetching] = React.useState(false);
 
   const highestCompletedOrder = 1; // simple stub gating (Basics unlocked)
-
-  React.useEffect(() => {
-    if (!lessonId) return;
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const supabase = getSupabaseClient();
-        const { data: lessonData, error: lessonError } = await supabase
-          .from('lessons')
-          .select('id,title,name,description,display_order')
-          .eq('id', lessonId)
-          .maybeSingle();
-        if (lessonError) throw lessonError;
-
-        const { data: infoData, error: infoError } = await supabase
-          .from('questions')
-          .select('id,prompt,media_url,media_id')
-          .eq('lesson_id', lessonId)
-          .eq('type', 'info');
-        if (infoError) throw infoError;
-
-        if (!cancelled) {
-          setLesson(
-            lessonData
-              ? {
-                  id: lessonData.id,
-                  title: lessonData.title ?? lessonData.name ?? 'Lesson overview',
-                  description: lessonData.description,
-                  sortOrder: lessonData.display_order ?? lessonData.id,
-                  display_order: lessonData.display_order,
-                }
-              : {
-                  id: String(lessonId),
-                  title: 'Lesson overview',
-                  description: 'Overview placeholder',
-                  sortOrder: 1,
-                },
-          );
-          setInfos(infoData ?? []);
-        }
-
-        // Prefetch any image media URLs
-        const mediaUrls: string[] = [];
-        (infoData ?? []).forEach((i) => {
-          if (i.media_url) mediaUrls.push(i.media_url);
-        });
-        if (mediaUrls.length) {
-          setPrefetching(true);
-          await Promise.all(mediaUrls.map((url) => Image.prefetch(url)));
-        }
-      } catch (err: any) {
-        if (!cancelled) setError(err?.message ?? 'Unable to load lesson');
-      } finally {
-        if (!cancelled) {
-          setPrefetching(false);
-          setLoading(false);
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [lessonId]);
 
   const orderVal = lesson?.sortOrder ?? lesson?.display_order ?? Number(lesson?.id ?? 0);
   const locked =
@@ -107,6 +54,7 @@ export default function LessonOverviewScreen() {
 
   const handleStart = () => {
     if (!lessonId) return;
+    // TODO: Replace with new API business layer navigation
     router.push(`/(tabs)/learn/${lessonId}/start`);
   };
 
@@ -158,27 +106,16 @@ export default function LessonOverviewScreen() {
           ) : null}
         </View>
 
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-            What you&apos;ll learn
-          </Text>
-          {infos.length ? (
-            infos.map((info) => (
-              <View key={info.id} style={[styles.card, { borderColor: theme.colors.border }]}>
-                {info.prompt ? (
-                  <Text style={[styles.infoText, { color: theme.colors.text }]}>{info.prompt}</Text>
-                ) : null}
-              </View>
-            ))
-          ) : (
-            <Text style={[styles.infoText, { color: theme.colors.mutedText }]}>
-              Lesson objectives coming soon.
+        {infos.length > 0 ? (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
+              What you&apos;ll learn
             </Text>
-          )}
-          {prefetching ? (
-            <Text style={[styles.meta, { color: theme.colors.mutedText }]}>Preloading media…</Text>
-          ) : null}
-        </View>
+            <Text style={[styles.infoText, { color: theme.colors.mutedText }]}>
+              {infos.length} phrase{infos.length !== 1 ? 's' : ''} to master
+            </Text>
+          </View>
+        ) : null}
 
         <Pressable
           accessibilityRole="button"

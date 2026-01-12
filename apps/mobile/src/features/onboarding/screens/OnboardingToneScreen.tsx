@@ -1,3 +1,5 @@
+import { router } from 'expo-router';
+
 import { OptionQuestion } from '@/components/onboarding/_components';
 import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 
@@ -20,7 +22,11 @@ export default function Tone() {
         const nextKey = next[0];
         if (nextKey) setAnswerAndSave('tone', nextKey);
       }}
-      nextRoute="/onboarding/9_experience-level"
+      onSkip={() => {
+        setAnswerAndSave('tone', null);
+        router.push('/(onboarding)/9_experience-level');
+      }}
+      nextRoute="/(onboarding)/9_experience-level"
     />
   );
 }

@@ -1,7 +1,9 @@
 import { Link, router } from 'expo-router';
 import { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ScrollView } from '@/components/ui';
 
 import { resolvePostAuthDestination, signUpWithEmail } from '@/app/api/auth';
 import { theme } from '@/services/theme/tokens';
@@ -29,20 +31,42 @@ export default function SignUp() {
       setLoading(true);
       setError(null);
       const { session, user } = await signUpWithEmail(trimmedName || null, trimmedEmail, password);
-      const userId = session?.user?.id || user?.id;
+
       // If email confirmation is required, Supabase will not return a session.
+      // In this case, Supabase should have sent a confirmation email.
       if (!session) {
-        router.replace({ pathname: '/verify-email', params: { email: trimmedEmail } });
-        return;
+        console.log('SignUp: No session returned - email confirmation required');
+        // Check if user was created (even without session)
+        if (user) {
+          console.log('SignUp: User created, redirecting to verify-email screen');
+          router.replace({ pathname: '/verify-email', params: { email: trimmedEmail } });
+          return;
+        } else {
+          // No user and no session - this shouldn't happen, but handle it
+          console.warn('SignUp: No session and no user returned');
+          setError('Account creation may require email confirmation. Please check your email.');
+          return;
+        }
       }
+
+      // Session exists - user is immediately authenticated (email confirmation disabled)
+      const userId = session?.user?.id || user?.id;
       if (userId) {
+        console.log('SignUp: Session exists, resolving destination for user', userId);
         const destination = await resolvePostAuthDestination(userId);
         router.replace(destination);
       } else {
+        console.warn('SignUp: Session exists but no user ID found');
         router.replace('/sign-in');
       }
     } catch (e: any) {
-      setError(e?.message ?? 'Unable to create your account.');
+      console.error('SignUp: Error during sign-up', e);
+      const errorMessage = e?.message ?? 'Unable to create your account.';
+      setError(errorMessage);
+      // If it's an email-related error, provide more context
+      if (errorMessage.includes('email') || errorMessage.includes('Email')) {
+        setError(`${errorMessage} Please check your email address and try again.`);
+      }
     } finally {
       setLoading(false);
     }
@@ -50,7 +74,10 @@ export default function SignUp() {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.card}>
           <View style={styles.stepRow}>
             <View style={[styles.stepDot, styles.stepDotActive]} />

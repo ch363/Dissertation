@@ -27,24 +27,47 @@ export async function saveOnboarding(userId: string, answers: OnboardingAnswers)
   const supabase = getSupabaseClient();
   const submission = buildOnboardingSubmission(answers);
   const payload = { user_id: userId, answers: submission };
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('onboarding_answers')
-    .upsert(payload, { onConflict: 'user_id' });
-  if (error) throw error;
+    .upsert(payload, { onConflict: 'user_id' })
+    .select('user_id')
+    .single();
+  if (error) {
+    console.error('saveOnboarding: Error saving onboarding', { error, userId });
+    throw error;
+  }
+  console.log('saveOnboarding: Successfully saved onboarding for user', userId, data);
 }
 
 export async function hasOnboarding(userId: string): Promise<boolean> {
-  const supabase = getSupabaseClient();
-  const { data, error } = await supabase
-    .from('onboarding_answers')
-    .select('user_id')
-    .eq('user_id', userId)
-    .maybeSingle();
-  if (error && error.code !== 'PGRST116') {
-    // PGRST116: No rows found for maybeSingle
-    throw error;
+  try {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('onboarding_answers')
+      .select('user_id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    // PGRST116: No rows found for maybeSingle (expected when no onboarding)
+    if (error && error.code !== 'PGRST116') {
+      // For other errors (e.g., table doesn't exist, connection issues), log and return false
+      // This allows navigation to continue and user can complete onboarding
+      console.error('hasOnboarding: Database error', { error, userId, code: error.code });
+      return false;
+    }
+
+    const hasData = !!data;
+    if (!hasData) {
+      console.log('hasOnboarding: No onboarding data found for user', userId);
+    } else {
+      console.log('hasOnboarding: Onboarding data found for user', userId);
+    }
+    return hasData;
+  } catch (err) {
+    // Catch any unexpected errors and return false to allow navigation to continue
+    console.error('hasOnboarding: Unexpected error', { err, userId });
+    return false;
   }
-  return !!data;
 }
 
 export async function getOnboarding(userId: string): Promise<OnboardingAnswers | null> {

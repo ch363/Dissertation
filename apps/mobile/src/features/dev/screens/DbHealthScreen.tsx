@@ -2,8 +2,10 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { router, useNavigation } from 'expo-router';
 import { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ScrollView } from '@/components/ui';
 
 import { getSession } from '@/app/api/auth';
 import { ensureProfileSeed, upsertMyProfile } from '@/app/api/profile';

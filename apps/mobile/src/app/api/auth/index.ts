@@ -1,7 +1,10 @@
 import type { Session, User } from '@supabase/supabase-js';
 
 import { getSupabaseClient } from '@/app/api/supabase/client';
-import { resolvePostAuthDestination } from '@/features/auth/flows/resolvePostAuthDestination';
+import {
+  resolvePostAuthDestination,
+  resolvePostLoginDestination,
+} from '@/features/auth/flows/resolvePostAuthDestination';
 import { getSupabaseRedirectUrl } from '@/services/env/supabaseConfig';
 
 type SignUpResult = { user: User | null; session: Session | null };
@@ -26,15 +29,34 @@ export async function signUpWithEmail(
   password: string,
 ): Promise<SignUpResult> {
   const supabase = getSupabaseClient();
+  const redirectUrl = getSupabaseRedirectUrl();
+  console.log('signUpWithEmail: Starting sign-up', { email, redirectUrl, hasName: !!name });
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: name ? { name } : undefined,
-      emailRedirectTo: getSupabaseRedirectUrl(),
+      emailRedirectTo: redirectUrl,
     },
   });
-  if (error) throw error;
+
+  if (error) {
+    console.error('signUpWithEmail: Supabase error', {
+      error,
+      code: error.code,
+      message: error.message,
+    });
+    throw error;
+  }
+
+  console.log('signUpWithEmail: Sign-up successful', {
+    hasUser: !!data.user,
+    hasSession: !!data.session,
+    userEmail: data.user?.email,
+    emailConfirmed: data.user?.email_confirmed_at ? 'yes' : 'no',
+  });
+
   return {
     user: data.user ?? null,
     session: data.session ?? null,
@@ -48,6 +70,29 @@ export async function signOut() {
 }
 
 // OPTIONAL: forgot password (email reset)
+export async function resendConfirmationEmail(email: string) {
+  const supabase = getSupabaseClient();
+  const redirectUrl = getSupabaseRedirectUrl();
+  console.log('resendConfirmationEmail: Resending confirmation email', { email, redirectUrl });
+  const { data, error } = await supabase.auth.resend({
+    type: 'signup',
+    email,
+    options: {
+      emailRedirectTo: redirectUrl,
+    },
+  });
+  if (error) {
+    console.error('resendConfirmationEmail: Error', {
+      error,
+      code: error.code,
+      message: error.message,
+    });
+    throw error;
+  }
+  console.log('resendConfirmationEmail: Email resent successfully');
+  return data;
+}
+
 export async function sendPasswordReset(email: string, redirectTo?: string) {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -91,4 +136,4 @@ export async function signInWithEmail(email: string, password: string) {
   return user ?? null;
 }
 
-export { resolvePostAuthDestination };
+export { resolvePostAuthDestination, resolvePostLoginDestination };

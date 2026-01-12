@@ -1,5 +1,7 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { ScrollView } from '@/components/ui';
 
 import { Badge } from '@/components/profile/Badge';
 import { Card } from '@/components/profile/Card';

@@ -1,3 +1,5 @@
+import { router } from 'expo-router';
+
 import { OptionQuestion } from '@/components/onboarding/_components';
 import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 
@@ -21,7 +23,11 @@ export default function MotivationGoals() {
         const nextKey = next[0];
         if (nextKey) setAnswerAndSave('motivation', { key: nextKey });
       }}
-      nextRoute="/onboarding/2_preferred-learning"
+      onSkip={() => {
+        setAnswerAndSave('motivation', null);
+        router.push('/(onboarding)/2_preferred-learning');
+      }}
+      nextRoute="/(onboarding)/2_preferred-learning"
     />
   );
 }

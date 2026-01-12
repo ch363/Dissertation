@@ -1,3 +1,5 @@
+import { router } from 'expo-router';
+
 import { OptionQuestion } from '@/components/onboarding/_components';
 import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 
@@ -20,7 +22,11 @@ export default function Difficulty() {
         const nextKey = next[0];
         if (nextKey) setAnswerAndSave('difficulty', nextKey);
       }}
-      nextRoute="/onboarding/5_gamification"
+      onSkip={() => {
+        setAnswerAndSave('difficulty', null);
+        router.push('/(onboarding)/5_gamification');
+      }}
+      nextRoute="/(onboarding)/5_gamification"
     />
   );
 }
