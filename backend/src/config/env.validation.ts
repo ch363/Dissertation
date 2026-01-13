@@ -16,4 +16,5 @@ export const envValidationSchema = Joi.object({
   NODE_ENV: Joi.string()
     .valid('development', 'production', 'test')
     .default('development'),
+  CORS_ORIGIN: Joi.string().optional(),
 }).unknown(true); // Allow unknown keys for test environment

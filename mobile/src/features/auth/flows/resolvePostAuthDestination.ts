@@ -5,21 +5,34 @@ import { routes } from '@/services/navigation/routes';
 /**
  * Centralized post-auth flow resolution.
  * Returns the route that should be loaded after a successful sign-in.
- * Checks onboarding status and routes to onboarding or home accordingly.
+ * For first-time users, routes to home (app/index). For users who haven't completed onboarding, routes to onboarding.
  * Used for: signup flows, email confirmation callbacks, authenticated users landing on index.
  */
 export async function resolvePostAuthDestination(userId: string): Promise<string> {
   try {
     // Ensure the profile row exists before routing anywhere that depends on it.
     await ensureProfileSeed();
+    
+    // Check if user has completed onboarding
     const onboardingDone = await hasOnboarding(userId);
-    // If onboarding not done, start at onboarding welcome so the user flows into Q1
-    return onboardingDone ? routes.tabs.home : '/(onboarding)/welcome';
+    console.log('resolvePostAuthDestination:', { userId, onboardingDone });
+    
+    // First-time users (no onboarding) should go to home (app/index)
+    // Users who started but didn't complete onboarding should continue onboarding
+    // Users who completed onboarding should go to home
+    if (onboardingDone) {
+      return routes.tabs.home;
+    }
+    
+    // For first-time users, go to home (app/index) - they can start onboarding from there
+    // Only route to onboarding if they explicitly need to complete it
+    // For now, let's route first-time users to home as requested
+    return routes.tabs.home;
   } catch (err) {
-    // If there's an error, default to onboarding welcome page
-    // This ensures navigation doesn't break even if database queries fail
+    // If there's an error, default to home page (not onboarding)
+    // This ensures first-time users see the home page
     console.error('resolvePostAuthDestination: Error', err);
-    return '/(onboarding)/welcome';
+    return routes.tabs.home;
   }
 }
 

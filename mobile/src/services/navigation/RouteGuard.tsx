@@ -4,7 +4,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { resolvePostAuthDestination } from '@/features/auth/flows/resolvePostAuthDestination';
 import { useAuth } from '@/services/auth/AuthProvider';
-import { isPublicRootSegment } from '@/services/navigation/routes';
+import { isPublicRootSegment, routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 
 export function RouteGuard({ children }: { children: React.ReactNode }) {
@@ -14,8 +14,15 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
   const { theme } = useAppTheme();
   const redirectingRef = useRef(false);
 
-  const pathname = useMemo(() => `/${segments.join('/')}`, [segments]);
-  const isPublic = useMemo(() => isPublicRootSegment(segments[0]), [segments]);
+  const pathname = useMemo(() => {
+    if (segments.length === 0) return '/';
+    return `/${segments.join('/')}`;
+  }, [segments]);
+  const isPublic = useMemo(() => {
+    // Index route (/) is considered public for RouteGuard purposes
+    if (segments.length === 0) return true;
+    return isPublicRootSegment(segments[0]);
+  }, [segments]);
 
   useEffect(() => {
     const redirectIfNeeded = async () => {
@@ -30,24 +37,90 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
       // Prevent multiple simultaneous redirects
       if (redirectingRef.current) return;
 
-      try {
-        redirectingRef.current = true;
-        const dest = await resolvePostAuthDestination(session.user.id);
-        // Only redirect if destination is different from current path
-        if (dest && dest !== pathname) {
-          router.replace(dest);
-        }
-      } catch (err) {
-        // Log error but don't break navigation
-        // If there's an error checking onboarding, default to showing onboarding
-        console.error('RouteGuard: Error resolving post-auth destination', err);
-        // Don't redirect on error - let user stay on current page
-      } finally {
-        // Reset redirect flag after a short delay to allow navigation to complete
-        setTimeout(() => {
-          redirectingRef.current = false;
-        }, 100);
+      // Don't redirect from onboarding or auth routes - let those flows handle their own navigation
+      const isOnboardingRoute = pathname.startsWith('/(onboarding)');
+      const isAuthRoute = pathname.startsWith('/(auth)');
+      const isIndexRoute = pathname === '/' || pathname === '';
+      
+      if (isOnboardingRoute || isAuthRoute) {
+        redirectingRef.current = false;
+        return;
       }
+
+      // For index route (app/index), redirect authenticated users to home
+      // Use requestAnimationFrame to ensure router is mounted before navigating
+      if (isIndexRoute) {
+        redirectingRef.current = true;
+        // Use requestAnimationFrame to ensure the router is ready
+        requestAnimationFrame(() => {
+          // Double RAF to ensure layout is complete
+          requestAnimationFrame(() => {
+            try {
+              router.replace(routes.tabs.home);
+            } catch (err: any) {
+              // If navigation fails (router not ready), retry after a delay
+              if (err?.message?.includes('before mounting')) {
+                setTimeout(() => {
+                  try {
+                    router.replace(routes.tabs.home);
+                  } catch (retryErr) {
+                    console.error('RouteGuard: Retry navigation failed', retryErr);
+                    redirectingRef.current = false;
+                  }
+                }, 300);
+              } else {
+                console.error('RouteGuard: Error redirecting from index', err);
+                redirectingRef.current = false;
+              }
+            } finally {
+              setTimeout(() => {
+                redirectingRef.current = false;
+              }, 200);
+            }
+          });
+        });
+        return;
+      }
+
+      // For other public routes, use resolvePostAuthDestination
+      redirectingRef.current = true;
+      // Use requestAnimationFrame to ensure router is ready
+      requestAnimationFrame(() => {
+        requestAnimationFrame(async () => {
+          try {
+            const dest = await resolvePostAuthDestination(session.user.id);
+            // Only redirect if destination is different from current path
+            // Never redirect away from onboarding routes
+            if (dest && dest !== pathname && !dest.startsWith('/(onboarding)')) {
+              router.replace(dest);
+            }
+          } catch (err: any) {
+            // Log error but don't break navigation
+            // If there's an error, don't redirect - let user stay on current page
+            if (err?.message?.includes('before mounting')) {
+              // Retry after router is ready
+              setTimeout(() => {
+                try {
+                  resolvePostAuthDestination(session.user.id).then((dest) => {
+                    if (dest && dest !== pathname && !dest.startsWith('/(onboarding)')) {
+                      router.replace(dest);
+                    }
+                  });
+                } catch (retryErr) {
+                  console.error('RouteGuard: Retry failed', retryErr);
+                }
+              }, 300);
+            } else {
+              console.error('RouteGuard: Error resolving post-auth destination', err);
+            }
+          } finally {
+            // Reset redirect flag after a short delay to allow navigation to complete
+            setTimeout(() => {
+              redirectingRef.current = false;
+            }, 200);
+          }
+        });
+      });
     };
     redirectIfNeeded();
   }, [loading, error, session?.user?.id, isPublic, pathname, router]);

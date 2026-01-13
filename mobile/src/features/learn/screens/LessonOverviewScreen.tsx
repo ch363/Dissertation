@@ -1,56 +1,53 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScrollView } from '@/components/ui';
 
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
-
-type LessonRow = {
-  id: string;
-  title: string;
-  name?: string | null;
-  description?: string | null;
-  display_order?: number | null;
-  sortOrder?: number | null;
-};
-
-type InfoRow = {
-  id: string;
-  prompt?: string | null;
-  media_url?: string | null;
-  media_id?: string | null;
-};
+import { getLesson, getLessonTeachings, type Lesson, type Teaching } from '@/services/api/modules';
 
 export default function LessonOverviewScreen() {
   const { lessonId } = useLocalSearchParams<{ lessonId?: string }>();
   const { theme } = useAppTheme();
   const router = useRouter();
 
-  // TODO: Replace with new API business layer
-  // All learning API calls have been removed - screens are ready for new implementation
-
-  const [lesson, setLesson] = React.useState<LessonRow | null>(
-    lessonId
-      ? {
-          id: String(lessonId),
-          title: 'Lesson overview',
-          description: 'Overview placeholder',
-          sortOrder: 1,
-        }
-      : null,
-  );
-  const [infos, setInfos] = React.useState<InfoRow[]>([]);
-  const [loading, setLoading] = React.useState(false);
+  const [lesson, setLesson] = React.useState<Lesson | null>(null);
+  const [teachings, setTeachings] = React.useState<Teaching[]>([]);
+  const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
-  const highestCompletedOrder = 1; // simple stub gating (Basics unlocked)
+  React.useEffect(() => {
+    const loadLesson = async () => {
+      if (!lessonId) {
+        setError('Lesson ID is required');
+        setLoading(false);
+        return;
+      }
 
-  const orderVal = lesson?.sortOrder ?? lesson?.display_order ?? Number(lesson?.id ?? 0);
-  const locked =
-    typeof orderVal === 'number' ? orderVal > Math.max(1, highestCompletedOrder) : false;
+      setLoading(true);
+      setError(null);
+      try {
+        const [lessonData, teachingsData] = await Promise.all([
+          getLesson(lessonId),
+          getLessonTeachings(lessonId).catch(() => [] as Teaching[]),
+        ]);
+        setLesson(lessonData);
+        setTeachings(teachingsData);
+      } catch (err: any) {
+        console.error('Failed to load lesson:', err);
+        setError(err?.message || 'Failed to load lesson');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadLesson();
+  }, [lessonId]);
+
+  const locked = false; // Remove locking for now
 
   const handleStart = () => {
     if (!lessonId) return;
@@ -106,13 +103,13 @@ export default function LessonOverviewScreen() {
           ) : null}
         </View>
 
-        {infos.length > 0 ? (
+        {teachings.length > 0 ? (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
               What you&apos;ll learn
             </Text>
             <Text style={[styles.infoText, { color: theme.colors.mutedText }]}>
-              {infos.length} phrase{infos.length !== 1 ? 's' : ''} to master
+              {teachings.length} phrase{teachings.length !== 1 ? 's' : ''} to master
             </Text>
           </View>
         ) : null}

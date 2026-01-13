@@ -1,20 +1,49 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Pressable, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { makeSessionId } from '@/features/session/sessionBuilder';
 import { routeBuilders } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
+import { getLesson, getLessonTeachings, type Lesson } from '@/services/api/modules';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
 
 export default function LessonStartScreen() {
   const params = useLocalSearchParams<{ lessonId?: string }>();
   const lessonId = (params.lessonId as string | undefined) ?? 'demo';
-  const [lessonTitle, setLessonTitle] = useState<string>('Lesson');
+  const { theme: appTheme } = useAppTheme();
+  const [lesson, setLesson] = useState<Lesson | null>(null);
   const [cardCount, setCardCount] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // TODO: Replace with new API business layer
-  // All learning API calls have been removed - screens are ready for new implementation
+  useEffect(() => {
+    const loadLesson = async () => {
+      if (!lessonId || lessonId === 'demo') {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+      try {
+        const [lessonData, teachingsData] = await Promise.all([
+          getLesson(lessonId),
+          getLessonTeachings(lessonId).catch(() => []),
+        ]);
+        setLesson(lessonData);
+        setCardCount(teachingsData.length);
+      } catch (err: any) {
+        console.error('Failed to load lesson:', err);
+        setError(err?.message || 'Failed to load lesson');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadLesson();
+  }, [lessonId]);
 
   const sessionId = makeSessionId('learn');
 
@@ -25,11 +54,36 @@ export default function LessonStartScreen() {
     });
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.card}>
+          <ActivityIndicator color={appTheme.colors.primary} />
+          <Text style={styles.subtitle}>Loading lesson...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !lesson) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.card}>
+          <Text style={[styles.title, { color: appTheme.colors.error }]}>
+            {error || 'Lesson not found'}
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.card}>
-        <Text style={styles.title}>{lessonTitle}</Text>
-        <Text style={styles.subtitle}>{cardCount} cards • Mix of teach and practice cards</Text>
+        <Text style={styles.title}>{lesson.title}</Text>
+        <Text style={styles.subtitle}>
+          {cardCount} cards • Mix of teach and practice cards
+        </Text>
         <Pressable style={styles.primary} onPress={handleStart}>
           <Text style={styles.primaryLabel}>Start session</Text>
         </Pressable>

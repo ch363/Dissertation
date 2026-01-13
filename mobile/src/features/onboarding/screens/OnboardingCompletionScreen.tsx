@@ -95,12 +95,18 @@ export default function OnboardingCompletion() {
       // All onboarding fields are optional - skipped steps are valid
       // Save whatever answers we have (including skipped/null values)
       await saveOnboarding(user.id, answers);
+      console.log('OnboardingCompletion: Successfully saved onboarding');
+      
       setHasSaved(true); // Mark as saved before reset to prevent useEffect redirect
       reset();
 
+      // Small delay to ensure backend has processed the save
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Navigate to home with error handling
       try {
-        await router.replace(routes.tabs.home);
+        console.log('OnboardingCompletion: Navigating to home');
+        router.replace(routes.tabs.home);
       } catch (navError: any) {
         console.error('OnboardingCompletion: Navigation error', navError);
         // Fallback: try navigating to root and let RouteGuard handle it

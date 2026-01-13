@@ -6,61 +6,51 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
-
-type LessonRow = {
-  id: string;
-  title: string;
-  name?: string | null;
-  description?: string | null;
-  display_order?: number | null;
-  sortOrder?: number | null;
-};
-
-type ProgressState = {
-  completedLessonIds: string[];
-};
-
-const fallbackLessons: LessonRow[] = [
-  {
-    id: 'basics',
-    title: 'Basics',
-    description: 'Greetings & essentials',
-    sortOrder: 1,
-  },
-  {
-    id: 'travel',
-    title: 'Travel',
-    description: 'Travel phrases',
-    sortOrder: 2,
-  },
-];
+import { getLessons, type Lesson } from '@/services/api/modules';
+import { getUserLessons, type UserLessonProgress } from '@/services/api/progress';
 
 export default function LessonListScreen() {
   const { theme } = useAppTheme();
   const router = useRouter();
-  const [lessons, setLessons] = React.useState<LessonRow[]>(fallbackLessons);
-  const [loading, setLoading] = React.useState(false);
+  const [lessons, setLessons] = React.useState<Lesson[]>([]);
+  const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
-  const [progress, setProgress] = React.useState<ProgressState>({ completedLessonIds: [] });
+  const [userProgress, setUserProgress] = React.useState<UserLessonProgress[]>([]);
 
-  // TODO: Replace with new API business layer
-  // All learning API calls have been removed - screens are ready for new implementation
+  React.useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [lessonsData, progressData] = await Promise.all([
+          getLessons(),
+          getUserLessons().catch(() => [] as UserLessonProgress[]), // Gracefully handle if no progress
+        ]);
+        setLessons(lessonsData);
+        setUserProgress(progressData);
+      } catch (err: any) {
+        console.error('Failed to load lessons:', err);
+        setError(err?.message || 'Failed to load lessons');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const highestCompletedOrder = React.useMemo(() => {
-    if (!lessons.length) return 0;
-    const completedOrders = lessons
-      .filter((l) => progress.completedLessonIds.includes(l.id))
-      .map((l) => {
-        const val = l.sortOrder ?? l.display_order ?? Number(l.id);
-        return typeof val === 'number' && Number.isFinite(val) ? val : 0;
-      });
-    return completedOrders.length ? Math.max(...completedOrders) : 0;
-  }, [lessons, progress.completedLessonIds]);
+    loadData();
+  }, []);
 
-  const renderItem = ({ item }: { item: LessonRow }) => {
-    const orderRaw = item.sortOrder ?? item.display_order ?? Number(item.id);
-    const order = typeof orderRaw === 'number' && Number.isFinite(orderRaw) ? orderRaw : 0;
-    const locked = typeof order === 'number' && order > Math.max(1, highestCompletedOrder);
+  const completedLessonIds = React.useMemo(() => {
+    return new Set(
+      userProgress
+        .filter((p) => p.completedTeachings >= p.totalTeachings && p.totalTeachings > 0)
+        .map((p) => p.lesson.id),
+    );
+  }, [userProgress]);
+
+  const renderItem = ({ item }: { item: Lesson }) => {
+    const progress = userProgress.find((p) => p.lesson.id === item.id);
+    const isCompleted = completedLessonIds.has(item.id);
+    const locked = false; // Remove locking logic for now - can be re-implemented if needed
     return (
       <Pressable
         accessibilityRole="button"
@@ -80,7 +70,11 @@ export default function LessonListScreen() {
       >
         <View style={styles.cardHeader}>
           <Text style={[styles.title, { color: theme.colors.text }]}>{item.title}</Text>
-          {locked ? <Ionicons name="lock-closed" size={16} color={theme.colors.mutedText} /> : null}
+          {isCompleted ? (
+            <Ionicons name="checkmark-circle" size={16} color={theme.colors.primary} />
+          ) : locked ? (
+            <Ionicons name="lock-closed" size={16} color={theme.colors.mutedText} />
+          ) : null}
         </View>
         {item.description ? (
           <Text style={[styles.subtitle, { color: theme.colors.mutedText }]} numberOfLines={2}>
@@ -89,7 +83,9 @@ export default function LessonListScreen() {
         ) : null}
         <View style={styles.metaRow}>
           <Text style={[styles.meta, { color: theme.colors.mutedText }]}>
-            {order ? `Lesson ${order}` : 'A1'}
+            {progress
+              ? `${progress.completedTeachings}/${progress.totalTeachings} completed`
+              : `${item.numberOfItems} items`}
           </Text>
           {!locked ? (
             <Ionicons name="chevron-forward" size={16} color={theme.colors.mutedText} />

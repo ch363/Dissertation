@@ -25,6 +25,29 @@ export class MeController {
     return this.meService.getMe(userId);
   }
 
+  @Get('profile')
+  @ApiOperation({ summary: 'Get user profile (alias for GET /me)' })
+  @ApiResponse({ status: 200, description: 'Profile retrieved' })
+  async getProfile(@User() userId: string) {
+    return this.meService.getMe(userId);
+  }
+
+  @Post('profile/ensure')
+  @ApiOperation({ summary: 'Ensure profile exists (provisioning with optional name)' })
+  @ApiResponse({ status: 200, description: 'Profile ensured' })
+  async ensureProfile(
+    @User() userId: string,
+    @Body() body?: { name?: string },
+  ) {
+    // First ensure user exists (provisioning)
+    const user = await this.meService.getMe(userId);
+    // Update name if provided and different
+    if (body?.name && body.name.trim() && body.name !== user.name) {
+      return this.usersService.updateUser(userId, { name: body.name.trim() });
+    }
+    return user;
+  }
+
   @Patch()
   @ApiOperation({ summary: 'Update user preferences' })
   @ApiResponse({ status: 200, description: 'User updated successfully' })

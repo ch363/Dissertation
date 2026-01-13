@@ -7,6 +7,10 @@ export class UpdateUserDto {
   name?: string;
 
   @IsOptional()
+  @IsString()
+  avatarUrl?: string;
+
+  @IsOptional()
   @IsEnum(DELIVERY_METHOD)
   preferredDeliveryMethod?: DELIVERY_METHOD;
 

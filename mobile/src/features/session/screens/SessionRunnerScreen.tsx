@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SessionRunner } from '@/features/session/components/SessionRunner';
@@ -8,6 +8,8 @@ import { buildReviewSessionPlan, makeSessionId } from '@/features/session/sessio
 import { routeBuilders } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { AttemptLog, SessionKind, SessionPlan } from '@/types/session';
+import { getSessionPlan } from '@/services/api/learn';
+import { recordQuestionAttempt } from '@/services/api/progress';
 
 type Props = {
   lessonId?: string;
@@ -33,26 +35,77 @@ export default function SessionRunnerScreen(props?: Props) {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // TODO: Replace with new API business layer
-  // All learning API calls have been removed - screens are ready for new implementation
-
   useEffect(() => {
-    if (sessionKind === 'review') {
-      setPlan(buildReviewSessionPlan(sessionId));
-      setLoading(false);
-      return;
-    }
-    // For 'learn' sessions, plan will need to be set via new API
-    setLoading(false);
-    setError('Learning sessions require new API implementation');
+    const loadSessionPlan = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        if (sessionKind === 'review') {
+          // For review sessions, use the review session plan builder
+          // TODO: Replace with backend session-plan endpoint when review mode is supported
+          setPlan(buildReviewSessionPlan(sessionId));
+          setLoading(false);
+          return;
+        }
+
+        // For learn sessions, fetch from backend
+        if (lessonId && lessonId !== 'demo') {
+          const planData = await getSessionPlan({
+            mode: 'learn',
+            lessonId,
+          });
+          
+          // Transform backend session plan to frontend SessionPlan format
+          // Note: This assumes the backend returns a compatible format
+          // If not, we'll need to add transformation logic here
+          if (planData && planData.cards) {
+            setPlan({
+              id: sessionId,
+              kind: 'learn',
+              lessonId,
+              title: planData.title || `Lesson ${lessonId}`,
+              cards: planData.cards || [],
+            });
+          } else {
+            setError('Unable to load session plan');
+          }
+        } else {
+          setError('Lesson ID is required');
+        }
+      } catch (err: any) {
+        console.error('Failed to load session plan:', err);
+        setError(err?.message || 'Failed to load session');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSessionPlan();
   }, [lessonId, sessionId, sessionKind]);
 
   const handleComplete = async (attempts: AttemptLog[]) => {
-    // TODO: Replace with new API business layer for logging
     try {
-      // Logging functionality removed - implement with new API
-    } catch {
-      // ignore logging errors
+      // Log question attempts to backend
+      for (const attempt of attempts) {
+        // Extract questionId from cardId if possible, or use a mapping
+        // For now, we'll skip if we can't determine the questionId
+        if (attempt.cardId && attempt.cardId.startsWith('question-')) {
+          const questionId = attempt.cardId.replace('question-', '');
+          await recordQuestionAttempt(questionId, {
+            score: attempt.isCorrect ? 100 : 0,
+            timeToComplete: attempt.elapsedMs,
+            percentageAccuracy: attempt.isCorrect ? 100 : 0,
+            attempts: attempt.attemptNumber,
+          }).catch((err) => {
+            console.error('Failed to record attempt:', err);
+            // Continue with other attempts even if one fails
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error logging attempts:', err);
+      // Continue to summary screen even if logging fails
     } finally {
       router.replace({
         pathname: routeBuilders.sessionSummary(sessionId),
@@ -68,7 +121,10 @@ export default function SessionRunnerScreen(props?: Props) {
           <ActivityIndicator color={theme.colors.primary} />
         </View>
       ) : error || !plan ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <Text style={{ color: theme.colors.error, marginBottom: 10 }}>
+            {error || 'Failed to load session'}
+          </Text>
           <ActivityIndicator color={theme.colors.error} />
         </View>
       ) : (

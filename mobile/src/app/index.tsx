@@ -1,37 +1,16 @@
-import { router, useSegments } from 'expo-router';
+import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
 import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { resolvePostAuthDestination } from '@/features/auth/flows/resolvePostAuthDestination';
-import { useAuth } from '@/services/auth/AuthProvider';
 import { routes } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 
 export default function LandingScreen() {
-  const { session, loading } = useAuth();
-  const segments = useSegments();
-  const isOnboarding = segments[0] === 'onboarding';
-
-  // Redirect authenticated users to their appropriate destination
-  // (RouteGuard only handles public routes, so we need to handle index route here)
-  // Skip redirects when already on onboarding routes - let onboarding stack handle its own navigation
-  useEffect(() => {
-    if (loading || !session?.user?.id || isOnboarding) return;
-    (async () => {
-      try {
-        const dest = await resolvePostAuthDestination(session.user.id);
-        if (dest) {
-          router.replace(dest);
-        }
-      } catch (err) {
-        // If there's an error, default to onboarding
-        console.error('LandingScreen: Error resolving destination', err);
-        router.replace('/(onboarding)/welcome');
-      }
-    })();
-  }, [session, loading, isOnboarding]);
+  // For unauthenticated users, show the landing page (sign up/sign in buttons)
+  // For authenticated users, RouteGuard will handle redirecting to home
+  // We don't navigate here to avoid "navigate before mounting" errors
+  // The RouteGuard component handles all authenticated user redirects
 
   const goSignUp = () => router.push(routes.auth.signUp);
   const goSignIn = () => router.push(routes.auth.signIn);

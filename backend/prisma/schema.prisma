@@ -106,9 +106,12 @@ model QuestionDeliveryMethod {
 model User {
   id String @id @db.Uuid
   name                  String?   @db.VarChar
+  avatarUrl             String?   @map("avatar_url") @db.VarChar
   knowledgePoints       Int       @default(0) @map("knowledge_points")
   knowledgeLevel        KNOWLEDGE_LEVEL @default(A1) @map("knowledge_level")
   preferredDeliveryMethod DELIVERY_METHOD? @map("preferred_delivery_method")
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
   userDeliveryMethodScores     UserDeliveryMethodScore[]
   userKnowledgeLevelProgress   UserKnowledgeLevelProgress[]
@@ -116,6 +119,7 @@ model User {
   userTeachingsCompleted       UserTeachingCompleted[]
   userQuestionPerformance      UserQuestionPerformance[]
   xpEvents                     XpEvent[]
+  onboardingAnswer             OnboardingAnswer?
 
   @@map("users")
 }
@@ -217,5 +221,16 @@ model XpEvent {
   @@index([userId])
   @@index([userId, occurredAt])
   @@map("xp_events")
+}
+
+model OnboardingAnswer {
+  userId     String   @id @map("user_id") @db.Uuid
+  answers    Json     // Stores the full onboarding submission JSON
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("onboarding_answers")
 }
 

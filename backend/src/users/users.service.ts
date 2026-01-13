@@ -11,15 +11,41 @@ export class UsersService {
    * Called by me module for user provisioning
    */
   async upsertUser(authUid: string) {
-    return this.prisma.user.upsert({
+    if (!authUid || typeof authUid !== 'string' || authUid.trim() === '') {
+      throw new Error('Invalid authUid: must be a non-empty string');
+    }
+
+    // First try to find existing user
+    const existingUser = await this.prisma.user.findUnique({
       where: { id: authUid },
-      update: {},
-      create: {
-        id: authUid,
-        knowledgePoints: 0,
-        knowledgeLevel: 'A1',
-      },
     });
+
+    if (existingUser) {
+      return existingUser;
+    }
+
+    // User doesn't exist, create it
+    // Use create instead of upsert to avoid race condition issues
+    try {
+      return await this.prisma.user.create({
+        data: {
+          id: authUid,
+          knowledgePoints: 0,
+          knowledgeLevel: 'A1',
+        },
+      });
+    } catch (error: any) {
+      // If unique constraint fails (race condition), fetch the existing user
+      if (error.code === 'P2002' || error.message?.includes('Unique constraint')) {
+        const user = await this.prisma.user.findUnique({
+          where: { id: authUid },
+        });
+        if (user) {
+          return user;
+        }
+      }
+      throw error;
+    }
   }
 
   /**

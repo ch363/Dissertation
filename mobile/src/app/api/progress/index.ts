@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { getSupabaseClient } from '@/app/api/supabase/client';
+import { apiClient } from '@/services/api/client';
 import { logError } from '@/services/logging/logger';
 
 const CACHE_KEY = 'fluentia:progress:v2';
@@ -166,13 +167,39 @@ export type ProgressSummary = {
 };
 
 /**
- * Calculates a progress snapshot. XP derived from completed modules.
- * Streak/level remain placeholders until real server aggregation exists.
+ * Gets progress summary from backend dashboard endpoint.
+ * XP comes from backend, streak/level calculated from XP.
  */
 export async function getProgressSummary(userId: string | null): Promise<ProgressSummary> {
-  const completed = await getCompletedModules(userId ?? undefined);
-  const xp = completed.length * 20;
-  const streak = Math.max(0, Math.min(365, completed.length));
-  const level = Math.floor(xp / 100) + 1;
-  return { xp, streak, level, updatedAt: Date.now() };
+  if (!userId) {
+    // Fallback for offline/unauthenticated state
+    const completed = await getCompletedModules();
+    const xp = completed.length * 20;
+    const streak = Math.max(0, Math.min(365, completed.length));
+    const level = Math.floor(xp / 100) + 1;
+    return { xp, streak, level, updatedAt: Date.now() };
+  }
+
+  try {
+    const dashboard = await apiClient.get<{
+      dueReviewCount: number;
+      activeLessonCount: number;
+      xpTotal: number;
+      streak: number | null;
+    }>('/me/dashboard');
+
+    const xp = dashboard.xpTotal || 0;
+    const streak = dashboard.streak ?? Math.max(0, Math.min(365, Math.floor(xp / 20)));
+    const level = Math.floor(xp / 100) + 1;
+
+    return { xp, streak, level, updatedAt: Date.now() };
+  } catch (error) {
+    // Fallback to local calculation if backend fails
+    logError(error, { scope: 'progress.getProgressSummary', userId });
+    const completed = await getCompletedModules(userId);
+    const xp = completed.length * 20;
+    const streak = Math.max(0, Math.min(365, completed.length));
+    const level = Math.floor(xp / 100) + 1;
+    return { xp, streak, level, updatedAt: Date.now() };
+  }
 }

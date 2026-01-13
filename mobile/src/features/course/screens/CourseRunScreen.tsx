@@ -1,9 +1,10 @@
 import { useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ActivityIndicator, View, Text } from 'react-native';
 
 import SessionRunnerScreen from '@/features/session/screens/SessionRunnerScreen';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { getModuleLessons, type Lesson } from '@/services/api/modules';
 
 export const options = { headerShown: false } as const;
 
@@ -15,12 +16,37 @@ export default function CourseRun() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { theme } = useAppTheme();
   const [firstLessonId, setFirstLessonId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // TODO: Replace with new API business layer
-  // All learning API calls have been removed - screens are ready for new implementation
-  // CourseRun needs to fetch the first lesson ID using the new API
+  useEffect(() => {
+    const loadFirstLesson = async () => {
+      if (!slug) {
+        setError('Course slug is required');
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+      try {
+        // Assuming slug is a module ID - get first lesson from module
+        const lessons = await getModuleLessons(slug);
+        if (lessons.length > 0) {
+          setFirstLessonId(lessons[0].id);
+        } else {
+          setError('No lessons found in this course');
+        }
+      } catch (err: any) {
+        console.error('Failed to load course:', err);
+        setError(err?.message || 'Failed to load course');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadFirstLesson();
+  }, [slug]);
 
   if (loading) {
     return (

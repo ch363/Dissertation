@@ -17,6 +17,7 @@ import { LearnModule } from './learn/learn.module';
 import { HealthModule } from './health/health.module';
 import { EngineModule } from './engine/engine.module';
 import { SearchModule } from './search/search.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
 import { envValidationSchema } from './config/env.validation';
 import configuration from './config/configuration';
@@ -48,6 +49,7 @@ import configuration from './config/configuration';
     HealthModule,
     EngineModule,
     SearchModule,
+    OnboardingModule,
   ],
   controllers: [AppController],
   providers: [
