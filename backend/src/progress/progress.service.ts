@@ -4,10 +4,16 @@ import { QuestionAttemptDto } from './dto/question-attempt.dto';
 import { DeliveryMethodScoreDto } from './dto/delivery-method-score.dto';
 import { KnowledgeLevelProgressDto } from './dto/knowledge-level-progress.dto';
 import { DELIVERY_METHOD } from '@prisma/client';
+import { SrsService } from '../engine/srs/srs.service';
+import { XpService } from '../engine/scoring/xp.service';
 
 @Injectable()
 export class ProgressService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private srsService: SrsService,
+    private xpService: XpService,
+  ) {}
 
   async startLesson(userId: string, lessonId: string) {
     // Upsert UserLesson idempotently
@@ -138,16 +144,21 @@ export class ProgressService {
     }
 
     const now = new Date();
+    const isCorrect = attemptDto.score >= 80; // Threshold for "correct"
 
-    // Compute nextReviewDue based on score
-    // Simple spaced repetition: if score >= 80, due in 2 days; else due in 1 day
-    const scoreThreshold = 80;
-    const daysUntilReview = attemptDto.score >= scoreThreshold ? 2 : 1;
-    const nextReviewDue = new Date(now);
-    nextReviewDue.setDate(nextReviewDue.getDate() + daysUntilReview);
+    // Calculate SRS state using SM-2 algorithm
+    const srsState = await this.srsService.calculateQuestionState(
+      userId,
+      questionId,
+      {
+        correct: isCorrect,
+        timeMs: attemptDto.timeToComplete || 0,
+        score: attemptDto.score,
+      },
+    );
 
-    // Append-only insert
-    return this.prisma.userQuestionPerformance.create({
+    // Record attempt in UserQuestionPerformance (append-only) with SRS state
+    const performance = await this.prisma.userQuestionPerformance.create({
       data: {
         userId,
         questionId,
@@ -156,7 +167,10 @@ export class ProgressService {
         percentageAccuracy: attemptDto.percentageAccuracy,
         attempts: attemptDto.attempts,
         lastRevisedAt: now,
-        nextReviewDue,
+        nextReviewDue: srsState.nextReviewDue,
+        intervalDays: srsState.intervalDays,
+        easeFactor: srsState.easeFactor,
+        repetitions: srsState.repetitions,
       },
       include: {
         question: {
@@ -173,6 +187,21 @@ export class ProgressService {
         },
       },
     });
+
+    // Award XP using engine
+    const awardedXp = await this.xpService.award(userId, {
+      type: 'attempt',
+      correct: isCorrect,
+      timeMs: attemptDto.timeToComplete || 0,
+    });
+
+    // SRS state is stored directly in UserQuestionPerformance (no separate table needed)
+
+    // Return performance with XP info
+    return {
+      ...performance,
+      awardedXp,
+    };
   }
 
   async getDueReviews(userId: string) {

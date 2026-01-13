@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ProgressController } from './progress.controller';
 import { ProgressService } from './progress.service';
-import { AuthModule } from '../auth/auth.module';
+import { EngineModule } from '../engine/engine.module';
 
 @Module({
-  imports: [AuthModule],
+  imports: [EngineModule],
   controllers: [ProgressController],
   providers: [ProgressService],
   exports: [ProgressService],

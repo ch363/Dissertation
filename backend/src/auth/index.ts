@@ -1,3 +1,3 @@
 export * from './auth.module';
-export * from './supabase-auth.guard';
-export * from './user-id.decorator';
+export * from './supabase-jwt.service';
+export * from './types';

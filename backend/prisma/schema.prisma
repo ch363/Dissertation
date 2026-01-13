@@ -115,6 +115,7 @@ model User {
   userLessons                  UserLesson[]
   userTeachingsCompleted       UserTeachingCompleted[]
   userQuestionPerformance      UserQuestionPerformance[]
+  xpEvents                     XpEvent[]
 
   @@map("users")
 }
@@ -189,6 +190,10 @@ model UserQuestionPerformance {
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   lastRevisedAt      DateTime? @map("last_revised_at") @db.Timestamp(6)
   nextReviewDue      DateTime? @map("next_review_due") @db.Timestamp(6)
+  // SRS state (calculated using SM-2 algorithm)
+  intervalDays       Int?      @map("interval_days")
+  easeFactor         Float?    @map("ease_factor")
+  repetitions        Int?      @default(0)
 
   user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   question           Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
@@ -198,5 +203,19 @@ model UserQuestionPerformance {
   @@index([userId, questionId])
   @@index([nextReviewDue])
   @@map("user_question_performance")
+}
+
+model XpEvent {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  amount     Int
+  reason     String   @db.VarChar
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamp(6)
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, occurredAt])
+  @@map("xp_events")
 }
 

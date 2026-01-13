@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { DELIVERY_METHOD } from '@prisma/client';
+import { ContentDeliveryService } from '../engine/content-delivery/content-delivery.service';
 
 @Injectable()
 export class LearnService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private contentDelivery: ContentDeliveryService,
+  ) {}
 
   async getNext(userId: string, lessonId: string) {
     // 1) Validate lessonId present (already validated by route param)
@@ -46,9 +50,6 @@ export class LearnService {
       throw new NotFoundException(`Lesson with ID ${lessonId} not found`);
     }
 
-    const now = new Date();
-
-    // 3) Find due reviews within this lesson first
     const allQuestionIds = lesson.teachings.flatMap((t) => t.questions.map((q) => q.id));
 
     if (allQuestionIds.length === 0) {
@@ -59,132 +60,68 @@ export class LearnService {
       };
     }
 
-    // Get all due reviews for questions in this lesson
-    const dueReviews = await this.prisma.userQuestionPerformance.findMany({
-      where: {
-        userId,
-        questionId: { in: allQuestionIds },
-        nextReviewDue: {
-          lte: now,
-          not: null,
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+    // Use engine's content delivery service to get next item
+    const nextItem = await this.contentDelivery.getNextItem(userId, {
+      mode: 'mixed',
+      lessonId,
     });
 
-    // Dedup by questionId - keep latest per question
-    const questionIdMap = new Map<string, typeof dueReviews[0]>();
-    dueReviews.forEach((review) => {
-      const existing = questionIdMap.get(review.questionId);
-      if (!existing || review.createdAt > existing.createdAt) {
-        questionIdMap.set(review.questionId, review);
-      }
-    });
-
-    if (questionIdMap.size > 0) {
-      // Return first due review
-      const review = Array.from(questionIdMap.values())[0];
-      const question = lesson.teachings
-        .flatMap((t) => t.questions)
-        .find((q) => q.id === review.questionId);
-
-      if (!question) {
-        throw new NotFoundException('Question not found');
-      }
-
-      const teaching = lesson.teachings.find((t) =>
-        t.questions.some((q) => q.id === question.id),
-      );
-
-      if (!teaching) {
-        throw new NotFoundException('Teaching not found');
-      }
-
-      // Get suggested delivery method
-      const suggestedDeliveryMethod = await this.getSuggestedDeliveryMethod(
-        userId,
-        question.questionDeliveryMethods.map((qdm) => qdm.deliveryMethod),
-      );
-
+    if (!nextItem) {
       return {
-        type: 'review' as const,
+        type: 'done' as const,
         lessonId,
-        teachingId: teaching.id,
-        question: {
-          id: question.id,
-          teachingId: teaching.id,
-          deliveryMethods: question.questionDeliveryMethods.map((qdm) => qdm.deliveryMethod),
-        },
-        suggestedDeliveryMethod,
-        rationale: 'Due review found',
+        rationale: 'All questions completed',
       };
     }
 
-    // 4) Else return new content: next unanswered or least-practiced question
-    // Get all performance records for questions in this lesson
-    const allPerformances = await this.prisma.userQuestionPerformance.findMany({
-      where: {
-        userId,
-        questionId: { in: allQuestionIds },
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-    });
-
-    // Find questions that haven't been attempted, or least practiced
-    const questionAttemptCounts = new Map<string, number>();
-    allPerformances.forEach((perf) => {
-      questionAttemptCounts.set(perf.questionId, (questionAttemptCounts.get(perf.questionId) || 0) + 1);
-    });
-
-    // Sort questions: unanswered first, then by attempt count ascending
-    const allQuestions = lesson.teachings.flatMap((t) => t.questions);
-    const sortedQuestions = allQuestions.sort((a, b) => {
-      const aCount = questionAttemptCounts.get(a.id) || 0;
-      const bCount = questionAttemptCounts.get(b.id) || 0;
-      if (aCount === 0 && bCount > 0) return -1;
-      if (aCount > 0 && bCount === 0) return 1;
-      return aCount - bCount;
-    });
-
-    if (sortedQuestions.length > 0) {
-      const question = sortedQuestions[0];
-      const teaching = lesson.teachings.find((t) =>
-        t.questions.some((q) => q.id === question.id),
-      );
-
-      if (!teaching) {
-        throw new NotFoundException('Teaching not found');
-      }
-
-      const suggestedDeliveryMethod = await this.getSuggestedDeliveryMethod(
-        userId,
-        question.questionDeliveryMethods.map((qdm) => qdm.deliveryMethod),
-      );
+    // Convert engine DTO to existing response format
+    if (nextItem.kind === 'question' && nextItem.questionId) {
+      // Check if it's a review or new
+      const isReview = await this.isReviewItem(userId, nextItem.questionId);
 
       return {
-        type: 'new' as const,
+        type: isReview ? ('review' as const) : ('new' as const),
         lessonId,
-        teachingId: teaching.id,
+        teachingId: nextItem.teachingId,
         question: {
-          id: question.id,
-          teachingId: teaching.id,
-          deliveryMethods: question.questionDeliveryMethods.map((qdm) => qdm.deliveryMethod),
+          id: nextItem.questionId,
+          teachingId: nextItem.teachingId,
+          deliveryMethods: nextItem.deliveryMethods || [],
         },
-        suggestedDeliveryMethod,
-        rationale: 'Next question to practice',
+        suggestedDeliveryMethod: nextItem.suggestedDeliveryMethod,
+        rationale: nextItem.rationale,
       };
     }
 
-    // 5) Else return type="done"
+    // Fallback to old logic if engine returns unexpected type
     return {
       type: 'done' as const,
       lessonId,
-      rationale: 'All questions completed',
+      rationale: 'No items available',
     };
+  }
+
+  /**
+   * Check if a question is a review item (has due nextReviewDue).
+   */
+  private async isReviewItem(userId: string, questionId: string): Promise<boolean> {
+    const latest = await this.prisma.userQuestionPerformance.findFirst({
+      where: {
+        userId,
+        questionId,
+        nextReviewDue: {
+          not: null,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { nextReviewDue: true },
+    });
+
+    if (!latest || !latest.nextReviewDue) {
+      return false;
+    }
+
+    return latest.nextReviewDue <= new Date();
   }
 
   private async getSuggestedDeliveryMethod(
