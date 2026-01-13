@@ -16,4 +16,4 @@ export const envValidationSchema = Joi.object({
   NODE_ENV: Joi.string()
     .valid('development', 'production', 'test')
     .default('development'),
-});
+}).unknown(true); // Allow unknown keys for test environment

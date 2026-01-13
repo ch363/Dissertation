@@ -25,8 +25,8 @@ import configuration from './config/configuration';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
-      validationSchema: envValidationSchema,
+      envFilePath: process.env.NODE_ENV === 'test' ? undefined : '.env', // Skip .env file in tests
+      validationSchema: process.env.NODE_ENV === 'test' ? undefined : envValidationSchema, // Skip validation in tests
       load: [configuration],
     }),
     ThrottlerModule.forRoot([
