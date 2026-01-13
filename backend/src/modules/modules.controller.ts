@@ -74,4 +74,11 @@ export class ModulesController {
   findLessons(@Param('id') id: string) {
     return this.modulesService.findLessons(id);
   }
+
+  @Get('featured')
+  @ApiOperation({ summary: 'Get featured modules (curated + algorithmic discovery)' })
+  @ApiResponse({ status: 200, description: 'Featured modules retrieved' })
+  findFeatured() {
+    return this.modulesService.findFeatured();
+  }
 }

@@ -3,8 +3,9 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@ne
 import { LearnService } from './learn.service';
 import { SupabaseJwtGuard } from '../common/guards/supabase-jwt.guard';
 import { User } from '../common/decorators/user.decorator';
-import { IsUUID, IsOptional, IsInt, Min } from 'class-validator';
+import { IsUUID, IsOptional, IsInt, Min, IsEnum, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { SessionPlanDto } from '../engine/content-delivery/session-types';
 
 export class LearnNextQueryDto {
   @IsUUID()
@@ -25,6 +26,26 @@ export class LearnSuggestionsQueryDto {
   @Min(1)
   @Transform(({ value }) => parseInt(value, 10))
   limit?: number;
+}
+
+export class SessionPlanQueryDto {
+  @IsOptional()
+  @IsEnum(['learn', 'review', 'mixed'])
+  mode?: 'learn' | 'review' | 'mixed';
+
+  @IsOptional()
+  @IsInt()
+  @Min(60)
+  @Transform(({ value }) => parseInt(value, 10))
+  timeBudgetSec?: number;
+
+  @IsOptional()
+  @IsUUID()
+  lessonId?: string;
+
+  @IsOptional()
+  @IsString()
+  theme?: string;
 }
 
 @ApiTags('learn')
@@ -58,5 +79,24 @@ export class LearnController {
       query.moduleId,
       query.limit || 3,
     );
+  }
+
+  @Get('session-plan')
+  @ApiOperation({ summary: 'Get complete learning session plan' })
+  @ApiQuery({ name: 'mode', enum: ['learn', 'review', 'mixed'], required: false })
+  @ApiQuery({ name: 'timeBudgetSec', type: 'number', required: false })
+  @ApiQuery({ name: 'lessonId', type: 'string', format: 'uuid', required: false })
+  @ApiQuery({ name: 'theme', type: 'string', required: false })
+  @ApiResponse({ status: 200, description: 'Session plan retrieved', type: Object })
+  async getSessionPlan(
+    @User() userId: string,
+    @Query() query: SessionPlanQueryDto,
+  ): Promise<SessionPlanDto> {
+    return this.learnService.getSessionPlan(userId, {
+      mode: query.mode || 'mixed',
+      timeBudgetSec: query.timeBudgetSec,
+      lessonId: query.lessonId,
+      theme: query.theme,
+    });
   }
 }

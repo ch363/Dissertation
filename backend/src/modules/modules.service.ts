@@ -72,4 +72,13 @@ export class ModulesService {
 
     return module.lessons;
   }
+
+  async findFeatured() {
+    // Return featured modules (e.g., most recent, most popular, or manually curated)
+    // For now, return most recently created modules
+    return this.prisma.module.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+    });
+  }
 }

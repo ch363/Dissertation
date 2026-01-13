@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { QuestionAttemptDto } from './dto/question-attempt.dto';
 import { DeliveryMethodScoreDto } from './dto/delivery-method-score.dto';
 import { KnowledgeLevelProgressDto } from './dto/knowledge-level-progress.dto';
+import { ResetProgressDto } from './dto/reset-progress.dto';
 import { DELIVERY_METHOD } from '@prisma/client';
 import { SrsService } from '../engine/srs/srs.service';
 import { XpService } from '../engine/scoring/xp.service';
@@ -337,5 +338,120 @@ export class ProgressService {
         lastProgressRow: progressRow,
       };
     });
+  }
+
+  async resetAllProgress(userId: string, options?: ResetProgressDto) {
+    // Transaction to reset all user progress
+    return this.prisma.$transaction(async (tx) => {
+      // Delete all progress records
+      await tx.userLesson.deleteMany({ where: { userId } });
+      await tx.userTeachingCompleted.deleteMany({ where: { userId } });
+      await tx.userQuestionPerformance.deleteMany({ where: { userId } });
+
+      // Optionally reset XP and knowledge points
+      if (options?.includeXp) {
+        await tx.userKnowledgeLevelProgress.deleteMany({ where: { userId } });
+        await tx.user.update({
+          where: { id: userId },
+          data: {
+            knowledgePoints: 0,
+            knowledgeLevel: 'A1',
+          },
+        });
+      }
+
+      // Optionally reset delivery method scores
+      if (options?.includeDeliveryMethodScores) {
+        await tx.userDeliveryMethodScore.deleteMany({ where: { userId } });
+      }
+
+      return {
+        message: 'All progress reset successfully',
+        resetXp: options?.includeXp || false,
+        resetDeliveryMethodScores: options?.includeDeliveryMethodScores || false,
+      };
+    });
+  }
+
+  async resetLessonProgress(userId: string, lessonId: string) {
+    // Verify lesson exists
+    const lesson = await this.prisma.lesson.findUnique({
+      where: { id: lessonId },
+      include: {
+        teachings: {
+          include: {
+            questions: true,
+          },
+        },
+      },
+    });
+
+    if (!lesson) {
+      throw new NotFoundException(`Lesson with ID ${lessonId} not found`);
+    }
+
+    // Get all question IDs in this lesson
+    const questionIds = lesson.teachings.flatMap((t) => t.questions.map((q) => q.id));
+    const teachingIds = lesson.teachings.map((t) => t.id);
+
+    // Transaction to reset lesson-specific progress
+    return this.prisma.$transaction(async (tx) => {
+      // Delete UserLesson
+      await tx.userLesson.deleteMany({
+        where: {
+          userId,
+          lessonId,
+        },
+      });
+
+      // Delete completed teachings for this lesson
+      await tx.userTeachingCompleted.deleteMany({
+        where: {
+          userId,
+          teachingId: { in: teachingIds },
+        },
+      });
+
+      // Delete question performance for questions in this lesson
+      if (questionIds.length > 0) {
+        await tx.userQuestionPerformance.deleteMany({
+          where: {
+            userId,
+            questionId: { in: questionIds },
+          },
+        });
+      }
+
+      return {
+        message: `Progress for lesson ${lessonId} reset successfully`,
+        lessonId,
+      };
+    });
+  }
+
+  async resetQuestionProgress(userId: string, questionId: string) {
+    // Verify question exists
+    const question = await this.prisma.question.findUnique({
+      where: { id: questionId },
+    });
+
+    if (!question) {
+      throw new NotFoundException(`Question with ID ${questionId} not found`);
+    }
+
+    // Delete all performance records for this question
+    // Note: This is append-only, so we delete all historical attempts
+    // In a production system, you might want to mark as "reset" instead of deleting
+    await this.prisma.userQuestionPerformance.deleteMany({
+      where: {
+        userId,
+        questionId,
+      },
+    });
+
+    return {
+      message: `Progress for question ${questionId} reset successfully`,
+      questionId,
+    };
   }
 }

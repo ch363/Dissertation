@@ -5,6 +5,7 @@ import {
   Body,
   Param,
   UseGuards,
+  Delete,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { ProgressService } from './progress.service';
@@ -13,6 +14,7 @@ import { User } from '../common/decorators/user.decorator';
 import { QuestionAttemptDto } from './dto/question-attempt.dto';
 import { DeliveryMethodScoreDto } from './dto/delivery-method-score.dto';
 import { KnowledgeLevelProgressDto } from './dto/knowledge-level-progress.dto';
+import { ResetProgressDto } from './dto/reset-progress.dto';
 import { DELIVERY_METHOD } from '@prisma/client';
 import { IsEnum } from 'class-validator';
 
@@ -92,5 +94,27 @@ export class ProgressController {
     @Body() progressDto: KnowledgeLevelProgressDto,
   ) {
     return this.progressService.recordKnowledgeLevelProgress(userId, progressDto);
+  }
+
+  @Post('lessons/:lessonId/reset')
+  @ApiOperation({ summary: 'Reset progress for a specific lesson' })
+  @ApiParam({ name: 'lessonId', type: 'string', format: 'uuid' })
+  @ApiResponse({ status: 200, description: 'Lesson progress reset successfully' })
+  async resetLessonProgress(
+    @User() userId: string,
+    @Param('lessonId') lessonId: string,
+  ) {
+    return this.progressService.resetLessonProgress(userId, lessonId);
+  }
+
+  @Post('questions/:questionId/reset')
+  @ApiOperation({ summary: 'Reset progress for a specific question (e.g., "I already know this" or "start over")' })
+  @ApiParam({ name: 'questionId', type: 'string', format: 'uuid' })
+  @ApiResponse({ status: 200, description: 'Question progress reset successfully' })
+  async resetQuestionProgress(
+    @User() userId: string,
+    @Param('questionId') questionId: string,
+  ) {
+    return this.progressService.resetQuestionProgress(userId, questionId);
   }
 }

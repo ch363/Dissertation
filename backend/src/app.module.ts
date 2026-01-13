@@ -16,6 +16,7 @@ import { ProgressModule } from './progress/progress.module';
 import { LearnModule } from './learn/learn.module';
 import { HealthModule } from './health/health.module';
 import { EngineModule } from './engine/engine.module';
+import { SearchModule } from './search/search.module';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
 import { envValidationSchema } from './config/env.validation';
 import configuration from './config/configuration';
@@ -46,6 +47,7 @@ import configuration from './config/configuration';
     LearnModule,
     HealthModule,
     EngineModule,
+    SearchModule,
   ],
   controllers: [AppController],
   providers: [

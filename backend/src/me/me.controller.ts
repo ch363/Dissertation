@@ -1,10 +1,11 @@
-import { Controller, Get, Patch, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Body, Post, Delete, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { MeService } from './me.service';
 import { UsersService } from '../users/users.service';
 import { SupabaseJwtGuard } from '../common/guards/supabase-jwt.guard';
 import { User } from '../common/decorators/user.decorator';
 import { UpdateUserDto } from '../users/dto/update-user.dto';
+import { ResetProgressDto } from '../progress/dto/reset-progress.dto';
 
 @ApiTags('me')
 @ApiBearerAuth('JWT-auth')
@@ -43,5 +44,29 @@ export class MeController {
   @ApiResponse({ status: 200, description: 'User lessons retrieved' })
   async getMyLessons(@User() userId: string) {
     return this.meService.getMyLessons(userId);
+  }
+
+  @Get('recent')
+  @ApiOperation({ summary: 'Get recent activity - continue where you left off' })
+  @ApiResponse({ status: 200, description: 'Recent activity retrieved' })
+  async getRecent(@User() userId: string) {
+    return this.meService.getRecent(userId);
+  }
+
+  @Post('reset')
+  @ApiOperation({ summary: 'Reset all user progress (or scoped)' })
+  @ApiResponse({ status: 200, description: 'Progress reset successfully' })
+  async resetProgress(
+    @User() userId: string,
+    @Body() resetDto: ResetProgressDto,
+  ) {
+    return this.meService.resetAllProgress(userId, resetDto);
+  }
+
+  @Delete()
+  @ApiOperation({ summary: 'Delete user account and all associated data' })
+  @ApiResponse({ status: 200, description: 'Account deletion requested/processed' })
+  async deleteAccount(@User() userId: string) {
+    return this.meService.deleteAccount(userId);
   }
 }

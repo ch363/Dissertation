@@ -1,12 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
+import { ProgressService } from '../progress/progress.service';
+import { ResetProgressDto } from '../progress/dto/reset-progress.dto';
 
 @Injectable()
 export class MeService {
   constructor(
     private prisma: PrismaService,
     private usersService: UsersService,
+    private progressService: ProgressService,
   ) {}
 
   async getMe(userId: string) {
@@ -163,6 +166,155 @@ export class MeService {
         completedTeachings: ul.completedTeachings,
         totalTeachings,
         dueReviewCount,
+      };
+    });
+  }
+
+  async getRecent(userId: string) {
+    // Get most recently accessed lesson
+    const recentLesson = await this.prisma.userLesson.findFirst({
+      where: { userId },
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        lesson: {
+          include: {
+            module: {
+              select: {
+                id: true,
+                title: true,
+              },
+            },
+            teachings: {
+              take: 1,
+              orderBy: { createdAt: 'asc' },
+              include: {
+                questions: {
+                  take: 1,
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Get most recently completed teaching
+    const recentTeaching = await this.prisma.userTeachingCompleted.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        teaching: {
+          include: {
+            lesson: {
+              select: {
+                id: true,
+                title: true,
+                module: {
+                  select: {
+                    id: true,
+                    title: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Get most recently attempted question
+    const recentQuestion = await this.prisma.userQuestionPerformance.findFirst({
+      where: { userId },
+      orderBy: { lastRevisedAt: 'desc' },
+      include: {
+        question: {
+          include: {
+            teaching: {
+              include: {
+                lesson: {
+                  select: {
+                    id: true,
+                    title: true,
+                    module: {
+                      select: {
+                        id: true,
+                        title: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return {
+      recentLesson: recentLesson
+        ? {
+            lesson: {
+              id: recentLesson.lesson.id,
+              title: recentLesson.lesson.title,
+              imageUrl: recentLesson.lesson.imageUrl,
+              module: recentLesson.lesson.module,
+            },
+            lastAccessedAt: recentLesson.updatedAt,
+            completedTeachings: recentLesson.completedTeachings,
+          }
+        : null,
+      recentTeaching: recentTeaching
+        ? {
+            teaching: {
+              id: recentTeaching.teaching.id,
+              userLanguageString: recentTeaching.teaching.userLanguageString,
+              learningLanguageString: recentTeaching.teaching.learningLanguageString,
+            },
+            lesson: recentTeaching.teaching.lesson,
+            completedAt: recentTeaching.createdAt,
+          }
+        : null,
+      recentQuestion: recentQuestion
+        ? {
+            question: {
+              id: recentQuestion.question.id,
+            },
+            teaching: {
+              id: recentQuestion.question.teaching.id,
+              userLanguageString: recentQuestion.question.teaching.userLanguageString,
+              learningLanguageString: recentQuestion.question.teaching.learningLanguageString,
+            },
+            lesson: recentQuestion.question.teaching.lesson,
+            lastRevisedAt: recentQuestion.lastRevisedAt,
+            nextReviewDue: recentQuestion.nextReviewDue,
+          }
+        : null,
+    };
+  }
+
+  async resetAllProgress(userId: string, options?: ResetProgressDto) {
+    return this.progressService.resetAllProgress(userId, options);
+  }
+
+  async deleteAccount(userId: string) {
+    // Delete all user data in a transaction
+    // Note: Cascade deletes should handle related records, but we'll be explicit
+    return this.prisma.$transaction(async (tx) => {
+      // Delete all progress records (cascade should handle, but being explicit)
+      await tx.userLesson.deleteMany({ where: { userId } });
+      await tx.userTeachingCompleted.deleteMany({ where: { userId } });
+      await tx.userQuestionPerformance.deleteMany({ where: { userId } });
+      await tx.userKnowledgeLevelProgress.deleteMany({ where: { userId } });
+      await tx.userDeliveryMethodScore.deleteMany({ where: { userId } });
+
+      // Delete the user record itself
+      await tx.user.delete({
+        where: { id: userId },
+      });
+
+      return {
+        message: 'Account and all associated data deleted successfully',
+        deletedAt: new Date().toISOString(),
       };
     });
   }

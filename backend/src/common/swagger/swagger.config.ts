@@ -25,6 +25,7 @@ export function setupSwagger(app: INestApplication) {
     .addTag('questions', 'Questions management')
     .addTag('progress', 'User progress tracking')
     .addTag('learn', 'Learning orchestration')
+    .addTag('search', 'Search and discovery')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

@@ -17,13 +17,22 @@ import { DELIVERY_METHOD } from '@prisma/client';
 import { DeliveryMode, ItemKind } from '../types';
 import { DeliveryCandidate, NextDeliveryItemDto, DashboardPlanDto } from './types';
 import { rankCandidates, mixReviewAndNew, pickOne, selectDeliveryMethod } from './selection.policy';
+import { SessionPlanService } from './session-plan.service';
+import { SessionPlanDto, SessionContext } from './session-types';
 
 @Injectable()
 export class ContentDeliveryService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private sessionPlanService: SessionPlanService,
+  ) {}
 
   /**
    * Get the next item to deliver to the user.
+   * 
+   * @deprecated This method is maintained for backward compatibility.
+   * Use getSessionPlan() to get a complete session plan instead.
+   * 
    * @param userId User ID
    * @param opts Options including delivery mode
    * @returns Next delivery item DTO
@@ -32,59 +41,71 @@ export class ContentDeliveryService {
     userId: string,
     opts?: { mode?: DeliveryMode; lessonId?: string },
   ): Promise<NextDeliveryItemDto | null> {
-    const mode = opts?.mode || 'mixed';
-    const now = new Date();
-
-    // Get candidates based on mode
-    let candidates: DeliveryCandidate[] = [];
-
-    if (mode === 'review' || mode === 'mixed') {
-      const reviewCandidates = await this.getReviewCandidates(userId, opts?.lessonId);
-      candidates.push(...reviewCandidates);
+    // Use session planner internally and extract first step
+    // Convert DeliveryMode to SessionContext mode
+    let sessionMode: 'learn' | 'review' | 'mixed' = 'mixed';
+    if (opts?.mode === 'new') {
+      sessionMode = 'learn';
+    } else if (opts?.mode === 'review') {
+      sessionMode = 'review';
+    } else {
+      sessionMode = 'mixed';
     }
 
-    if (mode === 'new' || mode === 'mixed') {
-      const newCandidates = await this.getNewCandidates(userId, opts?.lessonId);
-      candidates.push(...newCandidates);
-    }
+    const context: SessionContext = {
+      mode: sessionMode,
+      lessonId: opts?.lessonId,
+    };
 
-    // Separate reviews and new items
-    const reviews = candidates.filter((c) => c.dueScore > 0);
-    const newItems = candidates.filter((c) => c.dueScore === 0);
+    const plan = await this.sessionPlanService.createPlan(userId, context);
 
-    // Apply selection policy
-    let selected: DeliveryCandidate | null = null;
-
-    if (mode === 'mixed' && reviews.length > 0 && newItems.length > 0) {
-      const mixed = mixReviewAndNew(reviews, newItems, 0.7);
-      selected = pickOne(mixed);
-    } else if (reviews.length > 0) {
-      selected = pickOne(reviews);
-    } else if (newItems.length > 0) {
-      selected = pickOne(newItems);
-    }
-
-    if (!selected) {
+    if (plan.steps.length === 0) {
       return null;
     }
 
-    // Get delivery method scores for user
-    const methodScores = await this.getDeliveryMethodScores(userId, selected.deliveryMethods || []);
+    // Extract first non-recap step
+    const firstStep = plan.steps.find((s) => s.type !== 'recap');
+    if (!firstStep) {
+      return null;
+    }
 
-    // Build response
-    return {
-      kind: selected.kind,
-      id: selected.id,
-      teachingId: selected.teachingId,
-      questionId: selected.questionId,
-      lessonId: selected.lessonId,
-      title: selected.title,
-      prompt: selected.prompt,
-      options: selected.options,
-      deliveryMethods: selected.deliveryMethods,
-      suggestedDeliveryMethod: selectDeliveryMethod(selected.deliveryMethods || [], methodScores),
-      rationale: this.buildRationale(selected, mode),
-    };
+    // Convert step to NextDeliveryItemDto
+    if (firstStep.type === 'teach' && firstStep.item.type === 'teach') {
+      return {
+        kind: 'teaching',
+        id: firstStep.item.teachingId,
+        teachingId: firstStep.item.teachingId,
+        lessonId: firstStep.item.lessonId,
+        title: firstStep.item.translation,
+        prompt: firstStep.item.phrase,
+        rationale: 'Next teaching item',
+      };
+    } else if (firstStep.type === 'practice' && firstStep.item.type === 'practice') {
+      return {
+        kind: 'question',
+        id: firstStep.item.questionId,
+        questionId: firstStep.item.questionId,
+        teachingId: firstStep.item.teachingId,
+        lessonId: firstStep.item.lessonId,
+        prompt: firstStep.item.prompt,
+        options: firstStep.item.options?.map((o) => o.label),
+        deliveryMethods: [firstStep.item.deliveryMethod],
+        suggestedDeliveryMethod: firstStep.item.deliveryMethod,
+        rationale: 'Next practice item',
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Get a complete session plan for the user.
+   * @param userId User ID
+   * @param context Session context
+   * @returns Complete session plan
+   */
+  async getSessionPlan(userId: string, context: SessionContext): Promise<SessionPlanDto> {
+    return this.sessionPlanService.createPlan(userId, context);
   }
 
   /**
@@ -93,8 +114,8 @@ export class ContentDeliveryService {
   async getDashboardPlan(userId: string): Promise<DashboardPlanDto> {
     const now = new Date();
 
-    // Count due reviews from UserQuestionPerformance
-    const dueQuestionCount = await this.prisma.userQuestionPerformance.count({
+    // Count due reviews from UserQuestionPerformance (distinct by questionId)
+    const dueQuestionIds = await this.prisma.userQuestionPerformance.findMany({
       where: {
         userId,
         nextReviewDue: {
@@ -102,8 +123,10 @@ export class ContentDeliveryService {
           not: null,
         },
       },
+      select: { questionId: true },
       distinct: ['questionId'],
     });
+    const dueQuestionCount = dueQuestionIds.length;
 
     const dueReviews = Array(dueQuestionCount).fill({ dueAt: now });
 
@@ -132,7 +155,7 @@ export class ContentDeliveryService {
       select: { nextReviewDue: true },
     });
 
-    const nextReview = nextQuestionReview?.nextReviewDue;
+    const nextReview = nextQuestionReview?.nextReviewDue ?? undefined;
 
     // Estimate time (5 min per review, 3 min per new item)
     const estimatedTimeMinutes = dueReviews.length * 5 + newItemsCount * 3;
@@ -191,7 +214,7 @@ export class ContentDeliveryService {
     }
 
     // Process due questions
-    for (const perf of questionIdMap.values()) {
+    for (const perf of Array.from(questionIdMap.values())) {
       const candidate = await this.buildQuestionCandidate(
         userId,
         perf.questionId,

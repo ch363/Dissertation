@@ -83,4 +83,12 @@ export class LessonsController {
   findTeachings(@Param('id') id: string) {
     return this.lessonsService.findTeachings(id);
   }
+
+  @Get('recommended')
+  @ApiOperation({ summary: 'Get recommended lessons (curated + algorithmic discovery)' })
+  @ApiQuery({ name: 'userId', type: 'string', format: 'uuid', required: false, description: 'Optional: for personalized recommendations' })
+  @ApiResponse({ status: 200, description: 'Recommended lessons retrieved' })
+  findRecommended(@Query('userId') userId?: string) {
+    return this.lessonsService.findRecommended(userId);
+  }
 }

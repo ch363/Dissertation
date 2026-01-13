@@ -106,4 +106,55 @@ export class LessonsService {
 
     return lesson.teachings;
   }
+
+  async findRecommended(userId?: string) {
+    // Return recommended lessons
+    // Algorithm: lessons with teachings matching user's knowledge level, or most popular
+    // For now, return lessons with most teachings (as a proxy for popularity/completeness)
+    const lessons = await this.prisma.lesson.findMany({
+      include: {
+        module: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+        teachings: {
+          select: {
+            id: true,
+            knowledgeLevel: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+
+    // If userId provided, prioritize lessons matching user's knowledge level
+    if (userId) {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { knowledgeLevel: true },
+      });
+
+      if (user?.knowledgeLevel) {
+        // Sort by number of teachings matching user's level
+        lessons.sort((a, b) => {
+          const aMatches = a.teachings.filter((t) => t.knowledgeLevel === user.knowledgeLevel).length;
+          const bMatches = b.teachings.filter((t) => t.knowledgeLevel === user.knowledgeLevel).length;
+          return bMatches - aMatches;
+        });
+      }
+    }
+
+    return lessons.map((lesson) => ({
+      id: lesson.id,
+      title: lesson.title,
+      description: lesson.description,
+      imageUrl: lesson.imageUrl,
+      module: lesson.module,
+      numberOfItems: lesson.numberOfItems,
+      teachingCount: lesson.teachings.length,
+    }));
+  }
 }

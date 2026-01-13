@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { PrismaService } from '../prisma/prisma.service';
 import { DELIVERY_METHOD } from '@prisma/client';
 import { ContentDeliveryService } from '../engine/content-delivery/content-delivery.service';
+import { SessionPlanDto, SessionContext } from '../engine/content-delivery/session-types';
 
 @Injectable()
 export class LearnService {
@@ -305,5 +306,15 @@ export class LearnService {
       lessons: suggestedLessons.slice(0, limit),
       modules: suggestedModules.slice(0, limit),
     };
+  }
+
+  /**
+   * Get a complete session plan for the user.
+   * @param userId User ID
+   * @param context Session context
+   * @returns Complete session plan
+   */
+  async getSessionPlan(userId: string, context: SessionContext): Promise<SessionPlanDto> {
+    return this.contentDelivery.getSessionPlan(userId, context);
   }
 }
