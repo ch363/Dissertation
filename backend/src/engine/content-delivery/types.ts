@@ -19,6 +19,11 @@ export interface DeliveryCandidate {
   prompt?: string;
   options?: string[];
   deliveryMethods?: DELIVERY_METHOD[];
+  // Enhanced metadata for interleaving
+  skillTags?: string[]; // Skills/topics this item covers (e.g., ["greetings", "verb essere"])
+  exerciseType?: string; // Type of exercise (e.g., "vocabulary", "grammar", "listening")
+  difficulty?: number; // 0.0 to 1.0, where 0 = easy, 1 = hard
+  estimatedMastery?: number; // 0.0 to 1.0, user's estimated mastery of this item
 }
 
 /**

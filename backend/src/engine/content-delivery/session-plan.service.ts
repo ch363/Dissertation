@@ -33,7 +33,7 @@ import {
   getDefaultTimeAverages,
   mixByDeliveryMethod,
 } from './session-planning.policy';
-import { rankCandidates } from './selection.policy';
+import { rankCandidates, composeWithInterleaving } from './selection.policy';
 
 @Injectable()
 export class SessionPlanService {
@@ -111,11 +111,14 @@ export class SessionPlanService {
       finalCandidates = selectedCandidates;
     }
 
-    // 6. Interleave by topic and delivery method
-    const interleavedByTopic = interleaveItems(finalCandidates, (item) =>
-      item.teachingId || item.lessonId || 'unknown',
-    );
-    const interleavedByMethod = mixByDeliveryMethod(interleavedByTopic);
+    // 6. Apply constraint-based interleaving (first-class interleaving)
+    // This replaces the simple mix with proper interleaving rules
+    const interleavedCandidates = composeWithInterleaving(finalCandidates, {
+      maxSameTypeInRow: 2,
+      requireModalityCoverage: true,
+      enableScaffolding: true,
+      consecutiveErrors: 0, // TODO: Track from session history
+    });
 
     // 7. Get user preferences for modality selection
     const userPreferences = await this.getDeliveryMethodScores(userId);
@@ -125,7 +128,7 @@ export class SessionPlanService {
     let stepNumber = 1;
     const recentMethods: DELIVERY_METHOD[] = [];
 
-    for (const candidate of interleavedByMethod) {
+    for (const candidate of interleavedCandidates) {
       if (candidate.kind === 'teaching') {
         const teaching = await this.getTeachingData(candidate.id);
         if (teaching) {
@@ -226,7 +229,7 @@ export class SessionPlanService {
       dueReviewsIncluded: reviewCandidates.length,
       newItemsIncluded: newCandidates.length,
       topicsCovered: Array.from(
-        new Set(interleavedByMethod.map((c) => c.teachingId || c.lessonId || '').filter(Boolean)),
+        new Set(interleavedCandidates.map((c) => c.teachingId || c.lessonId || '').filter(Boolean)),
       ),
       deliveryMethodsUsed: Array.from(new Set(recentMethods)),
     };
@@ -409,6 +412,36 @@ export class SessionPlanService {
         const overdueMs = now.getTime() - (perf.nextReviewDue || now).getTime();
         const dueScore = Math.max(0, overdueMs / (1000 * 60 * 60));
 
+        // Calculate estimated mastery from recent performance
+        const recentScores = recentAttempts.map((a) => a.score);
+        const avgScore = recentScores.length > 0
+          ? recentScores.reduce((sum, s) => sum + s, 0) / recentScores.length
+          : 50;
+        const estimatedMastery = avgScore / 100; // Convert 0-100 to 0-1
+
+        // Extract skill tags from teaching (could be enhanced with actual skill table)
+        const skillTags = this.extractSkillTags(question.teaching);
+
+        // Determine exercise type from delivery methods and teaching content
+        const exerciseType = this.determineExerciseType(
+          question.questionDeliveryMethods.map((qdm) => qdm.deliveryMethod),
+          question.teaching,
+        );
+
+        // Estimate difficulty (0 = easy, 1 = hard)
+        // Based on knowledge level and mastery
+        const knowledgeLevelDifficulty: Record<string, number> = {
+          A1: 0.1,
+          A2: 0.3,
+          B1: 0.5,
+          B2: 0.7,
+          C1: 0.85,
+          C2: 1.0,
+        };
+        const baseDifficulty = knowledgeLevelDifficulty[question.teaching.knowledgeLevel] || 0.5;
+        // Adjust based on user's mastery (lower mastery = higher effective difficulty)
+        const difficulty = baseDifficulty * (1 - estimatedMastery * 0.3); // Cap adjustment at 30%
+
         candidates.push({
           kind: 'question',
           id: question.id,
@@ -419,6 +452,10 @@ export class SessionPlanService {
           errorScore,
           timeSinceLastSeen,
           deliveryMethods: question.questionDeliveryMethods.map((qdm) => qdm.deliveryMethod),
+          skillTags,
+          exerciseType,
+          difficulty,
+          estimatedMastery,
         });
       }
     }
@@ -461,6 +498,29 @@ export class SessionPlanService {
 
     for (const question of allQuestions) {
       if (!attemptedSet.has(question.id)) {
+        // For new items, estimate mastery as 0 (not yet attempted)
+        const estimatedMastery = 0;
+
+        // Extract skill tags from teaching
+        const skillTags = this.extractSkillTags(question.teaching);
+
+        // Determine exercise type
+        const exerciseType = this.determineExerciseType(
+          question.questionDeliveryMethods.map((qdm) => qdm.deliveryMethod),
+          question.teaching,
+        );
+
+        // Estimate difficulty from knowledge level
+        const knowledgeLevelDifficulty: Record<string, number> = {
+          A1: 0.1,
+          A2: 0.3,
+          B1: 0.5,
+          B2: 0.7,
+          C1: 0.85,
+          C2: 1.0,
+        };
+        const difficulty = knowledgeLevelDifficulty[question.teaching.knowledgeLevel] || 0.5;
+
         candidates.push({
           kind: 'question',
           id: question.id,
@@ -471,11 +531,90 @@ export class SessionPlanService {
           errorScore: 0,
           timeSinceLastSeen: Infinity,
           deliveryMethods: question.questionDeliveryMethods.map((qdm) => qdm.deliveryMethod),
+          skillTags,
+          exerciseType,
+          difficulty,
+          estimatedMastery,
         });
       }
     }
 
     return candidates;
+  }
+
+  /**
+   * Extract skill tags from teaching content.
+   * This is a simple heuristic - can be enhanced with actual skill table later.
+   */
+  private extractSkillTags(teaching: any): string[] {
+    const tags: string[] = [];
+
+    // Extract from tip if available
+    if (teaching.tip) {
+      // Simple keyword extraction (can be enhanced)
+      const tipLower = teaching.tip.toLowerCase();
+      if (tipLower.includes('greeting') || tipLower.includes('hello')) {
+        tags.push('greetings');
+      }
+      if (tipLower.includes('number') || tipLower.includes('count')) {
+        tags.push('numbers');
+      }
+      if (tipLower.includes('verb') || tipLower.includes('essere') || tipLower.includes('avere')) {
+        tags.push('verbs');
+      }
+      if (tipLower.includes('article') || tipLower.includes('masculine') || tipLower.includes('feminine')) {
+        tags.push('articles');
+      }
+    }
+
+    // Use lesson title as a skill tag
+    if (teaching.lesson?.title) {
+      const lessonTitle = teaching.lesson.title.toLowerCase();
+      // Extract key words from lesson title
+      const words = lessonTitle.split(/\s+/);
+      tags.push(...words.slice(0, 2)); // Take first 2 words as tags
+    }
+
+    return Array.from(new Set(tags)); // Deduplicate
+  }
+
+  /**
+   * Determine exercise type from delivery methods and teaching content.
+   */
+  private determineExerciseType(
+    deliveryMethods: DELIVERY_METHOD[],
+    teaching: any,
+  ): string {
+    // Check delivery methods first
+    if (deliveryMethods.includes(DELIVERY_METHOD.SPEECH_TO_TEXT) ||
+        deliveryMethods.includes(DELIVERY_METHOD.TEXT_TO_SPEECH)) {
+      return 'speaking';
+    }
+    if (deliveryMethods.includes(DELIVERY_METHOD.TEXT_TRANSLATION)) {
+      return 'translation';
+    }
+    if (deliveryMethods.includes(DELIVERY_METHOD.FILL_BLANK)) {
+      return 'grammar';
+    }
+    if (deliveryMethods.includes(DELIVERY_METHOD.MULTIPLE_CHOICE)) {
+      return 'vocabulary';
+    }
+    if (deliveryMethods.includes(DELIVERY_METHOD.FLASHCARD)) {
+      return 'vocabulary';
+    }
+
+    // Fallback: infer from teaching content
+    if (teaching.tip) {
+      const tipLower = teaching.tip.toLowerCase();
+      if (tipLower.includes('grammar') || tipLower.includes('rule')) {
+        return 'grammar';
+      }
+      if (tipLower.includes('vocabulary') || tipLower.includes('word')) {
+        return 'vocabulary';
+      }
+    }
+
+    return 'practice'; // Default
   }
 
   /**
