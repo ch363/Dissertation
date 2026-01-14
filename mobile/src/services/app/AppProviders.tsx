@@ -3,6 +3,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { OnboardingProvider } from '@/features/onboarding/providers/OnboardingProvider';
 import { SupabaseConfigGate } from '@/services/api/SupabaseConfigGate';
+import { clearSessionPlanCache } from '@/services/api/session-plan-cache';
 import { AuthProvider } from '@/services/auth/AuthProvider';
 import { RouteGuard } from '@/services/navigation/RouteGuard';
 import { ThemeProvider } from '@/services/theme/ThemeProvider';
@@ -13,6 +14,12 @@ type Props = {
 };
 
 export function AppProviders({ children }: Props) {
+  // Clear session plan cache on app startup to ensure fresh data
+  useEffect(() => {
+    clearSessionPlanCache();
+    console.log('Session plan cache cleared on app startup');
+  }, []);
+
   // Preload TTS module when app starts - do it immediately and wait for it
   useEffect(() => {
     // Preload immediately on mount

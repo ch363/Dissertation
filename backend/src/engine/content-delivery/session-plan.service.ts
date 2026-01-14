@@ -77,7 +77,22 @@ export class SessionPlanService {
     if (context.mode === 'review') {
       selectedCandidates = reviewCandidates;
     } else if (context.mode === 'learn') {
-      selectedCandidates = newCandidates;
+      // For learn mode, prioritize new items but include reviews if there aren't enough new items
+      const rankedNew = rankCandidates(newCandidates);
+      const rankedReviews = rankCandidates(reviewCandidates);
+      
+      // If we have enough new items, use only new items
+      if (rankedNew.length >= targetItemCount) {
+        selectedCandidates = rankedNew;
+      } else {
+        // Not enough new items: fill with reviews to meet target
+        const newCount = rankedNew.length;
+        const reviewCount = targetItemCount - newCount;
+        selectedCandidates = [
+          ...rankedNew,
+          ...rankedReviews.slice(0, reviewCount),
+        ];
+      }
     } else {
       // mixed: combine reviews and new
       const rankedReviews = rankCandidates(reviewCandidates);
