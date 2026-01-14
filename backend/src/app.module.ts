@@ -18,6 +18,7 @@ import { HealthModule } from './health/health.module';
 import { EngineModule } from './engine/engine.module';
 import { SearchModule } from './search/search.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
+import { ContentModule } from './content/content.module';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
 import { envValidationSchema } from './config/env.validation';
 import configuration from './config/configuration';
@@ -33,7 +34,7 @@ import configuration from './config/configuration';
     ThrottlerModule.forRoot([
       {
         ttl: 60000, // 1 minute
-        limit: 100, // 100 requests per minute
+        limit: process.env.NODE_ENV === 'production' ? 100 : 1000, // Higher limit in development
       },
     ]),
     PrismaModule,
@@ -50,6 +51,7 @@ import configuration from './config/configuration';
     EngineModule,
     SearchModule,
     OnboardingModule,
+    ContentModule,
   ],
   controllers: [AppController],
   providers: [

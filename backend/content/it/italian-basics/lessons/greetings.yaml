@@ -1,0 +1,135 @@
+slug: greetings-essentials
+title: Greetings & Essentials
+description: Learn basic greetings and essential phrases in Italian
+imageUrl: https://example.com/images/greetings.jpg
+
+teachings:
+  - slug: ciao
+    knowledgeLevel: A1
+    emoji: "👋"
+    userLanguageString: "Hi / Bye"
+    learningLanguageString: "Ciao"
+    learningLanguageAudioUrl: https://example.com/audio/ciao.mp3
+    tip: "Ciao is used both for greeting and saying goodbye in informal situations."
+
+  - slug: grazie
+    knowledgeLevel: A1
+    emoji: "🙏"
+    userLanguageString: "Thank you"
+    learningLanguageString: "Grazie"
+    learningLanguageAudioUrl: https://example.com/audio/grazie.mp3
+    tip: "Grazie is the standard way to say thank you. You can also say 'Grazie mille' (thanks a lot)."
+
+  - slug: per-favore
+    knowledgeLevel: A1
+    emoji: "🙏"
+    userLanguageString: "Please"
+    learningLanguageString: "Per favore"
+    learningLanguageAudioUrl: https://example.com/audio/per-favore.mp3
+    tip: "Per favore is used when making a request. It literally means 'for favor'."
+
+questions:
+  # Ciao questions
+  - slug: ciao-multiple-choice-en-it
+    teachingSlug: ciao
+    deliveryMethods:
+      - MULTIPLE_CHOICE
+    multipleChoice:
+      prompt: "How do you say 'Hi' in Italian?"
+      options:
+        - id: opt1
+          label: "Ciao"
+          isCorrect: true
+        - id: opt2
+          label: "Grazie"
+          isCorrect: false
+        - id: opt3
+          label: "Per favore"
+          isCorrect: false
+        - id: opt4
+          label: "Buongiorno"
+          isCorrect: false
+      explanation: "Ciao is the most common informal greeting in Italian."
+
+  - slug: ciao-translation-it-en
+    teachingSlug: ciao
+    deliveryMethods:
+      - TEXT_TRANSLATION
+    translation:
+      prompt: "Translate 'Ciao' to English"
+      source: "Ciao"
+      answer: "Hi / Bye"
+      hint: "It's an informal greeting"
+
+  - slug: ciao-listening
+    teachingSlug: ciao
+    deliveryMethods:
+      - SPEECH_TO_TEXT
+    listening:
+      prompt: "Listen and type what you hear"
+      audioUrl: https://example.com/audio/ciao.mp3
+      answer: "Ciao"
+
+  # Grazie questions
+  - slug: grazie-multiple-choice-en-it
+    teachingSlug: grazie
+    deliveryMethods:
+      - MULTIPLE_CHOICE
+    multipleChoice:
+      prompt: "How do you say 'Thank you' in Italian?"
+      options:
+        - id: opt1
+          label: "Ciao"
+          isCorrect: false
+        - id: opt2
+          label: "Grazie"
+          isCorrect: true
+        - id: opt3
+          label: "Per favore"
+          isCorrect: false
+        - id: opt4
+          label: "Prego"
+          isCorrect: false
+      explanation: "Grazie means thank you. Prego means you're welcome."
+
+  - slug: grazie-fill-blank
+    teachingSlug: grazie
+    deliveryMethods:
+      - FILL_BLANK
+    fillBlank:
+      prompt: "Complete: 'Molte ___ per il tuo aiuto' (Many thanks for your help)"
+      text: "Molte ___ per il tuo aiuto"
+      answer: "grazie"
+      hint: "Think of the Italian word for thanks"
+
+  # Per favore questions
+  - slug: per-favore-translation-en-it
+    teachingSlug: per-favore
+    deliveryMethods:
+      - TEXT_TRANSLATION
+    translation:
+      prompt: "Translate 'Please' to Italian"
+      source: "Please"
+      answer: "Per favore"
+      hint: "Two words, starts with 'Per'"
+
+  # Flashcard question (for FLASHCARD delivery method)
+  - slug: grazie-flashcard
+    teachingSlug: grazie
+    deliveryMethods:
+      - FLASHCARD
+    translation:
+      prompt: "What does 'Grazie' mean?"
+      source: "Grazie"
+      answer: "Thank you"
+      hint: "A common expression of gratitude"
+
+  # Text-to-speech question (for TEXT_TO_SPEECH delivery method)
+  - slug: ciao-text-to-speech
+    teachingSlug: ciao
+    deliveryMethods:
+      - TEXT_TO_SPEECH
+    listening:
+      prompt: "Read aloud: 'Ciao'"
+      audioUrl: https://example.com/audio/ciao.mp3
+      answer: "Ciao"

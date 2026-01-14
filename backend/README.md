@@ -174,6 +174,86 @@ Copy `.env.example` to `.env` and fill in your Supabase credentials:
 4. **Transactional Integrity**: Multi-write operations use Prisma transactions
 5. **Cascade Deletes**: Content hierarchy (Module→Lesson→Teaching→Question) uses cascade deletes
 
+### Database Seeding
+
+The seed script populates minimal test data for end-to-end testing of a basic Italian lesson.
+
+**Run migrations:**
+```bash
+npm run prisma:migrate
+```
+
+**Run seed:**
+```bash
+npm run seed
+# or
+npx prisma db seed
+```
+
+**Test data created:**
+- **Module**: "Italian Basics" - Essential Italian phrases and greetings
+- **Lesson**: "Greetings & Essentials" - Basic greetings and essential phrases
+- **3 Teaching items**:
+  - "Ciao" → "Hi / Bye" (A1 level)
+  - "Grazie" → "Thank you" (A1 level)
+  - "Per favore" → "Please" (A1 level)
+- **6 Practice questions** with various delivery methods:
+  - Multiple choice (EN→IT)
+  - Translation (IT→EN and EN→IT)
+  - Fill-in-the-blank
+  - Listening (Speech-to-text)
+
+The seed uses deterministic UUIDs and upsert logic, so it's safe to run multiple times without creating duplicates.
+
+### Content Import Pipeline
+
+The content import system allows you to manage learning content as YAML files and import them into the database.
+
+**Prerequisites:**
+- Database migrations must be run first: `npm run prisma:migrate`
+- `DATABASE_URL` environment variable must be set
+
+**Content Structure:**
+Content files are organized in the `content/` directory:
+```
+content/
+  {language}/
+    {module-slug}/
+      module.yaml          # Module metadata
+      lessons/
+        {lesson-slug}.yaml # Lesson with teachings and questions
+```
+
+**Validate content files:**
+```bash
+npm run content:validate
+```
+
+**Import content:**
+```bash
+npm run content:import
+```
+
+**Sample Content:**
+The repository includes sample Italian content:
+- Module: "Italian Basics" (`content/it/italian-basics/module.yaml`)
+- Lesson: "Greetings & Essentials" (`content/it/italian-basics/lessons/greetings.yaml`)
+  - 3 teachings: Ciao, Grazie, Per favore
+  - 6 questions with various delivery methods (multiple choice, translation, fill blank, listening)
+
+**Content File Format:**
+- Modules: `slug`, `title`, `description`, `imageUrl`
+- Lessons: `slug`, `title`, `description`, `imageUrl`, `teachings[]`, `questions[]`
+- Teachings: `slug`, `knowledgeLevel` (A1-C2), `userLanguageString`, `learningLanguageString`, `emoji`, `tip`, `learningLanguageAudioUrl`
+- Questions: `slug`, `teachingSlug`, `deliveryMethods[]`, plus question-type-specific fields:
+  - `multipleChoice`: `prompt`, `options[]` (with `isCorrect`), `explanation`
+  - `translation`: `prompt`, `source`, `answer`, `hint`
+  - `fillBlank`: `prompt`, `text`, `answer`, `hint`
+  - `listening`: `prompt`, `audioUrl`, `answer`
+
+**Idempotency:**
+The importer uses deterministic UUIDs generated from slugs, so running the import multiple times will update existing records rather than creating duplicates.
+
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).

@@ -10,6 +10,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ContentLookupService } from '../../content/content-lookup.service';
 import { DELIVERY_METHOD } from '@prisma/client';
 import {
   SessionPlanDto,
@@ -37,7 +38,10 @@ import { rankCandidates, composeWithInterleaving } from './selection.policy';
 
 @Injectable()
 export class SessionPlanService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private contentLookup: ContentLookupService,
+  ) {}
 
   /**
    * Create a complete session plan for the user.
@@ -720,16 +724,54 @@ export class SessionPlanService {
       deliveryMethod,
     };
 
-    // Add delivery method specific fields
-    // Note: In a real implementation, you'd fetch question-specific data
-    // For now, we'll use the teaching data as context
+    // Use teaching data as fallback prompt
     if (question.teaching) {
       baseItem.prompt = question.teaching.learningLanguageString;
     }
 
-    // Delivery method specific fields would be populated from question data
-    // This is a simplified version - you'd need to extend Question model
-    // or fetch additional data based on delivery method
+    // Load question-specific data from content files
+    try {
+      const questionData = await this.contentLookup.getQuestionData(question.id, lessonId);
+      if (questionData) {
+        // Override prompt if available
+        if (questionData.prompt) {
+          baseItem.prompt = questionData.prompt;
+        }
+
+        // Populate delivery method specific fields
+        if (deliveryMethod === DELIVERY_METHOD.MULTIPLE_CHOICE) {
+          baseItem.options = questionData.options;
+          baseItem.correctOptionId = questionData.correctOptionId;
+          baseItem.explanation = questionData.explanation;
+        } else if (deliveryMethod === DELIVERY_METHOD.FILL_BLANK) {
+          baseItem.text = questionData.text;
+          baseItem.answer = questionData.answer;
+          baseItem.hint = questionData.hint;
+        } else if (deliveryMethod === DELIVERY_METHOD.TEXT_TRANSLATION) {
+          baseItem.source = questionData.source;
+          baseItem.answer = questionData.answer;
+          baseItem.hint = questionData.hint;
+        } else if (deliveryMethod === DELIVERY_METHOD.FLASHCARD) {
+          // FLASHCARD uses the same structure as TEXT_TRANSLATION (source/answer)
+          baseItem.source = questionData.source;
+          baseItem.answer = questionData.answer;
+          baseItem.hint = questionData.hint;
+        } else if (
+          deliveryMethod === DELIVERY_METHOD.SPEECH_TO_TEXT ||
+          deliveryMethod === DELIVERY_METHOD.TEXT_TO_SPEECH
+        ) {
+          baseItem.audioUrl = questionData.audioUrl;
+          baseItem.answer = questionData.answer;
+        }
+      }
+    } catch (error) {
+      // If content lookup fails, continue with basic item
+      console.warn(`Failed to load question data for ${question.id}:`, error);
+      // Log the error details for debugging
+      if (error instanceof Error) {
+        console.warn('Error details:', error.message, error.stack);
+      }
+    }
 
     return baseItem;
   }

@@ -1,5 +1,6 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { LearnService } from './learn.service';
 import { SupabaseJwtGuard } from '../common/guards/supabase-jwt.guard';
 import { User } from '../common/decorators/user.decorator';
@@ -8,17 +9,17 @@ import { Transform } from 'class-transformer';
 import { SessionPlanDto } from '../engine/content-delivery/session-types';
 
 export class LearnNextQueryDto {
-  @IsUUID()
+  @IsString() // Accept deterministic IDs (not strict UUIDs)
   lessonId: string;
 }
 
 export class LearnSuggestionsQueryDto {
   @IsOptional()
-  @IsUUID()
+  @IsString() // Accept deterministic IDs
   currentLessonId?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsString() // Accept deterministic IDs
   moduleId?: string;
 
   @IsOptional()
@@ -40,7 +41,7 @@ export class SessionPlanQueryDto {
   timeBudgetSec?: number;
 
   @IsOptional()
-  @IsUUID()
+  @IsString() // Accept any string - our deterministic IDs are valid but not strict UUIDs
   lessonId?: string;
 
   @IsOptional()
@@ -52,6 +53,7 @@ export class SessionPlanQueryDto {
 @ApiBearerAuth('JWT-auth')
 @Controller('learn')
 @UseGuards(SupabaseJwtGuard)
+@SkipThrottle() // Exclude learn endpoints from throttling - they're critical for app functionality
 export class LearnController {
   constructor(private readonly learnService: LearnService) {}
 

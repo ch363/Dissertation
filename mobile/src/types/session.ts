@@ -31,6 +31,8 @@ export type MultipleChoiceCard = BaseCard & {
   options: { id: string; label: string }[];
   correctOptionId: string;
   explanation?: string;
+  audioUrl?: string; // Audio for source phrase (e.g., "Good morning")
+  sourceText?: string; // Source text to translate (for translation MCQ)
 };
 
 export type FillBlankCard = BaseCard & {
@@ -38,6 +40,8 @@ export type FillBlankCard = BaseCard & {
   text: string;
   answer: string;
   hint?: string;
+  audioUrl?: string; // Audio for "Listen and complete"
+  options?: Array<{ id: string; label: string }>; // Options for tap-to-fill
 };
 
 export type TranslateCard = BaseCard & {
@@ -46,12 +50,15 @@ export type TranslateCard = BaseCard & {
   targetLanguage: string;
   expected: string;
   hint?: string;
+  audioUrl?: string; // Audio preview for source text
+  isFlashcard?: boolean; // If true, shows flip card interaction
 };
 
 export type ListeningCard = BaseCard & {
   kind: CardKind.Listening;
   audioUrl: string;
   expected: string;
+  mode?: 'type' | 'speak'; // 'type' = Type What You Hear, 'speak' = Speak This Phrase
 };
 
 export type Card = TeachCard | MultipleChoiceCard | FillBlankCard | TranslateCard | ListeningCard;

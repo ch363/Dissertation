@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
+import { ContentModule } from '../content/content.module';
 import { ContentDeliveryService } from './content-delivery/content-delivery.service';
 import { SessionPlanService } from './content-delivery/session-plan.service';
 import { SrsService } from './srs/srs.service';
@@ -18,7 +19,7 @@ import { XpService } from './scoring/xp.service';
  * (LearnService, ProgressService) to handle adaptive learning logic.
  */
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, ContentModule],
   providers: [ContentDeliveryService, SessionPlanService, SrsService, XpService],
   exports: [ContentDeliveryService, SessionPlanService, SrsService, XpService],
 })

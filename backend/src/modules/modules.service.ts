@@ -56,18 +56,51 @@ export class ModulesService {
     }
   }
 
-  async findLessons(moduleId: string) {
-    const module = await this.prisma.module.findUnique({
-      where: { id: moduleId },
-      include: {
-        lessons: {
-          orderBy: { createdAt: 'asc' },
+  async findLessons(moduleIdOrSlug: string) {
+    // Check if it's a UUID (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(moduleIdOrSlug);
+    
+    let module;
+    if (isUuid) {
+      // Try to find by UUID
+      module = await this.prisma.module.findUnique({
+        where: { id: moduleIdOrSlug },
+        include: {
+          lessons: {
+            orderBy: { createdAt: 'asc' },
+          },
         },
-      },
-    });
+      });
+    } else {
+      // Try to find by title (case-insensitive)
+      // Normalize: capitalize first letter to match "Basics" format
+      const normalizedTitle = moduleIdOrSlug
+        .trim()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+      
+      const modules = await this.prisma.module.findMany({
+        where: {
+          title: {
+            equals: normalizedTitle,
+            mode: 'insensitive',
+          },
+        },
+        include: {
+          lessons: {
+            orderBy: { createdAt: 'asc' },
+          },
+        },
+      });
+      
+      if (modules.length > 0) {
+        module = modules[0]; // Take first match
+      }
+    }
 
     if (!module) {
-      throw new NotFoundException(`Module with ID ${moduleId} not found`);
+      throw new NotFoundException(`Module with ID or title '${moduleIdOrSlug}' not found`);
     }
 
     return module.lessons;

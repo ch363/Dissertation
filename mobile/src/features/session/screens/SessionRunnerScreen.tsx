@@ -10,6 +10,7 @@ import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { AttemptLog, SessionKind, SessionPlan } from '@/types/session';
 import { getSessionPlan } from '@/services/api/learn';
 import { recordQuestionAttempt } from '@/services/api/progress';
+import { transformSessionPlan } from '@/services/api/session-plan-transformer';
 
 type Props = {
   lessonId?: string;
@@ -24,9 +25,11 @@ export default function SessionRunnerScreen(props?: Props) {
     kind?: string;
   }>();
 
-  // Use props if provided (for direct component usage), otherwise use route params
-  const sessionId =
-    props?.sessionId ?? (params.sessionId as string | undefined) ?? makeSessionId('session');
+  // Use useState with lazy initializer to prevent infinite re-renders
+  // makeSessionId generates a new ID each time, so we only call it once on mount
+  const [sessionId] = useState(
+    () => props?.sessionId ?? (params.sessionId as string | undefined) ?? makeSessionId('session'),
+  );
   const sessionKind: SessionKind = props?.kind ?? (params.kind === 'review' ? 'review' : 'learn');
   const lessonId = props?.lessonId ?? (params.lessonId as string | undefined) ?? 'demo';
 
@@ -36,6 +39,8 @@ export default function SessionRunnerScreen(props?: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadSessionPlan = async () => {
       setLoading(true);
       setError(null);
@@ -44,44 +49,81 @@ export default function SessionRunnerScreen(props?: Props) {
         if (sessionKind === 'review') {
           // For review sessions, use the review session plan builder
           // TODO: Replace with backend session-plan endpoint when review mode is supported
-          setPlan(buildReviewSessionPlan(sessionId));
-          setLoading(false);
+          if (!cancelled) {
+            setPlan(buildReviewSessionPlan(sessionId));
+            setLoading(false);
+          }
           return;
         }
 
         // For learn sessions, fetch from backend
         if (lessonId && lessonId !== 'demo') {
-          const planData = await getSessionPlan({
+          const response = await getSessionPlan({
             mode: 'learn',
             lessonId,
           });
           
-          // Transform backend session plan to frontend SessionPlan format
-          // Note: This assumes the backend returns a compatible format
-          // If not, we'll need to add transformation logic here
-          if (planData && planData.cards) {
-            setPlan({
-              id: sessionId,
-              kind: 'learn',
-              lessonId,
-              title: planData.title || `Lesson ${lessonId}`,
-              cards: planData.cards || [],
+          if (cancelled) return;
+          
+          // Handle API response wrapper (success/data structure)
+          const planData = response?.data || response;
+          
+          console.log('Session plan response:', {
+            hasData: !!planData,
+            hasSteps: !!planData?.steps,
+            stepsLength: planData?.steps?.length,
+            firstStep: planData?.steps?.[0],
+          });
+          
+          // Transform backend session plan (steps) to frontend format (cards)
+          if (planData && planData.steps && Array.isArray(planData.steps) && planData.steps.length > 0) {
+            const transformedPlan = transformSessionPlan(planData, sessionId);
+            console.log('Transformed plan:', {
+              cardsCount: transformedPlan.cards.length,
+              cardTypes: transformedPlan.cards.map(c => c.kind),
             });
+            
+            if (!cancelled) {
+              if (transformedPlan.cards.length > 0) {
+                setPlan(transformedPlan);
+              } else {
+                console.error('Transformation produced no cards. Steps:', planData.steps);
+                setError('Session plan has no cards after transformation');
+              }
+            }
           } else {
-            setError('Unable to load session plan');
+            console.error('Invalid plan data:', { 
+              hasPlanData: !!planData, 
+              hasSteps: !!planData?.steps, 
+              stepsLength: planData?.steps?.length,
+              planDataKeys: planData ? Object.keys(planData) : [],
+            });
+            if (!cancelled) {
+              setError(`Unable to load session plan - no steps found`);
+            }
           }
         } else {
-          setError('Lesson ID is required');
+          if (!cancelled) {
+            setError('Lesson ID is required');
+          }
         }
       } catch (err: any) {
         console.error('Failed to load session plan:', err);
-        setError(err?.message || 'Failed to load session');
+        if (!cancelled) {
+          setError(err?.message || 'Failed to load session');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     loadSessionPlan();
+
+    return () => {
+      cancelled = true;
+    };
   }, [lessonId, sessionId, sessionKind]);
 
   const handleComplete = async (attempts: AttemptLog[]) => {
