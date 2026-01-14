@@ -50,6 +50,7 @@ interface BackendPracticeItem {
   hint?: string;
   audioUrl?: string;
   source?: string;
+  sourceText?: string; // For translation MCQ
   explanation?: string;
 }
 
@@ -116,14 +117,30 @@ export function transformSessionPlan(
             correctOptionId: item.correctOptionId,
             explanation: item.explanation,
             audioUrl: item.audioUrl,
-            sourceText: item.source, // For translation MCQ
+            sourceText: item.sourceText || item.source, // For translation MCQ (prefer sourceText, fallback to source)
           });
         } else {
-          console.warn('MULTIPLE_CHOICE question missing required data:', {
+          console.error('MULTIPLE_CHOICE question missing required data - creating fallback card:', {
             questionId: item.questionId,
             hasOptions: !!item.options,
             optionsLength: item.options?.length,
             hasCorrectOptionId: !!item.correctOptionId,
+            item: JSON.stringify(item, null, 2),
+          });
+          // Create a fallback card with minimal options to prevent the question from disappearing
+          // This should not happen if backend is working correctly, but prevents UI breakage
+          cards.push({
+            id: `question-${item.questionId}`,
+            kind: CardKind.MultipleChoice,
+            prompt: item.prompt || 'Select the correct answer',
+            options: [
+              { id: 'opt1', label: 'Option 1' },
+              { id: 'opt2', label: 'Option 2' },
+              { id: 'opt3', label: 'Option 3' },
+              { id: 'opt4', label: 'Option 4' },
+            ],
+            correctOptionId: 'opt1',
+            sourceText: item.sourceText || item.source,
           });
         }
       } else if (deliveryMethodTyped === DELIVERY_METHOD.FILL_BLANK) {
@@ -136,8 +153,11 @@ export function transformSessionPlan(
             answer: item.answer,
             hint: item.hint,
             audioUrl: item.audioUrl,
-            // For tap-to-fill, we'd need options from backend
-            // For now, options would come from backend if available
+            // Options for tap-to-fill (if provided by backend)
+            options: item.options?.map(opt => ({
+              id: opt.id || `opt-${opt.label}`,
+              label: opt.label,
+            })),
           });
         } else {
           console.warn('FILL_BLANK question missing text or answer:', {

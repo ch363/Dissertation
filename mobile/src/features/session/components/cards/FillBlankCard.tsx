@@ -11,25 +11,51 @@ type Props = {
   card: FillBlankCardType;
   selectedAnswer?: string;
   onSelectAnswer?: (answer: string) => void;
+  showResult?: boolean;
+  isCorrect?: boolean;
 };
 
-export function FillBlankCard({ card, selectedAnswer, onSelectAnswer }: Props) {
+export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult, isCorrect }: Props) {
   const [isPlaying, setIsPlaying] = useState(false);
 
   const handlePlayAudio = async () => {
-    if (!card.audioUrl && !card.text) return;
+    if (!card.text) {
+      console.warn('FillBlankCard: No text available for audio');
+      return;
+    }
+    
+    // Prevent multiple rapid calls
+    if (isPlaying) {
+      return;
+    }
+    
     try {
       const enabled = await getTtsEnabled();
-      if (!enabled) return;
+      if (!enabled) {
+        console.warn('FillBlankCard: TTS is disabled');
+        return;
+      }
       setIsPlaying(true);
       const rate = await getTtsRate();
       await SafeSpeech.stop();
-      // Speak the sentence with blank (replace ___ with "blank" for TTS)
-      const textToSpeak = card.text.replace(/___/g, 'blank') || '';
+      // Small delay to ensure stop completes
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Speak the sentence with blank removed (replace ___ with a pause or just remove it)
+      // Remove the blank marker and speak the sentence naturally
+      const textToSpeak = card.text.replace(/___/g, ' ').trim() || '';
+      if (!textToSpeak) {
+        console.warn('FillBlankCard: No text to speak after processing');
+        setIsPlaying(false);
+        return;
+      }
+      console.log('FillBlankCard: Speaking text:', textToSpeak);
       await SafeSpeech.speak(textToSpeak, { language: 'it-IT', rate });
-      setTimeout(() => setIsPlaying(false), 3000);
+      // Estimate duration: ~150ms per character, minimum 2 seconds
+      const estimatedDuration = Math.max(textToSpeak.length * 150, 2000);
+      setTimeout(() => setIsPlaying(false), estimatedDuration);
     } catch (error) {
-      console.error('Failed to play audio:', error);
+      console.error('FillBlankCard: Failed to play audio:', error);
       setIsPlaying(false);
     }
   };
@@ -44,12 +70,13 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer }: Props) {
 
       {/* Main Question Card */}
       <View style={styles.questionCard}>
-        {card.audioUrl && (
+        {/* Audio button - always show if text is available */}
+        {(card.audioUrl || card.text) && (
           <Pressable style={styles.audioButton} onPress={handlePlayAudio}>
             <Ionicons
               name={isPlaying ? 'pause' : 'volume-high'}
-              size={24}
-              color={theme.colors.primary}
+              size={20}
+              color="#4A90E2"
             />
             <Text style={styles.audioLabel}>Listen and complete</Text>
           </Pressable>
@@ -57,11 +84,44 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer }: Props) {
 
         {/* Sentence with blank */}
         <View style={styles.sentenceContainer}>
-          {sentenceParts[0] && <Text style={styles.sentenceText}>{sentenceParts[0]}</Text>}
-          <View style={[styles.blankField, selectedAnswer && styles.blankFieldFilled]}>
-            <Text style={styles.blankText}>{selectedAnswer || '___'}</Text>
+          {sentenceParts[0] && <Text style={styles.sentenceText}>{sentenceParts[0].trim()}</Text>}
+          <View 
+            style={[
+              styles.blankField, 
+              selectedAnswer && showResult
+                ? isCorrect 
+                  ? styles.blankFieldCorrect 
+                  : styles.blankFieldIncorrect
+                : selectedAnswer 
+                  ? styles.blankFieldFilled 
+                  : null
+            ]}
+          >
+            <Text 
+              style={[
+                styles.blankText, 
+                selectedAnswer && showResult
+                  ? isCorrect
+                    ? styles.blankTextCorrect
+                    : styles.blankTextIncorrect
+                  : selectedAnswer
+                    ? styles.blankTextFilled
+                    : null
+              ]}
+            >
+              {selectedAnswer || ''}
+            </Text>
+            {/* Show checkmark/X icon for correct/incorrect */}
+            {selectedAnswer && showResult && (
+              <Ionicons 
+                name={isCorrect ? "checkmark-circle" : "close-circle"} 
+                size={20} 
+                color={isCorrect ? "#28a745" : "#dc3545"} 
+                style={styles.blankIcon} 
+              />
+            )}
           </View>
-          {sentenceParts[1] && <Text style={styles.sentenceText}>{sentenceParts[1]}</Text>}
+          {sentenceParts[1] && <Text style={styles.sentenceText}>{sentenceParts[1].trim()}</Text>}
         </View>
       </View>
 
@@ -72,15 +132,47 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer }: Props) {
           <View style={styles.optionsGrid}>
             {card.options.map((opt) => {
               const isSelected = selectedAnswer === opt.label;
+              const isCorrectOption = showResult && isCorrect && isSelected;
+              const isIncorrectOption = showResult && !isCorrect && isSelected;
+              // Disable all options once correct answer is selected
+              const isDisabled = showResult && isCorrect;
+              
               return (
                 <Pressable
                   key={opt.id}
-                  style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
-                  onPress={() => onSelectAnswer?.(opt.label)}
+                  style={[
+                    styles.optionButton, 
+                    !showResult && isSelected && styles.optionButtonSelected,
+                    isCorrectOption && styles.optionButtonCorrect,
+                    isIncorrectOption && styles.optionButtonIncorrect,
+                    isDisabled && !isCorrectOption && styles.optionButtonDisabled,
+                  ]}
+                  onPress={() => {
+                    // Only allow selection if correct answer hasn't been selected yet
+                    if (!isDisabled) {
+                      onSelectAnswer?.(opt.label);
+                    }
+                  }}
+                  disabled={isDisabled}
                 >
-                  <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
+                  <Text 
+                    style={[
+                      styles.optionText, 
+                      !showResult && isSelected && styles.optionTextSelected,
+                      isCorrectOption && styles.optionTextCorrect,
+                      isIncorrectOption && styles.optionTextIncorrect,
+                      isDisabled && !isCorrectOption && styles.optionTextDisabled,
+                    ]}
+                  >
                     {opt.label}
                   </Text>
+                  {/* Show checkmark/X icon for correct/incorrect */}
+                  {isCorrectOption && (
+                    <Ionicons name="checkmark-circle" size={20} color="#28a745" style={styles.optionIcon} />
+                  )}
+                  {isIncorrectOption && (
+                    <Ionicons name="close-circle" size={20} color="#dc3545" style={styles.optionIcon} />
+                  )}
                 </Pressable>
               );
             })}
@@ -101,17 +193,24 @@ const styles = StyleSheet.create({
     color: '#28a745',
     textTransform: 'uppercase',
     letterSpacing: 1,
+    marginBottom: theme.spacing.xs,
   },
   questionCard: {
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: theme.spacing.lg,
     gap: theme.spacing.md,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   audioButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
   },
   audioLabel: {
     fontFamily: theme.typography.regular,
@@ -128,32 +227,64 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.regular,
     fontSize: 18,
     color: theme.colors.text,
+    lineHeight: 28,
   },
   blankField: {
-    minWidth: 80,
-    height: 40,
-    borderRadius: 8,
+    minWidth: 100,
+    minHeight: 44,
+    borderRadius: 12,
     borderWidth: 2,
     borderColor: '#4A90E2',
     backgroundColor: '#E8F4FD',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+  },
+  blankIcon: {
+    marginLeft: theme.spacing.xs,
   },
   blankFieldFilled: {
-    backgroundColor: '#D4EDDA',
+    backgroundColor: '#E8F4FD',
+    borderColor: '#4A90E2',
+  },
+  blankFieldCorrect: {
+    backgroundColor: '#d4edda',
     borderColor: '#28a745',
+    borderWidth: 3,
+  },
+  blankFieldIncorrect: {
+    backgroundColor: '#f8d7da',
+    borderColor: '#dc3545',
+    borderWidth: 3,
   },
   blankText: {
     fontFamily: theme.typography.semiBold,
-    fontSize: 16,
+    fontSize: 18,
+    color: '#4A90E2',
+    minHeight: 20,
+  },
+  blankTextFilled: {
     color: theme.colors.text,
+  } as const,
+  blankTextCorrect: {
+    color: '#28a745',
+  },
+  blankTextIncorrect: {
+    color: '#dc3545',
   },
   optionsCard: {
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: theme.spacing.lg,
     gap: theme.spacing.md,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   optionsLabel: {
     fontFamily: theme.typography.semiBold,
@@ -161,6 +292,7 @@ const styles = StyleSheet.create({
     color: theme.colors.mutedText,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    marginBottom: theme.spacing.xs,
   },
   optionsGrid: {
     flexDirection: 'row',
@@ -170,16 +302,34 @@ const styles = StyleSheet.create({
   optionButton: {
     flex: 1,
     minWidth: '45%',
-    padding: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
     borderRadius: 12,
     borderWidth: 2,
     borderColor: '#4A90E2',
     backgroundColor: '#E8F4FD',
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 56,
+    flexDirection: 'row',
+    gap: theme.spacing.xs,
+  },
+  optionIcon: {
+    marginLeft: theme.spacing.xs,
   },
   optionButtonSelected: {
     backgroundColor: '#4A90E2',
     borderColor: '#4A90E2',
+  },
+  optionButtonCorrect: {
+    backgroundColor: '#d4edda',
+    borderColor: '#28a745',
+    borderWidth: 3,
+  },
+  optionButtonIncorrect: {
+    backgroundColor: '#f8d7da',
+    borderColor: '#dc3545',
+    borderWidth: 3,
   },
   optionText: {
     fontFamily: theme.typography.semiBold,
@@ -188,5 +338,19 @@ const styles = StyleSheet.create({
   },
   optionTextSelected: {
     color: '#fff',
+  },
+  optionTextCorrect: {
+    color: '#28a745',
+  },
+  optionTextIncorrect: {
+    color: '#dc3545',
+  },
+  optionButtonDisabled: {
+    opacity: 0.5,
+    borderColor: '#ccc',
+    backgroundColor: '#f5f5f5',
+  },
+  optionTextDisabled: {
+    color: '#999',
   },
 });

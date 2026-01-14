@@ -1,18 +1,19 @@
+import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, ScrollView } from 'react-native';
 
 import { theme } from '@/services/theme/tokens';
 import { AttemptLog, CardKind, SessionPlan } from '@/types/session';
 import { requiresSelection, getDeliveryMethodForCardKind } from '../delivery-methods';
-import { validateAnswer } from '@/services/api/progress';
+import { validateAnswer, recordQuestionAttempt } from '@/services/api/progress';
 import { CardRenderer } from './CardRenderer';
+import { LessonProgressHeader } from './LessonProgressHeader';
+import { playSuccessSound, playErrorSound } from '@/services/sounds';
 
 type Props = {
   plan: SessionPlan;
   onComplete: (attempts: AttemptLog[]) => void;
 };
-
-const CardHeader = ({ title }: { title: string }) => <Text style={styles.cardHeader}>{title}</Text>;
 
 export function SessionRunner({ plan, onComplete }: Props) {
   const [index, setIndex] = useState(0);
@@ -22,6 +23,7 @@ export function SessionRunner({ plan, onComplete }: Props) {
   const [userAnswer, setUserAnswer] = useState<string>('');
   const [showResult, setShowResult] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
+  const [flashcardRating, setFlashcardRating] = useState<number | undefined>(undefined);
 
   const currentCard = plan.cards[index];
   const total = useMemo(() => plan.cards.length, [plan.cards]);
@@ -30,26 +32,43 @@ export function SessionRunner({ plan, onComplete }: Props) {
   
   // Determine if we can proceed based on card type
   // For type-based cards, must check answer first (showResult must be true)
+  const isTranslationMCQ = currentCard.kind === CardKind.MultipleChoice && 
+    'sourceText' in currentCard && !!currentCard.sourceText;
+  
+  // Check if current card is a flashcard
+  const isFlashcard = 'isFlashcard' in currentCard && currentCard.isFlashcard;
+  
   const canProceed =
     currentCard.kind === CardKind.Teach ||
     (currentCard.kind === CardKind.MultipleChoice
-      ? showResult && selectedOptionId !== undefined // Must check answer first
+      ? isTranslationMCQ 
+        ? showResult && selectedOptionId !== undefined // Translation MCQ: auto-checked, need result
+        : showResult && selectedOptionId !== undefined // Regular MCQ: Must check answer first
       : currentCard.kind === CardKind.FillBlank
-        ? selectedAnswer !== undefined
+        ? showResult && isCorrect && selectedAnswer !== undefined // Must have correct answer selected
         : currentCard.kind === CardKind.TranslateToEn || currentCard.kind === CardKind.TranslateFromEn
-          ? showResult && userAnswer.trim().length > 0 // Must check answer first
+          ? isFlashcard
+            ? flashcardRating !== undefined // Flashcard: need rating
+            : showResult && userAnswer.trim().length > 0 // Type translation: Must check answer first
           : currentCard.kind === CardKind.Listening
             ? showResult && userAnswer.trim().length > 0 // Must check answer first
             : true);
 
-  const handleSelectOption = (optionId: string) => {
+  const handleSelectOption = async (optionId: string) => {
     if (currentCard.kind === CardKind.MultipleChoice) {
       setSelectedOptionId(optionId);
-      // Don't set showResult yet - wait for "Check Answer" button
+      
+      // For translation MCQ (with sourceText), automatically check answer
+      const isTranslationMCQ = 'sourceText' in currentCard && !!currentCard.sourceText;
+      if (isTranslationMCQ) {
+        // Pass optionId directly to avoid state timing issues
+        await handleCheckAnswer(optionId);
+      }
+      // For regular MCQ, wait for "Check Answer" button
     }
   };
 
-  const handleCheckAnswer = async () => {
+  const handleCheckAnswer = async (optionIdOverride?: string) => {
     // Only validate practice cards (not teach cards)
     if (currentCard.kind === CardKind.Teach) {
       return;
@@ -71,8 +90,9 @@ export function SessionRunner({ plan, onComplete }: Props) {
       let userAnswerValue: string;
 
       if (currentCard.kind === CardKind.MultipleChoice) {
-        if (selectedOptionId === undefined) return;
-        userAnswerValue = selectedOptionId;
+        const optionId = optionIdOverride ?? selectedOptionId;
+        if (optionId === undefined) return;
+        userAnswerValue = optionId;
       } else if (
         currentCard.kind === CardKind.TranslateToEn ||
         currentCard.kind === CardKind.TranslateFromEn ||
@@ -92,6 +112,17 @@ export function SessionRunner({ plan, onComplete }: Props) {
 
       setIsCorrect(validationResult.isCorrect);
       setShowResult(true);
+      
+      // Play appropriate sound based on correctness
+      if (validationResult.isCorrect) {
+        playSuccessSound().catch(() => {
+          // Silently fail - sound is non-critical
+        });
+      } else {
+        playErrorSound().catch(() => {
+          // Silently fail - sound is non-critical
+        });
+      }
 
       // Create attempt log with validated score
       const newAttempt: AttemptLog = {
@@ -107,14 +138,50 @@ export function SessionRunner({ plan, onComplete }: Props) {
       // Fallback: mark as incorrect if validation fails
       setIsCorrect(false);
       setShowResult(true);
+      // Play error sound for failed validation
+      playErrorSound().catch(() => {
+        // Silently fail - sound is non-critical
+      });
     }
   };
 
-  const handleSelectAnswer = (answer: string) => {
+  const handleSelectAnswer = async (answer: string) => {
     if (currentCard.kind === CardKind.FillBlank) {
       setSelectedAnswer(answer);
-      // Don't validate here - wait for "Check Answer" button
-      // Validation will happen in handleCheckAnswer
+      
+      // Immediately validate the answer when option is selected
+      if (currentCard.id.startsWith('question-')) {
+        const questionId = currentCard.id.replace('question-', '');
+        const deliveryMethod = getDeliveryMethodForCardKind(currentCard.kind);
+        
+        try {
+          const validationResult = await validateAnswer(questionId, answer, deliveryMethod);
+          setIsCorrect(validationResult.isCorrect);
+          setShowResult(true);
+          
+          // Play appropriate sound based on correctness
+          if (validationResult.isCorrect) {
+            playSuccessSound().catch(() => {
+              // Silently fail - sound is non-critical
+            });
+          } else {
+            playErrorSound().catch(() => {
+              // Silently fail - sound is non-critical
+            });
+          }
+          
+          // If correct, we can proceed immediately
+          // If incorrect, user must select correct answer
+        } catch (error) {
+          console.error('Error validating FillBlank answer:', error);
+          setIsCorrect(false);
+          setShowResult(true);
+          // Play error sound for failed validation
+          playErrorSound().catch(() => {
+            // Silently fail - sound is non-critical
+          });
+        }
+      }
     }
   };
 
@@ -130,53 +197,69 @@ export function SessionRunner({ plan, onComplete }: Props) {
     // For cards that don't need result screen, validate and create attempt
     let nextAttempts = attempts;
     
-    // FillBlank cards validate on "Next" (no separate "Check Answer" button)
+    // Flashcard cards: save rating as attempt and send to backend
+    const isFlashcard = 'isFlashcard' in currentCard && currentCard.isFlashcard;
     if (
-      currentCard.kind === CardKind.FillBlank &&
-      selectedAnswer &&
+      isFlashcard &&
+      flashcardRating !== undefined &&
       !attempts.some((a) => a.cardId === currentCard.id)
     ) {
-      // Validate via backend
+      // For flashcards, rating determines correctness: 0 = wrong, 2.5 = mid, 5 = correct
+      const isCorrect = flashcardRating >= 2.5; // 2.5 and 5 are considered correct
+      
+      // Send rating to backend API for scoring
       if (currentCard.id.startsWith('question-')) {
         const questionId = currentCard.id.replace('question-', '');
-        const deliveryMethod = getDeliveryMethodForCardKind(currentCard.kind);
+        const deliveryMethod = getDeliveryMethodForCardKind(
+          currentCard.kind,
+          currentCard.isFlashcard,
+        );
         
         try {
-          const validationResult = await validateAnswer(questionId, selectedAnswer, deliveryMethod);
-          const newAttempt: AttemptLog = {
-            cardId: currentCard.id,
-            attemptNumber: 1,
-            answer: selectedAnswer,
-            isCorrect: validationResult.isCorrect,
-            elapsedMs: 0,
-          };
-          nextAttempts = [...attempts, newAttempt];
-          setAttempts(nextAttempts);
+          // Record the attempt with the rating as the score
+          // Rating: 0 = 0% (wrong), 2.5 = 50% (mid), 5 = 100% (correct)
+          const score = flashcardRating === 0 ? 0 : flashcardRating === 2.5 ? 50 : 100;
+          
+          await recordQuestionAttempt(questionId, {
+            score,
+            percentageAccuracy: score,
+            attempts: 1,
+          });
         } catch (error) {
-          console.error('Error validating FillBlank answer:', error);
-          // Fallback: mark as incorrect if validation fails
-          const newAttempt: AttemptLog = {
-            cardId: currentCard.id,
-            attemptNumber: 1,
-            answer: selectedAnswer,
-            isCorrect: false,
-            elapsedMs: 0,
-          };
-          nextAttempts = [...attempts, newAttempt];
-          setAttempts(nextAttempts);
+          console.error('Error recording flashcard rating:', error);
+          // Continue even if API call fails
         }
-      } else {
-        // Fallback if card ID format is unexpected
-        const newAttempt: AttemptLog = {
-          cardId: currentCard.id,
-          attemptNumber: 1,
-          answer: selectedAnswer,
-          isCorrect: false,
-          elapsedMs: 0,
-        };
-        nextAttempts = [...attempts, newAttempt];
-        setAttempts(nextAttempts);
       }
+      
+      const newAttempt: AttemptLog = {
+        cardId: currentCard.id,
+        attemptNumber: 1,
+        answer: `rating:${flashcardRating}`,
+        isCorrect,
+        elapsedMs: 0,
+      };
+      nextAttempts = [...attempts, newAttempt];
+      setAttempts(nextAttempts);
+    }
+    // FillBlank cards: validation happens immediately on selection in handleSelectAnswer
+    // Just save the attempt if correct and not already saved
+    else if (
+      currentCard.kind === CardKind.FillBlank &&
+      selectedAnswer &&
+      showResult &&
+      isCorrect &&
+      !attempts.some((a) => a.cardId === currentCard.id)
+    ) {
+      // Save the attempt (validation already happened in handleSelectAnswer)
+      const newAttempt: AttemptLog = {
+        cardId: currentCard.id,
+        attemptNumber: 1,
+        answer: selectedAnswer,
+        isCorrect: true,
+        elapsedMs: 0,
+      };
+      nextAttempts = [...attempts, newAttempt];
+      setAttempts(nextAttempts);
     } else if (
       currentCard.kind === CardKind.Teach &&
       !attempts.some((a) => a.cardId === currentCard.id)
@@ -202,16 +285,43 @@ export function SessionRunner({ plan, onComplete }: Props) {
       setUserAnswer('');
       setShowResult(false);
       setIsCorrect(false);
+      setFlashcardRating(undefined);
     }
+  };
+
+  const handleBack = () => {
+    if (index > 0) {
+      // Go to previous card and reset per-card state
+      setIndex((i) => Math.max(0, i - 1));
+      setSelectedOptionId(undefined);
+      setSelectedAnswer(undefined);
+      setUserAnswer('');
+      setShowResult(false);
+      setIsCorrect(false);
+      setFlashcardRating(undefined);
+      return;
+    }
+
+    // First card: exit session
+    router.back();
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <CardHeader title={`${plan.title ?? 'Session'} • ${index + 1}/${total}`} />
+        <LessonProgressHeader
+          title={plan.title ?? 'Course'}
+          current={index + 1}
+          total={total}
+          onBackPress={handleBack}
+        />
       </View>
 
-      <View style={styles.cardArea}>
+      <ScrollView 
+        style={styles.cardArea} 
+        contentContainerStyle={styles.cardAreaContent}
+        showsVerticalScrollIndicator={false}
+      >
         <CardRenderer
           card={currentCard}
           selectedOptionId={selectedOptionId}
@@ -223,8 +333,14 @@ export function SessionRunner({ plan, onComplete }: Props) {
           showResult={showResult}
           isCorrect={isCorrect}
           onCheckAnswer={handleCheckAnswer}
+          onRating={(rating) => {
+            console.log('SessionRunner: Rating received:', rating);
+            setFlashcardRating(rating);
+            console.log('SessionRunner: flashcardRating state updated to:', rating);
+          }}
+          selectedRating={flashcardRating}
         />
-      </View>
+      </ScrollView>
 
       <View style={styles.footer}>
         <Pressable
@@ -250,6 +366,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: theme.spacing.lg,
     paddingBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.background,
   },
   header: {
     paddingBottom: theme.spacing.md,
@@ -258,13 +375,12 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0, // critical: allow children to shrink instead of pushing footer off-screen
   },
-  footer: {
-    paddingTop: theme.spacing.md,
+  cardAreaContent: {
+    flexGrow: 1,
+    paddingBottom: theme.spacing.xs, // Minimal padding to fit everything on screen
   },
-  cardHeader: {
-    fontFamily: theme.typography.semiBold,
-    fontSize: 16,
-    color: theme.colors.text,
+  footer: {
+    paddingTop: theme.spacing.xs, // Minimal padding to fit everything on screen
   },
   primaryButton: {
     backgroundColor: theme.colors.primary,

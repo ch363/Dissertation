@@ -45,7 +45,6 @@ const FillBlankQuestionSchema = z.object({
 // Listening question schema
 const ListeningQuestionSchema = z.object({
   prompt: z.string().optional(),
-  audioUrl: z.string().url().optional(),
   answer: z.string().min(1),
 });
 
@@ -116,7 +115,6 @@ const TeachingSchema = z.object({
   emoji: z.string().optional(),
   userLanguageString: z.string().min(1),
   learningLanguageString: z.string().min(1),
-  learningLanguageAudioUrl: z.string().url().optional(),
   tip: z.string().optional(),
 });
 

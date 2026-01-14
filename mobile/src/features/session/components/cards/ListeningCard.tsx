@@ -28,18 +28,33 @@ export function ListeningCard({
   const mode = card.mode || 'type'; // 'type' or 'speak'
 
   const handlePlayAudio = async () => {
+    // Prevent multiple rapid calls
+    if (isPlaying) {
+      return;
+    }
+    
     try {
       const enabled = await getTtsEnabled();
       if (!enabled) return;
       setIsPlaying(true);
       const rate = await getTtsRate();
       await SafeSpeech.stop();
+      // Small delay to ensure stop completes
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // For "Type What You Hear", speak the expected answer
       // For "Speak This Phrase", speak the phrase to practice
       const textToSpeak = card.expected || card.audioUrl || '';
+      if (!textToSpeak) {
+        setIsPlaying(false);
+        return;
+      }
+      
       await SafeSpeech.speak(textToSpeak, { language: 'it-IT', rate });
-      // Note: expo-speech doesn't have a completion callback, so we'll reset after a delay
-      setTimeout(() => setIsPlaying(false), 2000);
+      
+      // Reset playing state after estimated duration
+      const estimatedDuration = Math.max(2000, textToSpeak.length * 150);
+      setTimeout(() => setIsPlaying(false), estimatedDuration);
     } catch (error) {
       console.error('Failed to play audio:', error);
       setIsPlaying(false);

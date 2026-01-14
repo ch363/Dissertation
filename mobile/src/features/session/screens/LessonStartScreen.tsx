@@ -2,9 +2,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState, useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
 import { makeSessionId } from '@/features/session/sessionBuilder';
-import { routeBuilders } from '@/services/navigation/routes';
+import { routeBuilders, routes } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 import { getLesson, getLessonTeachings, type Lesson } from '@/services/api/modules';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
@@ -54,6 +55,14 @@ export default function LessonStartScreen() {
     });
   };
 
+  const handleHomePress = () => {
+    // Dismiss all modals/stacks to reveal the home screen underneath
+    router.dismissAll();
+    // Navigate to home - this will slide the current screen right, revealing home underneath
+    // Using navigate instead of replace to get the stack animation
+    router.navigate(routes.tabs.home);
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -79,6 +88,21 @@ export default function LessonStartScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      {/* Header with home button */}
+      <View style={styles.header}>
+        <View style={styles.headerSpacer} />
+        <Text style={styles.headerTitle}>Lesson</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Home"
+          onPress={handleHomePress}
+          hitSlop={10}
+          style={styles.homeButton}
+        >
+          <Ionicons name="home" size={22} color={appTheme.colors.mutedText} />
+        </Pressable>
+      </View>
+      
       <View style={styles.card}>
         <Text style={styles.title}>{lesson.title}</Text>
         <Text style={styles.subtitle}>
@@ -97,6 +121,29 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: theme.spacing.lg,
     backgroundColor: theme.colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xs,
+  },
+  headerSpacer: {
+    width: 36,
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontFamily: theme.typography.semiBold,
+    fontSize: 18,
+    color: theme.colors.text,
+  },
+  homeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
     justifyContent: 'center',
   },
   card: {

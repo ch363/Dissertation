@@ -17,10 +17,6 @@ export class CreateTeachingDto {
 
   @IsOptional()
   @IsString()
-  learningLanguageAudioUrl?: string;
-
-  @IsOptional()
-  @IsString()
   tip?: string;
 
   @IsUUID()

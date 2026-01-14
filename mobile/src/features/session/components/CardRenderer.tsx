@@ -30,6 +30,8 @@ type Props = {
   isCorrect?: boolean;
   showHint?: boolean;
   onCheckAnswer?: () => void;
+  onRating?: (rating: number) => void;
+  selectedRating?: number;
 };
 
 export function CardRenderer({
@@ -44,6 +46,8 @@ export function CardRenderer({
   isCorrect,
   showHint,
   onCheckAnswer,
+  onRating,
+  selectedRating,
 }: Props) {
   // Teach cards render their own container (with usage note card)
   if (card.kind === CardKind.Teach) {
@@ -65,6 +69,8 @@ export function CardRenderer({
         isCorrect,
         showHint,
         onCheckAnswer,
+        onRating,
+        selectedRating,
       )}
     </View>
   );
@@ -82,6 +88,8 @@ function renderCardByKind(
   isCorrect?: boolean,
   showHint?: boolean,
   onCheckAnswer?: () => void,
+  onRating?: (rating: number) => void,
+  selectedRating?: number,
 ) {
   switch (card.kind) {
     case CardKind.MultipleChoice:
@@ -101,6 +109,8 @@ function renderCardByKind(
           card={card}
           selectedAnswer={selectedAnswer}
           onSelectAnswer={onSelectAnswer}
+          showResult={showResult}
+          isCorrect={isCorrect}
         />
       );
     case CardKind.TranslateToEn:
@@ -114,6 +124,8 @@ function renderCardByKind(
           showResult={showResult}
           isCorrect={isCorrect}
           onCheckAnswer={onCheckAnswer}
+          onRating={onRating}
+          selectedRating={selectedRating}
         />
       );
     case CardKind.Listening:

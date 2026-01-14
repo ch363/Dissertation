@@ -2,12 +2,14 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
 import { ScrollView } from '@/components/ui';
 
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 import { getLesson, getLessonTeachings, type Lesson, type Teaching } from '@/services/api/modules';
+import { routes } from '@/services/navigation/routes';
 
 export default function LessonOverviewScreen() {
   const { lessonId } = useLocalSearchParams<{ lessonId?: string }>();
@@ -55,6 +57,14 @@ export default function LessonOverviewScreen() {
     router.push(`/(tabs)/learn/${lessonId}/start`);
   };
 
+  const handleHomePress = () => {
+    // Dismiss all modals/stacks to reveal the home screen underneath
+    router.dismissAll();
+    // Navigate to home - this will slide the current screen right, revealing home underneath
+    // Using navigate instead of replace to get the stack animation
+    router.navigate(routes.tabs.home);
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
@@ -79,6 +89,21 @@ export default function LessonOverviewScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+      {/* Header with home button */}
+      <View style={styles.header}>
+        <View style={styles.headerSpacer} />
+        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Lesson</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Home"
+          onPress={handleHomePress}
+          hitSlop={10}
+          style={styles.homeButton}
+        >
+          <Ionicons name="home" size={22} color={theme.colors.mutedText} />
+        </Pressable>
+      </View>
+      
       <ScrollView
         contentContainerStyle={{
           padding: baseTheme.spacing.lg,
@@ -138,6 +163,30 @@ export default function LessonOverviewScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: baseTheme.spacing.lg,
+    paddingTop: baseTheme.spacing.md,
+    paddingBottom: baseTheme.spacing.sm,
+  },
+  headerSpacer: {
+    width: 36,
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 18,
+  },
+  homeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   stateRow: {
     flex: 1,

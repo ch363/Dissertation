@@ -223,7 +223,6 @@ export class ContentImporterService {
         emoji: teaching.emoji ?? null,
         userLanguageString: teaching.userLanguageString,
         learningLanguageString: teaching.learningLanguageString,
-        learningLanguageAudioUrl: teaching.learningLanguageAudioUrl ?? null,
         tip: teaching.tip ?? null,
         lessonId,
       },
@@ -233,7 +232,6 @@ export class ContentImporterService {
         emoji: teaching.emoji ?? null,
         userLanguageString: teaching.userLanguageString,
         learningLanguageString: teaching.learningLanguageString,
-        learningLanguageAudioUrl: teaching.learningLanguageAudioUrl ?? null,
         tip: teaching.tip ?? null,
         lessonId,
       },
@@ -244,6 +242,7 @@ export class ContentImporterService {
 
   /**
    * Import a question
+   * Questions only link to teaching - all data comes from the Teaching relationship
    */
   private async importQuestion(question: LessonContent['questions'][0], teachingId: string): Promise<{ id: string; created: boolean }> {
     const id = questionIdFromSlug(question.slug);

@@ -41,10 +41,10 @@ export async function getModules(): Promise<Module[]> {
 }
 
 /**
- * Get module by ID
+ * Get module by ID or slug (title)
  */
-export async function getModule(moduleId: string): Promise<Module> {
-  return apiClient.get<Module>(`/modules/${moduleId}`);
+export async function getModule(moduleIdOrSlug: string): Promise<Module> {
+  return apiClient.get<Module>(`/modules/${moduleIdOrSlug}`);
 }
 
 /**

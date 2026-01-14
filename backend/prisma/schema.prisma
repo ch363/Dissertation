@@ -1,14 +1,13 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-}       
+}
 
 enum KNOWLEDGE_LEVEL {
   A1
@@ -29,12 +28,12 @@ enum DELIVERY_METHOD {
 }
 
 model Module {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  title       String    @db.VarChar
-  description String?   @db.VarChar
-  imageUrl    String?   @map("image_url") @db.VarChar
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title       String   @db.VarChar
+  description String?  @db.VarChar
+  imageUrl    String?  @map("image_url") @db.VarChar
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
 
   lessons Lesson[]
 
@@ -42,45 +41,44 @@ model Module {
 }
 
 model Lesson {
-  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  title          String    @db.VarChar
-  description    String?   @db.VarChar
-  imageUrl       String?   @map("image_url") @db.VarChar
-  numberOfItems  Int       @default(0) @map("number_of_items")
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title         String   @db.VarChar
+  description   String?  @db.VarChar
+  imageUrl      String?  @map("image_url") @db.VarChar
+  numberOfItems Int      @default(0) @map("number_of_items")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  moduleId       String    @map("module_id") @db.Uuid
-  module         Module    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  moduleId String @map("module_id") @db.Uuid
+  module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
 
-  teachings      Teaching[]
-  userLessons    UserLesson[]
+  teachings   Teaching[]
+  userLessons UserLesson[]
 
   @@map("lessons")
 }
 
 model Teaching {
-  id                       String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  knowledgeLevel           KNOWLEDGE_LEVEL @map("knowledge_level")
-  emoji                    String?         @db.VarChar
-  userLanguageString       String          @map("user_language_string") @db.VarChar
-  learningLanguageString   String          @map("learning_language_string") @db.VarChar
-  learningLanguageAudioUrl String?         @map("learning_language_audio_url") @db.VarChar
-  tip                      String?         @db.VarChar
-  createdAt                DateTime        @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt                DateTime        @updatedAt @map("updated_at") @db.Timestamp(6)
+  id                     String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  knowledgeLevel         KNOWLEDGE_LEVEL @map("knowledge_level")
+  emoji                  String?         @db.VarChar
+  userLanguageString     String          @map("user_language_string") @db.VarChar
+  learningLanguageString String          @map("learning_language_string") @db.VarChar
+  tip                    String?         @db.VarChar
+  createdAt              DateTime        @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt              DateTime        @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  lessonId                 String          @map("lesson_id") @db.Uuid
-  lesson                   Lesson          @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId String @map("lesson_id") @db.Uuid
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
-  questions                Question[]
-  userTeachingsCompleted   UserTeachingCompleted[]
+  questions              Question[]
+  userTeachingsCompleted UserTeachingCompleted[]
 
   @@map("teachings")
 }
 
 model Question {
-  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
   teachingId String   @map("teaching_id") @db.Uuid
   teaching   Teaching @relation(fields: [teachingId], references: [id], onDelete: Cascade)
@@ -91,12 +89,11 @@ model Question {
   @@map("questions")
 }
 
-
 model QuestionDeliveryMethod {
-  questionId      String          @map("question_id") @db.Uuid
-  deliveryMethod  DELIVERY_METHOD @map("delivery_method")
+  questionId     String          @map("question_id") @db.Uuid
+  deliveryMethod DELIVERY_METHOD @map("delivery_method")
 
-  question        Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@id([questionId, deliveryMethod])
   @@index([deliveryMethod])
@@ -104,34 +101,34 @@ model QuestionDeliveryMethod {
 }
 
 model User {
-  id String @id @db.Uuid
-  name                  String?   @db.VarChar
-  avatarUrl             String?   @map("avatar_url") @db.VarChar
-  knowledgePoints       Int       @default(0) @map("knowledge_points")
-  knowledgeLevel        KNOWLEDGE_LEVEL @default(A1) @map("knowledge_level")
+  id                      String           @id @db.Uuid
+  name                    String?          @db.VarChar
+  avatarUrl               String?          @map("avatar_url") @db.VarChar
+  knowledgePoints         Int              @default(0) @map("knowledge_points")
+  knowledgeLevel          KNOWLEDGE_LEVEL  @default(A1) @map("knowledge_level")
   preferredDeliveryMethod DELIVERY_METHOD? @map("preferred_delivery_method")
-  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  createdAt               DateTime         @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt               DateTime         @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  userDeliveryMethodScores     UserDeliveryMethodScore[]
-  userKnowledgeLevelProgress   UserKnowledgeLevelProgress[]
-  userLessons                  UserLesson[]
-  userTeachingsCompleted       UserTeachingCompleted[]
-  userQuestionPerformance      UserQuestionPerformance[]
-  xpEvents                     XpEvent[]
-  onboardingAnswer             OnboardingAnswer?
+  userDeliveryMethodScores   UserDeliveryMethodScore[]
+  userKnowledgeLevelProgress UserKnowledgeLevelProgress[]
+  userLessons                UserLesson[]
+  userTeachingsCompleted     UserTeachingCompleted[]
+  userQuestionPerformance    UserQuestionPerformance[]
+  xpEvents                   XpEvent[]
+  onboardingAnswer           OnboardingAnswer?
 
   @@map("users")
 }
 
 model UserDeliveryMethodScore {
-  id            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId        String          @map("user_id") @db.Uuid
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String          @map("user_id") @db.Uuid
   deliveryMethod DELIVERY_METHOD @map("delivery_method")
-  score         Float           @default(0)
-  updatedAt     DateTime        @updatedAt @map("updated_at") @db.Timestamp(6)
+  score          Float           @default(0)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  user          User            @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@unique([userId, deliveryMethod])
   @@index([userId])
@@ -140,12 +137,12 @@ model UserDeliveryMethodScore {
 }
 
 model UserKnowledgeLevelProgress {
-  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   value     Int
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  userId    String    @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  userId    String   @map("user_id") @db.Uuid
 
-  user      User      @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@index([createdAt])
@@ -159,8 +156,8 @@ model UserLesson {
   createdAt          DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lesson             Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@id([userId, lessonId])
   @@index([userId])
@@ -168,14 +165,13 @@ model UserLesson {
   @@map("user_lessons")
 }
 
-
 model UserTeachingCompleted {
   userId     String   @map("user_id") @db.Uuid
   teachingId String   @map("teaching_id") @db.Uuid
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  teaching   Teaching @relation(fields: [teachingId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teaching Teaching @relation(fields: [teachingId], references: [id], onDelete: Cascade)
 
   @@id([userId, teachingId])
   @@index([userId])
@@ -199,8 +195,8 @@ model UserQuestionPerformance {
   easeFactor         Float?    @map("ease_factor")
   repetitions        Int?      @default(0)
 
-  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  question           Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([questionId])
@@ -216,7 +212,7 @@ model XpEvent {
   reason     String   @db.VarChar
   occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamp(6)
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([userId, occurredAt])
@@ -224,13 +220,12 @@ model XpEvent {
 }
 
 model OnboardingAnswer {
-  userId     String   @id @map("user_id") @db.Uuid
-  answers    Json     // Stores the full onboarding submission JSON
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  userId    String   @id @map("user_id") @db.Uuid
+  answers   Json // Stores the full onboarding submission JSON
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("onboarding_answers")
 }
-

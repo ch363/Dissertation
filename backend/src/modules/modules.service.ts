@@ -13,13 +13,41 @@ export class ModulesService {
     });
   }
 
-  async findOne(id: string) {
-    const module = await this.prisma.module.findUnique({
-      where: { id },
-    });
+  async findOne(idOrSlug: string) {
+    // Check if it's a UUID (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+    
+    let module;
+    if (isUuid) {
+      // Try to find by UUID
+      module = await this.prisma.module.findUnique({
+        where: { id: idOrSlug },
+      });
+    } else {
+      // Try to find by title (case-insensitive)
+      // Normalize: capitalize first letter to match "Basics" format
+      const normalizedTitle = idOrSlug
+        .trim()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+      
+      const modules = await this.prisma.module.findMany({
+        where: {
+          title: {
+            equals: normalizedTitle,
+            mode: 'insensitive',
+          },
+        },
+      });
+      
+      if (modules.length > 0) {
+        module = modules[0]; // Take first match
+      }
+    }
 
     if (!module) {
-      throw new NotFoundException(`Module with ID ${id} not found`);
+      throw new NotFoundException(`Module with ID or slug '${idOrSlug}' not found`);
     }
 
     return module;

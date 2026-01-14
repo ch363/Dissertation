@@ -702,9 +702,10 @@ export class ProgressService {
     }
 
     const lessonId = question.teaching.lesson.id;
+    const teaching = question.teaching;
 
-    // Get correct answer from content files
-    const questionData = await this.contentLookup.getQuestionData(questionId, lessonId);
+    // Get question data using Teaching relationship
+    const questionData = await this.contentLookup.getQuestionData(questionId, lessonId, dto.deliveryMethod);
 
     if (!questionData) {
       throw new NotFoundException(
@@ -726,36 +727,57 @@ export class ProgressService {
       }
       isCorrect = dto.answer === questionData.correctOptionId;
       score = isCorrect ? 100 : 0;
-      if (isCorrect && questionData.explanation) {
-        feedback = questionData.explanation;
-      }
     } else if (
       dto.deliveryMethod === DELIVERY_METHOD.TEXT_TRANSLATION ||
-      dto.deliveryMethod === DELIVERY_METHOD.FLASHCARD ||
-      dto.deliveryMethod === DELIVERY_METHOD.FILL_BLANK ||
+      dto.deliveryMethod === DELIVERY_METHOD.FLASHCARD
+    ) {
+      // Translation: compare user answer against userLanguageString
+      const normalizedUserAnswer = dto.answer.toLowerCase().trim();
+      const correctAnswer = teaching.userLanguageString.toLowerCase().trim();
+      
+      // Handle multiple correct answers separated by "/" (e.g., "Hi / Bye")
+      const correctAnswers = correctAnswer
+        .split('/')
+        .map((ans) => ans.trim())
+        .filter((ans) => ans.length > 0);
+      
+      isCorrect = correctAnswers.some((correctAns) => correctAns === normalizedUserAnswer);
+      score = isCorrect ? 100 : 0;
+
+      if (!isCorrect && questionData.hint) {
+        feedback = questionData.hint;
+      }
+    } else if (dto.deliveryMethod === DELIVERY_METHOD.FILL_BLANK) {
+      // Fill blank: compare against learningLanguageString
+      const normalizedUserAnswer = dto.answer.toLowerCase().trim();
+      const correctAnswer = teaching.learningLanguageString.toLowerCase().trim();
+      
+      const correctAnswers = correctAnswer
+        .split('/')
+        .map((ans) => ans.trim())
+        .filter((ans) => ans.length > 0);
+      
+      isCorrect = correctAnswers.some((correctAns) => correctAns === normalizedUserAnswer);
+      score = isCorrect ? 100 : 0;
+
+      if (!isCorrect && questionData.hint) {
+        feedback = questionData.hint;
+      }
+    } else if (
       dto.deliveryMethod === DELIVERY_METHOD.SPEECH_TO_TEXT ||
       dto.deliveryMethod === DELIVERY_METHOD.TEXT_TO_SPEECH
     ) {
-      // For text-based answers, normalize and compare
-      if (!questionData.answer) {
-        throw new BadRequestException(
-          `Question ${questionId} does not have a correct answer for delivery method ${dto.deliveryMethod}`,
-        );
-      }
-
-      // Normalize both answers: lowercase and trim
+      // Listening: compare against learningLanguageString
       const normalizedUserAnswer = dto.answer.toLowerCase().trim();
-      const normalizedCorrectAnswer = questionData.answer.toLowerCase().trim();
-
-      isCorrect = normalizedUserAnswer === normalizedCorrectAnswer;
+      const correctAnswer = teaching.learningLanguageString.toLowerCase().trim();
+      
+      const correctAnswers = correctAnswer
+        .split('/')
+        .map((ans) => ans.trim())
+        .filter((ans) => ans.length > 0);
+      
+      isCorrect = correctAnswers.some((correctAns) => correctAns === normalizedUserAnswer);
       score = isCorrect ? 100 : 0;
-
-      // Provide feedback if incorrect and hint is available
-      if (!isCorrect && questionData.hint) {
-        feedback = questionData.hint;
-      } else if (isCorrect && questionData.explanation) {
-        feedback = questionData.explanation;
-      }
     } else {
       throw new BadRequestException(
         `Unsupported delivery method for validation: ${dto.deliveryMethod}`,

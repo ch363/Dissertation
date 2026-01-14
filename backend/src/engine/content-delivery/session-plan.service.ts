@@ -173,7 +173,6 @@ export class SessionPlanService {
             lessonId: teaching.lessonId,
             phrase: teaching.learningLanguageString,
             translation: teaching.userLanguageString,
-            audioUrl: teaching.learningLanguageAudioUrl || undefined,
             emoji: teaching.emoji || undefined,
             tip: teaching.tip || undefined,
             knowledgeLevel: teaching.knowledgeLevel,
@@ -707,7 +706,6 @@ export class SessionPlanService {
         lessonId: true,
         userLanguageString: true,
         learningLanguageString: true,
-        learningLanguageAudioUrl: true,
         emoji: true,
         tip: true,
         knowledgeLevel: true,
@@ -760,9 +758,9 @@ export class SessionPlanService {
       baseItem.prompt = question.teaching.learningLanguageString;
     }
 
-    // Load question-specific data from content files
+    // Load question-specific data from Teaching relationship
     try {
-      const questionData = await this.contentLookup.getQuestionData(question.id, lessonId);
+      const questionData = await this.contentLookup.getQuestionData(question.id, lessonId, deliveryMethod);
       if (questionData) {
         // Override prompt if available
         if (questionData.prompt) {
@@ -773,11 +771,15 @@ export class SessionPlanService {
         if (deliveryMethod === DELIVERY_METHOD.MULTIPLE_CHOICE) {
           baseItem.options = questionData.options;
           baseItem.correctOptionId = questionData.correctOptionId;
-          baseItem.explanation = questionData.explanation;
+          baseItem.sourceText = questionData.sourceText; // For translation MCQ
         } else if (deliveryMethod === DELIVERY_METHOD.FILL_BLANK) {
           baseItem.text = questionData.text;
           baseItem.answer = questionData.answer;
           baseItem.hint = questionData.hint;
+          // Add options for tap-to-fill if available
+          if (questionData.options && questionData.options.length > 0) {
+            baseItem.options = questionData.options;
+          }
         } else if (deliveryMethod === DELIVERY_METHOD.TEXT_TRANSLATION) {
           baseItem.source = questionData.source;
           baseItem.answer = questionData.answer;
@@ -791,16 +793,19 @@ export class SessionPlanService {
           deliveryMethod === DELIVERY_METHOD.SPEECH_TO_TEXT ||
           deliveryMethod === DELIVERY_METHOD.TEXT_TO_SPEECH
         ) {
-          baseItem.audioUrl = questionData.audioUrl;
           baseItem.answer = questionData.answer;
         }
       }
     } catch (error) {
-      // If content lookup fails, continue with basic item
-      console.warn(`Failed to load question data for ${question.id}:`, error);
+      // If content lookup fails, log detailed error and continue with basic item
+      console.error(`Failed to load question data for ${question.id}:`, error);
       // Log the error details for debugging
       if (error instanceof Error) {
-        console.warn('Error details:', error.message, error.stack);
+        console.error('Error details:', error.message, error.stack);
+      }
+      // For MULTIPLE_CHOICE, if options generation fails, log it specifically
+      if (deliveryMethod === DELIVERY_METHOD.MULTIPLE_CHOICE) {
+        console.error(`MULTIPLE_CHOICE question ${question.id} failed to generate options. Teaching ID: ${question.teachingId}, Lesson ID: ${lessonId}`);
       }
     }
 
