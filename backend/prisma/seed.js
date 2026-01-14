@@ -1,16 +1,28 @@
-// Import PrismaClient - it will read DATABASE_URL from process.env
-// The -r dotenv/config flag in package.json ensures .env is loaded before this script runs
-import { PrismaClient, KNOWLEDGE_LEVEL, DELIVERY_METHOD } from '@prisma/client';
+// JavaScript version of seed script to avoid TypeScript/ts-node issues
+require('dotenv').config({ path: require('path').resolve(__dirname, '..', '.env') });
 
-// Verify DATABASE_URL is set
+// Verify DATABASE_URL is set before importing PrismaClient
 if (!process.env.DATABASE_URL) {
   console.error('❌ Error: DATABASE_URL is not set');
   console.error('   Please set DATABASE_URL in your .env file or environment variables');
-  console.error('   Make sure you are running: npm run seed (which uses -r dotenv/config)');
   process.exit(1);
 }
 
-const prisma = new PrismaClient();
+// Import PrismaClient and adapter after ensuring DATABASE_URL is set
+const { PrismaClient, KNOWLEDGE_LEVEL, DELIVERY_METHOD } = require('@prisma/client');
+const { Pool } = require('pg');
+const { PrismaPg } = require('@prisma/adapter-pg');
+
+// Create PrismaClient with adapter (required for this Prisma setup)
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' 
+    ? { rejectUnauthorized: true }
+    : { rejectUnauthorized: false }, // Allow self-signed certs in development (for Supabase)
+});
+
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 // Deterministic UUIDs for seed data (idempotent seeding)
 const SEED_UUIDS = {
@@ -147,7 +159,6 @@ async function main() {
       teachingId: SEED_UUIDS.teachingCiao,
     },
   });
-  // Upsert delivery method for multiple choice (delete + create for idempotency)
   await prisma.questionDeliveryMethod.deleteMany({
     where: {
       questionId: SEED_UUIDS.questionCiaoMultipleChoice,
@@ -302,4 +313,5 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await pool.end();
   });

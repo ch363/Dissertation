@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useState, useEffect } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
@@ -15,6 +16,8 @@ type Props = {
   showResult?: boolean;
   isCorrect?: boolean;
   onCheckAnswer?: () => void;
+  onRating?: (rating: number) => void;
+  selectedRating?: number;
 };
 
 export function TranslateCard({
@@ -25,23 +28,51 @@ export function TranslateCard({
   showResult = false,
   isCorrect,
   onCheckAnswer,
+  onRating,
+  selectedRating,
 }: Props) {
   const [isPlaying, setIsPlaying] = useState(false);
+  // For flashcards, start with front showing (not flipped) - user flips to see answer
   const [isFlipped, setIsFlipped] = useState(false);
   const [showHintState, setShowHintState] = useState(showHint || false);
+  
+  // Reset flip state when card changes
+  useEffect(() => {
+    setIsFlipped(false);
+  }, [card.id]);
+  
+  const handleFlip = () => {
+    setIsFlipped(!isFlipped);
+  };
 
-  const handlePlayAudio = async () => {
+  const handlePlaySourceAudio = async () => {
+    // Prevent multiple rapid calls
+    if (isPlaying) {
+      return;
+    }
+    
     try {
       const enabled = await getTtsEnabled();
       if (!enabled) return;
       setIsPlaying(true);
       const rate = await getTtsRate();
       await SafeSpeech.stop();
-      // Speak the source text
+      // Small delay to ensure stop completes
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Speak the source text (language string like "Ciao")
       const textToSpeak = card.source || '';
+      if (!textToSpeak) {
+        setIsPlaying(false);
+        return;
+      }
+      
       const language = card.kind === 'translate_to_en' ? 'it-IT' : 'en-US';
       await SafeSpeech.speak(textToSpeak, { language, rate });
-      setTimeout(() => setIsPlaying(false), 2000);
+      
+      // Reset playing state after estimated duration
+      const estimatedDuration = Math.max(2000, textToSpeak.length * 150);
+      setTimeout(() => setIsPlaying(false), estimatedDuration);
     } catch (error) {
       console.error('Failed to play audio:', error);
       setIsPlaying(false);
@@ -57,43 +88,116 @@ export function TranslateCard({
         </Text>
 
         {!isFlipped ? (
-          // Front of card
-          <Pressable style={styles.flashcard} onPress={() => setIsFlipped(true)}>
-            <View style={styles.flashcardContent}>
-              <Text style={styles.flashcardWord}>{card.source}</Text>
-              {card.audioUrl && (
-                <Pressable style={styles.flashcardAudio} onPress={handlePlayAudio}>
+          // Front of card - Show source text (question)
+          <>
+            <View style={styles.flashcardFront}>
+              <View style={styles.flashcardContent}>
+                <Text style={styles.flashcardWord}>{card.source}</Text>
+                <Pressable style={styles.flashcardAudio} onPress={handlePlaySourceAudio}>
                   <Ionicons
                     name={isPlaying ? 'pause' : 'volume-high'}
-                    size={24}
+                    size={32}
                     color={theme.colors.primary}
                   />
                 </Pressable>
-              )}
-              <Text style={styles.flashcardGrammar}>noun, feminine</Text>
+                {card.grammar && (
+                  <Text style={styles.flashcardGrammar}>{card.grammar}</Text>
+                )}
+              </View>
             </View>
-          </Pressable>
+            
+            {/* Flip Button on Front */}
+            <Pressable style={styles.flipButton} onPress={handleFlip}>
+              <Ionicons name="swap-horizontal" size={20} color="#fff" />
+              <Text style={styles.flipButtonText}>Flip to see answer</Text>
+            </Pressable>
+          </>
         ) : (
-          // Back of card
-          <Pressable style={styles.flashcard} onPress={() => setIsFlipped(false)}>
-            <View style={styles.flashcardContent}>
-              <Text style={styles.flashcardTranslation}>{card.expected}</Text>
-              <Text style={styles.flashcardMeaning}>Translation</Text>
+          // Back of card - Answer view with gradient and rating
+          <>
+            <View style={styles.flashcardBack}>
+              <LinearGradient
+                colors={['#20B2AA', '#4A90E2']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.flashcardGradient}
+              >
+                <View style={styles.flashcardAnswerHeader}>
+                  <Text style={styles.flashcardAnswerText}>{card.expected}</Text>
+                  <Pressable style={styles.flashcardAnswerAudio} onPress={handlePlaySourceAudio}>
+                    <Ionicons
+                      name={isPlaying ? 'pause' : 'volume-high'}
+                      size={24}
+                      color="#fff"
+                    />
+                  </Pressable>
+                </View>
+                <Text style={styles.flashcardOriginalWord}>{card.source}</Text>
+                {card.example && (
+                  <View style={styles.flashcardExample}>
+                    <Text style={styles.flashcardExampleLabel}>Example:</Text>
+                    <Text style={styles.flashcardExampleText}>{card.example}</Text>
+                  </View>
+                )}
+              </LinearGradient>
             </View>
-          </Pressable>
+
+            {/* Flip Button on Back */}
+            <Pressable style={styles.flipButton} onPress={handleFlip}>
+              <Ionicons name="swap-horizontal" size={20} color="#fff" />
+              <Text style={styles.flipButtonText}>Flip to see question</Text>
+            </Pressable>
+
+            {/* Rating Section */}
+            <View style={styles.ratingCard}>
+              <Text style={styles.ratingTitle}>How well did you know this?</Text>
+              <View style={styles.ratingButtons}>
+                <Pressable
+                  style={[
+                    styles.ratingButton,
+                    styles.ratingButtonHard,
+                    selectedRating === 0 && styles.ratingButtonSelected,
+                  ]}
+                  onPress={() => {
+                    console.log('Rating button pressed: Hard (0)');
+                    onRating?.(0);
+                  }}
+                >
+                  <Ionicons name="thumbs-down" size={24} color="#dc3545" />
+                  <Text style={[styles.ratingButtonText, styles.ratingButtonTextHard]}>Hard</Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.ratingButton,
+                    styles.ratingButtonGood,
+                    selectedRating === 2.5 && styles.ratingButtonSelected,
+                  ]}
+                  onPress={() => {
+                    console.log('Rating button pressed: Good (2.5)');
+                    onRating?.(2.5);
+                  }}
+                >
+                  <Ionicons name="remove" size={24} color="#ffc107" />
+                  <Text style={[styles.ratingButtonText, styles.ratingButtonTextGood]}>Good</Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.ratingButton,
+                    styles.ratingButtonEasy,
+                    selectedRating === 5 && styles.ratingButtonSelected,
+                  ]}
+                  onPress={() => {
+                    console.log('Rating button pressed: Easy (5)');
+                    onRating?.(5);
+                  }}
+                >
+                  <Ionicons name="thumbs-up" size={24} color="#28a745" />
+                  <Text style={[styles.ratingButtonText, styles.ratingButtonTextEasy]}>Easy</Text>
+                </Pressable>
+              </View>
+            </View>
+          </>
         )}
-
-        <View style={styles.flipHint}>
-          <Ionicons name="refresh" size={16} color={theme.colors.mutedText} />
-          <Text style={styles.flipHintText}>Tap card to see translation</Text>
-        </View>
-
-        <Pressable
-          style={styles.flipButton}
-          onPress={() => setIsFlipped(!isFlipped)}
-        >
-          <Text style={styles.flipButtonText}>Flip Card</Text>
-        </Pressable>
       </View>
     );
   }
@@ -105,19 +209,18 @@ export function TranslateCard({
         {card.kind === 'translate_to_en' ? 'TRANSLATE TO ENGLISH' : 'TRANSLATE TO ITALIAN'}
       </Text>
 
-      {/* Source Text Card */}
+      {/* Source Text Card - Language String (e.g., "Ciao") */}
       <View style={styles.sourceCard}>
-        <Text style={styles.sourceText}>{card.source}</Text>
-        {card.audioUrl && (
-          <Pressable style={styles.previewButton} onPress={handlePlayAudio}>
+        <View style={styles.sourceTextContainer}>
+          <Text style={styles.sourceText}>{card.source}</Text>
+          <Pressable style={styles.sourceSpeakerButton} onPress={handlePlaySourceAudio}>
             <Ionicons
               name={isPlaying ? 'pause' : 'volume-high'}
-              size={16}
-              color="#fff"
+              size={18}
+              color={theme.colors.primary}
             />
-            <Text style={styles.previewText}>Preview</Text>
           </Pressable>
-        )}
+        </View>
       </View>
 
       {/* Hint Button */}
@@ -185,12 +288,6 @@ export function TranslateCard({
             </Text>
             <View style={styles.answerContainer}>
               <Text style={styles.answerText}>{card.expected}</Text>
-              <Pressable
-                onPress={handlePlayAudio}
-                style={styles.resultAudioButton}
-              >
-                <Ionicons name="volume-high" size={20} color={theme.colors.primary} />
-              </Pressable>
             </View>
           </View>
 
@@ -210,7 +307,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     minHeight: 0,
-    gap: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
   directionLabel: {
     fontFamily: theme.typography.bold,
@@ -218,6 +315,7 @@ const styles = StyleSheet.create({
     color: '#28a745',
     textTransform: 'uppercase',
     letterSpacing: 1,
+    marginBottom: theme.spacing.xs,
   },
   instruction: {
     fontFamily: theme.typography.bold,
@@ -235,6 +333,21 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.xl,
+  },
+  flashcardFront: {
+    width: '100%',
+    minHeight: 200,
+    maxHeight: 220,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
     justifyContent: 'center',
     alignItems: 'center',
     padding: theme.spacing.xl,
@@ -257,15 +370,135 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     color: theme.colors.mutedText,
   },
-  flashcardTranslation: {
+  flashcardBack: {
+    width: '100%',
+    minHeight: 200,
+    maxHeight: 220,
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  flashcardGradient: {
+    width: '100%',
+    minHeight: 200,
+    maxHeight: 220,
+    padding: theme.spacing.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  flashcardAnswerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+  },
+  flashcardAnswerText: {
     fontFamily: theme.typography.bold,
     fontSize: 32,
-    color: theme.colors.text,
+    color: '#fff',
   },
-  flashcardMeaning: {
+  flashcardAnswerAudio: {
+    padding: theme.spacing.xs,
+  },
+  flashcardOriginalWord: {
     fontFamily: theme.typography.regular,
     fontSize: 18,
-    color: theme.colors.mutedText,
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: theme.spacing.sm,
+    opacity: 0.9,
+  },
+  flashcardExample: {
+    marginTop: theme.spacing.sm,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  flashcardExampleLabel: {
+    fontFamily: theme.typography.semiBold,
+    fontSize: 14,
+    color: '#fff',
+    marginBottom: theme.spacing.xs,
+    opacity: 0.9,
+  },
+  flashcardExampleText: {
+    fontFamily: theme.typography.regular,
+    fontSize: 16,
+    color: '#fff',
+    opacity: 0.9,
+  },
+  ratingCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: theme.spacing.md,
+    marginTop: theme.spacing.sm,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  ratingTitle: {
+    fontFamily: theme.typography.semiBold,
+    fontSize: 14,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
+    textAlign: 'center',
+  },
+  ratingButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    gap: theme.spacing.xs,
+  },
+  ratingButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xs,
+    borderRadius: 12,
+    borderWidth: 2,
+    minHeight: 80,
+    maxHeight: 90,
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
+  },
+  ratingButtonHard: {
+    borderColor: '#dc3545',
+    backgroundColor: '#fff5f5',
+  },
+  ratingButtonGood: {
+    borderColor: '#ffc107',
+    backgroundColor: '#fffbf0',
+  },
+  ratingButtonEasy: {
+    borderColor: '#28a745',
+    backgroundColor: '#f0fff4',
+  },
+  ratingButtonSelected: {
+    borderWidth: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  ratingButtonText: {
+    fontFamily: theme.typography.semiBold,
+    fontSize: 12,
+  },
+  ratingButtonTextHard: {
+    color: '#dc3545',
+  },
+  ratingButtonTextGood: {
+    color: '#ffc107',
+  },
+  ratingButtonTextEasy: {
+    color: '#28a745',
   },
   flipHint: {
     flexDirection: 'row',
@@ -283,6 +516,10 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     borderRadius: 12,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.sm,
   },
   flipButtonText: {
     fontFamily: theme.typography.semiBold,
@@ -290,33 +527,28 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   sourceCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: theme.spacing.lg,
+  },
+  sourceTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: theme.spacing.md,
   },
   sourceText: {
-    fontFamily: theme.typography.regular,
-    fontSize: 18,
+    fontFamily: theme.typography.bold,
+    fontSize: 32,
     color: theme.colors.text,
     flex: 1,
   },
-  previewButton: {
-    flexDirection: 'row',
+  sourceSpeakerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.primary + '15', // 15 = ~8% opacity
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: theme.spacing.xs,
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: 8,
-  },
-  previewText: {
-    fontFamily: theme.typography.semiBold,
-    fontSize: 12,
-    color: '#fff',
   },
   hintButton: {
     flexDirection: 'row',

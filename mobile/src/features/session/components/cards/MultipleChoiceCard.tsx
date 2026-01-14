@@ -28,33 +28,38 @@ export function MultipleChoiceCard({
 
   const handlePlayAudio = async () => {
     if (!card.sourceText) return;
+    // Prevent multiple rapid calls
+    if (isPlaying) {
+      return;
+    }
+    
     try {
       const enabled = await getTtsEnabled();
       if (!enabled) return;
       setIsPlaying(true);
       const rate = await getTtsRate();
       await SafeSpeech.stop();
-      // Speak the source text (e.g., "Good morning")
-      await SafeSpeech.speak(card.sourceText, { language: 'en-US', rate });
-      setTimeout(() => setIsPlaying(false), 2000);
+      // Small delay to ensure stop completes
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Detect language: if sourceText contains Italian characters or common Italian words, use Italian
+      // Otherwise default to English
+      // Simple heuristic: check for Italian-specific characters (à, è, ì, ò, ù) or common Italian words
+      const hasItalianChars = /[àèéìíîòóùú]/.test(card.sourceText);
+      const isCommonItalian = /^(ciao|grazie|prego|scusa|bene|sì|no|buongiorno|buonasera|per favore)$/i.test(card.sourceText.trim());
+      const language = hasItalianChars || isCommonItalian ? 'it-IT' : 'en-US';
+      await SafeSpeech.speak(card.sourceText, { language, rate });
+      
+      // Reset playing state after estimated duration
+      const estimatedDuration = Math.max(2000, card.sourceText.length * 150);
+      setTimeout(() => setIsPlaying(false), estimatedDuration);
     } catch (error) {
       console.error('Failed to play audio:', error);
       setIsPlaying(false);
     }
   };
 
-  const handleSpeakOption = async (optionLabel: string) => {
-    try {
-      const enabled = await getTtsEnabled();
-      if (!enabled) return;
-      const rate = await getTtsRate();
-      await SafeSpeech.stop();
-      // Speak the option label (Italian word)
-      await SafeSpeech.speak(optionLabel, { language: 'it-IT', rate });
-    } catch (error) {
-      console.error('Failed to speak option:', error);
-    }
-  };
+  // Removed handleSpeakOption - don't read English words aloud when clicking options
 
   const isTranslation = !!card.sourceText;
 
@@ -85,8 +90,13 @@ export function MultipleChoiceCard({
       )}
 
       {/* Options */}
-      <View style={styles.optionsContainer}>
-        {card.options.map((opt) => {
+      {!card.options || card.options.length === 0 ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>No options available</Text>
+        </View>
+      ) : (
+        <View style={styles.optionsContainer}>
+          {card.options.map((opt) => {
           const isSelected = selectedOptionId === opt.id;
           const isCorrectOption = opt.id === card.correctOptionId;
           const showAsCorrect = showResult && isCorrectOption;
@@ -98,8 +108,7 @@ export function MultipleChoiceCard({
               key={opt.id}
               onPress={() => {
                 if (showResult) return; // Disable selection after checking
-                // Speak the option when clicked
-                handleSpeakOption(opt.label);
+                // Don't speak options - removed audio on click
                 onSelectOption?.(opt.id);
               }}
               style={[
@@ -118,21 +127,22 @@ export function MultipleChoiceCard({
             </Pressable>
           );
         })}
-      </View>
+        </View>
+      )}
 
-      {/* Check Answer Button (before result) */}
-      {!showResult && selectedOptionId !== undefined && (
+      {/* Feedback Banner (after checking, if correct) - appears right after options */}
+      {showResult && isCorrect && (
+        <View style={styles.feedbackBanner}>
+          <Ionicons name="checkmark-circle" size={20} color="#fff" />
+          <Text style={styles.feedbackText}>Excellent! That's correct!</Text>
+        </View>
+      )}
+
+      {/* Check Answer Button (only for non-translation MCQ) */}
+      {!showResult && selectedOptionId !== undefined && !isTranslation && (
         <Pressable style={styles.checkButton} onPress={onCheckAnswer}>
           <Text style={styles.checkButtonText}>Check Answer</Text>
         </Pressable>
-      )}
-
-      {/* Feedback Banner (after checking, if correct) */}
-      {showResult && isCorrect && (
-        <View style={styles.feedbackBanner}>
-          <Ionicons name="checkmark-circle" size={24} color="#fff" />
-          <Text style={styles.feedbackText}>Excellent! That's correct!</Text>
-        </View>
       )}
     </View>
   );
@@ -140,7 +150,21 @@ export function MultipleChoiceCard({
 
 const styles = StyleSheet.create({
   container: {
-    gap: theme.spacing.md,
+    gap: theme.spacing.sm,
+    flex: 1,
+  },
+  errorContainer: {
+    padding: theme.spacing.lg,
+    backgroundColor: '#fff3cd',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ffc107',
+  },
+  errorText: {
+    fontFamily: theme.typography.regular,
+    fontSize: 14,
+    color: '#856404',
+    textAlign: 'center',
   },
   instruction: {
     fontFamily: theme.typography.bold,
@@ -182,18 +206,18 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.xs,
   },
   optionsContainer: {
-    gap: theme.spacing.md,
+    gap: theme.spacing.sm,
   },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: theme.spacing.lg,
+    padding: theme.spacing.md,
     borderRadius: 16,
     borderWidth: 2,
     borderColor: '#E0E0E0',
     backgroundColor: '#fff',
-    minHeight: 60,
+    minHeight: 56,
   },
   optionSelected: {
     borderColor: theme.colors.primary,
@@ -218,7 +242,7 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     borderRadius: 12,
     alignItems: 'center',
-    marginTop: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
   },
   checkButtonText: {
     color: '#fff',
@@ -230,15 +254,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
     backgroundColor: '#28a745',
-    padding: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
     borderRadius: 12,
-    marginTop: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
   },
   feedbackText: {
     color: '#fff',
     fontFamily: theme.typography.bold,
-    fontSize: 16,
+    fontSize: 14,
   },
 });

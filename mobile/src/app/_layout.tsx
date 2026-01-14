@@ -56,6 +56,8 @@ function ThemedStack() {
         headerTintColor: theme.colors.text,
         contentStyle: { backgroundColor: theme.colors.background },
         headerShown: false,
+        // Slow down the slide animation for smoother transitions
+        animationDuration: 600, // Increased from default ~350ms to 600ms
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />

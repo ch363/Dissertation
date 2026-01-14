@@ -24,7 +24,8 @@
     "prisma:push": "prisma db push",
     "prisma:push:reset": "prisma db push --force-reset",
     "prisma:studio": "prisma studio",
-    "seed": "ts-node prisma/seed.ts",
+    "seed": "node prisma/seed.js",
+    "prisma:seed": "prisma db seed",
     "content:validate": "ts-node scripts/import-content.ts validate",
     "content:import": "ts-node scripts/import-content.ts import"
   },

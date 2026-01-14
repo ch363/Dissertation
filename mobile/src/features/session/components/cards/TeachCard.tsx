@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
@@ -12,26 +12,47 @@ type Props = {
 };
 
 export function TeachCard({ card }: Props) {
+  const [isSpeaking, setIsSpeaking] = React.useState(false);
+
   const handleSpeak = async () => {
+    // Prevent multiple rapid calls
+    if (isSpeaking) {
+      return;
+    }
+
     try {
       const enabled = await getTtsEnabled();
       if (!enabled) {
         console.warn('TTS is disabled in settings');
         return;
       }
+      
+      setIsSpeaking(true);
       const rate = await getTtsRate();
       await SafeSpeech.stop();
+      // Small delay to ensure stop completes
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const phrase = card.content.phrase || '';
       if (!phrase) {
         console.warn('No phrase to speak');
+        setIsSpeaking(false);
         return;
       }
+      
       console.log('Speaking phrase:', phrase, 'with language: it-IT');
       // Speak with Italian language - if voice not available, will use default
       await SafeSpeech.speak(phrase, { language: 'it-IT', rate });
       console.log('TTS speak called successfully');
+      
+      // Reset speaking state after estimated duration
+      const estimatedDuration = Math.max(2000, phrase.length * 150);
+      setTimeout(() => {
+        setIsSpeaking(false);
+      }, estimatedDuration);
     } catch (error) {
       console.error('Failed to speak phrase:', error);
+      setIsSpeaking(false);
     }
   };
 
@@ -46,8 +67,12 @@ export function TeachCard({ card }: Props) {
         {card.content.translation ? (
           <Text style={styles.teachTranslation}>{card.content.translation}</Text>
         ) : null}
-        <Pressable style={styles.speakerButton} onPress={handleSpeak}>
-          <Ionicons name="volume-high" size={24} color="#fff" />
+        <Pressable 
+          style={[styles.speakerButton, isSpeaking && styles.speakerButtonDisabled]} 
+          onPress={handleSpeak}
+          disabled={isSpeaking}
+        >
+          <Ionicons name={isSpeaking ? "volume-high" : "volume-high"} size={24} color="#fff" />
         </Pressable>
       </View>
 
@@ -106,6 +131,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
+  },
+  speakerButtonDisabled: {
+    opacity: 0.6,
+  },
+  speakerButtonDisabled: {
+    opacity: 0.6,
   },
   usageNoteCard: {
     backgroundColor: '#E8F5E9',

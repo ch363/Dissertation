@@ -18,7 +18,6 @@ export interface TeachStepItem {
   lessonId: string;
   phrase: string; // learningLanguageString
   translation: string; // userLanguageString
-  audioUrl?: string; // learningLanguageAudioUrl
   emoji?: string;
   tip?: string;
   knowledgeLevel?: string;
@@ -40,9 +39,8 @@ export interface PracticeStepItem {
   text?: string; // For FILL_BLANK
   answer?: string; // For FILL_BLANK, TEXT_TRANSLATION
   hint?: string; // For FILL_BLANK, TEXT_TRANSLATION
-  audioUrl?: string; // For SPEECH_TO_TEXT, TEXT_TO_SPEECH
   source?: string; // For TEXT_TRANSLATION
-  explanation?: string; // For MULTIPLE_CHOICE
+  sourceText?: string; // For MULTIPLE_CHOICE (translation MCQ)
 }
 
 /**

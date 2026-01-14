@@ -205,54 +205,28 @@ npx prisma db seed
 
 The seed uses deterministic UUIDs and upsert logic, so it's safe to run multiple times without creating duplicates.
 
-### Content Import Pipeline
+### Content Management
 
-The content import system allows you to manage learning content as YAML files and import them into the database.
+All content is stored directly in the database (Prisma/Supabase). Question-specific data (options, answers, hints, prompts) is stored in the `questions.question_data` JSON field.
 
-**Prerequisites:**
-- Database migrations must be run first: `npm run prisma:migrate`
-- `DATABASE_URL` environment variable must be set
+**Database Schema:**
+- `modules`: Module metadata (title, description, imageUrl)
+- `lessons`: Lesson metadata (title, description, imageUrl, moduleId)
+- `teachings`: Teaching content (userLanguageString, learningLanguageString, emoji, tip)
+- `questions`: Questions linked to teachings, with `question_data` JSON field containing:
+  - `multipleChoice`: options, correctOptionId, explanation, sourceText, audioUrl
+  - `translation`: source, answer, hint, audioUrl
+  - `fillBlank`: text, answer, hint, audioUrl, options
+  - `listening`: audioUrl, answer
+- `question_delivery_methods`: Links questions to delivery methods
 
-**Content Structure:**
-Content files are organized in the `content/` directory:
-```
-content/
-  {language}/
-    {module-slug}/
-      module.yaml          # Module metadata
-      lessons/
-        {lesson-slug}.yaml # Lesson with teachings and questions
-```
+**Content Creation:**
+Content should be created directly in the database via:
+- Prisma Studio: `npm run prisma:studio`
+- Direct database queries
+- Admin API endpoints (if implemented)
 
-**Validate content files:**
-```bash
-npm run content:validate
-```
-
-**Import content:**
-```bash
-npm run content:import
-```
-
-**Sample Content:**
-The repository includes sample Italian content:
-- Module: "Italian Basics" (`content/it/italian-basics/module.yaml`)
-- Lesson: "Greetings & Essentials" (`content/it/italian-basics/lessons/greetings.yaml`)
-  - 3 teachings: Ciao, Grazie, Per favore
-  - 6 questions with various delivery methods (multiple choice, translation, fill blank, listening)
-
-**Content File Format:**
-- Modules: `slug`, `title`, `description`, `imageUrl`
-- Lessons: `slug`, `title`, `description`, `imageUrl`, `teachings[]`, `questions[]`
-- Teachings: `slug`, `knowledgeLevel` (A1-C2), `userLanguageString`, `learningLanguageString`, `emoji`, `tip`, `learningLanguageAudioUrl`
-- Questions: `slug`, `teachingSlug`, `deliveryMethods[]`, plus question-type-specific fields:
-  - `multipleChoice`: `prompt`, `options[]` (with `isCorrect`), `explanation`
-  - `translation`: `prompt`, `source`, `answer`, `hint`
-  - `fillBlank`: `prompt`, `text`, `answer`, `hint`
-  - `listening`: `prompt`, `audioUrl`, `answer`
-
-**Idempotency:**
-The importer uses deterministic UUIDs generated from slugs, so running the import multiple times will update existing records rather than creating duplicates.
+**Note:** The content importer script (`scripts/import-content.ts`) is deprecated. All content should be managed directly in the database.
 
 ## License
 

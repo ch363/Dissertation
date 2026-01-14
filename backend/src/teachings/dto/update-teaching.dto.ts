@@ -20,9 +20,5 @@ export class UpdateTeachingDto {
 
   @IsOptional()
   @IsString()
-  learningLanguageAudioUrl?: string;
-
-  @IsOptional()
-  @IsString()
   tip?: string;
 }

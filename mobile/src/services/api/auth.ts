@@ -6,10 +6,6 @@ import { getSupabaseRedirectUrl } from '@/services/env/supabaseConfig';
 import { apiClient } from './client';
 import { routes } from '@/services/navigation/routes';
 
-// TODO: Eventually move all auth operations to backend API endpoints
-// For now, using Supabase auth SDK directly as per user requirement for all business logic in backend
-// These functions should be migrated to call backend auth endpoints when available
-
 type SignUpResult = { user: User | null; session: Session | null };
 
 /**

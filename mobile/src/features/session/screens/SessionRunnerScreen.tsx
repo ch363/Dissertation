@@ -1,6 +1,6 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View, Text } from 'react-native';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState, useRef } from 'react';
+import { ActivityIndicator, View, Text, Animated, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SessionRunner } from '@/features/session/components/SessionRunner';
@@ -11,6 +11,7 @@ import { AttemptLog, SessionKind, SessionPlan } from '@/types/session';
 import { getSessionPlan } from '@/services/api/learn';
 import { recordQuestionAttempt } from '@/services/api/progress';
 import { transformSessionPlan } from '@/services/api/session-plan-transformer';
+import { getCachedSessionPlan } from '@/services/api/session-plan-cache';
 
 type Props = {
   lessonId?: string;
@@ -37,11 +38,49 @@ export default function SessionRunnerScreen(props?: Props) {
   const [plan, setPlan] = useState<SessionPlan | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Animation for slide-up transition
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  // Trigger slide-up animation when content is ready
+  useEffect(() => {
+    if (plan && !loading && !error) {
+      // Start animation when content is ready
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      // Reset animation when loading or error
+      slideAnim.setValue(0);
+      opacityAnim.setValue(0);
+    }
+  }, [plan, loading, error, slideAnim, opacityAnim]);
 
   useEffect(() => {
     let cancelled = false;
 
     const loadSessionPlan = async () => {
+      // Check cache first for learn sessions
+      if (sessionKind === 'learn' && lessonId && lessonId !== 'demo') {
+        const cachedPlan = getCachedSessionPlan(lessonId);
+        if (cachedPlan) {
+          console.log('Using cached session plan for lesson:', lessonId);
+          setPlan(cachedPlan);
+          setLoading(false);
+          return;
+        }
+      }
+
       setLoading(true);
       setError(null);
 
@@ -169,8 +208,17 @@ export default function SessionRunnerScreen(props?: Props) {
     }
   };
 
+  // Calculate translateY for slide-up animation
+  // Start from bottom of screen
+  const screenHeight = Dimensions.get('window').height;
+  const translateY = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [screenHeight, 0], // Slide up from bottom of screen
+  });
+
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <Stack.Screen options={{ headerShown: false }} />
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={theme.colors.primary} />
@@ -183,7 +231,16 @@ export default function SessionRunnerScreen(props?: Props) {
           <ActivityIndicator color={theme.colors.error} />
         </View>
       ) : (
-        <SessionRunner plan={plan} onComplete={handleComplete} />
+        <Animated.View
+          style={{
+            flex: 1,
+            transform: [{ translateY }],
+            opacity: opacityAnim,
+            backgroundColor: theme.colors.background,
+          }}
+        >
+          <SessionRunner plan={plan} onComplete={handleComplete} />
+        </Animated.View>
       )}
     </SafeAreaView>
   );
