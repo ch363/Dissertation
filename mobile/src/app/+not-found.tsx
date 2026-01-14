@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 
-import { getCurrentUser } from '@/app/api/auth';
+import { getCurrentUser } from '@/services/api/auth';
 import { resolvePostAuthDestination } from '@/features/auth/flows/resolvePostAuthDestination';
 import { routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';

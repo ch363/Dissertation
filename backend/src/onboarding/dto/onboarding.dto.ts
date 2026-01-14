@@ -3,21 +3,20 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SaveOnboardingDto {
   @ApiProperty({
-    description: 'Onboarding submission JSON object',
+    description: 'Raw onboarding answers (will be processed server-side)',
     example: {
-      version: 1,
-      raw: {
-        motivation: { key: 'travel', otherText: null },
-        learningStyles: ['visual', 'auditory'],
-      },
-      tags: ['travel', 'visual'],
-      preferences: {},
-      signals: {},
-      savedAt: '2024-01-01T00:00:00Z',
+      motivation: { key: 'travel', otherText: null },
+      learningStyles: ['visual', 'auditory'],
+      difficulty: 'balanced',
+      gamification: 'light',
+      feedback: 'direct',
+      sessionStyle: 'focused',
+      tone: 'friendly',
+      experience: 'beginner',
     },
   })
   @IsObject()
-  answers: Record<string, any>;
+  answers: Record<string, any>; // Raw OnboardingAnswers - backend will process into submission
 }
 
 export class OnboardingResponseDto {

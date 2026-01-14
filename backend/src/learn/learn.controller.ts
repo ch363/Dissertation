@@ -1,6 +1,5 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
-import { SkipThrottle } from '@nestjs/throttler';
 import { LearnService } from './learn.service';
 import { SupabaseJwtGuard } from '../common/guards/supabase-jwt.guard';
 import { User } from '../common/decorators/user.decorator';
@@ -53,7 +52,8 @@ export class SessionPlanQueryDto {
 @ApiBearerAuth('JWT-auth')
 @Controller('learn')
 @UseGuards(SupabaseJwtGuard)
-@SkipThrottle() // Exclude learn endpoints from throttling - they're critical for app functionality
+// Rate limiting is applied - learn endpoints are critical but should still be rate limited
+// Consider using @Throttle() decorator for higher limits if needed
 export class LearnController {
   constructor(private readonly learnService: LearnService) {}
 

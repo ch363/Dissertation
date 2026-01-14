@@ -15,6 +15,8 @@ import { QuestionAttemptDto } from './dto/question-attempt.dto';
 import { DeliveryMethodScoreDto } from './dto/delivery-method-score.dto';
 import { KnowledgeLevelProgressDto } from './dto/knowledge-level-progress.dto';
 import { ResetProgressDto } from './dto/reset-progress.dto';
+import { ValidateAnswerDto } from './dto/validate-answer.dto';
+import { ValidateAnswerResponseDto } from './dto/validate-answer-response.dto';
 import { DELIVERY_METHOD } from '@prisma/client';
 import { IsEnum } from 'class-validator';
 
@@ -116,5 +118,42 @@ export class ProgressController {
     @Param('questionId') questionId: string,
   ) {
     return this.progressService.resetQuestionProgress(userId, questionId);
+  }
+
+  @Get('summary')
+  @ApiOperation({ summary: 'Get progress summary (XP, completed lessons, completed modules, streak)' })
+  @ApiResponse({ status: 200, description: 'Progress summary retrieved' })
+  async getProgressSummary(@User() userId: string) {
+    return this.progressService.getProgressSummary(userId);
+  }
+
+  @Post('modules/:moduleIdOrSlug/complete')
+  @ApiOperation({ summary: 'Mark module as completed (marks all lessons in module as completed)' })
+  @ApiParam({ name: 'moduleIdOrSlug', type: 'string', description: 'Module ID (UUID) or slug (title)' })
+  @ApiResponse({ status: 200, description: 'Module marked as completed' })
+  async markModuleCompleted(
+    @User() userId: string,
+    @Param('moduleIdOrSlug') moduleIdOrSlug: string,
+  ) {
+    return this.progressService.markModuleCompleted(userId, moduleIdOrSlug);
+  }
+
+  @Get('attempts')
+  @ApiOperation({ summary: 'Get recent question attempts (for debugging/dev)' })
+  @ApiResponse({ status: 200, description: 'Recent attempts retrieved' })
+  async getRecentAttempts(@User() userId: string) {
+    return this.progressService.getRecentAttempts(userId);
+  }
+
+  @Post('questions/:questionId/validate')
+  @ApiOperation({ summary: 'Validate user answer and calculate score' })
+  @ApiParam({ name: 'questionId', type: 'string', format: 'uuid' })
+  @ApiResponse({ status: 200, description: 'Answer validated', type: ValidateAnswerResponseDto })
+  async validateAnswer(
+    @User() userId: string,
+    @Param('questionId') questionId: string,
+    @Body() validateDto: ValidateAnswerDto,
+  ): Promise<ValidateAnswerResponseDto> {
+    return this.progressService.validateAnswer(userId, questionId, validateDto);
   }
 }

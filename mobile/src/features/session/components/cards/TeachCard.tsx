@@ -15,12 +15,23 @@ export function TeachCard({ card }: Props) {
   const handleSpeak = async () => {
     try {
       const enabled = await getTtsEnabled();
-      if (!enabled) return;
+      if (!enabled) {
+        console.warn('TTS is disabled in settings');
+        return;
+      }
       const rate = await getTtsRate();
       await SafeSpeech.stop();
-      await SafeSpeech.speak(card.content.phrase, { language: 'it-IT', rate });
-    } catch {
-      // no-op
+      const phrase = card.content.phrase || '';
+      if (!phrase) {
+        console.warn('No phrase to speak');
+        return;
+      }
+      console.log('Speaking phrase:', phrase, 'with language: it-IT');
+      // Speak with Italian language - if voice not available, will use default
+      await SafeSpeech.speak(phrase, { language: 'it-IT', rate });
+      console.log('TTS speak called successfully');
+    } catch (error) {
+      console.error('Failed to speak phrase:', error);
     }
   };
 

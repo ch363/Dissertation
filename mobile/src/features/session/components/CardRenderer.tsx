@@ -29,6 +29,7 @@ type Props = {
   showResult?: boolean;
   isCorrect?: boolean;
   showHint?: boolean;
+  onCheckAnswer?: () => void;
 };
 
 export function CardRenderer({
@@ -42,6 +43,7 @@ export function CardRenderer({
   showResult,
   isCorrect,
   showHint,
+  onCheckAnswer,
 }: Props) {
   // Teach cards render their own container (with usage note card)
   if (card.kind === CardKind.Teach) {
@@ -62,6 +64,7 @@ export function CardRenderer({
         showResult,
         isCorrect,
         showHint,
+        onCheckAnswer,
       )}
     </View>
   );
@@ -78,6 +81,7 @@ function renderCardByKind(
   showResult?: boolean,
   isCorrect?: boolean,
   showHint?: boolean,
+  onCheckAnswer?: () => void,
 ) {
   switch (card.kind) {
     case CardKind.MultipleChoice:
@@ -86,6 +90,9 @@ function renderCardByKind(
           card={card}
           selectedOptionId={selectedOptionId}
           onSelectOption={onSelectOption}
+          showResult={showResult}
+          isCorrect={isCorrect}
+          onCheckAnswer={onCheckAnswer}
         />
       );
     case CardKind.FillBlank:
@@ -104,6 +111,9 @@ function renderCardByKind(
           userAnswer={userAnswer}
           onAnswerChange={onAnswerChange}
           showHint={showHint}
+          showResult={showResult}
+          isCorrect={isCorrect}
+          onCheckAnswer={onCheckAnswer}
         />
       );
     case CardKind.Listening:
@@ -114,6 +124,7 @@ function renderCardByKind(
           onAnswerChange={onAnswerChange}
           showResult={showResult}
           isCorrect={isCorrect}
+          onCheckAnswer={onCheckAnswer}
         />
       );
     default:
@@ -123,6 +134,8 @@ function renderCardByKind(
 
 const styles = StyleSheet.create({
   card: {
+    flex: 1,
+    minHeight: 0,
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.card,
     padding: theme.spacing.lg,

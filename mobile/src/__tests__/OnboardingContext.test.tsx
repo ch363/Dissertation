@@ -6,12 +6,12 @@ import {
   useOnboarding,
 } from '../features/onboarding/providers/OnboardingProvider';
 
-jest.mock('@/app/api/auth', () => ({
+jest.mock('@/services/api/auth', () => ({
   getCurrentUser: jest.fn().mockResolvedValue({ id: 'user-1' }),
 }));
 
 const mockSaveOnboarding = jest.fn().mockResolvedValue(null);
-jest.mock('@/app/api/onboarding', () => ({
+jest.mock('@/services/api/onboarding', () => ({
   saveOnboarding: (...args: any[]) => mockSaveOnboarding(...args),
 }));
 

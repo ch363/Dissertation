@@ -2,7 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { theme } from '@/services/theme/tokens';
+import * as SafeSpeech from '@/services/tts';
 import { TranslateCard as TranslateCardType } from '@/types/session';
 
 type Props = {
@@ -10,17 +12,40 @@ type Props = {
   userAnswer?: string;
   onAnswerChange?: (answer: string) => void;
   showHint?: boolean;
+  showResult?: boolean;
+  isCorrect?: boolean;
+  onCheckAnswer?: () => void;
 };
 
-export function TranslateCard({ card, userAnswer = '', onAnswerChange, showHint }: Props) {
+export function TranslateCard({
+  card,
+  userAnswer = '',
+  onAnswerChange,
+  showHint,
+  showResult = false,
+  isCorrect,
+  onCheckAnswer,
+}: Props) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
   const [showHintState, setShowHintState] = useState(showHint || false);
 
   const handlePlayAudio = async () => {
-    setIsPlaying(true);
-    // TODO: Implement audio playback
-    setTimeout(() => setIsPlaying(false), 1000);
+    try {
+      const enabled = await getTtsEnabled();
+      if (!enabled) return;
+      setIsPlaying(true);
+      const rate = await getTtsRate();
+      await SafeSpeech.stop();
+      // Speak the source text
+      const textToSpeak = card.source || '';
+      const language = card.kind === 'translate_to_en' ? 'it-IT' : 'en-US';
+      await SafeSpeech.speak(textToSpeak, { language, rate });
+      setTimeout(() => setIsPlaying(false), 2000);
+    } catch (error) {
+      console.error('Failed to play audio:', error);
+      setIsPlaying(false);
+    }
   };
 
   // Flashcard Mode (P24)
@@ -119,13 +144,14 @@ export function TranslateCard({ card, userAnswer = '', onAnswerChange, showHint 
         <Text style={styles.inputLabel}>
           TYPE IN {card.targetLanguage.toUpperCase()}:
         </Text>
-        <TextInput
+          <TextInput
           style={styles.textInput}
           value={userAnswer}
           onChangeText={onAnswerChange}
           placeholder="Type your translation..."
           autoFocus
           multiline
+          editable={!showResult}
         />
       </View>
 
@@ -137,12 +163,53 @@ export function TranslateCard({ card, userAnswer = '', onAnswerChange, showHint 
           </Text>
         </View>
       )}
+
+      {/* Check Answer Button */}
+      {!showResult && userAnswer.trim().length > 0 && (
+        <Pressable style={styles.checkButton} onPress={onCheckAnswer}>
+          <Text style={styles.checkButtonText}>Check Answer</Text>
+        </Pressable>
+      )}
+
+      {/* Result Display */}
+      {showResult && (
+        <>
+          <View style={[styles.resultCard, isCorrect ? styles.resultCardCorrect : styles.resultCardWrong]}>
+            <Ionicons
+              name={isCorrect ? 'checkmark-circle' : 'close-circle'}
+              size={48}
+              color={isCorrect ? '#28a745' : '#dc3545'}
+            />
+            <Text style={styles.resultTitle}>
+              {isCorrect ? 'CORRECT!' : 'INCORRECT'}
+            </Text>
+            <View style={styles.answerContainer}>
+              <Text style={styles.answerText}>{card.expected}</Text>
+              <Pressable
+                onPress={handlePlayAudio}
+                style={styles.resultAudioButton}
+              >
+                <Ionicons name="volume-high" size={20} color={theme.colors.primary} />
+              </Pressable>
+            </View>
+          </View>
+
+          {isCorrect && (
+            <View style={styles.infoCard}>
+              <Text style={styles.infoLabel}>MEANING</Text>
+              <Text style={styles.infoText}>{card.source}</Text>
+            </View>
+          )}
+        </>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    minHeight: 0,
     gap: theme.spacing.md,
   },
   directionLabel: {
@@ -302,5 +369,90 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.mutedText,
     fontStyle: 'italic',
+  },
+  checkButton: {
+    backgroundColor: theme.colors.primary,
+    padding: theme.spacing.md,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: theme.spacing.md,
+  },
+  checkButtonText: {
+    color: '#fff',
+    fontFamily: theme.typography.semiBold,
+    fontSize: 16,
+  },
+  resultCard: {
+    marginTop: theme.spacing.md,
+    padding: theme.spacing.xl,
+    borderRadius: 16,
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    width: '100%',
+  },
+  resultCardCorrect: {
+    backgroundColor: '#d4edda',
+    borderWidth: 2,
+    borderColor: '#28a745',
+  },
+  resultCardWrong: {
+    backgroundColor: '#f8d7da',
+    borderWidth: 2,
+    borderColor: '#dc3545',
+  },
+  resultTitle: {
+    fontFamily: theme.typography.bold,
+    fontSize: 18,
+    color: theme.colors.text,
+    textTransform: 'uppercase',
+  },
+  answerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  answerText: {
+    fontFamily: theme.typography.bold,
+    fontSize: 24,
+    color: theme.colors.text,
+  },
+  resultAudioButton: {
+    padding: theme.spacing.xs,
+  },
+  infoCard: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: theme.spacing.lg,
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.md,
+  },
+  infoLabel: {
+    fontFamily: theme.typography.bold,
+    fontSize: 12,
+    color: theme.colors.mutedText,
+    textTransform: 'uppercase',
+    marginBottom: theme.spacing.xs,
+  },
+  infoText: {
+    fontFamily: theme.typography.regular,
+    fontSize: 16,
+    color: theme.colors.text,
+  },
+  xpBar: {
+    width: '100%',
+    backgroundColor: '#28a745',
+    borderRadius: 12,
+    padding: theme.spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    justifyContent: 'center',
+    marginTop: theme.spacing.md,
+  },
+  xpText: {
+    fontFamily: theme.typography.semiBold,
+    fontSize: 16,
+    color: '#fff',
   },
 });

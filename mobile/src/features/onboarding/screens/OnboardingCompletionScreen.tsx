@@ -2,8 +2,8 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, ActivityIndicator, Alert } from 'react-native';
 
-import { getCurrentUser } from '@/app/api/auth';
-import { saveOnboarding } from '@/app/api/onboarding';
+import { getCurrentUser } from '@/services/api/auth';
+import { saveOnboarding } from '@/services/api/onboarding';
 import { PrimaryButton } from '@/components/onboarding/_components';
 import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 import { routes } from '@/services/navigation/routes';

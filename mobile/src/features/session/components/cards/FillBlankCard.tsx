@@ -2,7 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { theme } from '@/services/theme/tokens';
+import * as SafeSpeech from '@/services/tts';
 import { FillBlankCard as FillBlankCardType } from '@/types/session';
 
 type Props = {
@@ -15,10 +17,21 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer }: Props) {
   const [isPlaying, setIsPlaying] = useState(false);
 
   const handlePlayAudio = async () => {
-    if (!card.audioUrl) return;
-    setIsPlaying(true);
-    // TODO: Implement audio playback
-    setTimeout(() => setIsPlaying(false), 1000);
+    if (!card.audioUrl && !card.text) return;
+    try {
+      const enabled = await getTtsEnabled();
+      if (!enabled) return;
+      setIsPlaying(true);
+      const rate = await getTtsRate();
+      await SafeSpeech.stop();
+      // Speak the sentence with blank (replace ___ with "blank" for TTS)
+      const textToSpeak = card.text.replace(/___/g, 'blank') || '';
+      await SafeSpeech.speak(textToSpeak, { language: 'it-IT', rate });
+      setTimeout(() => setIsPlaying(false), 3000);
+    } catch (error) {
+      console.error('Failed to play audio:', error);
+      setIsPlaying(false);
+    }
   };
 
   // Parse sentence to find blank position

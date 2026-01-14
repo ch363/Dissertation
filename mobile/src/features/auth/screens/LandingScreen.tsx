@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { View, Text, StyleSheet, Image, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { hasOnboarding } from '@/api/onboarding';
+import { hasOnboarding } from '@/services/api/onboarding';
 import { useAuth } from '@/services/auth/AuthProvider';
 import { routes } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';

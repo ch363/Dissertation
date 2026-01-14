@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScrollView } from '@/components/ui';
 
-import { getMyProfile } from '@/api/profile';
+import { getMyProfile } from '@/services/api/profile';
 import { HomeHeader } from '@/features/home/components/HomeHeader';
 import { WelcomeContinueCard } from '@/features/home/components/WelcomeContinueCard';
 import { DueTodayGrid } from '@/features/home/components/due-today/DueTodayGrid';

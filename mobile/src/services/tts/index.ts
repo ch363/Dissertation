@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 
 // Safe wrapper around expo-speech that lazy-loads the native module.
 // If the module isn't present in the native build, calls will no-op.
-// On simulators, skip TTS entirely to avoid missing voice/native asset warnings.
+// expo-speech automatically handles missing voices by using the default system voice.
 
 type SpeakOptions = {
   language?: string;
@@ -12,25 +12,31 @@ type SpeakOptions = {
 
 export async function speak(text: string, options?: SpeakOptions) {
   // Avoid simulator-native warnings/errors about missing voices.
-  if (!Constants.isDevice && Platform.OS === 'ios') return;
+  // But still allow it to work - expo-speech will use default voice
   try {
     const Speech = await import('expo-speech');
     // Ensure any current speech is stopped before speaking
     try {
-      await Speech.stop();
+      Speech.stop();
     } catch {}
-    Speech.speak(text, options);
-  } catch {
+    // expo-speech.speak() is synchronous - just call it directly
+    // It will automatically use default voice if language-specific voice isn't available
+    Speech.speak(text, {
+      language: options?.language,
+      rate: options?.rate || 1.0,
+    });
+  } catch (error) {
     // no-op if not available
+    console.error('TTS error:', error);
   }
 }
 
 export async function stop() {
-  if (!Constants.isDevice && Platform.OS === 'ios') return;
   try {
     const Speech = await import('expo-speech');
-    await Speech.stop();
-  } catch {
-    // no-op
+    // expo-speech.stop() is synchronous
+    Speech.stop();
+  } catch (error) {
+    // no-op if not available
   }
 }

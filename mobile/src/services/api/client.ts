@@ -1,4 +1,4 @@
-import { getSupabaseClient } from '@/app/api/supabase/client';
+import { getSupabaseClient } from '@/services/supabase/client';
 import { getApiUrl } from './config';
 import { ApiClientError, type ApiResponse } from './types';
 

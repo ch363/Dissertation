@@ -1,12 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { QuestionAttemptDto } from './dto/question-attempt.dto';
 import { DeliveryMethodScoreDto } from './dto/delivery-method-score.dto';
 import { KnowledgeLevelProgressDto } from './dto/knowledge-level-progress.dto';
 import { ResetProgressDto } from './dto/reset-progress.dto';
+import { ValidateAnswerDto } from './dto/validate-answer.dto';
+import { ValidateAnswerResponseDto } from './dto/validate-answer-response.dto';
 import { DELIVERY_METHOD } from '@prisma/client';
 import { SrsService } from '../engine/srs/srs.service';
 import { XpService } from '../engine/scoring/xp.service';
+import { ContentLookupService } from '../content/content-lookup.service';
 
 @Injectable()
 export class ProgressService {
@@ -14,6 +17,7 @@ export class ProgressService {
     private prisma: PrismaService,
     private srsService: SrsService,
     private xpService: XpService,
+    private contentLookup: ContentLookupService,
   ) {}
 
   async startLesson(userId: string, lessonId: string) {
@@ -452,6 +456,316 @@ export class ProgressService {
     return {
       message: `Progress for question ${questionId} reset successfully`,
       questionId,
+    };
+  }
+
+  async getProgressSummary(userId: string) {
+    // Get XP total from user.knowledgePoints (updated by XpService)
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { knowledgePoints: true },
+    });
+
+    const xp = user?.knowledgePoints || 0;
+
+    // Count completed lessons (lessons where all teachings are completed)
+    const userLessons = await this.prisma.userLesson.findMany({
+      where: { userId },
+      include: {
+        lesson: {
+          include: {
+            teachings: {
+              select: { id: true },
+            },
+            module: {
+              select: { id: true },
+            },
+          },
+        },
+      },
+    });
+
+    // Count lessons where completedTeachings equals total teachings
+    const completedLessons = userLessons.filter(
+      (ul) => ul.completedTeachings >= ul.lesson.teachings.length && ul.lesson.teachings.length > 0,
+    ).length;
+
+    const totalLessons = await this.prisma.lesson.count();
+
+    // Count completed modules (modules where all lessons are completed)
+    // Get all modules and check which ones are fully completed
+    const modules = await this.prisma.module.findMany({
+      include: {
+        lessons: {
+          include: {
+            teachings: {
+              select: { id: true },
+            },
+          },
+        },
+      },
+    });
+
+    let completedModules = 0;
+    for (const module of modules) {
+      const moduleLessons = module.lessons;
+      if (moduleLessons.length === 0) continue;
+
+      // Check if all lessons in this module are completed
+      const allLessonsCompleted = moduleLessons.every((lesson) => {
+        const userLesson = userLessons.find((ul) => ul.lessonId === lesson.id);
+        if (!userLesson) return false;
+        return userLesson.completedTeachings >= lesson.teachings.length && lesson.teachings.length > 0;
+      });
+
+      if (allLessonsCompleted) {
+        completedModules++;
+      }
+    }
+
+    const totalModules = await this.prisma.module.count();
+
+    // Calculate streak (placeholder - would need to track daily activity)
+    // For now, return 0 as placeholder
+    const streak = 0;
+
+    return {
+      xp,
+      streak,
+      completedLessons,
+      completedModules,
+      totalLessons,
+      totalModules,
+    };
+  }
+
+  async markModuleCompleted(userId: string, moduleIdOrSlug: string) {
+    // Find module by ID or slug (title)
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(moduleIdOrSlug);
+    
+    let module;
+    if (isUuid) {
+      module = await this.prisma.module.findUnique({
+        where: { id: moduleIdOrSlug },
+        include: {
+          lessons: {
+            include: {
+              teachings: {
+                select: { id: true },
+              },
+            },
+          },
+        },
+      });
+    } else {
+      // Find by title (case-insensitive, normalized)
+      const normalizedTitle = moduleIdOrSlug
+        .trim()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+      
+      module = await this.prisma.module.findFirst({
+        where: {
+          title: {
+            equals: normalizedTitle,
+            mode: 'insensitive',
+          },
+        },
+        include: {
+          lessons: {
+            include: {
+              teachings: {
+                select: { id: true },
+              },
+            },
+          },
+        },
+      });
+    }
+
+    if (!module) {
+      throw new NotFoundException(`Module with ID or slug "${moduleIdOrSlug}" not found`);
+    }
+
+    // Mark all lessons in the module as completed
+    // For each lesson, mark all teachings as completed
+    const results: Array<{ lessonId: string; lessonTitle: string; completedTeachings: number }> = [];
+    
+    for (const lesson of module.lessons) {
+      const totalTeachings = lesson.teachings.length;
+      
+      // Upsert UserLesson with completedTeachings = totalTeachings
+      const userLesson = await this.prisma.userLesson.upsert({
+        where: {
+          userId_lessonId: {
+            userId,
+            lessonId: lesson.id,
+          },
+        },
+        update: {
+          completedTeachings: totalTeachings,
+          updatedAt: new Date(),
+        },
+        create: {
+          userId,
+          lessonId: lesson.id,
+          completedTeachings: totalTeachings,
+        },
+      });
+
+      // Mark all teachings as completed
+      for (const teaching of lesson.teachings) {
+        await this.prisma.userTeachingCompleted.upsert({
+          where: {
+            userId_teachingId: {
+              userId,
+              teachingId: teaching.id,
+            },
+          },
+          update: {},
+          create: {
+            userId,
+            teachingId: teaching.id,
+          },
+        });
+      }
+
+      results.push({
+        lessonId: lesson.id,
+        lessonTitle: lesson.title,
+        completedTeachings: totalTeachings,
+      });
+    }
+
+    return {
+      message: `Module "${module.title}" marked as completed`,
+      moduleId: module.id,
+      moduleTitle: module.title,
+      lessonsCompleted: results.length,
+      lessons: results,
+    };
+  }
+
+  async getRecentAttempts(userId: string, limit: number = 10) {
+    // Get recent question attempts for debugging/dev purposes
+    return this.prisma.userQuestionPerformance.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: {
+        question: {
+          select: {
+            id: true,
+            teaching: {
+              select: {
+                id: true,
+                userLanguageString: true,
+                learningLanguageString: true,
+                lesson: {
+                  select: {
+                    id: true,
+                    title: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async validateAnswer(
+    userId: string,
+    questionId: string,
+    dto: ValidateAnswerDto,
+  ): Promise<ValidateAnswerResponseDto> {
+    // Get question from DB (includes teachingId)
+    const question = await this.prisma.question.findUnique({
+      where: { id: questionId },
+      include: {
+        teaching: {
+          include: {
+            lesson: {
+              select: {
+                id: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!question) {
+      throw new NotFoundException(`Question with ID ${questionId} not found`);
+    }
+
+    const lessonId = question.teaching.lesson.id;
+
+    // Get correct answer from content files
+    const questionData = await this.contentLookup.getQuestionData(questionId, lessonId);
+
+    if (!questionData) {
+      throw new NotFoundException(
+        `Question data not found for question ${questionId} in lesson ${lessonId}`,
+      );
+    }
+
+    // Validate based on delivery method
+    let isCorrect = false;
+    let score = 0;
+    let feedback: string | undefined;
+
+    if (dto.deliveryMethod === DELIVERY_METHOD.MULTIPLE_CHOICE) {
+      // For multiple choice, compare option ID
+      if (!questionData.correctOptionId) {
+        throw new BadRequestException(
+          `Question ${questionId} does not support MULTIPLE_CHOICE delivery method`,
+        );
+      }
+      isCorrect = dto.answer === questionData.correctOptionId;
+      score = isCorrect ? 100 : 0;
+      if (isCorrect && questionData.explanation) {
+        feedback = questionData.explanation;
+      }
+    } else if (
+      dto.deliveryMethod === DELIVERY_METHOD.TEXT_TRANSLATION ||
+      dto.deliveryMethod === DELIVERY_METHOD.FLASHCARD ||
+      dto.deliveryMethod === DELIVERY_METHOD.FILL_BLANK ||
+      dto.deliveryMethod === DELIVERY_METHOD.SPEECH_TO_TEXT ||
+      dto.deliveryMethod === DELIVERY_METHOD.TEXT_TO_SPEECH
+    ) {
+      // For text-based answers, normalize and compare
+      if (!questionData.answer) {
+        throw new BadRequestException(
+          `Question ${questionId} does not have a correct answer for delivery method ${dto.deliveryMethod}`,
+        );
+      }
+
+      // Normalize both answers: lowercase and trim
+      const normalizedUserAnswer = dto.answer.toLowerCase().trim();
+      const normalizedCorrectAnswer = questionData.answer.toLowerCase().trim();
+
+      isCorrect = normalizedUserAnswer === normalizedCorrectAnswer;
+      score = isCorrect ? 100 : 0;
+
+      // Provide feedback if incorrect and hint is available
+      if (!isCorrect && questionData.hint) {
+        feedback = questionData.hint;
+      } else if (isCorrect && questionData.explanation) {
+        feedback = questionData.explanation;
+      }
+    } else {
+      throw new BadRequestException(
+        `Unsupported delivery method for validation: ${dto.deliveryMethod}`,
+      );
+    }
+
+    return {
+      isCorrect,
+      score,
+      feedback,
     };
   }
 }

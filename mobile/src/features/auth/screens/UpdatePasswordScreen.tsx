@@ -8,7 +8,7 @@ import {
   resolvePostAuthDestination,
   setSessionFromEmailLink,
   updatePassword,
-} from '@/app/api/auth';
+} from '@/services/api/auth';
 import { theme } from '@/services/theme/tokens';
 
 type TokenResult = { accessToken: string; refreshToken: string };

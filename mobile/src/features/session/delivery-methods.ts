@@ -65,3 +65,31 @@ export function requiresInput(deliveryMethod: DeliveryMethod): boolean {
 export function requiresSelection(deliveryMethod: DeliveryMethod): boolean {
   return deliveryMethod === DELIVERY_METHOD.MULTIPLE_CHOICE;
 }
+
+/**
+ * Reverse mapping: Get delivery method from CardKind
+ * Note: This is a best-effort mapping. Some card kinds (like TranslateToEn vs TranslateFromEn)
+ * both map to TEXT_TRANSLATION, and Listening can be SPEECH_TO_TEXT or TEXT_TO_SPEECH.
+ * For validation, we'll use the most common mapping.
+ */
+export function getDeliveryMethodForCardKind(
+  cardKind: CardKind,
+  isFlashcard?: boolean,
+): DeliveryMethod {
+  if (cardKind === CardKind.MultipleChoice) {
+    return DELIVERY_METHOD.MULTIPLE_CHOICE;
+  }
+  if (cardKind === CardKind.FillBlank) {
+    return DELIVERY_METHOD.FILL_BLANK;
+  }
+  if (cardKind === CardKind.TranslateToEn || cardKind === CardKind.TranslateFromEn) {
+    return isFlashcard ? DELIVERY_METHOD.FLASHCARD : DELIVERY_METHOD.TEXT_TRANSLATION;
+  }
+  if (cardKind === CardKind.Listening) {
+    // Default to SPEECH_TO_TEXT for listening cards
+    // Could be enhanced to check card.mode if available
+    return DELIVERY_METHOD.SPEECH_TO_TEXT;
+  }
+  // Default fallback (shouldn't happen for practice cards)
+  return DELIVERY_METHOD.TEXT_TRANSLATION;
+}

@@ -110,19 +110,50 @@ export class SessionPlanService {
         newQuestions,
         seenTeachingIds,
       );
-      finalCandidates = [...reviews, ...teachThenTestSequence];
+      
+      // For learn mode, prioritize teach-then-test pairs
+      // Group teach-then-test pairs together to preserve them during interleaving
+      const teachTestPairs: DeliveryCandidate[][] = [];
+      const standaloneItems: DeliveryCandidate[] = [];
+      
+      for (let i = 0; i < teachThenTestSequence.length; i++) {
+        const item = teachThenTestSequence[i];
+        if (item.kind === 'teaching' && i + 1 < teachThenTestSequence.length) {
+          const nextItem = teachThenTestSequence[i + 1];
+          if (nextItem.kind === 'question' && nextItem.teachingId === item.teachingId) {
+            // Found a teach-then-test pair
+            teachTestPairs.push([item, nextItem]);
+            i++; // Skip the question as it's already in the pair
+            continue;
+          }
+        }
+        standaloneItems.push(item);
+      }
+      
+      // Interleave the pairs and standalone items, but keep pairs together
+      // For now, just use the teach-then-test sequence directly to ensure pairs stay together
+      // We'll apply light interleaving only to reviews
+      if (reviews.length > 0) {
+        const interleavedReviews = composeWithInterleaving(reviews, {
+          maxSameTypeInRow: 2,
+          requireModalityCoverage: false, // Don't require coverage for reviews
+          enableScaffolding: false,
+          consecutiveErrors: 0,
+        });
+        // Interleave reviews with teach-then-test pairs, but keep pairs intact
+        finalCandidates = this.interleaveWithPairs(interleavedReviews, teachThenTestSequence);
+      } else {
+        finalCandidates = teachThenTestSequence;
+      }
     } else {
-      finalCandidates = selectedCandidates;
+      // Review mode: apply interleaving normally
+      finalCandidates = composeWithInterleaving(selectedCandidates, {
+        maxSameTypeInRow: 2,
+        requireModalityCoverage: true,
+        enableScaffolding: true,
+        consecutiveErrors: 0,
+      });
     }
-
-    // 6. Apply constraint-based interleaving (first-class interleaving)
-    // This replaces the simple mix with proper interleaving rules
-    const interleavedCandidates = composeWithInterleaving(finalCandidates, {
-      maxSameTypeInRow: 2,
-      requireModalityCoverage: true,
-      enableScaffolding: true,
-      consecutiveErrors: 0, // TODO: Track from session history
-    });
 
     // 7. Get user preferences for modality selection
     const userPreferences = await this.getDeliveryMethodScores(userId);
@@ -132,7 +163,7 @@ export class SessionPlanService {
     let stepNumber = 1;
     const recentMethods: DELIVERY_METHOD[] = [];
 
-    for (const candidate of interleavedCandidates) {
+    for (const candidate of finalCandidates) {
       if (candidate.kind === 'teaching') {
         const teaching = await this.getTeachingData(candidate.id);
         if (teaching) {
@@ -233,7 +264,7 @@ export class SessionPlanService {
       dueReviewsIncluded: reviewCandidates.length,
       newItemsIncluded: newCandidates.length,
       topicsCovered: Array.from(
-        new Set(interleavedCandidates.map((c) => c.teachingId || c.lessonId || '').filter(Boolean)),
+        new Set(finalCandidates.map((c) => c.teachingId || c.lessonId || '').filter(Boolean)),
       ),
       deliveryMethodsUsed: Array.from(new Set(recentMethods)),
     };
@@ -785,6 +816,52 @@ export class SessionPlanService {
       select: { teachingId: true },
     });
     return new Set(completed.map((c) => c.teachingId));
+  }
+
+  /**
+   * Interleave reviews with teach-then-test pairs while preserving pair integrity.
+   * This ensures teachings always appear directly before their questions.
+   */
+  private interleaveWithPairs(
+    reviews: DeliveryCandidate[],
+    teachTestSequence: DeliveryCandidate[],
+  ): DeliveryCandidate[] {
+    const result: DeliveryCandidate[] = [];
+    let reviewIndex = 0;
+    let teachTestIndex = 0;
+    
+    // Group teach-test sequence into pairs
+    const pairs: DeliveryCandidate[][] = [];
+    for (let i = 0; i < teachTestSequence.length; i++) {
+      const item = teachTestSequence[i];
+      if (item.kind === 'teaching' && i + 1 < teachTestSequence.length) {
+        const nextItem = teachTestSequence[i + 1];
+        if (nextItem.kind === 'question' && nextItem.teachingId === item.teachingId) {
+          pairs.push([item, nextItem]);
+          i++; // Skip next item as it's in the pair
+          continue;
+        }
+      }
+      // Standalone item (shouldn't happen in learn mode, but handle it)
+      pairs.push([item]);
+    }
+    
+    // Interleave: add a pair, then a review, then a pair, etc.
+    let pairIndex = 0;
+    while (pairIndex < pairs.length || reviewIndex < reviews.length) {
+      // Add a teach-test pair if available
+      if (pairIndex < pairs.length) {
+        result.push(...pairs[pairIndex]);
+        pairIndex++;
+      }
+      // Add a review if available
+      if (reviewIndex < reviews.length) {
+        result.push(reviews[reviewIndex]);
+        reviewIndex++;
+      }
+    }
+    
+    return result;
   }
 
   /**

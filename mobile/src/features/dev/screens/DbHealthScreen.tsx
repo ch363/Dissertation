@@ -7,9 +7,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScrollView } from '@/components/ui';
 
-import { getSession } from '@/app/api/auth';
-import { ensureProfileSeed, upsertMyProfile } from '@/app/api/profile';
-import { getSupabaseClient } from '@/app/api/supabase/client';
+import { getSession, getCurrentUser } from '@/services/api/auth';
+import { getMyProfile, ensureProfileSeed, upsertMyProfile } from '@/services/api/profile';
+import { getSupabaseClient } from '@/services/supabase/client';
+import { apiClient } from '@/services/api/client';
 import { routes } from '@/services/navigation/routes';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
@@ -39,26 +40,20 @@ export default function DbHealth() {
     try {
       const supabase = getSupabaseClient();
       const session = await getSession();
-      const { data: u } = await supabase.auth.getUser();
-      setSessionInfo({ user: u.user, hasSession: !!session });
-      const userId = u.user?.id;
+      const user = await getCurrentUser();
+      setSessionInfo({ user, hasSession: !!session });
+      const userId = user?.id;
       if (!userId) {
         setError('Not signed in');
         return;
       }
-      const { data: prof } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
+      // Use backend API calls instead of direct Supabase queries
+      const [prof, atts] = await Promise.all([
+        getMyProfile().catch(() => null),
+        apiClient.get('/progress/attempts').catch(() => []),
+      ]);
       setProfile(prof);
-      const { data: atts } = await supabase
-        .from('lesson_attempts')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(10);
-      setAttempts(atts ?? []);
+      setAttempts(atts);
     } catch (e: any) {
       setError(e?.message || 'Error fetching data');
     }
@@ -76,6 +71,8 @@ export default function DbHealth() {
         setSchemaMsg('Not signed in');
         return;
       }
+      // TODO: This is a dev/debug function - direct DB queries are acceptable here
+      // but should be replaced with backend health check endpoint if available
       const { data, error } = await supabase
         .from('profiles')
         .select('updated_at, name')

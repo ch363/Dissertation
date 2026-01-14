@@ -29,13 +29,16 @@ teachings:
     tip: "Per favore is used when making a request. It literally means 'for favor'."
 
 questions:
-  # Ciao questions
+  # Ciao questions - Each delivery method gets its own question
+  # 1. MULTIPLE_CHOICE
   - slug: ciao-multiple-choice-en-it
     teachingSlug: ciao
     deliveryMethods:
       - MULTIPLE_CHOICE
     multipleChoice:
       prompt: "How do you say 'Hi' in Italian?"
+      sourceText: "Hi"
+      audioUrl: https://example.com/audio/hi.mp3
       options:
         - id: opt1
           label: "Ciao"
@@ -51,6 +54,7 @@ questions:
           isCorrect: false
       explanation: "Ciao is the most common informal greeting in Italian."
 
+  # 2. TEXT_TRANSLATION
   - slug: ciao-translation-it-en
     teachingSlug: ciao
     deliveryMethods:
@@ -60,8 +64,10 @@ questions:
       source: "Ciao"
       answer: "Hi / Bye"
       hint: "It's an informal greeting"
+      audioUrl: https://example.com/audio/ciao.mp3
 
-  - slug: ciao-listening
+  # 3. SPEECH_TO_TEXT (Type What You Hear)
+  - slug: ciao-listening-type
     teachingSlug: ciao
     deliveryMethods:
       - SPEECH_TO_TEXT
@@ -70,13 +76,59 @@ questions:
       audioUrl: https://example.com/audio/ciao.mp3
       answer: "Ciao"
 
+  # 4. TEXT_TO_SPEECH (Speak This Phrase)
+  - slug: ciao-text-to-speech
+    teachingSlug: ciao
+    deliveryMethods:
+      - TEXT_TO_SPEECH
+    listening:
+      prompt: "Read aloud: 'Ciao'"
+      audioUrl: https://example.com/audio/ciao.mp3
+      answer: "Ciao"
+
   # Grazie questions
+  # 5. FILL_BLANK
+  - slug: grazie-fill-blank
+    teachingSlug: grazie
+    deliveryMethods:
+      - FILL_BLANK
+    fillBlank:
+      prompt: "Complete: 'Molte ___ per il tuo aiuto' (Many thanks for your help)"
+      text: "Molte ___ per il tuo aiuto"
+      answer: "grazie"
+      hint: "Think of the Italian word for thanks"
+      audioUrl: https://example.com/audio/molte-grazie.mp3
+      options:
+        - id: opt1
+          label: "grazie"
+        - id: opt2
+          label: "grazia"
+        - id: opt3
+          label: "grazioso"
+        - id: opt4
+          label: "graziosi"
+
+  # 6. FLASHCARD
+  - slug: grazie-flashcard
+    teachingSlug: grazie
+    deliveryMethods:
+      - FLASHCARD
+    translation:
+      prompt: "What does 'Grazie' mean?"
+      source: "Grazie"
+      answer: "Thank you"
+      hint: "A common expression of gratitude"
+      audioUrl: https://example.com/audio/grazie.mp3
+
+  # Additional questions for variety
   - slug: grazie-multiple-choice-en-it
     teachingSlug: grazie
     deliveryMethods:
       - MULTIPLE_CHOICE
     multipleChoice:
       prompt: "How do you say 'Thank you' in Italian?"
+      sourceText: "Thank you"
+      audioUrl: https://example.com/audio/thank-you.mp3
       options:
         - id: opt1
           label: "Ciao"
@@ -92,16 +144,6 @@ questions:
           isCorrect: false
       explanation: "Grazie means thank you. Prego means you're welcome."
 
-  - slug: grazie-fill-blank
-    teachingSlug: grazie
-    deliveryMethods:
-      - FILL_BLANK
-    fillBlank:
-      prompt: "Complete: 'Molte ___ per il tuo aiuto' (Many thanks for your help)"
-      text: "Molte ___ per il tuo aiuto"
-      answer: "grazie"
-      hint: "Think of the Italian word for thanks"
-
   # Per favore questions
   - slug: per-favore-translation-en-it
     teachingSlug: per-favore
@@ -112,24 +154,4 @@ questions:
       source: "Please"
       answer: "Per favore"
       hint: "Two words, starts with 'Per'"
-
-  # Flashcard question (for FLASHCARD delivery method)
-  - slug: grazie-flashcard
-    teachingSlug: grazie
-    deliveryMethods:
-      - FLASHCARD
-    translation:
-      prompt: "What does 'Grazie' mean?"
-      source: "Grazie"
-      answer: "Thank you"
-      hint: "A common expression of gratitude"
-
-  # Text-to-speech question (for TEXT_TO_SPEECH delivery method)
-  - slug: ciao-text-to-speech
-    teachingSlug: ciao
-    deliveryMethods:
-      - TEXT_TO_SPEECH
-    listening:
-      prompt: "Read aloud: 'Ciao'"
-      audioUrl: https://example.com/audio/ciao.mp3
-      answer: "Ciao"
+      audioUrl: https://example.com/audio/please.mp3

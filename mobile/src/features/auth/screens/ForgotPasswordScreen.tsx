@@ -2,7 +2,7 @@ import { Link } from 'expo-router';
 import { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, ActivityIndicator } from 'react-native';
 
-import { sendPasswordReset } from '@/app/api/auth';
+import { sendPasswordReset } from '@/services/api/auth';
 import { theme } from '@/services/theme/tokens';
 
 const emailRegex = /\S+@\S+\.\S+/;

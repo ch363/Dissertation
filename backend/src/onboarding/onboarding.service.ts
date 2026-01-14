@@ -2,20 +2,136 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SaveOnboardingDto, OnboardingResponseDto } from './dto/onboarding.dto';
 
+// Business logic constants (moved from frontend)
+const DIFFICULTY_WEIGHTS: Record<string, number> = {
+  easy: 0.25,
+  balanced: 0.5,
+  hard: 0.85,
+};
+
+const SESSION_MINUTES: Record<string, number> = {
+  short: 8,
+  focused: 22,
+  deep: 45,
+};
+
+const FEEDBACK_DEPTH: Record<string, number> = {
+  gentle: 0.3,
+  direct: 0.6,
+  detailed: 0.9,
+};
+
+const GAMIFICATION_WEIGHTS: Record<string, number> = {
+  none: 0,
+  light: 0.45,
+  full: 0.9,
+};
+
+const ONBOARDING_SCHEMA_VERSION = 1;
+
+interface OnboardingAnswers {
+  motivation?: { key: string; otherText?: string | null } | null;
+  learningStyles?: string[] | null;
+  memoryHabit?: string | null;
+  difficulty?: string | null;
+  gamification?: string | null;
+  feedback?: string | null;
+  sessionStyle?: string | null;
+  tone?: string | null;
+  experience?: string | null;
+}
+
+interface OnboardingSubmission {
+  version: number;
+  raw: OnboardingAnswers;
+  tags: string[];
+  preferences: {
+    goal: string | null;
+    learningStyles: string[];
+    memoryHabit: string | null;
+    difficulty: string | null;
+    gamification: string | null;
+    feedback: string | null;
+    sessionStyle: string | null;
+    tone: string | null;
+    experience: string | null;
+  };
+  signals: {
+    challengeWeight: number;
+    sessionMinutes: number | null;
+    prefersGamification: number | null;
+    feedbackDepth: number | null;
+    learningStyleFocus: string[];
+  };
+  savedAt: string;
+}
+
+/**
+ * Build onboarding submission from raw answers
+ * This business logic was moved from frontend to backend
+ */
+function buildOnboardingSubmission(answers: OnboardingAnswers): OnboardingSubmission {
+  const challengeWeight = DIFFICULTY_WEIGHTS[answers.difficulty ?? ''] ?? 0.5;
+  const prefersGamification = GAMIFICATION_WEIGHTS[answers.gamification ?? ''] ?? null;
+  const feedbackDepthScore = FEEDBACK_DEPTH[answers.feedback ?? ''] ?? null;
+  const sessionMinutesScore = answers.sessionStyle
+    ? (SESSION_MINUTES[answers.sessionStyle] ?? null)
+    : null;
+  const learningStyleFocus = answers.learningStyles ?? [];
+
+  const tags: string[] = [];
+  if (answers.motivation?.key) tags.push(`goal:${answers.motivation.key}`);
+  if (answers.experience) tags.push(`experience:${answers.experience}`);
+  learningStyleFocus.forEach((style) => tags.push(`learning:${style}`));
+  if (answers.gamification) tags.push(`gamification:${answers.gamification}`);
+
+  return {
+    version: ONBOARDING_SCHEMA_VERSION,
+    raw: answers,
+    tags,
+    preferences: {
+      goal: answers.motivation?.key ?? null,
+      learningStyles: learningStyleFocus,
+      memoryHabit: answers.memoryHabit ?? null,
+      difficulty: answers.difficulty ?? null,
+      gamification: answers.gamification ?? null,
+      feedback: answers.feedback ?? null,
+      sessionStyle: answers.sessionStyle ?? null,
+      tone: answers.tone ?? null,
+      experience: answers.experience ?? null,
+    },
+    signals: {
+      challengeWeight,
+      sessionMinutes: sessionMinutesScore,
+      prefersGamification,
+      feedbackDepth: feedbackDepthScore,
+      learningStyleFocus,
+    },
+    savedAt: new Date().toISOString(),
+  };
+}
+
 @Injectable()
 export class OnboardingService {
   constructor(private prisma: PrismaService) {}
 
   async saveOnboarding(userId: string, dto: SaveOnboardingDto): Promise<OnboardingResponseDto> {
+    // Accept raw OnboardingAnswers and process them server-side
+    const rawAnswers = dto.answers as OnboardingAnswers;
+    
+    // Build complete submission with computed fields
+    const submission = buildOnboardingSubmission(rawAnswers);
+    
+    // Store processed submission in database
     const onboarding = await this.prisma.onboardingAnswer.upsert({
       where: { userId },
       update: {
-        answers: dto.answers,
+        answers: submission as any,
         updatedAt: new Date(),
       },
       create: {
         userId,
-        answers: dto.answers,
+        answers: submission as any,
       },
     });
 

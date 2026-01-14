@@ -1,8 +1,8 @@
 import type { Session, User } from '@supabase/supabase-js';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-import { getMyProfile, type Profile } from '@/app/api/profile';
-import { getSupabaseClient } from '@/app/api/supabase/client';
+import { getMyProfile, type Profile } from '@/services/api/profile';
+import { getSupabaseClient } from '@/services/supabase/client';
 
 type AuthCtx = {
   session: Session | null;

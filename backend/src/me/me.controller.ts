@@ -92,4 +92,16 @@ export class MeController {
   async deleteAccount(@User() userId: string) {
     return this.meService.deleteAccount(userId);
   }
+
+  @Post('avatar')
+  @ApiOperation({ summary: 'Upload avatar image' })
+  @ApiResponse({ status: 200, description: 'Avatar uploaded successfully' })
+  async uploadAvatar(
+    @User() userId: string,
+    @Body() body: { avatarUrl: string },
+  ) {
+    // TODO: In the future, accept file upload and store in Supabase Storage
+    // For now, accept avatarUrl and update user record
+    return this.meService.uploadAvatar(userId, body.avatarUrl);
+  }
 }

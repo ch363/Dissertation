@@ -4,7 +4,7 @@ import { ActivityIndicator, View, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SessionRunner } from '@/features/session/components/SessionRunner';
-import { buildReviewSessionPlan, makeSessionId } from '@/features/session/sessionBuilder';
+import { makeSessionId } from '@/features/session/sessionBuilder';
 import { routeBuilders } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { AttemptLog, SessionKind, SessionPlan } from '@/types/session';
@@ -47,12 +47,25 @@ export default function SessionRunnerScreen(props?: Props) {
 
       try {
         if (sessionKind === 'review') {
-          // For review sessions, use the review session plan builder
-          // TODO: Replace with backend session-plan endpoint when review mode is supported
-          if (!cancelled) {
-            setPlan(buildReviewSessionPlan(sessionId));
-            setLoading(false);
+          // For review sessions, fetch from backend
+          const response = await getSessionPlan({
+            mode: 'review',
+          });
+          
+          if (cancelled) return;
+          
+          const planData = response?.data || response;
+          const transformedPlan = transformSessionPlan(planData, sessionId);
+          
+          if (cancelled) return;
+          
+          if (transformedPlan.cards.length > 0) {
+            setPlan(transformedPlan);
+          } else {
+            console.error('Review session plan has no cards');
+            setError('No review items available');
           }
+          setLoading(false);
           return;
         }
 

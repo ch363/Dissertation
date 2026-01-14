@@ -6,7 +6,7 @@ import {
   getSupabaseConfigStatus,
   initSupabaseClient,
   SupabaseConfigError,
-} from '@/app/api/supabase/client';
+} from '@/services/supabase/client';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 
 type ConfigStatus = ReturnType<typeof getSupabaseConfigStatus>;

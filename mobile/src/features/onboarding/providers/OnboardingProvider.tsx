@@ -8,8 +8,8 @@ import React, {
   useState,
 } from 'react';
 
-import { getCurrentUser } from '@/app/api/auth';
-import { saveOnboarding } from '@/app/api/onboarding';
+import { getCurrentUser } from '@/services/api/auth';
+import { saveOnboarding } from '@/services/api/onboarding';
 import type { OnboardingAnswers } from '@/types/onboarding';
 
 type Ctx = {

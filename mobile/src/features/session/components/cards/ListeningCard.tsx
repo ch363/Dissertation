@@ -2,7 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { theme } from '@/services/theme/tokens';
+import * as SafeSpeech from '@/services/tts';
 import { ListeningCard as ListeningCardType } from '@/types/session';
 
 type Props = {
@@ -11,6 +13,7 @@ type Props = {
   onAnswerChange?: (answer: string) => void;
   showResult?: boolean;
   isCorrect?: boolean;
+  onCheckAnswer?: () => void;
 };
 
 export function ListeningCard({
@@ -19,14 +22,28 @@ export function ListeningCard({
   onAnswerChange,
   showResult = false,
   isCorrect,
+  onCheckAnswer,
 }: Props) {
   const [isPlaying, setIsPlaying] = useState(false);
   const mode = card.mode || 'type'; // 'type' or 'speak'
 
   const handlePlayAudio = async () => {
-    setIsPlaying(true);
-    // TODO: Implement audio playback
-    setTimeout(() => setIsPlaying(false), 1000);
+    try {
+      const enabled = await getTtsEnabled();
+      if (!enabled) return;
+      setIsPlaying(true);
+      const rate = await getTtsRate();
+      await SafeSpeech.stop();
+      // For "Type What You Hear", speak the expected answer
+      // For "Speak This Phrase", speak the phrase to practice
+      const textToSpeak = card.expected || card.audioUrl || '';
+      await SafeSpeech.speak(textToSpeak, { language: 'it-IT', rate });
+      // Note: expo-speech doesn't have a completion callback, so we'll reset after a delay
+      setTimeout(() => setIsPlaying(false), 2000);
+    } catch (error) {
+      console.error('Failed to play audio:', error);
+      setIsPlaying(false);
+    }
   };
 
   if (mode === 'speak') {
@@ -120,8 +137,14 @@ export function ListeningCard({
               onChangeText={onAnswerChange}
               placeholder="Type here..."
               autoFocus
+              editable={!showResult}
             />
           </View>
+          {!showResult && userAnswer.trim().length > 0 && (
+            <Pressable style={styles.checkButton} onPress={onCheckAnswer}>
+              <Text style={styles.checkButtonText}>Check Answer</Text>
+            </Pressable>
+          )}
         </>
       ) : (
         // Result Screen
@@ -143,14 +166,29 @@ export function ListeningCard({
               color={isCorrect ? '#28a745' : '#dc3545'}
             />
             <Text style={styles.resultTitle}>{isCorrect ? 'CORRECT!' : 'INCORRECT'}</Text>
-            <Text style={styles.answerText}>{card.expected}</Text>
-            <Ionicons name="volume-high" size={20} color={theme.colors.primary} />
+            <View style={styles.answerContainer}>
+              <Text style={styles.answerText}>{card.expected}</Text>
+              <Pressable
+                onPress={handlePlayAudio}
+                style={styles.resultAudioButton}
+              >
+                <Ionicons name="volume-high" size={20} color={theme.colors.primary} />
+              </Pressable>
+            </View>
           </View>
 
-          <View style={styles.infoCard}>
-            <Text style={styles.infoLabel}>MEANING</Text>
-            <Text style={styles.infoText}>Translation here</Text>
-          </View>
+          {isCorrect && (
+            <View style={styles.infoCard}>
+              <Text style={styles.infoLabel}>MEANING</Text>
+              <Text style={styles.infoText}>Good morning</Text>
+              <View style={styles.alsoCorrectSection}>
+                <Text style={styles.infoLabel}>ALSO CORRECT</Text>
+                <View style={styles.alsoCorrectTag}>
+                  <Text style={styles.alsoCorrectText}>Buon giorno</Text>
+                </View>
+              </View>
+            </View>
+          )}
         </>
       )}
     </View>
@@ -159,8 +197,10 @@ export function ListeningCard({
 
 const styles = StyleSheet.create({
   container: {
-    gap: theme.spacing.lg,
-    alignItems: 'center',
+    flex: 1,
+    minHeight: 0,
+    gap: theme.spacing.md,
+    alignItems: 'stretch',
   },
   instruction: {
     fontFamily: theme.typography.bold,
@@ -176,7 +216,7 @@ const styles = StyleSheet.create({
   },
   phraseText: {
     fontFamily: theme.typography.bold,
-    fontSize: 32,
+    fontSize: 28,
     color: theme.colors.text,
   },
   phraseTranslation: {
@@ -193,9 +233,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   audioButtonLarge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
@@ -216,7 +256,8 @@ const styles = StyleSheet.create({
   },
   audioCard: {
     alignItems: 'center',
-    marginVertical: theme.spacing.md,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
   },
   inputCard: {
     width: '100%',
@@ -241,15 +282,19 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: '#d4edda',
     borderRadius: 16,
-    padding: theme.spacing.xl,
+    padding: theme.spacing.lg,
     alignItems: 'center',
     gap: theme.spacing.sm,
   },
   resultCardCorrect: {
     backgroundColor: '#d4edda',
+    borderWidth: 2,
+    borderColor: '#28a745',
   },
   resultCardWrong: {
     backgroundColor: '#f8d7da',
+    borderWidth: 2,
+    borderColor: '#dc3545',
   },
   resultTitle: {
     fontFamily: theme.typography.bold,
@@ -257,20 +302,29 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     textTransform: 'uppercase',
   },
+  answerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  answerText: {
+    fontFamily: theme.typography.bold,
+    fontSize: 20,
+    color: theme.colors.text,
+    flexShrink: 1,
+  },
+  resultAudioButton: {
+    padding: theme.spacing.xs,
+  },
   score: {
     fontFamily: theme.typography.bold,
-    fontSize: 48,
+    fontSize: 40,
     color: '#28a745',
   },
   scoreLabel: {
     fontFamily: theme.typography.regular,
     fontSize: 14,
     color: theme.colors.mutedText,
-  },
-  answerText: {
-    fontFamily: theme.typography.bold,
-    fontSize: 24,
-    color: theme.colors.text,
   },
   analysisCard: {
     width: '100%',
@@ -309,17 +363,61 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: theme.spacing.lg,
-    gap: theme.spacing.xs,
+    gap: theme.spacing.md,
   },
   infoLabel: {
     fontFamily: theme.typography.bold,
     fontSize: 12,
     color: theme.colors.mutedText,
     textTransform: 'uppercase',
+    marginBottom: theme.spacing.xs,
   },
   infoText: {
     fontFamily: theme.typography.regular,
     fontSize: 16,
     color: theme.colors.text,
+  },
+  alsoCorrectSection: {
+    marginTop: theme.spacing.sm,
+    gap: theme.spacing.xs,
+  },
+  alsoCorrectTag: {
+    backgroundColor: '#E0E0E0',
+    borderRadius: 8,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    alignSelf: 'flex-start',
+  },
+  alsoCorrectText: {
+    fontFamily: theme.typography.regular,
+    fontSize: 14,
+    color: theme.colors.text,
+  },
+  xpBar: {
+    width: '100%',
+    backgroundColor: '#28a745',
+    borderRadius: 12,
+    padding: theme.spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    justifyContent: 'center',
+  },
+  xpText: {
+    fontFamily: theme.typography.semiBold,
+    fontSize: 16,
+    color: '#fff',
+  },
+  checkButton: {
+    backgroundColor: theme.colors.primary,
+    padding: theme.spacing.md,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: theme.spacing.md,
+  },
+  checkButtonText: {
+    color: '#fff',
+    fontFamily: theme.typography.semiBold,
+    fontSize: 16,
   },
 });

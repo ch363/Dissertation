@@ -19,7 +19,7 @@ import {
   resolvePostLoginDestination,
   setSessionFromEmailLink,
   signInWithEmailPassword,
-} from '@/app/api/auth';
+} from '@/services/api/auth';
 import { theme } from '@/services/theme/tokens';
 
 const emailRegex = /\S+@\S+\.\S+/;
@@ -77,7 +77,7 @@ export default function SignIn() {
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Get the user ID from the session
-      const { getCurrentUser } = await import('@/app/api/auth');
+      const { getCurrentUser } = await import('@/services/api/auth');
       const user = await getCurrentUser();
       console.log('SignIn: Got user after email confirmation', {
         userId: user?.id,

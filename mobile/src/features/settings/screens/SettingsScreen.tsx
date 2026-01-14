@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Switch, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { signOut } from '@/app/api/auth';
+import { signOut } from '@/services/api/auth';
 import { routes } from '@/services/navigation/routes';
 import {
   useAppTheme,

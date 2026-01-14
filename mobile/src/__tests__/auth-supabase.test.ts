@@ -1,18 +1,17 @@
-import { signInWithEmail, signUpWithEmail } from '@/app/api/auth';
+import { signInWithEmailPassword, signUpWithEmail } from '@/services/api/auth';
 
-jest.mock('@/app/api/auth', () => {
-  const actual = jest.requireActual('@/app/api/auth');
+jest.mock('@/services/api/auth', () => {
+  const actual = jest.requireActual('@/services/api/auth');
   return {
     ...actual,
     signInWithEmailPassword: jest.fn(),
-    signUpWithEmailPassword: jest.fn(),
     sendPasswordReset: jest.fn(),
     signOut: jest.fn(),
     updatePassword: jest.fn(),
   };
 });
 
-jest.mock('@/app/api/supabase/client', () => ({
+jest.mock('@/services/supabase/client', () => ({
   getSupabaseClient: jest.fn(),
 }));
 
@@ -20,7 +19,7 @@ jest.mock('@/services/env/supabaseConfig', () => ({
   getSupabaseRedirectUrl: jest.fn(() => 'fluentia://sign-in'),
 }));
 
-const { getSupabaseClient } = require('@/app/api/supabase/client');
+const { getSupabaseClient } = require('@/services/supabase/client');
 const { getSupabaseRedirectUrl } = require('@/services/env/supabaseConfig');
 
 describe('auth facade (Supabase)', () => {
@@ -28,23 +27,14 @@ describe('auth facade (Supabase)', () => {
     jest.clearAllMocks();
   });
 
-  it('signInWithEmail returns user from underlying auth call', async () => {
-    const signInMock = jest.fn().mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
+  it('signInWithEmailPassword returns session from underlying auth call', async () => {
+    const signInMock = jest.fn().mockResolvedValue({ data: { session: { user: { id: 'u1' } } }, error: null });
     (getSupabaseClient as jest.Mock).mockReturnValue({ auth: { signInWithPassword: signInMock } });
 
-    const user = await signInWithEmail('a@example.com', 'secret');
+    const result = await signInWithEmailPassword('a@example.com', 'secret');
 
     expect(signInMock).toHaveBeenCalledWith({ email: 'a@example.com', password: 'secret' });
-    expect(user).toEqual({ id: 'u1' });
-  });
-
-  it('signInWithEmail returns null when no user returned', async () => {
-    const signInMock = jest.fn().mockResolvedValue({ data: { user: null }, error: null });
-    (getSupabaseClient as jest.Mock).mockReturnValue({ auth: { signInWithPassword: signInMock } });
-
-    const user = await signInWithEmail('a@example.com', 'secret');
-
-    expect(user).toBeNull();
+    expect(result.session?.user.id).toBe('u1');
   });
 
   it('signUpWithEmail passes redirect URL and returns user/session', async () => {

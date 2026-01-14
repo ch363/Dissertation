@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createClient } from '@supabase/supabase-js';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { ProgressService } from '../progress/progress.service';
@@ -6,15 +8,82 @@ import { ResetProgressDto } from '../progress/dto/reset-progress.dto';
 
 @Injectable()
 export class MeService {
+  private supabaseAdmin: ReturnType<typeof createClient> | null = null;
+
   constructor(
     private prisma: PrismaService,
     private usersService: UsersService,
     private progressService: ProgressService,
-  ) {}
+    private configService: ConfigService,
+  ) {
+    // Initialize Supabase admin client for accessing user metadata
+    const supabaseUrl = this.configService.get<string>('supabase.url');
+    const serviceRoleKey = this.configService.get<string>('supabase.serviceRoleKey');
+    if (supabaseUrl && serviceRoleKey) {
+      this.supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      });
+    }
+  }
 
   async getMe(userId: string) {
     // Provision user on first request
-    return this.usersService.upsertUser(userId);
+    const user = await this.usersService.upsertUser(userId);
+    
+    // Compute displayName with priority: DB name → auth metadata name → email extraction → "User"
+    let displayName = user.name;
+    
+    if (!displayName || displayName.trim() === '') {
+      // Try to get name from Supabase auth metadata
+      if (this.supabaseAdmin) {
+        try {
+          const { data: authUser, error } = await this.supabaseAdmin.auth.admin.getUserById(userId);
+          if (!error && authUser?.user) {
+            const authMetadataName = (authUser.user.user_metadata as any)?.name;
+            if (authMetadataName && authMetadataName.trim()) {
+              displayName = authMetadataName.trim();
+              // Auto-sync to database if found in auth but not in DB
+              try {
+                await this.usersService.updateUser(userId, { name: displayName || undefined });
+                user.name = displayName; // Update local object
+              } catch (syncError) {
+                // Log but don't fail - name will still be returned
+                console.warn('Failed to sync name from auth metadata to DB:', syncError);
+              }
+            } else {
+              // Fallback to email (extract name part)
+              const email = authUser.user.email;
+              if (email) {
+                const emailName = email.split('@')[0];
+                displayName = emailName.charAt(0).toUpperCase() + emailName.slice(1);
+              } else {
+                displayName = 'User';
+              }
+            }
+          } else {
+            // Could not fetch auth user, fallback to email extraction from user.email if available
+            // Or just use "User"
+            displayName = 'User';
+          }
+        } catch (error) {
+          // If Supabase admin call fails, fallback to "User"
+          console.warn('Failed to fetch user metadata from Supabase:', error);
+          displayName = 'User';
+        }
+      } else {
+        // No Supabase admin client available, fallback to "User"
+        displayName = 'User';
+      }
+    }
+    
+    // Return user with computed displayName
+    return {
+      ...user,
+      displayName: displayName || 'User',
+    };
   }
 
   async getDashboard(userId: string) {
@@ -294,6 +363,18 @@ export class MeService {
 
   async resetAllProgress(userId: string, options?: ResetProgressDto) {
     return this.progressService.resetAllProgress(userId, options);
+  }
+
+  async uploadAvatar(userId: string, avatarUrl: string) {
+    // Update user's avatarUrl
+    await this.usersService.updateUser(userId, {
+      avatarUrl,
+    });
+
+    return {
+      message: 'Avatar uploaded successfully',
+      avatarUrl,
+    };
   }
 
   async deleteAccount(userId: string) {

@@ -1,7 +1,7 @@
 import { useLocalSearchParams, router } from 'expo-router';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 
-import { markModuleCompleted } from '@/app/api/progress';
+import { markModuleCompleted } from '@/services/api/progress';
 import { routeBuilders, routes } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 

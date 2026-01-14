@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScrollView } from '@/components/ui';
 
-import { resolvePostAuthDestination, signUpWithEmail } from '@/app/api/auth';
+import { resolvePostAuthDestination, signUpWithEmail } from '@/services/api/auth';
 import { theme } from '@/services/theme/tokens';
 
 const emailRegex = /\S+@\S+\.\S+/;

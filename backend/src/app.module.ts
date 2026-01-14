@@ -1,5 +1,5 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
@@ -31,12 +31,26 @@ import configuration from './config/configuration';
       validationSchema: process.env.NODE_ENV === 'test' ? undefined : envValidationSchema, // Skip validation in tests
       load: [configuration],
     }),
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60000, // 1 minute
-        limit: process.env.NODE_ENV === 'production' ? 100 : 1000, // Higher limit in development
+    // Rate Limiting Configuration
+    // ThrottlerGuard is applied globally via APP_GUARD below
+    // Rate limit headers (X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset) are automatically added
+    // Default: 100 requests/minute in production, 1000 requests/minute in development
+    // Configure via THROTTLE_TTL and THROTTLE_LIMIT environment variables
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => {
+        const throttleConfig = config.get('throttle');
+        return [
+          {
+            ttl: throttleConfig.ttl, // Time window in milliseconds (default: 60000 = 1 minute)
+            limit: throttleConfig.limit, // Max requests per time window (default: 100 prod, 1000 dev)
+            // Use in-memory storage (default) - can be configured to use Redis for distributed systems
+            storage: undefined,
+          },
+        ];
       },
-    ]),
+    }),
     PrismaModule,
     AuthModule,
     UsersModule,
@@ -57,6 +71,9 @@ import configuration from './config/configuration';
   providers: [
     AppService,
     {
+      // Apply ThrottlerGuard globally to all routes
+      // Use @SkipThrottle() decorator on controllers/routes to exclude specific endpoints
+      // Health endpoints are excluded (see health.controller.ts)
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },

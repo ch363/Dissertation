@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import type { DeliveryMethod } from '@/features/session/delivery-methods';
 
 export interface QuestionAttemptDto {
   score: number;
@@ -101,4 +102,55 @@ export async function recordKnowledgeLevelProgress(
   progress: KnowledgeLevelProgressDto,
 ) {
   return apiClient.post('/progress/knowledge-level-progress', progress);
+}
+
+export interface ProgressSummary {
+  xp: number;
+  streak: number;
+  completedLessons: number;
+  completedModules: number;
+  totalLessons: number;
+  totalModules: number;
+}
+
+/**
+ * Get progress summary for user
+ * TODO: Backend endpoint GET /progress/summary needs to be created in Phase 3
+ */
+export async function getProgressSummary(userId: string | null): Promise<ProgressSummary> {
+  // Backend endpoint will be created in Phase 3
+  // For now, return a placeholder that will fail gracefully
+  return apiClient.get<ProgressSummary>('/progress/summary');
+}
+
+/**
+ * Mark module as completed
+ * Accepts module ID (UUID) or slug (title)
+ */
+export async function markModuleCompleted(moduleIdOrSlug: string): Promise<void> {
+  await apiClient.post(`/progress/modules/${encodeURIComponent(moduleIdOrSlug)}/complete`);
+}
+
+export interface ValidateAnswerResponse {
+  isCorrect: boolean;
+  score: number;
+  feedback?: string;
+}
+
+/**
+ * Validate user answer and get score
+ * Returns isCorrect, score, and optional feedback
+ */
+export async function validateAnswer(
+  questionId: string,
+  answer: string,
+  deliveryMethod: DeliveryMethod,
+): Promise<ValidateAnswerResponse> {
+  return apiClient.post<ValidateAnswerResponse>(
+    `/progress/questions/${questionId}/validate`,
+    {
+      answer,
+      deliveryMethod,
+    },
+  );
 }

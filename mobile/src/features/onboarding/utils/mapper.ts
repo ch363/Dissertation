@@ -33,6 +33,12 @@ export function normalizeOnboardingAnswers(raw: unknown): OnboardingAnswers {
   return onboardingAnswersSchema.parse(raw);
 }
 
+/**
+ * @deprecated This function is deprecated - backend now handles submission building.
+ * This is kept for testing purposes only.
+ * Backend POST /onboarding accepts raw answers and computes all derived fields server-side.
+ * Frontend should only send raw OnboardingAnswers to the backend.
+ */
 export function buildOnboardingSubmission(answers: OnboardingAnswers): OnboardingSubmission {
   const challengeWeight = difficultyWeights[answers.difficulty ?? ''] ?? 0.5;
   const prefersGamification = gamificationWeights[answers.gamification ?? ''] ?? null;

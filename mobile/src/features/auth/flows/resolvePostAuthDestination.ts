@@ -1,5 +1,5 @@
-import { hasOnboarding } from '@/api/onboarding';
-import { ensureProfileSeed } from '@/api/profile';
+import { hasOnboarding } from '@/services/api/onboarding';
+import { ensureProfileSeed } from '@/services/api/profile';
 import { routes } from '@/services/navigation/routes';
 
 /**
