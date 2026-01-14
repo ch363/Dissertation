@@ -200,6 +200,18 @@ export class ProgressService {
       timeMs: attemptDto.timeToComplete || 0,
     });
 
+    // Record knowledge level progress (append-only log of XP gains)
+    if (awardedXp > 0) {
+      try {
+        await this.recordKnowledgeLevelProgress(userId, {
+          value: awardedXp,
+        });
+      } catch (error) {
+        // Log but don't fail - progress recording is non-critical
+        console.error('Error recording knowledge level progress:', error);
+      }
+    }
+
     // SRS state is stored directly in UserQuestionPerformance (no separate table needed)
 
     // Return performance with XP info

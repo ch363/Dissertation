@@ -39,9 +39,6 @@ export const routes = {
   course: {
     list: '/course' as const,
   },
-  dev: {
-    dbHealth: '/dev/db-health' as const,
-  },
   practice: {
     flashcards: '/practice/flashcards' as const,
     typing: '/practice/typing' as const,

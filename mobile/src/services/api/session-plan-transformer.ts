@@ -196,19 +196,18 @@ export function transformSessionPlan(
         deliveryMethodTyped === DELIVERY_METHOD.SPEECH_TO_TEXT ||
         deliveryMethodTyped === DELIVERY_METHOD.TEXT_TO_SPEECH
       ) {
-        if (item.audioUrl && item.answer) {
+        if (item.answer) {
           cards.push({
             id: `question-${item.questionId}`,
             kind: CardKind.Listening,
             prompt: item.prompt || 'Listen and type what you hear',
-            audioUrl: item.audioUrl,
+            audioUrl: item.audioUrl, // Optional - ListeningCard will use TTS if missing
             expected: item.answer,
             mode: deliveryMethodTyped === DELIVERY_METHOD.TEXT_TO_SPEECH ? 'speak' : 'type',
           });
         } else {
-          console.warn('SPEECH_TO_TEXT/TEXT_TO_SPEECH question missing audioUrl or answer:', {
+          console.warn('SPEECH_TO_TEXT/TEXT_TO_SPEECH question missing answer:', {
             questionId: item.questionId,
-            hasAudioUrl: !!item.audioUrl,
             hasAnswer: !!item.answer,
           });
         }

@@ -9,7 +9,7 @@ export interface QuestionAttemptDto {
 }
 
 export interface DeliveryMethodScoreDto {
-  score: number;
+  delta: number;
 }
 
 export interface KnowledgeLevelProgressDto {

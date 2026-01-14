@@ -18,40 +18,52 @@ let isPlayingError = false;
  * Uses a two-tone chime pattern for a pleasant success indication.
  */
 export async function playSuccessSound(): Promise<void> {
-  if (isPlayingSuccess) return; // Prevent overlapping sounds
+  if (isPlayingSuccess) {
+    console.debug('Sound: Success sound already playing, skipping');
+    return; // Prevent overlapping sounds
+  }
   
   try {
+    console.debug('Sound: Playing success sound');
     isPlayingSuccess = true;
     
     // Stop any ongoing speech first
-    await Speech.stop();
+    Speech.stop();
     
-    // Play a pleasant two-tone success chime
-    // First tone: higher pitch
-    await Speech.speak(' ', {
-      pitch: 1.4,
-      rate: 3.5,
+    // Small delay to ensure stop completes
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
+    // Play a pleasant two-tone success chime using vowel sounds
+    // First tone: higher pitch - use "ah" sound for better audibility
+    Speech.speak('ah', {
+      pitch: 1.5,
+      rate: 4.5,
       language: 'en-US',
     });
     
     // Stop first tone quickly and play second tone
-    setTimeout(async () => {
-      await Speech.stop();
-      await Speech.speak(' ', {
-        pitch: 1.6,
-        rate: 3.5,
-        language: 'en-US',
-      });
-      
-      // Reset playing state after both tones
+    setTimeout(() => {
+      Speech.stop();
+      // Small delay before second tone
       setTimeout(() => {
-        Speech.stop();
-        isPlayingSuccess = false;
-      }, 120);
-    }, 80);
+        // Second tone: even higher pitch - use "eh" sound
+        Speech.speak('eh', {
+          pitch: 1.8,
+          rate: 4.5,
+          language: 'en-US',
+        });
+        
+        // Reset playing state after both tones complete
+        setTimeout(() => {
+          Speech.stop();
+          isPlayingSuccess = false;
+          console.debug('Sound: Success sound completed');
+        }, 250);
+      }, 50);
+    }, 150);
   } catch (error) {
-    // Silently fail - sound effects are non-critical
-    console.debug('Failed to play success sound:', error);
+    // Log error for debugging
+    console.warn('Failed to play success sound:', error);
     isPlayingSuccess = false;
   }
 }
@@ -61,29 +73,37 @@ export async function playSuccessSound(): Promise<void> {
  * Uses a lower-pitched, single-tone sound to indicate failure.
  */
 export async function playErrorSound(): Promise<void> {
-  if (isPlayingError) return; // Prevent overlapping sounds
+  if (isPlayingError) {
+    console.debug('Sound: Error sound already playing, skipping');
+    return; // Prevent overlapping sounds
+  }
   
   try {
+    console.debug('Sound: Playing error sound');
     isPlayingError = true;
     
     // Stop any ongoing speech first
-    await Speech.stop();
+    Speech.stop();
     
-    // Play a lower-pitched, single-tone error sound
-    await Speech.speak(' ', {
-      pitch: 0.8, // Lower pitch for error
-      rate: 2.5,
+    // Small delay to ensure stop completes
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
+    // Play a lower-pitched, single-tone error sound using "oh" sound for better audibility
+    Speech.speak('oh', {
+      pitch: 0.6, // Lower pitch for error
+      rate: 3.5,
       language: 'en-US',
     });
     
-    // Reset playing state after sound
+    // Reset playing state after sound completes
     setTimeout(() => {
       Speech.stop();
       isPlayingError = false;
-    }, 150);
+      console.debug('Sound: Error sound completed');
+    }, 300);
   } catch (error) {
-    // Silently fail - sound effects are non-critical
-    console.debug('Failed to play error sound:', error);
+    // Log error for debugging
+    console.warn('Failed to play error sound:', error);
     isPlayingError = false;
   }
 }

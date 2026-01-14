@@ -1,11 +1,11 @@
 import { router } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View, ScrollView } from 'react-native';
 
 import { theme } from '@/services/theme/tokens';
 import { AttemptLog, CardKind, SessionPlan } from '@/types/session';
 import { requiresSelection, getDeliveryMethodForCardKind } from '../delivery-methods';
-import { validateAnswer, recordQuestionAttempt } from '@/services/api/progress';
+import { validateAnswer, recordQuestionAttempt, completeTeaching, updateDeliveryMethodScore } from '@/services/api/progress';
 import { CardRenderer } from './CardRenderer';
 import { LessonProgressHeader } from './LessonProgressHeader';
 import { playSuccessSound, playErrorSound } from '@/services/sounds';
@@ -24,9 +24,20 @@ export function SessionRunner({ plan, onComplete }: Props) {
   const [showResult, setShowResult] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [flashcardRating, setFlashcardRating] = useState<number | undefined>(undefined);
+  const [cardStartTime, setCardStartTime] = useState<number | null>(null);
+  const [recordedAttempts, setRecordedAttempts] = useState<Set<string>>(new Set());
 
   const currentCard = plan.cards[index];
   const total = useMemo(() => plan.cards.length, [plan.cards]);
+
+  // Track when card is shown for time tracking
+  useEffect(() => {
+    if (currentCard && currentCard.kind !== CardKind.Teach) {
+      setCardStartTime(Date.now());
+    } else {
+      setCardStartTime(null);
+    }
+  }, [index, currentCard]);
 
   const isLast = index >= total - 1;
   
@@ -124,13 +135,43 @@ export function SessionRunner({ plan, onComplete }: Props) {
         });
       }
 
+      // Calculate time to complete
+      const timeToComplete = cardStartTime ? Date.now() - cardStartTime : undefined;
+      const attemptNumber = attempts.filter((a) => a.cardId === currentCard.id).length + 1;
+
+      // Record question attempt immediately after validation
+      if (!recordedAttempts.has(currentCard.id)) {
+        try {
+          await recordQuestionAttempt(questionId, {
+            score: validationResult.score,
+            timeToComplete,
+            percentageAccuracy: validationResult.isCorrect ? 100 : 0,
+            attempts: attemptNumber,
+          });
+
+          // Update delivery method score based on performance
+          const delta = validationResult.isCorrect ? 0.1 : -0.05;
+          try {
+            await updateDeliveryMethodScore(deliveryMethod, { delta });
+          } catch (error) {
+            console.error('Error updating delivery method score:', error);
+            // Continue even if this fails
+          }
+
+          setRecordedAttempts((prev) => new Set(prev).add(currentCard.id));
+        } catch (error) {
+          console.error('Error recording question attempt:', error);
+          // Continue even if API call fails
+        }
+      }
+
       // Create attempt log with validated score
       const newAttempt: AttemptLog = {
         cardId: currentCard.id,
-        attemptNumber: attempts.filter((a) => a.cardId === currentCard.id).length + 1,
+        attemptNumber,
         answer: userAnswerValue,
         isCorrect: validationResult.isCorrect,
-        elapsedMs: 0,
+        elapsedMs: timeToComplete || 0,
       };
       setAttempts((prev) => [...prev, newAttempt]);
     } catch (error) {
@@ -168,6 +209,36 @@ export function SessionRunner({ plan, onComplete }: Props) {
             playErrorSound().catch(() => {
               // Silently fail - sound is non-critical
             });
+          }
+
+          // Calculate time to complete
+          const timeToComplete = cardStartTime ? Date.now() - cardStartTime : undefined;
+          const attemptNumber = attempts.filter((a) => a.cardId === currentCard.id).length + 1;
+
+          // Record question attempt immediately after validation
+          if (!recordedAttempts.has(currentCard.id)) {
+            try {
+              await recordQuestionAttempt(questionId, {
+                score: validationResult.score,
+                timeToComplete,
+                percentageAccuracy: validationResult.isCorrect ? 100 : 0,
+                attempts: attemptNumber,
+              });
+
+              // Update delivery method score based on performance
+              const delta = validationResult.isCorrect ? 0.1 : -0.05;
+              try {
+                await updateDeliveryMethodScore(deliveryMethod, { delta });
+              } catch (error) {
+                console.error('Error updating delivery method score:', error);
+                // Continue even if this fails
+              }
+
+              setRecordedAttempts((prev) => new Set(prev).add(currentCard.id));
+            } catch (error) {
+              console.error('Error recording question attempt:', error);
+              // Continue even if API call fails
+            }
           }
           
           // If correct, we can proceed immediately
@@ -219,12 +290,25 @@ export function SessionRunner({ plan, onComplete }: Props) {
           // Record the attempt with the rating as the score
           // Rating: 0 = 0% (wrong), 2.5 = 50% (mid), 5 = 100% (correct)
           const score = flashcardRating === 0 ? 0 : flashcardRating === 2.5 ? 50 : 100;
+          const timeToComplete = cardStartTime ? Date.now() - cardStartTime : undefined;
           
           await recordQuestionAttempt(questionId, {
             score,
+            timeToComplete,
             percentageAccuracy: score,
             attempts: 1,
           });
+
+          // Update delivery method score based on performance
+          const delta = isCorrect ? 0.1 : -0.05;
+          try {
+            await updateDeliveryMethodScore(deliveryMethod, { delta });
+          } catch (error) {
+            console.error('Error updating delivery method score:', error);
+            // Continue even if this fails
+          }
+
+          setRecordedAttempts((prev) => new Set(prev).add(currentCard.id));
         } catch (error) {
           console.error('Error recording flashcard rating:', error);
           // Continue even if API call fails
@@ -264,6 +348,17 @@ export function SessionRunner({ plan, onComplete }: Props) {
       currentCard.kind === CardKind.Teach &&
       !attempts.some((a) => a.cardId === currentCard.id)
     ) {
+      // Extract teachingId from cardId (format: "teach-${teachingId}")
+      if (currentCard.id.startsWith('teach-')) {
+        const teachingId = currentCard.id.replace('teach-', '');
+        try {
+          await completeTeaching(teachingId);
+        } catch (error) {
+          console.error('Error completing teaching:', error);
+          // Continue even if API call fails
+        }
+      }
+
       const newAttempt: AttemptLog = {
         cardId: currentCard.id,
         attemptNumber: 1,
@@ -286,6 +381,7 @@ export function SessionRunner({ plan, onComplete }: Props) {
       setShowResult(false);
       setIsCorrect(false);
       setFlashcardRating(undefined);
+      setCardStartTime(null);
     }
   };
 
@@ -299,6 +395,7 @@ export function SessionRunner({ plan, onComplete }: Props) {
       setShowResult(false);
       setIsCorrect(false);
       setFlashcardRating(undefined);
+      setCardStartTime(null);
       return;
     }
 

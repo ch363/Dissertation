@@ -9,7 +9,7 @@ import { routeBuilders } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { AttemptLog, SessionKind, SessionPlan } from '@/types/session';
 import { getSessionPlan } from '@/services/api/learn';
-import { recordQuestionAttempt } from '@/services/api/progress';
+import { startLesson } from '@/services/api/progress';
 import { transformSessionPlan } from '@/services/api/session-plan-transformer';
 import { getCachedSessionPlan } from '@/services/api/session-plan-cache';
 
@@ -110,6 +110,14 @@ export default function SessionRunnerScreen(props?: Props) {
 
         // For learn sessions, fetch from backend
         if (lessonId && lessonId !== 'demo') {
+          // Start lesson engagement (creates/updates UserLesson)
+          try {
+            await startLesson(lessonId);
+          } catch (err) {
+            console.error('Failed to start lesson:', err);
+            // Continue even if this fails - non-critical
+          }
+
           const response = await getSessionPlan({
             mode: 'learn',
             lessonId,
@@ -179,33 +187,13 @@ export default function SessionRunnerScreen(props?: Props) {
   }, [lessonId, sessionId, sessionKind]);
 
   const handleComplete = async (attempts: AttemptLog[]) => {
-    try {
-      // Log question attempts to backend
-      for (const attempt of attempts) {
-        // Extract questionId from cardId if possible, or use a mapping
-        // For now, we'll skip if we can't determine the questionId
-        if (attempt.cardId && attempt.cardId.startsWith('question-')) {
-          const questionId = attempt.cardId.replace('question-', '');
-          await recordQuestionAttempt(questionId, {
-            score: attempt.isCorrect ? 100 : 0,
-            timeToComplete: attempt.elapsedMs,
-            percentageAccuracy: attempt.isCorrect ? 100 : 0,
-            attempts: attempt.attemptNumber,
-          }).catch((err) => {
-            console.error('Failed to record attempt:', err);
-            // Continue with other attempts even if one fails
-          });
-        }
-      }
-    } catch (err) {
-      console.error('Error logging attempts:', err);
-      // Continue to summary screen even if logging fails
-    } finally {
-      router.replace({
-        pathname: routeBuilders.sessionSummary(sessionId),
-        params: { kind: sessionKind, lessonId },
-      });
-    }
+    // Note: Question attempts are now recorded immediately in SessionRunner
+    // when answers are validated, so we don't need to record them here.
+    // This avoids duplicate records and ensures real-time progress tracking.
+    router.replace({
+      pathname: routeBuilders.sessionSummary(sessionId),
+      params: { kind: sessionKind, lessonId },
+    });
   };
 
   // Calculate translateY for slide-up animation
