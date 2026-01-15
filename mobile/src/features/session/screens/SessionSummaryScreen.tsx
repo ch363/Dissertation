@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, Stack } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,7 +8,7 @@ import { routes } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 import { CardKind, SessionPlan } from '@/types/session';
 import { getCachedSessionPlan } from '@/services/api/session-plan-cache';
-import { getLessonTeachings, type Teaching } from '@/services/api/modules';
+import { getLesson, getLessonTeachings, type Teaching, type Lesson } from '@/services/api/modules';
 
 export default function SessionSummaryScreen() {
   const params = useLocalSearchParams<{ sessionId?: string; kind?: string; lessonId?: string }>();
@@ -17,6 +17,7 @@ export default function SessionSummaryScreen() {
 
   const [teachings, setTeachings] = useState<Teaching[]>([]);
   const [loadingTeachings, setLoadingTeachings] = useState(false);
+  const [lesson, setLesson] = useState<Lesson | null>(null);
 
   // Get the session plan from cache to extract teachings
   const sessionPlan = useMemo(() => {
@@ -47,6 +48,23 @@ export default function SessionSummaryScreen() {
         emoji?: string;
       }>;
   }, [sessionPlan]);
+
+  // Fetch lesson data to get the title
+  useEffect(() => {
+    const fetchLesson = async () => {
+      if (lessonId && kind === 'learn') {
+        try {
+          const lessonData = await getLesson(lessonId);
+          setLesson(lessonData);
+        } catch (error) {
+          console.error('Failed to load lesson:', error);
+          // Continue without lesson title - not critical
+        }
+      }
+    };
+
+    fetchLesson();
+  }, [lessonId, kind]);
 
   // Fetch teachings from API if we have a lessonId and no cached teachings
   useEffect(() => {
@@ -89,15 +107,23 @@ export default function SessionSummaryScreen() {
   }, [lessonId, kind, cachedTeachings]);
 
   const handleBackToHome = () => {
-    router.replace(routes.tabs.home);
+    // Dismiss all modals/stacks to reveal the home screen underneath
+    router.dismissAll();
+    // Navigate to home - this will slide the current screen right, revealing home underneath
+    // Using navigate instead of replace to get the stack animation
+    router.navigate(routes.tabs.home);
   };
 
   const handleBackToLearn = () => {
     router.replace(routes.tabs.learn);
   };
 
+  // Determine header title
+  const headerTitle = lesson?.title || (kind === 'review' ? 'Review Summary' : 'Lesson Summary');
+
   return (
     <SafeAreaView style={styles.safe}>
+      <Stack.Screen options={{ title: headerTitle }} />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.card}>
           <View style={styles.header}>

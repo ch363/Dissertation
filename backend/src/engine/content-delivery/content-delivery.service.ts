@@ -15,7 +15,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DELIVERY_METHOD } from '@prisma/client';
 import { DeliveryMode, ItemKind } from '../types';
-import { DeliveryCandidate, NextDeliveryItemDto, DashboardPlanDto } from './types';
+import { DeliveryCandidate, DashboardPlanDto } from './types';
 import { rankCandidates, mixReviewAndNew, pickOne, selectDeliveryMethod } from './selection.policy';
 import { SessionPlanService } from './session-plan.service';
 import { SessionPlanDto, SessionContext } from './session-types';
@@ -27,76 +27,6 @@ export class ContentDeliveryService {
     private sessionPlanService: SessionPlanService,
   ) {}
 
-  /**
-   * Get the next item to deliver to the user.
-   * 
-   * @deprecated This method is maintained for backward compatibility.
-   * Use getSessionPlan() to get a complete session plan instead.
-   * 
-   * @param userId User ID
-   * @param opts Options including delivery mode
-   * @returns Next delivery item DTO
-   */
-  async getNextItem(
-    userId: string,
-    opts?: { mode?: DeliveryMode; lessonId?: string },
-  ): Promise<NextDeliveryItemDto | null> {
-    // Use session planner internally and extract first step
-    // Convert DeliveryMode to SessionContext mode
-    let sessionMode: 'learn' | 'review' | 'mixed' = 'mixed';
-    if (opts?.mode === 'new') {
-      sessionMode = 'learn';
-    } else if (opts?.mode === 'review') {
-      sessionMode = 'review';
-    } else {
-      sessionMode = 'mixed';
-    }
-
-    const context: SessionContext = {
-      mode: sessionMode,
-      lessonId: opts?.lessonId,
-    };
-
-    const plan = await this.sessionPlanService.createPlan(userId, context);
-
-    if (plan.steps.length === 0) {
-      return null;
-    }
-
-    // Extract first non-recap step
-    const firstStep = plan.steps.find((s) => s.type !== 'recap');
-    if (!firstStep) {
-      return null;
-    }
-
-    // Convert step to NextDeliveryItemDto
-    if (firstStep.type === 'teach' && firstStep.item.type === 'teach') {
-      return {
-        kind: 'teaching',
-        id: firstStep.item.teachingId,
-        teachingId: firstStep.item.teachingId,
-        lessonId: firstStep.item.lessonId,
-        title: firstStep.item.translation,
-        prompt: firstStep.item.phrase,
-        rationale: 'Next teaching item',
-      };
-    } else if (firstStep.type === 'practice' && firstStep.item.type === 'practice') {
-      return {
-        kind: 'question',
-        id: firstStep.item.questionId,
-        questionId: firstStep.item.questionId,
-        teachingId: firstStep.item.teachingId,
-        lessonId: firstStep.item.lessonId,
-        prompt: firstStep.item.prompt,
-        options: firstStep.item.options?.map((o) => o.label),
-        deliveryMethods: [firstStep.item.deliveryMethod],
-        suggestedDeliveryMethod: firstStep.item.deliveryMethod,
-        rationale: 'Next practice item',
-      };
-    }
-
-    return null;
-  }
 
   /**
    * Get a complete session plan for the user.

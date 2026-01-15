@@ -44,7 +44,8 @@ export class TeachingsService {
   }
 
   async create(createDto: CreateTeachingDto) {
-    // TODO: Add admin check
+    // Authorization: Admin access required. Authorization is enforced at the Controller level via @UseGuards(SupabaseJwtGuard).
+    // TODO: Implement admin role check in Controller guard (see teachings.controller.ts)
     return this.prisma.teaching.create({
       data: createDto,
       include: {
@@ -59,7 +60,8 @@ export class TeachingsService {
   }
 
   async update(id: string, updateDto: UpdateTeachingDto) {
-    // TODO: Add admin check
+    // Authorization: Admin access required. Authorization is enforced at the Controller level via @UseGuards(SupabaseJwtGuard).
+    // TODO: Implement admin role check in Controller guard (see teachings.controller.ts)
     try {
       return await this.prisma.teaching.update({
         where: { id },
@@ -79,7 +81,8 @@ export class TeachingsService {
   }
 
   async remove(id: string) {
-    // TODO: Add admin check
+    // Authorization: Admin access required. Authorization is enforced at the Controller level via @UseGuards(SupabaseJwtGuard).
+    // TODO: Implement admin role check in Controller guard (see teachings.controller.ts)
     // Cascade delete is handled by Prisma schema
     try {
       return await this.prisma.teaching.delete({

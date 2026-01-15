@@ -11,6 +11,10 @@ export class LearnService {
     private contentDelivery: ContentDeliveryService,
   ) {}
 
+  /**
+   * @deprecated This method is maintained for backward compatibility.
+   * Use getSessionPlan() to get a complete session plan instead.
+   */
   async getNext(userId: string, lessonId: string) {
     // 1) Validate lessonId present (already validated by route param)
     // 2) Ensure UserLesson exists (upsert start implicitly)
@@ -57,13 +61,14 @@ export class LearnService {
       };
     }
 
-    // Use engine's content delivery service to get next item
-    const nextItem = await this.contentDelivery.getNextItem(userId, {
+    // Use session plan service to get next item
+    const context: SessionContext = {
       mode: 'mixed',
       lessonId,
-    });
+    };
+    const plan = await this.contentDelivery.getSessionPlan(userId, context);
 
-    if (!nextItem) {
+    if (plan.steps.length === 0) {
       return {
         type: 'done' as const,
         lessonId,
@@ -71,26 +76,44 @@ export class LearnService {
       };
     }
 
-    // Convert engine DTO to existing response format
-    if (nextItem.kind === 'question' && nextItem.questionId) {
+    // Extract first non-recap step
+    const firstStep = plan.steps.find((s) => s.type !== 'recap');
+    if (!firstStep) {
+      return {
+        type: 'done' as const,
+        lessonId,
+        rationale: 'No items available',
+      };
+    }
+
+    // Convert step to existing response format
+    if (firstStep.type === 'practice' && firstStep.item.type === 'practice') {
       // Check if it's a review or new
-      const isReview = await this.isReviewItem(userId, nextItem.questionId);
+      const isReview = await this.isReviewItem(userId, firstStep.item.questionId);
 
       return {
         type: isReview ? ('review' as const) : ('new' as const),
         lessonId,
-        teachingId: nextItem.teachingId,
+        teachingId: firstStep.item.teachingId,
         question: {
-          id: nextItem.questionId,
-          teachingId: nextItem.teachingId,
-          deliveryMethods: nextItem.deliveryMethods || [],
+          id: firstStep.item.questionId,
+          teachingId: firstStep.item.teachingId,
+          deliveryMethods: [firstStep.item.deliveryMethod],
         },
-        suggestedDeliveryMethod: nextItem.suggestedDeliveryMethod,
-        rationale: nextItem.rationale,
+        suggestedDeliveryMethod: firstStep.item.deliveryMethod,
+        rationale: 'Next practice item',
+      };
+    } else if (firstStep.type === 'teach' && firstStep.item.type === 'teach') {
+      // For teaching items, return as 'new' type
+      return {
+        type: 'new' as const,
+        lessonId,
+        teachingId: firstStep.item.teachingId,
+        rationale: 'Next teaching item',
       };
     }
 
-    // Fallback to old logic if engine returns unexpected type
+    // Fallback
     return {
       type: 'done' as const,
       lessonId,

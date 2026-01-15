@@ -241,7 +241,13 @@ export default function SessionRunnerScreen(props?: Props) {
             backgroundColor: theme.colors.background,
           }}
         >
-          <SessionRunner plan={plan} onComplete={handleComplete} />
+          <SessionRunner 
+            plan={plan} 
+            sessionId={sessionId}
+            kind={sessionKind}
+            lessonId={lessonId}
+            onComplete={handleComplete} 
+          />
         </Animated.View>
       )}
     </SafeAreaView>

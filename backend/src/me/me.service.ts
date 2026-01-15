@@ -130,11 +130,14 @@ export class MeService {
 
     const xpTotal = xpProgress._sum.value || 0;
 
+    // Calculate streak using progress service
+    const streak = await this.progressService.calculateStreak(userId);
+
     return {
       dueReviewCount,
       activeLessonCount,
       xpTotal,
-      streak: null, // Placeholder as per spec
+      streak,
     };
   }
 

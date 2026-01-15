@@ -45,8 +45,16 @@ export class SessionPlanService {
 
   /**
    * Create a complete session plan for the user.
+   * 
+   * This method respects previous progress by:
+   * - Using context.lessonId to filter content to a specific lesson (when provided)
+   * - Querying UserTeachingCompleted to get seenTeachingIds and exclude already-completed teachings
+   * - Filtering teaching candidates early to avoid re-showing content the user has already learned
+   * 
    * @param userId User ID
    * @param context Session context (mode, time budget, lesson, theme)
+   *   - lessonId: When provided, filters candidates to this specific lesson
+   *   - seenTeachingIds: Used to exclude teachings from UserTeachingCompleted table
    * @returns Complete session plan with ordered steps
    */
   async createPlan(userId: string, context: SessionContext): Promise<SessionPlanDto> {
@@ -63,12 +71,19 @@ export class SessionPlanService {
       ? calculateItemCount(context.timeBudgetSec, avgTimePerItem)
       : 15; // Default: 15 items
 
-    // 3. Gather candidates
+    // 3. Get seen teaching IDs to filter out already-completed teachings
+    // This queries UserTeachingCompleted to exclude teachings the user has already seen
+    // Note: This gets ALL seen teachings (not lesson-specific) to prevent re-showing
+    // content the user has already learned, even if it appears in a different lesson context
+    const seenTeachingIds = await this.getSeenTeachingIds(userId);
+
+    // 4. Gather candidates
     const reviewCandidates = await this.getReviewCandidates(userId, context.lessonId);
     const newCandidates = await this.getNewCandidates(userId, context.lessonId);
     const teachingCandidates = await this.getTeachingCandidates(
       userId,
       newCandidates,
+      seenTeachingIds,
       context.lessonId,
     );
 
@@ -110,20 +125,23 @@ export class SessionPlanService {
     selectedCandidates = selectedCandidates.slice(0, targetItemCount);
 
     // 5. Apply teach-then-test (for new content only)
-    const seenTeachingIds = await this.getSeenTeachingIds(userId);
+    // Note: seenTeachingIds was already retrieved earlier (step 3) to filter teaching candidates
+    // It's reused here for planTeachThenTest() which also filters out seen teachings
     const newQuestions = selectedCandidates.filter((c) => c.kind === 'question' && c.dueScore === 0);
     const reviews = selectedCandidates.filter((c) => c.dueScore > 0);
 
     let finalCandidates: DeliveryCandidate[] = [];
     if (context.mode === 'learn' || context.mode === 'mixed') {
       // Apply teach-then-test to new questions
+      // Note: teachingCandidates have already been filtered by seenTeachingIds in getTeachingCandidates()
+      // planTeachThenTest() also uses seenTeachingIds as a safeguard to ensure no seen teachings slip through
       const teachingsForNew = teachingCandidates.filter((t) =>
         newQuestions.some((q) => q.teachingId === t.teachingId),
       );
       const teachThenTestSequence = planTeachThenTest(
         teachingsForNew,
         newQuestions,
-        seenTeachingIds,
+        seenTeachingIds, // Used to exclude teachings from UserTeachingCompleted
       );
       
       // For learn mode, prioritize teach-then-test pairs
@@ -661,10 +679,17 @@ export class SessionPlanService {
 
   /**
    * Get teaching candidates for teach-then-test.
+   * Filters out teachings that have already been completed by the user.
+   * @param userId User ID
+   * @param questionCandidates Question candidates to get teachings for
+   * @param seenTeachingIds Set of teaching IDs the user has already completed (from UserTeachingCompleted)
+   * @param lessonId Optional lesson ID to filter teachings by lesson
+   * @returns Teaching candidates that haven't been seen yet
    */
   private async getTeachingCandidates(
     userId: string,
     questionCandidates: DeliveryCandidate[],
+    seenTeachingIds: Set<string>,
     lessonId?: string,
   ): Promise<DeliveryCandidate[]> {
     const teachingIds = new Set(
@@ -690,17 +715,21 @@ export class SessionPlanService {
       },
     });
 
-    return teachings.map((teaching) => ({
-      kind: 'teaching' as const,
-      id: teaching.id,
-      teachingId: teaching.id,
-      lessonId: teaching.lessonId,
-      dueScore: 0,
-      errorScore: 0,
-      timeSinceLastSeen: Infinity,
-      title: teaching.userLanguageString,
-      prompt: teaching.learningLanguageString,
-    }));
+    // Filter out teachings that have already been completed by the user
+    // This ensures we don't re-show content the user has already learned
+    return teachings
+      .filter((teaching) => !seenTeachingIds.has(teaching.id))
+      .map((teaching) => ({
+        kind: 'teaching' as const,
+        id: teaching.id,
+        teachingId: teaching.id,
+        lessonId: teaching.lessonId,
+        dueScore: 0,
+        errorScore: 0,
+        timeSinceLastSeen: Infinity,
+        title: teaching.userLanguageString,
+        prompt: teaching.learningLanguageString,
+      }));
   }
 
   /**
@@ -825,6 +854,17 @@ export class SessionPlanService {
 
   /**
    * Get seen teaching IDs for user.
+   * 
+   * Queries the UserTeachingCompleted table to get all teachings the user has already completed.
+   * This is used to filter out teachings from session plans, ensuring users don't see content
+   * they've already learned.
+   * 
+   * Note: This returns ALL seen teachings across all lessons (not lesson-specific).
+   * This is intentional - we want to prevent re-showing content the user has already learned,
+   * even if it appears in a different lesson context.
+   * 
+   * @param userId User ID
+   * @returns Set of teaching IDs that have been completed by the user
    */
   private async getSeenTeachingIds(userId: string): Promise<Set<string>> {
     const completed = await this.prisma.userTeachingCompleted.findMany({

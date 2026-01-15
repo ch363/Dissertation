@@ -25,6 +25,8 @@ const SEED_UUIDS = {
   questionGrazieFillBlank: '00000000-0000-0000-0000-000000000023',
   questionPerFavoreTranslation: '00000000-0000-0000-0000-000000000024',
   questionCiaoListening: '00000000-0000-0000-0000-000000000025',
+  questionGrazieFlashcard: '00000000-0000-0000-0000-000000000026',
+  questionPerFavoreTextToSpeech: '00000000-0000-0000-0000-000000000027',
 };
 
 async function main() {
@@ -326,12 +328,62 @@ async function main() {
   });
   console.log('✅ Question created/updated: Per favore (Translation)');
 
+  // Question 7: Grazie - Flashcard
+  await prisma.question.upsert({
+    where: { id: SEED_UUIDS.questionGrazieFlashcard },
+    update: {
+      teachingId: SEED_UUIDS.teachingGrazie,
+      type: DELIVERY_METHOD.FLASHCARD,
+    },
+    create: {
+      id: SEED_UUIDS.questionGrazieFlashcard,
+      teachingId: SEED_UUIDS.teachingGrazie,
+      type: DELIVERY_METHOD.FLASHCARD,
+      flashcard: {
+        create: {},
+      },
+    },
+  });
+  await prisma.questionFlashcard.upsert({
+    where: { questionId: SEED_UUIDS.questionGrazieFlashcard },
+    update: {},
+    create: {
+      questionId: SEED_UUIDS.questionGrazieFlashcard,
+    },
+  });
+  console.log('✅ Question created/updated: Grazie (Flashcard)');
+
+  // Question 8: Per favore - Text to Speech
+  await prisma.question.upsert({
+    where: { id: SEED_UUIDS.questionPerFavoreTextToSpeech },
+    update: {
+      teachingId: SEED_UUIDS.teachingPerFavore,
+      type: DELIVERY_METHOD.TEXT_TO_SPEECH,
+    },
+    create: {
+      id: SEED_UUIDS.questionPerFavoreTextToSpeech,
+      teachingId: SEED_UUIDS.teachingPerFavore,
+      type: DELIVERY_METHOD.TEXT_TO_SPEECH,
+      textToSpeech: {
+        create: {},
+      },
+    },
+  });
+  await prisma.questionTextToSpeech.upsert({
+    where: { questionId: SEED_UUIDS.questionPerFavoreTextToSpeech },
+    update: {},
+    create: {
+      questionId: SEED_UUIDS.questionPerFavoreTextToSpeech,
+    },
+  });
+  console.log('✅ Question created/updated: Per favore (Text to Speech)');
+
   console.log('\n🎉 Seed completed successfully!');
   console.log('\n📊 Summary:');
   console.log(`   - 1 Module: "${module.title}"`);
   console.log(`   - 1 Lesson: "${lesson.title}"`);
   console.log('   - 3 Teaching items: Ciao, Grazie, Per favore');
-  console.log('   - 6 Questions with various delivery methods');
+  console.log('   - 8 Questions covering all 6 delivery methods');
 }
 
 main()

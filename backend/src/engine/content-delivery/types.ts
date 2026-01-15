@@ -27,23 +27,6 @@ export interface DeliveryCandidate {
 }
 
 /**
- * The next item to deliver to the user
- */
-export interface NextDeliveryItemDto {
-  kind: ItemKind;
-  id: string;
-  teachingId?: string;
-  questionId?: string;
-  lessonId?: string;
-  title?: string;
-  prompt?: string;
-  options?: string[];
-  deliveryMethods?: DELIVERY_METHOD[];
-  suggestedDeliveryMethod?: DELIVERY_METHOD;
-  rationale: string;
-}
-
-/**
  * Dashboard plan showing what's coming up
  */
 export interface DashboardPlanDto {

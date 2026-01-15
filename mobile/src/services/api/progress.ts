@@ -116,11 +116,9 @@ export interface ProgressSummary {
 
 /**
  * Get progress summary for user
- * TODO: Backend endpoint GET /progress/summary needs to be created in Phase 3
+ * Returns XP, streak, completed lessons/modules, and due review count
  */
 export async function getProgressSummary(userId: string | null): Promise<ProgressSummary> {
-  // Backend endpoint will be created in Phase 3
-  // For now, return a placeholder that will fail gracefully
   return apiClient.get<ProgressSummary>('/progress/summary');
 }
 

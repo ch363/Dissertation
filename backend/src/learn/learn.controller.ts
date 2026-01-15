@@ -58,7 +58,11 @@ export class LearnController {
   constructor(private readonly learnService: LearnService) {}
 
   @Get('next')
-  @ApiOperation({ summary: 'Get next item in lesson (reviews → new → done)' })
+  @ApiOperation({ 
+    summary: 'Get next item in lesson (reviews → new → done)',
+    deprecated: true,
+    description: 'Deprecated: Use GET /learn/session-plan instead to get a complete session plan'
+  })
   @ApiQuery({ name: 'lessonId', type: 'string', format: 'uuid', required: true })
   @ApiResponse({ status: 200, description: 'Next item retrieved' })
   async getNext(@User() userId: string, @Query() query: LearnNextQueryDto) {

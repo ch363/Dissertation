@@ -42,18 +42,6 @@ export function buildLessonSessionPlan(lessonId: string): SessionPlan {
   };
 }
 
-/**
- * @deprecated Use backend API endpoint `/learn/session-plan?mode=review` instead
- * This function is kept for backward compatibility but should not be used in new code
- */
-export function buildReviewSessionPlan(label: string = 'review'): SessionPlan {
-  return {
-    id: `review-${label}`,
-    kind: 'review',
-    title: 'Quick review',
-    cards: [demoMcqCard, demoFillBlankCard],
-  };
-}
 
 export function makeSessionId(prefix: SessionKind | 'session' = 'session') {
   return `${prefix}-${Date.now()}`;

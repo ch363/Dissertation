@@ -3,7 +3,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View, ScrollView } from 'react-native';
 
 import { theme } from '@/services/theme/tokens';
-import { AttemptLog, CardKind, SessionPlan } from '@/types/session';
+import { AttemptLog, CardKind, SessionPlan, SessionKind } from '@/types/session';
 import { requiresSelection, getDeliveryMethodForCardKind } from '../delivery-methods';
 import { validateAnswer, validatePronunciation, recordQuestionAttempt, completeTeaching, updateDeliveryMethodScore } from '@/services/api/progress';
 import { PronunciationResult } from '@/types/session';
@@ -11,13 +11,42 @@ import * as SpeechRecognition from '@/services/speech-recognition';
 import { CardRenderer } from './CardRenderer';
 import { LessonProgressHeader } from './LessonProgressHeader';
 import { playSuccessSound, playErrorSound } from '@/services/sounds';
+import { routeBuilders } from '@/services/navigation/routes';
 
 type Props = {
   plan: SessionPlan;
+  sessionId: string;
+  kind: SessionKind;
+  lessonId?: string;
   onComplete: (attempts: AttemptLog[]) => void;
 };
 
-export function SessionRunner({ plan, onComplete }: Props) {
+/**
+ * Calculate XP for a single attempt using the same formula as the backend:
+ * - Base: 5 XP for attempting
+ * - Correct bonus: +10 XP if correct
+ * - Speed bonus: +5 if < 5s, +3 if < 10s, +1 if < 20s
+ */
+function calculateXpForAttempt(attempt: AttemptLog): number {
+  let xp = 5; // Base XP for attempting
+
+  if (attempt.isCorrect) {
+    xp += 10; // Bonus for correct answer
+
+    // Speed bonus (faster = more XP, up to +5)
+    if (attempt.elapsedMs < 5000) {
+      xp += 5;
+    } else if (attempt.elapsedMs < 10000) {
+      xp += 3;
+    } else if (attempt.elapsedMs < 20000) {
+      xp += 1;
+    }
+  }
+
+  return xp;
+}
+
+export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: Props) {
   const [index, setIndex] = useState(0);
   const [attempts, setAttempts] = useState<AttemptLog[]>([]);
   const [selectedOptionId, setSelectedOptionId] = useState<string | undefined>(undefined);
@@ -477,6 +506,22 @@ export function SessionRunner({ plan, onComplete }: Props) {
     }
 
     if (isLast) {
+      // Calculate XP and teachings mastered for completion screen
+      const totalXp = nextAttempts.reduce((sum, attempt) => sum + calculateXpForAttempt(attempt), 0);
+      const teachingsMastered = plan.cards.filter((card) => card.kind === CardKind.Teach).length;
+
+      // Navigate to completion screen
+      router.replace({
+        pathname: routeBuilders.sessionCompletion(sessionId),
+        params: {
+          kind,
+          lessonId,
+          totalXp: totalXp.toString(),
+          teachingsMastered: teachingsMastered.toString(),
+        },
+      });
+
+      // Still call onComplete for backwards compatibility (though it may not be used)
       onComplete(nextAttempts);
     } else {
       // Reset state for next card

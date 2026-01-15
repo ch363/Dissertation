@@ -6,76 +6,29 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { routeBuilders } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
-import { AttemptLog, CardKind, SessionPlan } from '@/types/session';
-import { getCachedSessionPlan } from '@/services/api/session-plan-cache';
-
-/**
- * Calculate XP for a single attempt using the same formula as the backend:
- * - Base: 5 XP for attempting
- * - Correct bonus: +10 XP if correct
- * - Speed bonus: +5 if < 5s, +3 if < 10s, +1 if < 20s
- */
-function calculateXpForAttempt(attempt: AttemptLog): number {
-  let xp = 5; // Base XP for attempting
-
-  if (attempt.isCorrect) {
-    xp += 10; // Bonus for correct answer
-
-    // Speed bonus (faster = more XP, up to +5)
-    if (attempt.elapsedMs < 5000) {
-      xp += 5;
-    } else if (attempt.elapsedMs < 10000) {
-      xp += 3;
-    } else if (attempt.elapsedMs < 20000) {
-      xp += 1;
-    }
-  }
-
-  return xp;
-}
 
 export default function CompletionScreen() {
-  const params = useLocalSearchParams<{ sessionId?: string; kind?: string; lessonId?: string }>();
+  const params = useLocalSearchParams<{ 
+    sessionId?: string; 
+    kind?: string; 
+    lessonId?: string;
+    totalXp?: string;
+    teachingsMastered?: string;
+  }>();
   const sessionId = params.sessionId;
   const kind = params.kind === 'review' ? 'review' : 'learn';
   const lessonId = params.lessonId;
 
-  // Get the session plan from cache to extract teachings and calculate stats
-  const sessionPlan = useMemo(() => {
-    if (lessonId && kind === 'learn') {
-      return getCachedSessionPlan(lessonId);
-    }
-    return null;
-  }, [lessonId, kind]);
-
-  // Calculate XP and teachings from attempts stored in route params
-  // We'll pass attempts as a serialized param or calculate from session plan
+  // Get stats from route params (calculated in SessionRunner)
   const stats = useMemo(() => {
-    // For now, we'll calculate from the session plan
-    // In a real implementation, we might pass attempts as params or store them
-    let totalXp = 0;
-    let teachingsMastered = 0;
-
-    if (sessionPlan) {
-      // Count teachings (Teach cards)
-      teachingsMastered = sessionPlan.cards.filter(
-        (card) => card.kind === CardKind.Teach,
-      ).length;
-
-      // Estimate XP based on practice cards
-      // Each practice card attempt would give ~15-20 XP on average
-      const practiceCards = sessionPlan.cards.filter(
-        (card) => card.kind !== CardKind.Teach,
-      );
-      // Estimate: ~15 XP per practice card (assuming most are correct)
-      totalXp = practiceCards.length * 15;
-    }
+    const totalXp = params.totalXp ? parseInt(params.totalXp, 10) : 0;
+    const teachingsMastered = params.teachingsMastered ? parseInt(params.teachingsMastered, 10) : 0;
 
     return {
       totalXp,
       teachingsMastered,
     };
-  }, [sessionPlan]);
+  }, [params.totalXp, params.teachingsMastered]);
 
   const handleContinue = () => {
     if (sessionId) {

@@ -11,6 +11,7 @@ import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { getMyProfile, upsertMyProfile, getDashboard, getRecentActivity, type DashboardData, type RecentActivity, refreshSignedAvatarUrlFromUrl as refreshAvatarUrl, uploadAvatar } from '@/services/api/profile';
 import { getProgressSummary, type ProgressSummary } from '@/services/api/progress';
 import { getCurrentUser } from '@/services/api/auth';
+import { getAvatarUri } from '@/services/cache/avatar-cache';
 import { Badge } from '@/components/profile/Badge';
 import { Card } from '@/components/profile/Card';
 import { ProfileHeader } from '@/components/profile/Header';
@@ -51,10 +52,16 @@ export default function Profile() {
         if (profile?.avatarUrl) {
           try {
             const fresh = await refreshAvatarUrl(profile.avatarUrl);
-            setAvatarUrl(fresh);
+            // Use cached avatar if available, otherwise use the refreshed URL
+            const avatarUri = await getAvatarUri(profile.id, fresh);
+            setAvatarUrl(avatarUri);
           } catch {
-            setAvatarUrl(profile.avatarUrl);
+            // On error, try to use cached version or fallback to original URL
+            const avatarUri = await getAvatarUri(profile.id, profile.avatarUrl);
+            setAvatarUrl(avatarUri);
           }
+        } else {
+          setAvatarUrl(null);
         }
       } else {
         // No profile yet - backend should have provisioned it, but fallback to "User"
@@ -140,16 +147,30 @@ export default function Profile() {
 
       if (!result.canceled && result.assets[0] && profileId) {
         const uri = result.assets[0].uri;
-        setEditAvatarUrl(uri); // Set temporary URI for preview
         
-        // Upload immediately
+        // Cache the image immediately for instant preview
+        try {
+          const { cacheAvatarFile } = await import('@/services/cache/avatar-cache');
+          const cachedPath = await cacheAvatarFile(uri, profileId);
+          setEditAvatarUrl(cachedPath); // Show cached version immediately
+        } catch (cacheError) {
+          console.error('Error caching avatar:', cacheError);
+          // Still show the original URI if caching fails
+          setEditAvatarUrl(uri);
+        }
+        
+        // Upload to Supabase Storage in the background
         try {
           const uploadedUrl = await uploadAvatar(uri, profileId);
+          // After upload, update to use the Supabase URL (but cached version is already shown)
           setEditAvatarUrl(uploadedUrl);
+          // Also update the main avatar URL
+          const avatarUri = await getAvatarUri(profileId, uploadedUrl);
+          setAvatarUrl(avatarUri);
         } catch (uploadError) {
           console.error('Error uploading avatar:', uploadError);
-          Alert.alert('Upload Error', 'Failed to upload avatar. Please try again.');
-          setEditAvatarUrl(avatarUrl); // Revert on error
+          Alert.alert('Upload Error', 'Failed to upload avatar. The image is cached locally. Please try again later.');
+          // Keep showing cached version on upload error
         }
       }
     } catch (error) {

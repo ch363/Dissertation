@@ -473,6 +473,94 @@ export class ProgressService {
     };
   }
 
+  async calculateStreak(userId: string): Promise<number> {
+    const now = new Date();
+
+    // Get all UserQuestionPerformance entries for the user
+    const performances = await this.prisma.userQuestionPerformance.findMany({
+      where: { userId },
+      select: {
+        lastRevisedAt: true,
+        createdAt: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // If no activity, return 0
+    if (performances.length === 0) {
+      return 0;
+    }
+
+    // Get the most recent activity timestamp (max of lastRevisedAt and createdAt)
+    const mostRecentActivity = performances.reduce((latest, perf) => {
+      const activityDate = perf.lastRevisedAt || perf.createdAt;
+      if (!activityDate) return latest;
+      const perfDate = new Date(activityDate);
+      return perfDate > latest ? perfDate : latest;
+    }, new Date(0));
+
+    // Calculate hours since last activity
+    const hoursSinceLastActivity = (now.getTime() - mostRecentActivity.getTime()) / (1000 * 60 * 60);
+
+    // If more than 48 hours since last activity, streak is broken
+    if (hoursSinceLastActivity > 48) {
+      return 0;
+    }
+
+    // Group activities by calendar day (using max of lastRevisedAt and createdAt)
+    const activeDays = new Set<string>();
+    performances.forEach((perf) => {
+      const activityDate = perf.lastRevisedAt || perf.createdAt;
+      if (activityDate) {
+        const date = new Date(activityDate);
+        // Normalize to start of day in UTC
+        const dayKey = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+          .toISOString()
+          .split('T')[0];
+        activeDays.add(dayKey);
+      }
+    });
+
+    // Convert to sorted array of dates (most recent first)
+    const sortedDays = Array.from(activeDays)
+      .map((day) => {
+        const date = new Date(day);
+        date.setUTCHours(0, 0, 0, 0);
+        return date;
+      })
+      .sort((a, b) => b.getTime() - a.getTime());
+
+    if (sortedDays.length === 0) {
+      return 0;
+    }
+
+    // Start counting from the most recent activity day
+    const mostRecentDay = sortedDays[0];
+    let streak = 1; // Count the most recent day
+    let expectedDate = new Date(mostRecentDay);
+    expectedDate.setUTCDate(expectedDate.getUTCDate() - 1); // Move to previous day
+
+    // Count consecutive days working backwards
+    for (let i = 1; i < sortedDays.length; i++) {
+      const activeDay = sortedDays[i];
+      const daysDiff = Math.floor((expectedDate.getTime() - activeDay.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (daysDiff === 0) {
+        // This is the expected consecutive day
+        streak++;
+        expectedDate.setUTCDate(expectedDate.getUTCDate() - 1);
+      } else if (daysDiff > 0) {
+        // There's a gap - streak is broken
+        break;
+      }
+      // If daysDiff < 0, this day is before expected (shouldn't happen with sorted array), skip it
+    }
+
+    return streak;
+  }
+
   async getProgressSummary(userId: string) {
     const now = new Date();
 
@@ -567,9 +655,8 @@ export class ProgressService {
 
     const totalModules = await this.prisma.module.count();
 
-    // Calculate streak (placeholder - would need to track daily activity)
-    // For now, return 0 as placeholder
-    const streak = 0;
+    // Calculate streak using the new method
+    const streak = await this.calculateStreak(userId);
 
     return {
       xp,

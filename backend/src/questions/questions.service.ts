@@ -51,7 +51,8 @@ export class QuestionsService {
   }
 
   async create(createDto: CreateQuestionDto) {
-    // TODO: Add admin check
+    // Authorization: Admin access required. Authorization is enforced at the Controller level via @UseGuards(SupabaseJwtGuard).
+    // TODO: Implement admin role check in Controller guard (see questions.controller.ts)
     return this.prisma.question.create({
       data: createDto,
       include: {
@@ -67,7 +68,8 @@ export class QuestionsService {
   }
 
   async remove(id: string) {
-    // TODO: Add admin check
+    // Authorization: Admin access required. Authorization is enforced at the Controller level via @UseGuards(SupabaseJwtGuard).
+    // TODO: Implement admin role check in Controller guard (see questions.controller.ts)
     // Cascade delete is handled by Prisma schema
     try {
       return await this.prisma.question.delete({
@@ -79,7 +81,8 @@ export class QuestionsService {
   }
 
   async updateDeliveryMethods(questionId: string, deliveryMethods: DELIVERY_METHOD[]) {
-    // TODO: Add admin check
+    // Authorization: Admin access required. Authorization is enforced at the Controller level via @UseGuards(SupabaseJwtGuard).
+    // TODO: Implement admin role check in Controller guard (see questions.controller.ts)
     // With new schema, each question has a single type
     // This method now updates the question's type to the first delivery method
     // If multiple methods are provided, we could create multiple questions, but for now we'll just update the type

@@ -3,7 +3,7 @@
  * These functions have no dependencies on NestJS or Prisma - they are pure algorithms.
  */
 
-import { DeliveryCandidate, NextDeliveryItemDto } from './types';
+import { DeliveryCandidate } from './types';
 import { DELIVERY_METHOD } from '@prisma/client';
 
 /**

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
 import { getProgressSummary, type ProgressSummary } from '@/services/api/progress';
@@ -11,6 +11,7 @@ type Props = {
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'ghost';
   disabled?: boolean;
+  loading?: boolean;
   style?: ViewStyle;
   accessibilityLabel?: string;
 };
@@ -20,6 +21,7 @@ export function ReviewButton({
   onPress,
   variant = 'primary',
   disabled = false,
+  loading: buttonLoading = false,
   style,
   accessibilityLabel,
 }: Props) {
@@ -28,20 +30,32 @@ export function ReviewButton({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function fetchDueReviewCount() {
       try {
         setLoading(true);
         const summary: ProgressSummary = await getProgressSummary(null);
-        setDueReviewCount(summary.dueReviewCount || 0);
+        if (!cancelled) {
+          setDueReviewCount(summary.dueReviewCount || 0);
+        }
       } catch (error) {
-        console.error('Failed to fetch due review count:', error);
-        setDueReviewCount(0);
+        if (!cancelled) {
+          console.error('Failed to fetch due review count:', error);
+          setDueReviewCount(0);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
     fetchDueReviewCount();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const showBadge = !loading && dueReviewCount > 0;
@@ -53,11 +67,20 @@ export function ReviewButton({
         onPress={onPress}
         variant={variant}
         disabled={disabled}
+        loading={buttonLoading}
         style={styles.button}
         accessibilityLabel={accessibilityLabel}
       />
       {showBadge && (
-        <View style={[styles.badge, { backgroundColor: theme.colors.error }]}>
+        <View
+          style={[
+            styles.badge,
+            {
+              backgroundColor: theme.colors.error,
+              borderColor: theme.colors.background,
+            },
+          ]}
+        >
           <Text style={styles.badgeText}>
             {dueReviewCount > 99 ? '99+' : dueReviewCount}
           </Text>
@@ -85,7 +108,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#fff',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,

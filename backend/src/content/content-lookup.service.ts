@@ -16,6 +16,19 @@ export class ContentLookupService {
   ) {}
 
   /**
+   * Determine translation direction based on question ID
+   * Uses a hash of the question ID to ensure consistency - same question always has same direction
+   * @param questionId The question ID to determine direction for
+   * @returns true if translating from learning language to user language, false otherwise
+   */
+  private determineTranslationDirection(questionId: string): boolean {
+    // Use a simple hash of the question ID to determine direction
+    // This ensures consistency - same question always has same direction
+    const hash = questionId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return hash % 2 === 0; // Even hash = learning to user, odd = user to learning
+  }
+
+  /**
    * Get question data by question ID
    * Uses Teaching relationship instead of questionData JSON
    */
@@ -58,9 +71,8 @@ export class ContentLookupService {
     switch (deliveryMethod) {
       case DELIVERY_METHOD.MULTIPLE_CHOICE:
         // For MCQ, determine direction: learning->user or user->learning
-        // Check if we're translating from learning language to user language
-        // (This would be determined by the prompt, but for now we'll default to learning->user)
-        const isLearningToUser = true; // TODO: Could be determined by question context
+        // Determine direction dynamically based on question context (question ID)
+        const isLearningToUser = this.determineTranslationDirection(questionId);
         const correctAnswer = isLearningToUser
           ? teaching.userLanguageString
           : teaching.learningLanguageString;
