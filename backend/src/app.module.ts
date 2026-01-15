@@ -2,6 +2,7 @@ import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { EnhancedThrottlerGuard } from './common/guards/enhanced-throttler.guard';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
@@ -71,11 +72,15 @@ import configuration from './config/configuration';
   providers: [
     AppService,
     {
-      // Apply ThrottlerGuard globally to all routes
+      // Apply EnhancedThrottlerGuard globally to all routes
+      // This guard provides both IP-based and user-based rate limiting
+      // - Public endpoints: Rate limited by IP address (THROTTLE_LIMIT)
+      // - Authenticated endpoints: Rate limited by both IP and user ID (THROTTLE_USER_LIMIT or THROTTLE_LIMIT)
       // Use @SkipThrottle() decorator on controllers/routes to exclude specific endpoints
       // Health endpoints are excluded (see health.controller.ts)
+      // Note: ConfigService is injected automatically since ConfigModule is global
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: EnhancedThrottlerGuard,
     },
   ],
 })

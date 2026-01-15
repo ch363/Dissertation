@@ -51,6 +51,7 @@ interface BackendPracticeItem {
   audioUrl?: string;
   source?: string;
   sourceText?: string; // For translation MCQ
+  translation?: string; // For TEXT_TO_SPEECH
   explanation?: string;
 }
 
@@ -203,6 +204,7 @@ export function transformSessionPlan(
             prompt: item.prompt || 'Listen and type what you hear',
             audioUrl: item.audioUrl, // Optional - ListeningCard will use TTS if missing
             expected: item.answer,
+            translation: item.translation, // Translation for "Speak This Phrase" mode
             mode: deliveryMethodTyped === DELIVERY_METHOD.TEXT_TO_SPEECH ? 'speak' : 'type',
           });
         } else {

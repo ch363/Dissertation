@@ -17,6 +17,8 @@ import { KnowledgeLevelProgressDto } from './dto/knowledge-level-progress.dto';
 import { ResetProgressDto } from './dto/reset-progress.dto';
 import { ValidateAnswerDto } from './dto/validate-answer.dto';
 import { ValidateAnswerResponseDto } from './dto/validate-answer-response.dto';
+import { ValidatePronunciationDto } from './dto/validate-pronunciation.dto';
+import { PronunciationResponseDto } from './dto/pronunciation-response.dto';
 import { DELIVERY_METHOD } from '@prisma/client';
 import { IsEnum } from 'class-validator';
 
@@ -121,7 +123,7 @@ export class ProgressController {
   }
 
   @Get('summary')
-  @ApiOperation({ summary: 'Get progress summary (XP, completed lessons, completed modules, streak)' })
+  @ApiOperation({ summary: 'Get progress summary (XP, completed lessons, completed modules, streak, due review count)' })
   @ApiResponse({ status: 200, description: 'Progress summary retrieved' })
   async getProgressSummary(@User() userId: string) {
     return this.progressService.getProgressSummary(userId);
@@ -155,5 +157,17 @@ export class ProgressController {
     @Body() validateDto: ValidateAnswerDto,
   ): Promise<ValidateAnswerResponseDto> {
     return this.progressService.validateAnswer(userId, questionId, validateDto);
+  }
+
+  @Post('questions/:questionId/pronunciation')
+  @ApiOperation({ summary: 'Validate pronunciation from audio recording' })
+  @ApiParam({ name: 'questionId', type: 'string', format: 'uuid' })
+  @ApiResponse({ status: 200, description: 'Pronunciation validated', type: PronunciationResponseDto })
+  async validatePronunciation(
+    @User() userId: string,
+    @Param('questionId') questionId: string,
+    @Body() pronunciationDto: ValidatePronunciationDto,
+  ): Promise<PronunciationResponseDto> {
+    return this.progressService.validatePronunciation(userId, questionId, pronunciationDto);
   }
 }

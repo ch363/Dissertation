@@ -14,6 +14,7 @@ type PathItem = {
   locked?: boolean;
   lockCopy?: string;
   route: string;
+  completed?: boolean;
 };
 
 type Props = {
@@ -69,7 +70,11 @@ export function PickPathList({ items, onPressItem, headerLabel }: Props) {
                     ) : null}
                   </View>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={theme.colors.mutedText} />
+                {item.completed ? (
+                  <Ionicons name="checkmark-circle" size={20} color={theme.colors.primary} />
+                ) : (
+                  <Ionicons name="chevron-forward" size={20} color={theme.colors.mutedText} />
+                )}
               </Pressable>
               {idx < items.length - 1 ? <View style={styles.divider} /> : null}
             </React.Fragment>

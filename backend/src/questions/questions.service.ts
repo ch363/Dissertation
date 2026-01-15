@@ -19,7 +19,6 @@ export class QuestionsService {
             learningLanguageString: true,
           },
         },
-        questionDeliveryMethods: true,
       },
     });
   }
@@ -41,7 +40,6 @@ export class QuestionsService {
             },
           },
         },
-        questionDeliveryMethods: true,
       },
     });
 
@@ -64,7 +62,6 @@ export class QuestionsService {
             learningLanguageString: true,
           },
         },
-        questionDeliveryMethods: true,
       },
     });
   }
@@ -83,6 +80,14 @@ export class QuestionsService {
 
   async updateDeliveryMethods(questionId: string, deliveryMethods: DELIVERY_METHOD[]) {
     // TODO: Add admin check
+    // With new schema, each question has a single type
+    // This method now updates the question's type to the first delivery method
+    // If multiple methods are provided, we could create multiple questions, but for now we'll just update the type
+    
+    if (deliveryMethods.length === 0) {
+      throw new NotFoundException('At least one delivery method is required');
+    }
+
     // Verify question exists
     const question = await this.prisma.question.findUnique({
       where: { id: questionId },
@@ -92,30 +97,23 @@ export class QuestionsService {
       throw new NotFoundException(`Question with ID ${questionId} not found`);
     }
 
-    // Replace delivery methods atomically in a transaction
-    return this.prisma.$transaction(async (tx) => {
-      // Delete existing join rows
-      await tx.questionDeliveryMethod.deleteMany({
-        where: { questionId },
-      });
-
-      // Insert new join rows
-      if (deliveryMethods.length > 0) {
-        await tx.questionDeliveryMethod.createMany({
-          data: deliveryMethods.map((method) => ({
-            questionId,
-            deliveryMethod: method,
-          })),
-        });
-      }
-
-      // Return updated question with delivery methods
-      return tx.question.findUnique({
-        where: { id: questionId },
-        include: {
-          questionDeliveryMethods: true,
+    // Update the question type to the first delivery method
+    // Note: With the new schema, if you need multiple delivery methods for the same teaching,
+    // you should create multiple questions (one per delivery method)
+    return this.prisma.question.update({
+      where: { id: questionId },
+      data: {
+        type: deliveryMethods[0],
+      },
+      include: {
+        teaching: {
+          select: {
+            id: true,
+            userLanguageString: true,
+            learningLanguageString: true,
+          },
         },
-      });
+      },
     });
   }
 }

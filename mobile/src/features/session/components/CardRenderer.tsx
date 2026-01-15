@@ -9,7 +9,7 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 
 import { theme } from '@/services/theme/tokens';
-import { Card, CardKind } from '@/types/session';
+import { Card, CardKind, PronunciationResult } from '@/types/session';
 import {
   TeachCard,
   MultipleChoiceCard,
@@ -29,9 +29,10 @@ type Props = {
   showResult?: boolean;
   isCorrect?: boolean;
   showHint?: boolean;
-  onCheckAnswer?: () => void;
+  onCheckAnswer?: (audioUri?: string) => void;
   onRating?: (rating: number) => void;
   selectedRating?: number;
+  pronunciationResult?: PronunciationResult | null;
 };
 
 export function CardRenderer({
@@ -48,6 +49,7 @@ export function CardRenderer({
   onCheckAnswer,
   onRating,
   selectedRating,
+  pronunciationResult,
 }: Props) {
   // Teach cards render their own container (with usage note card)
   if (card.kind === CardKind.Teach) {
@@ -71,6 +73,7 @@ export function CardRenderer({
         onCheckAnswer,
         onRating,
         selectedRating,
+        pronunciationResult,
       )}
     </View>
   );
@@ -90,6 +93,7 @@ function renderCardByKind(
   onCheckAnswer?: () => void,
   onRating?: (rating: number) => void,
   selectedRating?: number,
+  pronunciationResult?: PronunciationResult | null,
 ) {
   switch (card.kind) {
     case CardKind.MultipleChoice:
@@ -137,6 +141,7 @@ function renderCardByKind(
           showResult={showResult}
           isCorrect={isCorrect}
           onCheckAnswer={onCheckAnswer}
+          pronunciationResult={pronunciationResult}
         />
       );
     default:

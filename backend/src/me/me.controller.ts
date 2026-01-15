@@ -6,6 +6,8 @@ import { SupabaseJwtGuard } from '../common/guards/supabase-jwt.guard';
 import { User } from '../common/decorators/user.decorator';
 import { UpdateUserDto } from '../users/dto/update-user.dto';
 import { ResetProgressDto } from '../progress/dto/reset-progress.dto';
+import { EnsureProfileDto } from './dto/ensure-profile.dto';
+import { UploadAvatarDto } from './dto/upload-avatar.dto';
 
 @ApiTags('me')
 @ApiBearerAuth('JWT-auth')
@@ -37,13 +39,13 @@ export class MeController {
   @ApiResponse({ status: 200, description: 'Profile ensured' })
   async ensureProfile(
     @User() userId: string,
-    @Body() body?: { name?: string },
+    @Body() dto: EnsureProfileDto,
   ) {
     // First ensure user exists (provisioning)
     const user = await this.meService.getMe(userId);
-    // Update name if provided and different
-    if (body?.name && body.name.trim() && body.name !== user.name) {
-      return this.usersService.updateUser(userId, { name: body.name.trim() });
+    // Update name if provided and different (already sanitized by DTO)
+    if (dto.name && dto.name !== user.name) {
+      return this.usersService.updateUser(userId, { name: dto.name });
     }
     return user;
   }
@@ -98,10 +100,9 @@ export class MeController {
   @ApiResponse({ status: 200, description: 'Avatar uploaded successfully' })
   async uploadAvatar(
     @User() userId: string,
-    @Body() body: { avatarUrl: string },
+    @Body() dto: UploadAvatarDto,
   ) {
-    // TODO: In the future, accept file upload and store in Supabase Storage
-    // For now, accept avatarUrl and update user record
-    return this.meService.uploadAvatar(userId, body.avatarUrl);
+    // Security: avatarUrl is validated and sanitized by UploadAvatarDto
+    return this.usersService.updateUser(userId, { avatarUrl: dto.avatarUrl });
   }
 }

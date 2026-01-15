@@ -15,6 +15,7 @@ export type DueTodayTileItem = {
   route: string;
   locked?: boolean;
   lockCopy?: string;
+  completed?: boolean;
 };
 
 type Props = {
@@ -46,7 +47,11 @@ export function DueTodayTile({ item, onPress }: Props) {
           <Text style={[styles.title, { color: theme.colors.text }]}>{item.title}</Text>
           <Text style={[styles.subtitle, { color: '#5F6F86' }]}>{item.lessons}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
+        {item.completed ? (
+          <Ionicons name="checkmark-circle" size={20} color={theme.colors.primary} />
+        ) : (
+          <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
+        )}
       </View>
       <View style={styles.etaRow}>
         <Ionicons name="time-outline" size={14} color={theme.colors.mutedText} />

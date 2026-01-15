@@ -1,12 +1,11 @@
-import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScrollView } from '@/components/ui';
 
 import { getMyProfile } from '@/services/api/profile';
-import { HomeHeader } from '@/features/home/components/HomeHeader';
 import { WelcomeContinueCard } from '@/features/home/components/WelcomeContinueCard';
 import { DueTodayGrid } from '@/features/home/components/due-today/DueTodayGrid';
 import type { DueTodayTileItem } from '@/features/home/components/due-today/DueTodayTile';
@@ -14,14 +13,64 @@ import { PickPathList } from '@/features/home/components/pick-path/PickPathList'
 import { routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
+import { getUserLessons, type UserLessonProgress } from '@/services/api/progress';
+import { getLessons, type Lesson } from '@/services/api/modules';
 
 export default function HomeScreen() {
   const { theme } = useAppTheme();
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [userProgress, setUserProgress] = useState<UserLessonProgress[]>([]);
+  const [lessons, setLessons] = useState<Lesson[]>([]);
 
+  const loadData = useCallback(async () => {
+    try {
+      const [profile, progressData, lessonsData] = await Promise.all([
+        getMyProfile().catch(() => null),
+        getUserLessons().catch(() => [] as UserLessonProgress[]),
+        getLessons().catch(() => [] as Lesson[]),
+      ]);
+      
+      if (profile) {
+        const name = profile?.name?.trim();
+        if (name) setDisplayName(name);
+      }
+      setUserProgress(progressData);
+      setLessons(lessonsData);
+    } catch (error) {
+      console.error('Failed to load home data:', error);
+    }
+  }, []);
+
+  // Load data on mount
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Refresh data when screen comes into focus (e.g., returning from a session)
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  // Build due today items
+  // Note: Completion status would require module-to-lesson mapping
+  // For now, completion is shown on the Learn screen where we have actual lesson data
   const dueTodayItems: DueTodayTileItem[] = [
-    { title: 'Basics', lessons: '8 lessons', eta: '≈2 min', icon: 'star', route: '/course/basics' },
-    { title: 'Travel', lessons: '4 lessons', eta: '≈1 min', icon: 'play', route: '/course/travel' },
+    { 
+      title: 'Basics', 
+      lessons: '8 lessons', 
+      eta: '≈2 min', 
+      icon: 'star', 
+      route: '/course/basics',
+    },
+    { 
+      title: 'Travel', 
+      lessons: '4 lessons', 
+      eta: '≈1 min', 
+      icon: 'play', 
+      route: '/course/travel',
+    },
   ];
 
   const pickPaths: DueTodayTileItem[] = [
@@ -44,18 +93,6 @@ export default function HomeScreen() {
     },
   ];
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const profile = await getMyProfile();
-        const name = profile?.name?.trim();
-        if (name) setDisplayName(name);
-      } catch {
-        setDisplayName(null);
-      }
-    })();
-  }, []);
-
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.safeArea]}>
       <View
@@ -77,8 +114,6 @@ export default function HomeScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <HomeHeader onPressSettings={() => router.push(routes.tabs.settings.root)} />
-
         <WelcomeContinueCard
           streakDays={4}
           minutesToday={22}

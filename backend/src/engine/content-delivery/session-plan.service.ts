@@ -308,11 +308,7 @@ export class SessionPlanService {
           timeToComplete: true,
           question: {
             select: {
-              questionDeliveryMethods: {
-                select: {
-                  deliveryMethod: true,
-                },
-              },
+              type: true,
             },
           },
         },
@@ -339,12 +335,11 @@ export class SessionPlanService {
         allPracticeTimes.push(perf.timeToComplete / 1000); // Convert ms to seconds
 
         // Group by delivery method
-        for (const qdm of perf.question.questionDeliveryMethods) {
-          if (!methodTimes.has(qdm.deliveryMethod)) {
-            methodTimes.set(qdm.deliveryMethod, []);
-          }
-          methodTimes.get(qdm.deliveryMethod)!.push(perf.timeToComplete / 1000);
+        const deliveryMethod = perf.question.type;
+        if (!methodTimes.has(deliveryMethod)) {
+          methodTimes.set(deliveryMethod, []);
         }
+        methodTimes.get(deliveryMethod)!.push(perf.timeToComplete / 1000);
       }
     }
 
@@ -441,7 +436,6 @@ export class SessionPlanService {
               lesson: true,
             },
           },
-          questionDeliveryMethods: true,
         },
       });
 
@@ -471,9 +465,9 @@ export class SessionPlanService {
         // Extract skill tags from teaching (could be enhanced with actual skill table)
         const skillTags = this.extractSkillTags(question.teaching);
 
-        // Determine exercise type from delivery methods and teaching content
+        // Determine exercise type from delivery method and teaching content
         const exerciseType = this.determineExerciseType(
-          question.questionDeliveryMethods.map((qdm) => qdm.deliveryMethod),
+          [question.type],
           question.teaching,
         );
 
@@ -500,7 +494,7 @@ export class SessionPlanService {
           dueScore,
           errorScore,
           timeSinceLastSeen,
-          deliveryMethods: question.questionDeliveryMethods.map((qdm) => qdm.deliveryMethod),
+          deliveryMethods: [question.type],
           skillTags,
           exerciseType,
           difficulty,
@@ -534,7 +528,6 @@ export class SessionPlanService {
             lesson: true,
           },
         },
-        questionDeliveryMethods: true,
       },
     });
 
@@ -555,7 +548,7 @@ export class SessionPlanService {
 
         // Determine exercise type
         const exerciseType = this.determineExerciseType(
-          question.questionDeliveryMethods.map((qdm) => qdm.deliveryMethod),
+          [question.type],
           question.teaching,
         );
 
@@ -579,7 +572,7 @@ export class SessionPlanService {
           dueScore: 0,
           errorScore: 0,
           timeSinceLastSeen: Infinity,
-          deliveryMethods: question.questionDeliveryMethods.map((qdm) => qdm.deliveryMethod),
+          deliveryMethods: [question.type],
           skillTags,
           exerciseType,
           difficulty,
@@ -742,7 +735,6 @@ export class SessionPlanService {
             learningLanguageString: true,
           },
         },
-        questionDeliveryMethods: true,
       },
     });
   }
@@ -809,6 +801,10 @@ export class SessionPlanService {
           deliveryMethod === DELIVERY_METHOD.TEXT_TO_SPEECH
         ) {
           baseItem.answer = questionData.answer;
+          // For TEXT_TO_SPEECH, include translation for UI display
+          if (deliveryMethod === DELIVERY_METHOD.TEXT_TO_SPEECH && question.teaching) {
+            baseItem.translation = question.teaching.userLanguageString;
+          }
         }
       }
     } catch (error) {

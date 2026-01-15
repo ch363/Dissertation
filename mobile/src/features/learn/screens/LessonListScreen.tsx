@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -17,27 +17,30 @@ export default function LessonListScreen() {
   const [error, setError] = React.useState<string | null>(null);
   const [userProgress, setUserProgress] = React.useState<UserLessonProgress[]>([]);
 
-  React.useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const [lessonsData, progressData] = await Promise.all([
-          getLessons(),
-          getUserLessons().catch(() => [] as UserLessonProgress[]), // Gracefully handle if no progress
-        ]);
-        setLessons(lessonsData);
-        setUserProgress(progressData);
-      } catch (err: any) {
-        console.error('Failed to load lessons:', err);
-        setError(err?.message || 'Failed to load lessons');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [lessonsData, progressData] = await Promise.all([
+        getLessons(),
+        getUserLessons().catch(() => [] as UserLessonProgress[]), // Gracefully handle if no progress
+      ]);
+      setLessons(lessonsData);
+      setUserProgress(progressData);
+    } catch (err: any) {
+      console.error('Failed to load lessons:', err);
+      setError(err?.message || 'Failed to load lessons');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  // Refresh data when screen comes into focus (e.g., returning from a session)
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
 
   const completedLessonIds = React.useMemo(() => {
     return new Set(

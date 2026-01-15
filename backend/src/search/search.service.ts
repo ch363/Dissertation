@@ -147,7 +147,6 @@ export class SearchService {
                 },
               },
             },
-            questionDeliveryMethods: true,
           },
           take: limit,
           skip: offset,

@@ -37,11 +37,7 @@ export class LearnService {
       include: {
         teachings: {
           include: {
-            questions: {
-              include: {
-                questionDeliveryMethods: true,
-              },
-            },
+            questions: true,
           },
         },
       },

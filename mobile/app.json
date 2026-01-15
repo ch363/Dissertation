@@ -23,13 +23,8 @@
       "infoPlist": {
         "CFBundleDisplayName": "Fluentia",
         "NSPhotoLibraryUsageDescription": "We use your photo library to let you choose an avatar.",
-        "NSCameraUsageDescription": "We use the camera so you can take a profile photo."
-      }
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.png",
-        "backgroundColor": "#F5F7FA"
+        "NSCameraUsageDescription": "We use the camera so you can take a profile photo.",
+        "NSMicrophoneUsageDescription": "We use the microphone to record your pronunciation for speech practice."
       }
     },
     "web": {
@@ -37,7 +32,13 @@
       "output": "static"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "We use the microphone to record your pronunciation for speech practice."
+        }
+      ]
     ],
     "extra": {
   "EXPO_PUBLIC_SUPABASE_URL": "",

@@ -5,7 +5,9 @@ import { Pressable, StyleSheet, Text, View, ScrollView } from 'react-native';
 import { theme } from '@/services/theme/tokens';
 import { AttemptLog, CardKind, SessionPlan } from '@/types/session';
 import { requiresSelection, getDeliveryMethodForCardKind } from '../delivery-methods';
-import { validateAnswer, recordQuestionAttempt, completeTeaching, updateDeliveryMethodScore } from '@/services/api/progress';
+import { validateAnswer, validatePronunciation, recordQuestionAttempt, completeTeaching, updateDeliveryMethodScore } from '@/services/api/progress';
+import { PronunciationResult } from '@/types/session';
+import * as SpeechRecognition from '@/services/speech-recognition';
 import { CardRenderer } from './CardRenderer';
 import { LessonProgressHeader } from './LessonProgressHeader';
 import { playSuccessSound, playErrorSound } from '@/services/sounds';
@@ -26,6 +28,8 @@ export function SessionRunner({ plan, onComplete }: Props) {
   const [flashcardRating, setFlashcardRating] = useState<number | undefined>(undefined);
   const [cardStartTime, setCardStartTime] = useState<number | null>(null);
   const [recordedAttempts, setRecordedAttempts] = useState<Set<string>>(new Set());
+  const [pronunciationResult, setPronunciationResult] = useState<PronunciationResult | null>(null);
+  const [audioRecordingUri, setAudioRecordingUri] = useState<string | null>(null);
 
   const currentCard = plan.cards[index];
   const total = useMemo(() => plan.cards.length, [plan.cards]);
@@ -37,6 +41,9 @@ export function SessionRunner({ plan, onComplete }: Props) {
     } else {
       setCardStartTime(null);
     }
+    // Reset pronunciation result when card changes
+    setPronunciationResult(null);
+    setAudioRecordingUri(null);
   }, [index, currentCard]);
 
   const isLast = index >= total - 1;
@@ -72,14 +79,30 @@ export function SessionRunner({ plan, onComplete }: Props) {
       // For translation MCQ (with sourceText), automatically check answer
       const isTranslationMCQ = 'sourceText' in currentCard && !!currentCard.sourceText;
       if (isTranslationMCQ) {
+        // Check if the selected option is correct before validation
+        const isCorrectOption = optionId === currentCard.correctOptionId;
+        
+        // Play sound immediately based on whether the option is correct
+        // This provides instant feedback when user selects an option
+        if (isCorrectOption) {
+          playSuccessSound().catch(() => {
+            // Silently fail - sound is non-critical
+          });
+        } else {
+          playErrorSound().catch(() => {
+            // Silently fail - sound is non-critical
+          });
+        }
+        
         // Pass optionId directly to avoid state timing issues
-        await handleCheckAnswer(optionId);
+        // playSounds is false here since we already played the sound above
+        await handleCheckAnswer(optionId, undefined, false);
       }
       // For regular MCQ, wait for "Check Answer" button
     }
   };
 
-  const handleCheckAnswer = async (optionIdOverride?: string) => {
+  const handleCheckAnswer = async (optionIdOverride?: string, audioUri?: string, playSounds: boolean = true) => {
     // Only validate practice cards (not teach cards)
     if (currentCard.kind === CardKind.Teach) {
       return;
@@ -98,6 +121,79 @@ export function SessionRunner({ plan, onComplete }: Props) {
     );
 
     try {
+      // Check if this is a pronunciation validation (TEXT_TO_SPEECH mode)
+      const isPronunciationMode = 
+        currentCard.kind === CardKind.Listening &&
+        'mode' in currentCard &&
+        currentCard.mode === 'speak' &&
+        audioUri;
+
+      if (isPronunciationMode && audioUri) {
+        // Handle pronunciation validation
+        setAudioRecordingUri(audioUri);
+        const audioFile = await SpeechRecognition.getAudioFile(audioUri);
+        if (!audioFile?.base64) {
+          console.error('Failed to get audio file for pronunciation validation');
+          setIsCorrect(false);
+          setShowResult(true);
+          return;
+        }
+
+        const audioFormat = audioRecordingUri.endsWith('.m4a') ? 'm4a' : 
+                          audioRecordingUri.endsWith('.flac') ? 'flac' : 'wav';
+        
+        const pronunciationResponse = await validatePronunciation(questionId, audioFile.base64, audioFormat);
+        setPronunciationResult(pronunciationResponse);
+        setIsCorrect(pronunciationResponse.isCorrect);
+        setShowResult(true);
+
+        // Play appropriate sound (only if sounds are enabled)
+        if (playSounds) {
+          if (pronunciationResponse.isCorrect) {
+            playSuccessSound().catch(() => {});
+          } else {
+            playErrorSound().catch(() => {});
+          }
+        }
+
+        // Record attempt
+        const timeToComplete = cardStartTime ? Date.now() - cardStartTime : undefined;
+        const attemptNumber = attempts.filter((a) => a.cardId === currentCard.id).length + 1;
+
+        if (!recordedAttempts.has(currentCard.id)) {
+          try {
+            await recordQuestionAttempt(questionId, {
+              score: pronunciationResponse.score,
+              timeToComplete,
+              percentageAccuracy: pronunciationResponse.overallScore,
+              attempts: attemptNumber,
+            });
+
+            const delta = pronunciationResponse.isCorrect ? 0.1 : -0.05;
+            try {
+              await updateDeliveryMethodScore(deliveryMethod, { delta });
+            } catch (error) {
+              console.error('Error updating delivery method score:', error);
+            }
+
+            setRecordedAttempts((prev) => new Set(prev).add(currentCard.id));
+          } catch (error) {
+            console.error('Error recording question attempt:', error);
+          }
+        }
+
+        const newAttempt: AttemptLog = {
+          cardId: currentCard.id,
+          attemptNumber,
+          answer: pronunciationResponse.transcription,
+          isCorrect: pronunciationResponse.isCorrect,
+          elapsedMs: timeToComplete || 0,
+        };
+        setAttempts((prev) => [...prev, newAttempt]);
+        return;
+      }
+
+      // Regular text-based validation
       let userAnswerValue: string;
 
       if (currentCard.kind === CardKind.MultipleChoice) {
@@ -124,15 +220,17 @@ export function SessionRunner({ plan, onComplete }: Props) {
       setIsCorrect(validationResult.isCorrect);
       setShowResult(true);
       
-      // Play appropriate sound based on correctness
-      if (validationResult.isCorrect) {
-        playSuccessSound().catch(() => {
-          // Silently fail - sound is non-critical
-        });
-      } else {
-        playErrorSound().catch(() => {
-          // Silently fail - sound is non-critical
-        });
+      // Play appropriate sound based on correctness (only if sounds are enabled)
+      if (playSounds) {
+        if (validationResult.isCorrect) {
+          playSuccessSound().catch(() => {
+            // Silently fail - sound is non-critical
+          });
+        } else {
+          playErrorSound().catch(() => {
+            // Silently fail - sound is non-critical
+          });
+        }
       }
 
       // Calculate time to complete
@@ -179,10 +277,12 @@ export function SessionRunner({ plan, onComplete }: Props) {
       // Fallback: mark as incorrect if validation fails
       setIsCorrect(false);
       setShowResult(true);
-      // Play error sound for failed validation
-      playErrorSound().catch(() => {
-        // Silently fail - sound is non-critical
-      });
+      // Play error sound for failed validation (only if sounds are enabled)
+      if (playSounds) {
+        playErrorSound().catch(() => {
+          // Silently fail - sound is non-critical
+        });
+      }
     }
   };
 
@@ -200,7 +300,7 @@ export function SessionRunner({ plan, onComplete }: Props) {
           setIsCorrect(validationResult.isCorrect);
           setShowResult(true);
           
-          // Play appropriate sound based on correctness
+          // Play sound immediately based on correctness
           if (validationResult.isCorrect) {
             playSuccessSound().catch(() => {
               // Silently fail - sound is non-critical
@@ -260,6 +360,12 @@ export function SessionRunner({ plan, onComplete }: Props) {
     setUserAnswer(answer);
     // Don't validate on change - wait for "Check Answer" button
     // This keeps UI responsive while user types
+  };
+
+  // Wrapper for handleCheckAnswer - sounds are enabled for all card types
+  const handleCheckAnswerWrapper = async (audioUri?: string) => {
+    // Play sounds for all question types including translation cards
+    await handleCheckAnswer(undefined, audioUri, true);
   };
 
   const handleNext = async () => {
@@ -429,13 +535,14 @@ export function SessionRunner({ plan, onComplete }: Props) {
           onAnswerChange={handleAnswerChange}
           showResult={showResult}
           isCorrect={isCorrect}
-          onCheckAnswer={handleCheckAnswer}
+          onCheckAnswer={handleCheckAnswerWrapper}
           onRating={(rating) => {
             console.log('SessionRunner: Rating received:', rating);
             setFlashcardRating(rating);
             console.log('SessionRunner: flashcardRating state updated to:', rating);
           }}
           selectedRating={flashcardRating}
+          pronunciationResult={pronunciationResult}
         />
       </ScrollView>
 

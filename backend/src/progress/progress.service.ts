@@ -6,6 +6,8 @@ import { KnowledgeLevelProgressDto } from './dto/knowledge-level-progress.dto';
 import { ResetProgressDto } from './dto/reset-progress.dto';
 import { ValidateAnswerDto } from './dto/validate-answer.dto';
 import { ValidateAnswerResponseDto } from './dto/validate-answer-response.dto';
+import { ValidatePronunciationDto } from './dto/validate-pronunciation.dto';
+import { PronunciationResponseDto, WordAnalysisDto } from './dto/pronunciation-response.dto';
 import { DELIVERY_METHOD } from '@prisma/client';
 import { SrsService } from '../engine/srs/srs.service';
 import { XpService } from '../engine/scoring/xp.service';
@@ -472,6 +474,8 @@ export class ProgressService {
   }
 
   async getProgressSummary(userId: string) {
+    const now = new Date();
+
     // Get XP total from user.knowledgePoints (updated by XpService)
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -479,6 +483,32 @@ export class ProgressService {
     });
 
     const xp = user?.knowledgePoints || 0;
+
+    // Count deduped due reviews (latest per question where nextReviewDue <= now)
+    const dueReviews = await this.prisma.userQuestionPerformance.findMany({
+      where: {
+        userId,
+        nextReviewDue: {
+          lte: now,
+          not: null,
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // Dedup by questionId - keep only the latest per question
+    const questionIdSet = new Set<string>();
+    const dedupedDueReviews = dueReviews.filter((review) => {
+      if (questionIdSet.has(review.questionId)) {
+        return false;
+      }
+      questionIdSet.add(review.questionId);
+      return true;
+    });
+
+    const dueReviewCount = dedupedDueReviews.length;
 
     // Count completed lessons (lessons where all teachings are completed)
     const userLessons = await this.prisma.userLesson.findMany({
@@ -548,6 +578,7 @@ export class ProgressService {
       completedModules,
       totalLessons,
       totalModules,
+      dueReviewCount,
     };
   }
 
@@ -801,5 +832,136 @@ export class ProgressService {
       score,
       feedback,
     };
+  }
+
+  async validatePronunciation(
+    userId: string,
+    questionId: string,
+    dto: ValidatePronunciationDto,
+  ): Promise<PronunciationResponseDto> {
+    // Verify question exists and is TEXT_TO_SPEECH type
+    const question = await this.prisma.question.findUnique({
+      where: { id: questionId },
+      include: {
+        teaching: {
+          select: {
+            id: true,
+            learningLanguageString: true,
+            userLanguageString: true,
+          },
+        },
+      },
+    });
+
+    if (!question) {
+      throw new NotFoundException(`Question with ID ${questionId} not found`);
+    }
+
+    if (question.type !== DELIVERY_METHOD.TEXT_TO_SPEECH) {
+      throw new BadRequestException(
+        `Question ${questionId} does not support TEXT_TO_SPEECH delivery method`,
+      );
+    }
+
+    const expectedText = question.teaching.learningLanguageString;
+
+    try {
+      // Import Google Cloud Speech client
+      const { SpeechClient } = require('@google-cloud/speech');
+      const client = new SpeechClient();
+
+      // Convert base64 to buffer
+      const audioBytes = Buffer.from(dto.audioBase64, 'base64');
+
+      // Configure request for Italian language with pronunciation assessment
+      const request = {
+        audio: {
+          content: audioBytes,
+        },
+        config: {
+          encoding: dto.audioFormat === 'wav' ? 'LINEAR16' : 'FLAC',
+          sampleRateHertz: 16000,
+          languageCode: 'it-IT',
+          enableAutomaticPunctuation: true,
+          enablePronunciationAssessment: true,
+          pronunciationAssessmentConfig: {
+            referenceText: expectedText,
+            granularity: 'WORD',
+            scoreType: 'OVERALL',
+          },
+        },
+      };
+
+      // Call Google Cloud Speech-to-Text API
+      const [response] = await client.recognize(request);
+
+      if (!response.results || response.results.length === 0) {
+        throw new BadRequestException('No speech detected in audio');
+      }
+
+      const result = response.results[0];
+      const transcription = result.alternatives[0]?.transcript || '';
+      const pronunciationAssessment = result.alternatives[0]?.pronunciationAssessment;
+
+      if (!pronunciationAssessment) {
+        throw new BadRequestException('Pronunciation assessment not available');
+      }
+
+      // Calculate overall score (0-100)
+      const overallScore = Math.round(pronunciationAssessment.pronunciationScore || 0);
+
+      // Process word-level analysis
+      const words: WordAnalysisDto[] = [];
+      if (pronunciationAssessment.words && result.alternatives[0]?.words) {
+        for (let i = 0; i < pronunciationAssessment.words.length; i++) {
+          const wordAssessment = pronunciationAssessment.words[i];
+          const wordInfo = result.alternatives[0].words[i];
+          
+          if (wordAssessment && wordInfo) {
+            const wordScore = Math.round(wordAssessment.pronunciationScore || 0);
+            words.push({
+              word: wordInfo.word,
+              score: wordScore,
+              feedback: wordScore >= 85 ? 'perfect' : 'could_improve',
+            });
+          }
+        }
+      }
+
+      // If no word-level data, create from overall score
+      if (words.length === 0 && expectedText) {
+        const expectedWords = expectedText.split(/\s+/);
+        const avgWordScore = overallScore;
+        expectedWords.forEach((word) => {
+          words.push({
+            word: word.trim(),
+            score: avgWordScore,
+            feedback: avgWordScore >= 85 ? 'perfect' : 'could_improve',
+          });
+        });
+      }
+
+      const isCorrect = overallScore >= 80; // Threshold for "correct"
+
+      return {
+        overallScore,
+        transcription,
+        words,
+        isCorrect,
+        score: overallScore,
+      };
+    } catch (error) {
+      console.error('Error validating pronunciation:', error);
+      
+      // Fallback: simple transcription comparison if Google Cloud fails
+      // This is a basic fallback - in production, you'd want better error handling
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException(
+        `Failed to validate pronunciation: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
   }
 }

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CARD_BORDER, OUTER_CARD_RADIUS, softShadow } from './homeStyles';
 
@@ -47,6 +47,7 @@ export function WelcomeContinueCard({
         >
           {greeting}
         </Text>
+        <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" />
       </View>
 
       <View style={styles.metaRow}>
@@ -102,11 +103,16 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: baseTheme.spacing.sm,
   },
   title: {
     fontFamily: baseTheme.typography.bold,
     fontSize: 22,
+    flex: 1,
+  },
+  logo: {
+    width: 44,
+    height: 44,
   },
   flamePill: {
     flexDirection: 'row',

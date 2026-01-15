@@ -41,6 +41,7 @@ export interface PracticeStepItem {
   hint?: string; // For FILL_BLANK, TEXT_TRANSLATION
   source?: string; // For TEXT_TRANSLATION
   sourceText?: string; // For MULTIPLE_CHOICE (translation MCQ)
+  translation?: string; // For TEXT_TO_SPEECH (userLanguageString for display)
 }
 
 /**

@@ -94,11 +94,7 @@ export class TeachingsService {
     const teaching = await this.prisma.teaching.findUnique({
       where: { id: teachingId },
       include: {
-        questions: {
-          include: {
-            questionDeliveryMethods: true,
-          },
-        },
+        questions: true,
       },
     });
 

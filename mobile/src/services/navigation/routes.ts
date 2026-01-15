@@ -51,6 +51,7 @@ export const routeBuilders = {
   courseRun: (slug: string) => `/course/${slug}/run` as const,
   lessonStart: (lessonId: string) => `/(tabs)/learn/${lessonId}/start` as const,
   sessionDetail: (sessionId: string) => `/session/${sessionId}` as const,
+  sessionCompletion: (sessionId: string) => `/session/${sessionId}/completion` as const,
   sessionSummary: (sessionId: string) => `/session/${sessionId}/summary` as const,
 };
 
@@ -60,6 +61,7 @@ export type DynamicRoutePath =
   | ReturnType<typeof routeBuilders.courseRun>
   | ReturnType<typeof routeBuilders.lessonStart>
   | ReturnType<typeof routeBuilders.sessionDetail>
+  | ReturnType<typeof routeBuilders.sessionCompletion>
   | ReturnType<typeof routeBuilders.sessionSummary>;
 export type RoutePath = StaticRoutePath | DynamicRoutePath;
 

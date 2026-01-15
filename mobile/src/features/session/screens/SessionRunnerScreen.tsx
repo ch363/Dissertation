@@ -7,11 +7,12 @@ import { SessionRunner } from '@/features/session/components/SessionRunner';
 import { makeSessionId } from '@/features/session/sessionBuilder';
 import { routeBuilders } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
-import { AttemptLog, SessionKind, SessionPlan } from '@/types/session';
+import { AttemptLog, SessionKind, SessionPlan, CardKind } from '@/types/session';
 import { getSessionPlan } from '@/services/api/learn';
 import { startLesson } from '@/services/api/progress';
 import { transformSessionPlan } from '@/services/api/session-plan-transformer';
 import { getCachedSessionPlan } from '@/services/api/session-plan-cache';
+import { warmupTts } from '@/services/tts';
 
 type Props = {
   lessonId?: string;
@@ -43,9 +44,16 @@ export default function SessionRunnerScreen(props?: Props) {
   const slideAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
-  // Trigger slide-up animation when content is ready
+  // Trigger slide-up animation when content is ready and preload TTS
   useEffect(() => {
     if (plan && !loading && !error) {
+      // Preload TTS immediately when session plan is ready
+      // This ensures the first speaker button press has no delay
+      warmupTts().catch((error) => {
+        console.warn('Failed to preload TTS for session:', error);
+        // Continue anyway - TTS will initialize on first use
+      });
+      
       // Start animation when content is ready
       Animated.parallel([
         Animated.timing(slideAnim, {
@@ -147,8 +155,14 @@ export default function SessionRunnerScreen(props?: Props) {
               if (transformedPlan.cards.length > 0) {
                 setPlan(transformedPlan);
               } else {
-                console.error('Transformation produced no cards. Steps:', planData.steps);
-                setError('Session plan has no cards after transformation');
+                // If no cards (e.g., only recap steps), lesson is likely completed
+                // Redirect directly to summary screen instead of showing error
+                console.log('Session plan has no practice cards (lesson completed or only recap). Redirecting to summary.');
+                router.replace({
+                  pathname: routeBuilders.sessionSummary(sessionId),
+                  params: { kind: sessionKind, lessonId },
+                });
+                return;
               }
             }
           } else {

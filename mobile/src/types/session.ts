@@ -57,9 +57,20 @@ export type TranslateCard = BaseCard & {
 
 export type ListeningCard = BaseCard & {
   kind: CardKind.Listening;
-  audioUrl: string;
+  audioUrl?: string;
   expected: string;
+  translation?: string; // Translation for "Speak This Phrase" mode
   mode?: 'type' | 'speak'; // 'type' = Type What You Hear, 'speak' = Speak This Phrase
+};
+
+export type PronunciationResult = {
+  overallScore: number; // 0-100
+  transcription: string;
+  words: Array<{
+    word: string;
+    score: number; // 0-100
+    feedback: 'perfect' | 'could_improve';
+  }>;
 };
 
 export type Card = TeachCard | MultipleChoiceCard | FillBlankCard | TranslateCard | ListeningCard;

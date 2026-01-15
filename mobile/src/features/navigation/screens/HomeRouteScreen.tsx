@@ -6,7 +6,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollView } from '@/components/ui';
 
 import { getMyProfile } from '@/services/api/profile';
-import { HomeHeader } from '@/features/home/components/HomeHeader';
 import { WelcomeContinueCard } from '@/features/home/components/WelcomeContinueCard';
 import { DueTodayGrid } from '@/features/home/components/due-today/DueTodayGrid';
 import type { DueTodayTileItem } from '@/features/home/components/due-today/DueTodayTile';
@@ -77,8 +76,6 @@ export default function HomeScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <HomeHeader onPressSettings={() => router.push(routes.tabs.settings.root)} />
-
         <WelcomeContinueCard
           streakDays={4}
           minutesToday={22}

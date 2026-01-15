@@ -252,7 +252,6 @@ export class ContentDeliveryService {
             lesson: true,
           },
         },
-        questionDeliveryMethods: true,
       },
     });
 
@@ -274,7 +273,7 @@ export class ContentDeliveryService {
           dueScore: 0,
           errorScore: 0,
           timeSinceLastSeen: Infinity,
-          deliveryMethods: question.questionDeliveryMethods.map((qdm) => qdm.deliveryMethod),
+          deliveryMethods: [question.type],
         };
         candidates.push(candidate);
       }
@@ -299,7 +298,6 @@ export class ContentDeliveryService {
             lesson: true,
           },
         },
-        questionDeliveryMethods: true,
       },
     });
 
@@ -330,7 +328,7 @@ export class ContentDeliveryService {
       dueScore: 0, // Will be set by caller
       errorScore,
       timeSinceLastSeen,
-      deliveryMethods: question.questionDeliveryMethods.map((qdm) => qdm.deliveryMethod),
+      deliveryMethods: [question.type],
     };
   }
 

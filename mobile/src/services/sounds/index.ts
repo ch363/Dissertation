@@ -14,8 +14,8 @@ let isPlayingSuccess = false;
 let isPlayingError = false;
 
 /**
- * Plays a success sound when user gets an answer correct.
- * Uses a two-tone chime pattern for a pleasant success indication.
+ * Plays a success sound (ding) when user gets an answer correct.
+ * Uses a pleasant two-tone chime pattern similar to other successful sound effects.
  */
 export async function playSuccessSound(): Promise<void> {
   if (isPlayingSuccess) {
@@ -24,32 +24,32 @@ export async function playSuccessSound(): Promise<void> {
   }
   
   try {
-    console.debug('Sound: Playing success sound');
+    console.debug('Sound: Playing success ding sound');
     isPlayingSuccess = true;
     
     // Stop any ongoing speech first
     Speech.stop();
     
     // Small delay to ensure stop completes
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise(resolve => setTimeout(resolve, 30));
     
-    // Play a pleasant two-tone success chime using vowel sounds
-    // First tone: higher pitch - use "ah" sound for better audibility
-    Speech.speak('ah', {
-      pitch: 1.5,
-      rate: 4.5,
+    // Play a pleasant two-tone "ding" chime
+    // First tone: higher pitch - use "ding" sound
+    Speech.speak('ding', {
+      pitch: 1.6,
+      rate: 5.0,
       language: 'en-US',
     });
     
-    // Stop first tone quickly and play second tone
+    // Stop first tone quickly and play second tone for a nice chime effect
     setTimeout(() => {
       Speech.stop();
       // Small delay before second tone
       setTimeout(() => {
-        // Second tone: even higher pitch - use "eh" sound
-        Speech.speak('eh', {
-          pitch: 1.8,
-          rate: 4.5,
+        // Second tone: slightly higher pitch for the "ding" completion
+        Speech.speak('ding', {
+          pitch: 1.9,
+          rate: 5.5,
           language: 'en-US',
         });
         
@@ -57,10 +57,10 @@ export async function playSuccessSound(): Promise<void> {
         setTimeout(() => {
           Speech.stop();
           isPlayingSuccess = false;
-          console.debug('Sound: Success sound completed');
-        }, 250);
-      }, 50);
-    }, 150);
+          console.debug('Sound: Success ding sound completed');
+        }, 200);
+      }, 40);
+    }, 120);
   } catch (error) {
     // Log error for debugging
     console.warn('Failed to play success sound:', error);
@@ -70,7 +70,7 @@ export async function playSuccessSound(): Promise<void> {
 
 /**
  * Plays an error sound when user gets an answer incorrect.
- * Uses a lower-pitched, single-tone sound to indicate failure.
+ * Uses a lower-pitched, buzzer-like sound to indicate failure.
  */
 export async function playErrorSound(): Promise<void> {
   if (isPlayingError) {
@@ -86,12 +86,12 @@ export async function playErrorSound(): Promise<void> {
     Speech.stop();
     
     // Small delay to ensure stop completes
-    await new Promise(resolve => setTimeout(resolve, 50));
+    await new Promise(resolve => setTimeout(resolve, 30));
     
-    // Play a lower-pitched, single-tone error sound using "oh" sound for better audibility
-    Speech.speak('oh', {
-      pitch: 0.6, // Lower pitch for error
-      rate: 3.5,
+    // Play a lower-pitched, buzzer-like error sound
+    Speech.speak('buzz', {
+      pitch: 0.5, // Lower pitch for error
+      rate: 4.0,
       language: 'en-US',
     });
     
@@ -100,7 +100,7 @@ export async function playErrorSound(): Promise<void> {
       Speech.stop();
       isPlayingError = false;
       console.debug('Sound: Error sound completed');
-    }, 300);
+    }, 250);
   } catch (error) {
     // Log error for debugging
     console.warn('Failed to play error sound:', error);

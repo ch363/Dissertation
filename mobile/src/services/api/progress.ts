@@ -111,6 +111,7 @@ export interface ProgressSummary {
   completedModules: number;
   totalLessons: number;
   totalModules: number;
+  dueReviewCount: number;
 }
 
 /**
@@ -137,6 +138,18 @@ export interface ValidateAnswerResponse {
   feedback?: string;
 }
 
+export interface PronunciationResponse {
+  overallScore: number;
+  transcription: string;
+  words: Array<{
+    word: string;
+    score: number;
+    feedback: 'perfect' | 'could_improve';
+  }>;
+  isCorrect: boolean;
+  score: number;
+}
+
 /**
  * Validate user answer and get score
  * Returns isCorrect, score, and optional feedback
@@ -151,6 +164,24 @@ export async function validateAnswer(
     {
       answer,
       deliveryMethod,
+    },
+  );
+}
+
+/**
+ * Validate pronunciation from audio recording
+ * Returns pronunciation score, transcription, and word-by-word analysis
+ */
+export async function validatePronunciation(
+  questionId: string,
+  audioBase64: string,
+  audioFormat: string = 'wav',
+): Promise<PronunciationResponse> {
+  return apiClient.post<PronunciationResponse>(
+    `/progress/questions/${questionId}/pronunciation`,
+    {
+      audioBase64,
+      audioFormat,
     },
   );
 }

@@ -1,7 +1,25 @@
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, Logger } from '@nestjs/common';
 
+/**
+ * Setup Swagger API documentation
+ * 
+ * Security considerations:
+ * - In production, Swagger is disabled by default (enable via ENABLE_SWAGGER=true)
+ * - This prevents API schema exposure to attackers
+ * - OWASP recommendation: Disable API documentation in production unless explicitly needed
+ */
 export function setupSwagger(app: INestApplication) {
+  const logger = new Logger('Swagger');
+  const isProduction = process.env.NODE_ENV === 'production';
+  const enableSwagger = process.env.ENABLE_SWAGGER === 'true';
+
+  // Security: Disable Swagger in production unless explicitly enabled
+  if (isProduction && !enableSwagger) {
+    logger.log('Swagger documentation disabled in production (set ENABLE_SWAGGER=true to enable)');
+    return;
+  }
+
   const config = new DocumentBuilder()
     .setTitle('Fluentia API')
     .setDescription('Language learning platform API documentation')
@@ -26,12 +44,17 @@ export function setupSwagger(app: INestApplication) {
     .addTag('progress', 'User progress tracking')
     .addTag('learn', 'Learning orchestration')
     .addTag('search', 'Search and discovery')
+    .addTag('onboarding', 'User onboarding')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document, {
     swaggerOptions: {
       persistAuthorization: true,
+      // Security: Don't expose internal server info
+      displayOperationId: false,
     },
   });
+
+  logger.log('Swagger documentation available at /api/docs');
 }

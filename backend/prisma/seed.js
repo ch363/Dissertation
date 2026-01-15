@@ -46,13 +46,13 @@ async function main() {
   const module = await prisma.module.upsert({
     where: { id: SEED_UUIDS.module },
     update: {
-      title: 'Italian Basics',
+      title: 'Basics',
       description: 'Essential Italian phrases and greetings for beginners',
       imageUrl: 'https://example.com/images/italian-basics.jpg',
     },
     create: {
       id: SEED_UUIDS.module,
-      title: 'Italian Basics',
+      title: 'Basics',
       description: 'Essential Italian phrases and greetings for beginners',
       imageUrl: 'https://example.com/images/italian-basics.jpg',
     },
@@ -147,28 +147,37 @@ async function main() {
   });
   console.log('✅ Teaching created/updated: Per favore');
 
-  // 4. Upsert Questions and their delivery methods
+  // 4. Upsert Questions and their delivery method tables
   // Question 1: Ciao - Multiple Choice (EN→IT)
   await prisma.question.upsert({
     where: { id: SEED_UUIDS.questionCiaoMultipleChoice },
     update: {
       teachingId: SEED_UUIDS.teachingCiao,
+      type: DELIVERY_METHOD.MULTIPLE_CHOICE,
     },
     create: {
       id: SEED_UUIDS.questionCiaoMultipleChoice,
       teachingId: SEED_UUIDS.teachingCiao,
+      type: DELIVERY_METHOD.MULTIPLE_CHOICE,
+      multipleChoice: {
+        create: {
+          options: ['Ciao', 'Buongiorno', 'Arrivederci', 'Salve'],
+          correctIndices: [0],
+        },
+      },
     },
   });
-  await prisma.questionDeliveryMethod.deleteMany({
-    where: {
-      questionId: SEED_UUIDS.questionCiaoMultipleChoice,
-      deliveryMethod: DELIVERY_METHOD.MULTIPLE_CHOICE,
+  // Update or create the multiple choice data
+  await prisma.questionMultipleChoice.upsert({
+    where: { questionId: SEED_UUIDS.questionCiaoMultipleChoice },
+    update: {
+      options: ['Ciao', 'Buongiorno', 'Arrivederci', 'Salve'],
+      correctIndices: [0],
     },
-  });
-  await prisma.questionDeliveryMethod.create({
-    data: {
+    create: {
       questionId: SEED_UUIDS.questionCiaoMultipleChoice,
-      deliveryMethod: DELIVERY_METHOD.MULTIPLE_CHOICE,
+      options: ['Ciao', 'Buongiorno', 'Arrivederci', 'Salve'],
+      correctIndices: [0],
     },
   });
   console.log('✅ Question created/updated: Ciao (Multiple Choice)');
@@ -178,22 +187,27 @@ async function main() {
     where: { id: SEED_UUIDS.questionCiaoTranslation },
     update: {
       teachingId: SEED_UUIDS.teachingCiao,
+      type: DELIVERY_METHOD.TEXT_TRANSLATION,
     },
     create: {
       id: SEED_UUIDS.questionCiaoTranslation,
       teachingId: SEED_UUIDS.teachingCiao,
+      type: DELIVERY_METHOD.TEXT_TRANSLATION,
+      textTranslation: {
+        create: {
+          acceptedAnswers: ['Hi', 'Bye', 'Hello', 'Goodbye'],
+        },
+      },
     },
   });
-  await prisma.questionDeliveryMethod.deleteMany({
-    where: {
-      questionId: SEED_UUIDS.questionCiaoTranslation,
-      deliveryMethod: DELIVERY_METHOD.TEXT_TRANSLATION,
+  await prisma.questionTextTranslation.upsert({
+    where: { questionId: SEED_UUIDS.questionCiaoTranslation },
+    update: {
+      acceptedAnswers: ['Hi', 'Bye', 'Hello', 'Goodbye'],
     },
-  });
-  await prisma.questionDeliveryMethod.create({
-    data: {
+    create: {
       questionId: SEED_UUIDS.questionCiaoTranslation,
-      deliveryMethod: DELIVERY_METHOD.TEXT_TRANSLATION,
+      acceptedAnswers: ['Hi', 'Bye', 'Hello', 'Goodbye'],
     },
   });
   console.log('✅ Question created/updated: Ciao (Translation)');
@@ -203,22 +217,27 @@ async function main() {
     where: { id: SEED_UUIDS.questionCiaoListening },
     update: {
       teachingId: SEED_UUIDS.teachingCiao,
+      type: DELIVERY_METHOD.SPEECH_TO_TEXT,
     },
     create: {
       id: SEED_UUIDS.questionCiaoListening,
       teachingId: SEED_UUIDS.teachingCiao,
+      type: DELIVERY_METHOD.SPEECH_TO_TEXT,
+      speechToText: {
+        create: {
+          acceptedAnswers: ['Ciao', 'ciao'],
+        },
+      },
     },
   });
-  await prisma.questionDeliveryMethod.deleteMany({
-    where: {
-      questionId: SEED_UUIDS.questionCiaoListening,
-      deliveryMethod: DELIVERY_METHOD.SPEECH_TO_TEXT,
+  await prisma.questionSpeechToText.upsert({
+    where: { questionId: SEED_UUIDS.questionCiaoListening },
+    update: {
+      acceptedAnswers: ['Ciao', 'ciao'],
     },
-  });
-  await prisma.questionDeliveryMethod.create({
-    data: {
+    create: {
       questionId: SEED_UUIDS.questionCiaoListening,
-      deliveryMethod: DELIVERY_METHOD.SPEECH_TO_TEXT,
+      acceptedAnswers: ['Ciao', 'ciao'],
     },
   });
   console.log('✅ Question created/updated: Ciao (Listening)');
@@ -228,22 +247,30 @@ async function main() {
     where: { id: SEED_UUIDS.questionGrazieMultipleChoice },
     update: {
       teachingId: SEED_UUIDS.teachingGrazie,
+      type: DELIVERY_METHOD.MULTIPLE_CHOICE,
     },
     create: {
       id: SEED_UUIDS.questionGrazieMultipleChoice,
       teachingId: SEED_UUIDS.teachingGrazie,
+      type: DELIVERY_METHOD.MULTIPLE_CHOICE,
+      multipleChoice: {
+        create: {
+          options: ['Grazie', 'Prego', 'Scusa', 'Per favore'],
+          correctIndices: [0],
+        },
+      },
     },
   });
-  await prisma.questionDeliveryMethod.deleteMany({
-    where: {
-      questionId: SEED_UUIDS.questionGrazieMultipleChoice,
-      deliveryMethod: DELIVERY_METHOD.MULTIPLE_CHOICE,
+  await prisma.questionMultipleChoice.upsert({
+    where: { questionId: SEED_UUIDS.questionGrazieMultipleChoice },
+    update: {
+      options: ['Grazie', 'Prego', 'Scusa', 'Per favore'],
+      correctIndices: [0],
     },
-  });
-  await prisma.questionDeliveryMethod.create({
-    data: {
+    create: {
       questionId: SEED_UUIDS.questionGrazieMultipleChoice,
-      deliveryMethod: DELIVERY_METHOD.MULTIPLE_CHOICE,
+      options: ['Grazie', 'Prego', 'Scusa', 'Per favore'],
+      correctIndices: [0],
     },
   });
   console.log('✅ Question created/updated: Grazie (Multiple Choice)');
@@ -253,22 +280,30 @@ async function main() {
     where: { id: SEED_UUIDS.questionGrazieFillBlank },
     update: {
       teachingId: SEED_UUIDS.teachingGrazie,
+      type: DELIVERY_METHOD.FILL_BLANK,
     },
     create: {
       id: SEED_UUIDS.questionGrazieFillBlank,
       teachingId: SEED_UUIDS.teachingGrazie,
+      type: DELIVERY_METHOD.FILL_BLANK,
+      fillBlank: {
+        create: {
+          blankIndices: [0],
+          acceptedAnswers: { '0': ['Grazie'] },
+        },
+      },
     },
   });
-  await prisma.questionDeliveryMethod.deleteMany({
-    where: {
-      questionId: SEED_UUIDS.questionGrazieFillBlank,
-      deliveryMethod: DELIVERY_METHOD.FILL_BLANK,
+  await prisma.questionFillBlank.upsert({
+    where: { questionId: SEED_UUIDS.questionGrazieFillBlank },
+    update: {
+      blankIndices: [0],
+      acceptedAnswers: { '0': ['Grazie'] },
     },
-  });
-  await prisma.questionDeliveryMethod.create({
-    data: {
+    create: {
       questionId: SEED_UUIDS.questionGrazieFillBlank,
-      deliveryMethod: DELIVERY_METHOD.FILL_BLANK,
+      blankIndices: [0],
+      acceptedAnswers: { '0': ['Grazie'] },
     },
   });
   console.log('✅ Question created/updated: Grazie (Fill Blank)');
@@ -278,22 +313,27 @@ async function main() {
     where: { id: SEED_UUIDS.questionPerFavoreTranslation },
     update: {
       teachingId: SEED_UUIDS.teachingPerFavore,
+      type: DELIVERY_METHOD.TEXT_TRANSLATION,
     },
     create: {
       id: SEED_UUIDS.questionPerFavoreTranslation,
       teachingId: SEED_UUIDS.teachingPerFavore,
+      type: DELIVERY_METHOD.TEXT_TRANSLATION,
+      textTranslation: {
+        create: {
+          acceptedAnswers: ['Per favore', 'per favore', 'Perfavore'],
+        },
+      },
     },
   });
-  await prisma.questionDeliveryMethod.deleteMany({
-    where: {
-      questionId: SEED_UUIDS.questionPerFavoreTranslation,
-      deliveryMethod: DELIVERY_METHOD.TEXT_TRANSLATION,
+  await prisma.questionTextTranslation.upsert({
+    where: { questionId: SEED_UUIDS.questionPerFavoreTranslation },
+    update: {
+      acceptedAnswers: ['Per favore', 'per favore', 'Perfavore'],
     },
-  });
-  await prisma.questionDeliveryMethod.create({
-    data: {
+    create: {
       questionId: SEED_UUIDS.questionPerFavoreTranslation,
-      deliveryMethod: DELIVERY_METHOD.TEXT_TRANSLATION,
+      acceptedAnswers: ['Per favore', 'per favore', 'Perfavore'],
     },
   });
   console.log('✅ Question created/updated: Per favore (Translation)');

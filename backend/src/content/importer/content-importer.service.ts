@@ -115,19 +115,27 @@ export class ContentImporterService {
             }
             
             // Import questions for this teaching
+            // With new schema: create one question per delivery method type
             const teachingQuestions = lessonContent.questions.filter(
               (q) => q.teachingSlug === teaching.slug,
             );
             
             for (const question of teachingQuestions) {
-              const { id: questionId, created: questionCreated } = await this.importQuestion(question, teachingId);
-              if (questionCreated) {
-                stats.questionsCreated++;
-              } else {
-                stats.questionsUpdated++;
+              // Create one question per delivery method
+              for (const deliveryMethod of question.deliveryMethods) {
+                const { id: questionId, created: questionCreated } = await this.importQuestion(
+                  question,
+                  teachingId,
+                  deliveryMethod as DELIVERY_METHOD,
+                );
+                if (questionCreated) {
+                  stats.questionsCreated++;
+                } else {
+                  stats.questionsUpdated++;
+                }
+                await this.importQuestionDeliveryMethodData(question, questionId, deliveryMethod as DELIVERY_METHOD);
+                stats.deliveryMethodsCreated++;
               }
-              await this.importQuestionDeliveryMethods(question, questionId);
-              stats.deliveryMethodsCreated += question.deliveryMethods.length;
             }
           }
         } catch (error) {
@@ -243,9 +251,15 @@ export class ContentImporterService {
   /**
    * Import a question
    * Questions only link to teaching - all data comes from the Teaching relationship
+   * With new schema: each question has a single delivery method type
    */
-  private async importQuestion(question: LessonContent['questions'][0], teachingId: string): Promise<{ id: string; created: boolean }> {
-    const id = questionIdFromSlug(question.slug);
+  private async importQuestion(
+    question: LessonContent['questions'][0],
+    teachingId: string,
+    deliveryMethod: DELIVERY_METHOD,
+  ): Promise<{ id: string; created: boolean }> {
+    // Create unique ID per question + delivery method combination
+    const id = `${questionIdFromSlug(question.slug)}-${deliveryMethod}`;
 
     const existing = await this.prisma.question.findUnique({ where: { id } });
     const created = !existing;
@@ -254,10 +268,12 @@ export class ContentImporterService {
       where: { id },
       update: {
         teachingId,
+        type: deliveryMethod,
       },
       create: {
         id,
         teachingId,
+        type: deliveryMethod,
       },
     });
 
@@ -265,26 +281,77 @@ export class ContentImporterService {
   }
 
   /**
-   * Import question delivery methods
+   * Import question delivery method data
+   * Creates the specific delivery method table entry based on type
    */
-  private async importQuestionDeliveryMethods(
+  private async importQuestionDeliveryMethodData(
     question: LessonContent['questions'][0],
     questionId: string,
+    deliveryMethod: DELIVERY_METHOD,
   ): Promise<void> {
-    // Delete existing delivery methods for this question
-    await this.prisma.questionDeliveryMethod.deleteMany({
-      where: { questionId },
-    });
-
-    // Create new delivery methods
-    if (question.deliveryMethods.length > 0) {
-      await this.prisma.questionDeliveryMethod.createMany({
-        data: question.deliveryMethods.map((method) => ({
-          questionId,
-          deliveryMethod: method as DELIVERY_METHOD,
-        })),
-        skipDuplicates: true,
-      });
+    // Create/update the specific delivery method table entry
+    // For now, we'll create empty entries - actual data would come from question content
+    switch (deliveryMethod) {
+      case DELIVERY_METHOD.FILL_BLANK:
+        await this.prisma.questionFillBlank.upsert({
+          where: { questionId },
+          update: {},
+          create: {
+            questionId,
+            blankIndices: [],
+            acceptedAnswers: {},
+          },
+        });
+        break;
+      case DELIVERY_METHOD.MULTIPLE_CHOICE:
+        await this.prisma.questionMultipleChoice.upsert({
+          where: { questionId },
+          update: {},
+          create: {
+            questionId,
+            options: [],
+            correctIndices: [],
+          },
+        });
+        break;
+      case DELIVERY_METHOD.SPEECH_TO_TEXT:
+        await this.prisma.questionSpeechToText.upsert({
+          where: { questionId },
+          update: {},
+          create: {
+            questionId,
+            acceptedAnswers: [],
+          },
+        });
+        break;
+      case DELIVERY_METHOD.TEXT_TRANSLATION:
+        await this.prisma.questionTextTranslation.upsert({
+          where: { questionId },
+          update: {},
+          create: {
+            questionId,
+            acceptedAnswers: [],
+          },
+        });
+        break;
+      case DELIVERY_METHOD.FLASHCARD:
+        await this.prisma.questionFlashcard.upsert({
+          where: { questionId },
+          update: {},
+          create: {
+            questionId,
+          },
+        });
+        break;
+      case DELIVERY_METHOD.TEXT_TO_SPEECH:
+        await this.prisma.questionTextToSpeech.upsert({
+          where: { questionId },
+          update: {},
+          create: {
+            questionId,
+          },
+        });
+        break;
     }
   }
 

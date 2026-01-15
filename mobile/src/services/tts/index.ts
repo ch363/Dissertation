@@ -138,3 +138,50 @@ export async function stop() {
     // no-op if not available
   }
 }
+
+/**
+ * Preload TTS by doing a quick test speak
+ * This ensures the native module is fully initialized and ready
+ * Call this when a session starts to avoid delay on first button press
+ */
+export async function warmupTts(): Promise<void> {
+  try {
+    const initialized = await ensureInitialized();
+    if (!initialized || !SpeechModule) {
+      return;
+    }
+    
+    // Do a quick test speak with a very short phrase to warm up the native module
+    // This initializes the TTS engine and loads the voice, eliminating first-use delay
+    // Use a short Italian word since most of our content is Italian
+    const testText = 'a';
+    const originalIsSpeaking = isSpeaking;
+    isSpeaking = true; // Temporarily set to prevent interference
+    
+    try {
+      SpeechModule.speak(testText, {
+        language: 'it-IT',
+        rate: 3.0, // Very fast rate to minimize delay
+      });
+      
+      // Stop immediately after a brief moment - we just want to initialize
+      setTimeout(() => {
+        try {
+          SpeechModule?.stop();
+          isSpeaking = originalIsSpeaking; // Restore original state
+        } catch (error) {
+          isSpeaking = originalIsSpeaking;
+          // Ignore errors
+        }
+      }, 100);
+      
+      console.debug('TTS warmed up successfully');
+    } catch (error) {
+      isSpeaking = originalIsSpeaking;
+      throw error;
+    }
+  } catch (error) {
+    console.warn('Failed to warmup TTS:', error);
+    // Continue anyway - speak() will handle it
+  }
+}

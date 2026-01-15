@@ -20,5 +20,12 @@ export const envValidationSchema = Joi.object({
   
   // Rate Limiting
   THROTTLE_TTL: Joi.number().optional(), // Time window in milliseconds (default: 60000 = 1 minute)
-  THROTTLE_LIMIT: Joi.number().optional(), // Max requests per time window (default: 100 in prod, 1000 in dev)
+  THROTTLE_LIMIT: Joi.number().optional(), // Max requests per time window for IP-based (default: 100 in prod, 1000 in dev)
+  THROTTLE_USER_LIMIT: Joi.number().optional(), // Max requests per time window for user-based (default: same as THROTTLE_LIMIT)
+  
+  // Google Cloud Speech API (optional - for pronunciation validation)
+  // Google Cloud libraries use GOOGLE_APPLICATION_CREDENTIALS environment variable
+  // or service account key file path. Set this in your deployment environment.
+  // See: https://cloud.google.com/docs/authentication/application-default-credentials
+  GOOGLE_APPLICATION_CREDENTIALS: Joi.string().optional(),
 }).unknown(true); // Allow unknown keys for test environment
