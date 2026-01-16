@@ -33,6 +33,10 @@ export interface DashboardData {
   streak: number | null;
 }
 
+export interface StatsData {
+  minutesToday: number;
+}
+
 export interface RecentActivity {
   recentLesson: {
     lesson: {
@@ -117,6 +121,13 @@ export async function ensureProfileSeed(name?: string): Promise<Profile> {
  */
 export async function getDashboard(): Promise<DashboardData> {
   return apiClient.get<DashboardData>('/me/dashboard');
+}
+
+/**
+ * Get user statistics (minutes studied today)
+ */
+export async function getStats(): Promise<StatsData> {
+  return apiClient.get<StatsData>('/me/stats');
 }
 
 /**

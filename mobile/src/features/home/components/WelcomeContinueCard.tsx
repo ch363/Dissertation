@@ -131,8 +131,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   logo: {
-    width: 44,
-    height: 44,
+    width: 56,
+    height: 56,
   },
   flamePill: {
     flexDirection: 'row',

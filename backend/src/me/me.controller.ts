@@ -64,6 +64,13 @@ export class MeController {
     return this.meService.getDashboard(userId);
   }
 
+  @Get('stats')
+  @ApiOperation({ summary: 'Get user statistics (minutes studied today)' })
+  @ApiResponse({ status: 200, description: 'User statistics retrieved' })
+  async getStats(@User() userId: string) {
+    return this.meService.getStats(userId);
+  }
+
   @Get('lessons')
   @ApiOperation({ summary: 'Get user\'s started lessons with progress' })
   @ApiResponse({ status: 200, description: 'User lessons retrieved' })

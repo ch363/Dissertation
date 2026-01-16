@@ -22,11 +22,11 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
   // Speak the word when it's placed in the blank
   useEffect(() => {
     const speakSelectedWord = async () => {
-      // Only speak if:
+      // Speak if:
       // 1. There's a selected answer
       // 2. It's different from the previous answer (new word was placed)
-      // 3. We're not showing results yet (only speak when first placed)
-      if (selectedAnswer && selectedAnswer !== previousAnswerRef.current && !showResult) {
+      // Allow speaking even after results are shown, so users can hear each wrong answer they try
+      if (selectedAnswer && selectedAnswer !== previousAnswerRef.current) {
         try {
           const enabled = await getTtsEnabled();
           if (!enabled) {

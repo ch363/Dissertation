@@ -141,6 +141,50 @@ export class MeService {
     };
   }
 
+  async getStats(userId: string) {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfToday = new Date(startOfToday);
+    endOfToday.setDate(endOfToday.getDate() + 1);
+
+    // Get all question performances from today
+    // Use lastRevisedAt if available, otherwise createdAt
+    const todayPerformances = await this.prisma.userQuestionPerformance.findMany({
+      where: {
+        userId,
+        OR: [
+          {
+            lastRevisedAt: {
+              gte: startOfToday,
+              lt: endOfToday,
+            },
+          },
+          {
+            lastRevisedAt: null,
+            createdAt: {
+              gte: startOfToday,
+              lt: endOfToday,
+            },
+          },
+        ],
+      },
+      select: {
+        timeToComplete: true,
+      },
+    });
+
+    // Sum up timeToComplete in milliseconds, convert to minutes
+    const totalMs = todayPerformances.reduce((sum, perf) => {
+      return sum + (perf.timeToComplete || 0);
+    }, 0);
+
+    const minutesToday = Math.round(totalMs / (1000 * 60));
+
+    return {
+      minutesToday,
+    };
+  }
+
   async getMyLessons(userId: string) {
     const userLessons = await this.prisma.userLesson.findMany({
       where: { userId },

@@ -89,9 +89,19 @@ export class ProgressService {
         throw new NotFoundException(`Teaching with ID ${teachingId} not found`);
       }
 
-      // Try to create UserTeachingCompleted (will fail if exists due to composite PK)
+      // Check if already completed (to avoid transaction abort on duplicate key)
+      const existing = await tx.userTeachingCompleted.findUnique({
+        where: {
+          userId_teachingId: {
+            userId,
+            teachingId,
+          },
+        },
+      });
+
       let wasNewlyCompleted = false;
-      try {
+      if (!existing) {
+        // Create UserTeachingCompleted if it doesn't exist
         await tx.userTeachingCompleted.create({
           data: {
             userId,
@@ -99,8 +109,6 @@ export class ProgressService {
           },
         });
         wasNewlyCompleted = true;
-      } catch (error) {
-        // Already exists, that's fine - idempotent
       }
 
       // If newly completed, increment UserLesson.completedTeachings

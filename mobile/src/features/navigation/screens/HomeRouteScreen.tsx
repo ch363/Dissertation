@@ -36,9 +36,8 @@ export default function HomeScreen() {
       title: 'Travel',
       lessons: '4 lessons',
       eta: '≈1 min',
-      icon: 'lock-closed',
-      locked: true,
-      lockCopy: 'Complete Basics to unlock',
+      icon: 'airplane',
+      locked: false,
       route: '/course/travel',
     },
   ];

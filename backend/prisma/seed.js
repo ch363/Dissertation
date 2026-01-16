@@ -67,6 +67,29 @@ const SEED_UUIDS = {
   questionRossoMultipleChoice: '00000000-0000-0000-0000-000000000031',
   questionBluTranslation: '00000000-0000-0000-0000-000000000032',
   questionVerdeFillBlank: '00000000-0000-0000-0000-000000000033',
+  // Travel Module
+  moduleTravel: '00000000-0000-0000-0000-000000000100',
+  lessonAirport: '00000000-0000-0000-0000-000000000101',
+  lessonHotel: '00000000-0000-0000-0000-000000000102',
+  lessonRestaurant: '00000000-0000-0000-0000-000000000103',
+  teachingBiglietto: '00000000-0000-0000-0000-000000000110',
+  teachingBagaglio: '00000000-0000-0000-0000-000000000111',
+  teachingPartenza: '00000000-0000-0000-0000-000000000112',
+  teachingCamera: '00000000-0000-0000-0000-000000000113',
+  teachingCheckIn: '00000000-0000-0000-0000-000000000114',
+  teachingChiave: '00000000-0000-0000-0000-000000000115',
+  teachingMenu: '00000000-0000-0000-0000-000000000116',
+  teachingConto: '00000000-0000-0000-0000-000000000117',
+  teachingAcqua: '00000000-0000-0000-0000-000000000118',
+  questionBigliettoMultipleChoice: '00000000-0000-0000-0000-000000000120',
+  questionBagaglioTranslation: '00000000-0000-0000-0000-000000000121',
+  questionPartenzaFlashcard: '00000000-0000-0000-0000-000000000122',
+  questionCameraMultipleChoice: '00000000-0000-0000-0000-000000000123',
+  questionCheckInTranslation: '00000000-0000-0000-0000-000000000124',
+  questionChiaveSpeechToText: '00000000-0000-0000-0000-000000000125',
+  questionMenuMultipleChoice: '00000000-0000-0000-0000-000000000126',
+  questionContoFillBlank: '00000000-0000-0000-0000-000000000127',
+  questionAcquaTextToSpeech: '00000000-0000-0000-0000-000000000128',
 };
 
 async function main() {
@@ -1125,12 +1148,558 @@ async function main() {
   });
   console.log('✅ Question created/updated: Verde (Fill Blank)');
 
+  // ========== TRAVEL MODULE ==========
+  
+  // Travel Module
+  const moduleTravel = await prisma.module.upsert({
+    where: { id: SEED_UUIDS.moduleTravel },
+    update: {
+      title: 'Travel',
+      description: 'Essential Italian phrases for traveling',
+      imageUrl: 'https://example.com/images/travel.jpg',
+    },
+    create: {
+      id: SEED_UUIDS.moduleTravel,
+      title: 'Travel',
+      description: 'Essential Italian phrases for traveling',
+      imageUrl: 'https://example.com/images/travel.jpg',
+    },
+  });
+  console.log('✅ Module created/updated:', moduleTravel.title);
+
+  // Lesson 1: At the Airport
+  const lessonAirport = await prisma.lesson.upsert({
+    where: { id: SEED_UUIDS.lessonAirport },
+    update: {
+      title: 'At the Airport',
+      description: 'Learn essential phrases for navigating airports in Italy',
+      imageUrl: 'https://example.com/images/airport.jpg',
+      moduleId: SEED_UUIDS.moduleTravel,
+      numberOfItems: 3,
+    },
+    create: {
+      id: SEED_UUIDS.lessonAirport,
+      title: 'At the Airport',
+      description: 'Learn essential phrases for navigating airports in Italy',
+      imageUrl: 'https://example.com/images/airport.jpg',
+      moduleId: SEED_UUIDS.moduleTravel,
+      numberOfItems: 3,
+    },
+  });
+  console.log('✅ Lesson created/updated:', lessonAirport.title);
+
+  const teachingBiglietto = await prisma.teaching.upsert({
+    where: { id: SEED_UUIDS.teachingBiglietto },
+    update: {
+      knowledgeLevel: KNOWLEDGE_LEVEL.A1,
+      emoji: '🎫',
+      userLanguageString: 'Ticket',
+      learningLanguageString: 'Biglietto',
+      tip: 'Biglietto can refer to a ticket for transportation, events, or entry. "Il biglietto" is masculine.',
+      lessonId: SEED_UUIDS.lessonAirport,
+    },
+    create: {
+      id: SEED_UUIDS.teachingBiglietto,
+      knowledgeLevel: KNOWLEDGE_LEVEL.A1,
+      emoji: '🎫',
+      userLanguageString: 'Ticket',
+      learningLanguageString: 'Biglietto',
+      tip: 'Biglietto can refer to a ticket for transportation, events, or entry. "Il biglietto" is masculine.',
+      lessonId: SEED_UUIDS.lessonAirport,
+    },
+  });
+  console.log('✅ Teaching created/updated: Biglietto');
+
+  const teachingBagaglio = await prisma.teaching.upsert({
+    where: { id: SEED_UUIDS.teachingBagaglio },
+    update: {
+      knowledgeLevel: KNOWLEDGE_LEVEL.A1,
+      emoji: '🧳',
+      userLanguageString: 'Luggage / Baggage',
+      learningLanguageString: 'Bagaglio',
+      tip: 'Bagaglio is singular. The plural is "bagagli" (luggage/baggage).',
+      lessonId: SEED_UUIDS.lessonAirport,
+    },
+    create: {
+      id: SEED_UUIDS.teachingBagaglio,
+      knowledgeLevel: KNOWLEDGE_LEVEL.A1,
+      emoji: '🧳',
+      userLanguageString: 'Luggage / Baggage',
+      learningLanguageString: 'Bagaglio',
+      tip: 'Bagaglio is singular. The plural is "bagagli" (luggage/baggage).',
+      lessonId: SEED_UUIDS.lessonAirport,
+    },
+  });
+  console.log('✅ Teaching created/updated: Bagaglio');
+
+  const teachingPartenza = await prisma.teaching.upsert({
+    where: { id: SEED_UUIDS.teachingPartenza },
+    update: {
+      knowledgeLevel: KNOWLEDGE_LEVEL.A1,
+      emoji: '✈️',
+      userLanguageString: 'Departure',
+      learningLanguageString: 'Partenza',
+      tip: 'Partenza means departure. "Arrivo" means arrival. Look for "Partenze" (departures) boards at airports.',
+      lessonId: SEED_UUIDS.lessonAirport,
+    },
+    create: {
+      id: SEED_UUIDS.teachingPartenza,
+      knowledgeLevel: KNOWLEDGE_LEVEL.A1,
+      emoji: '✈️',
+      userLanguageString: 'Departure',
+      learningLanguageString: 'Partenza',
+      tip: 'Partenza means departure. "Arrivo" means arrival. Look for "Partenze" (departures) boards at airports.',
+      lessonId: SEED_UUIDS.lessonAirport,
+    },
+  });
+  console.log('✅ Teaching created/updated: Partenza');
+
+  // Questions for Airport
+  await prisma.question.upsert({
+    where: { id: SEED_UUIDS.questionBigliettoMultipleChoice },
+    update: {
+      teachingId: SEED_UUIDS.teachingBiglietto,
+      type: DELIVERY_METHOD.MULTIPLE_CHOICE,
+    },
+    create: {
+      id: SEED_UUIDS.questionBigliettoMultipleChoice,
+      teachingId: SEED_UUIDS.teachingBiglietto,
+      type: DELIVERY_METHOD.MULTIPLE_CHOICE,
+      multipleChoice: {
+        create: {
+          options: ['Biglietto', 'Bagaglio', 'Partenza', 'Arrivo'],
+          correctIndices: [0],
+        },
+      },
+    },
+  });
+  await prisma.questionMultipleChoice.upsert({
+    where: { questionId: SEED_UUIDS.questionBigliettoMultipleChoice },
+    update: {
+      options: ['Biglietto', 'Bagaglio', 'Partenza', 'Arrivo'],
+      correctIndices: [0],
+    },
+    create: {
+      questionId: SEED_UUIDS.questionBigliettoMultipleChoice,
+      options: ['Biglietto', 'Bagaglio', 'Partenza', 'Arrivo'],
+      correctIndices: [0],
+    },
+  });
+  console.log('✅ Question created/updated: Biglietto (Multiple Choice)');
+
+  await prisma.question.upsert({
+    where: { id: SEED_UUIDS.questionBagaglioTranslation },
+    update: {
+      teachingId: SEED_UUIDS.teachingBagaglio,
+      type: DELIVERY_METHOD.TEXT_TRANSLATION,
+    },
+    create: {
+      id: SEED_UUIDS.questionBagaglioTranslation,
+      teachingId: SEED_UUIDS.teachingBagaglio,
+      type: DELIVERY_METHOD.TEXT_TRANSLATION,
+      textTranslation: {
+        create: {
+          acceptedAnswers: ['Luggage', 'luggage', 'Baggage', 'baggage', 'Suitcase', 'suitcase'],
+        },
+      },
+    },
+  });
+  await prisma.questionTextTranslation.upsert({
+    where: { questionId: SEED_UUIDS.questionBagaglioTranslation },
+    update: {
+      acceptedAnswers: ['Luggage', 'luggage', 'Baggage', 'baggage', 'Suitcase', 'suitcase'],
+    },
+    create: {
+      questionId: SEED_UUIDS.questionBagaglioTranslation,
+      acceptedAnswers: ['Luggage', 'luggage', 'Baggage', 'baggage', 'Suitcase', 'suitcase'],
+    },
+  });
+  console.log('✅ Question created/updated: Bagaglio (Translation)');
+
+  await prisma.question.upsert({
+    where: { id: SEED_UUIDS.questionPartenzaFlashcard },
+    update: {
+      teachingId: SEED_UUIDS.teachingPartenza,
+      type: DELIVERY_METHOD.FLASHCARD,
+    },
+    create: {
+      id: SEED_UUIDS.questionPartenzaFlashcard,
+      teachingId: SEED_UUIDS.teachingPartenza,
+      type: DELIVERY_METHOD.FLASHCARD,
+      flashcard: {
+        create: {},
+      },
+    },
+  });
+  await prisma.questionFlashcard.upsert({
+    where: { questionId: SEED_UUIDS.questionPartenzaFlashcard },
+    update: {},
+    create: {
+      questionId: SEED_UUIDS.questionPartenzaFlashcard,
+    },
+  });
+  console.log('✅ Question created/updated: Partenza (Flashcard)');
+
+  // Lesson 2: At the Hotel
+  const lessonHotel = await prisma.lesson.upsert({
+    where: { id: SEED_UUIDS.lessonHotel },
+    update: {
+      title: 'At the Hotel',
+      description: 'Essential phrases for hotel stays in Italy',
+      imageUrl: 'https://example.com/images/hotel.jpg',
+      moduleId: SEED_UUIDS.moduleTravel,
+      numberOfItems: 3,
+    },
+    create: {
+      id: SEED_UUIDS.lessonHotel,
+      title: 'At the Hotel',
+      description: 'Essential phrases for hotel stays in Italy',
+      imageUrl: 'https://example.com/images/hotel.jpg',
+      moduleId: SEED_UUIDS.moduleTravel,
+      numberOfItems: 3,
+    },
+  });
+  console.log('✅ Lesson created/updated:', lessonHotel.title);
+
+  const teachingCamera = await prisma.teaching.upsert({
+    where: { id: SEED_UUIDS.teachingCamera },
+    update: {
+      knowledgeLevel: KNOWLEDGE_LEVEL.A1,
+      emoji: '🛏️',
+      userLanguageString: 'Room',
+      learningLanguageString: 'Camera',
+      tip: 'Camera means room. "Camera da letto" means bedroom. Note: "camera" also means camera in English, but in Italian it\'s "macchina fotografica".',
+      lessonId: SEED_UUIDS.lessonHotel,
+    },
+    create: {
+      id: SEED_UUIDS.teachingCamera,
+      knowledgeLevel: KNOWLEDGE_LEVEL.A1,
+      emoji: '🛏️',
+      userLanguageString: 'Room',
+      learningLanguageString: 'Camera',
+      tip: 'Camera means room. "Camera da letto" means bedroom. Note: "camera" also means camera in English, but in Italian it\'s "macchina fotografica".',
+      lessonId: SEED_UUIDS.lessonHotel,
+    },
+  });
+  console.log('✅ Teaching created/updated: Camera');
+
+  const teachingCheckIn = await prisma.teaching.upsert({
+    where: { id: SEED_UUIDS.teachingCheckIn },
+    update: {
+      knowledgeLevel: KNOWLEDGE_LEVEL.A1,
+      emoji: '🏨',
+      userLanguageString: 'Check-in',
+      learningLanguageString: 'Check-in',
+      tip: 'Check-in is commonly used in Italian hotels, though you might also hear "registrazione" (registration).',
+      lessonId: SEED_UUIDS.lessonHotel,
+    },
+    create: {
+      id: SEED_UUIDS.teachingCheckIn,
+      knowledgeLevel: KNOWLEDGE_LEVEL.A1,
+      emoji: '🏨',
+      userLanguageString: 'Check-in',
+      learningLanguageString: 'Check-in',
+      tip: 'Check-in is commonly used in Italian hotels, though you might also hear "registrazione" (registration).',
+      lessonId: SEED_UUIDS.lessonHotel,
+    },
+  });
+  console.log('✅ Teaching created/updated: Check-in');
+
+  const teachingChiave = await prisma.teaching.upsert({
+    where: { id: SEED_UUIDS.teachingChiave },
+    update: {
+      knowledgeLevel: KNOWLEDGE_LEVEL.A1,
+      emoji: '🔑',
+      userLanguageString: 'Key',
+      learningLanguageString: 'Chiave',
+      tip: 'Chiave means key. "Le chiavi" is the plural. You might ask "Dove sono le chiavi?" (Where are the keys?).',
+      lessonId: SEED_UUIDS.lessonHotel,
+    },
+    create: {
+      id: SEED_UUIDS.teachingChiave,
+      knowledgeLevel: KNOWLEDGE_LEVEL.A1,
+      emoji: '🔑',
+      userLanguageString: 'Key',
+      learningLanguageString: 'Chiave',
+      tip: 'Chiave means key. "Le chiavi" is the plural. You might ask "Dove sono le chiavi?" (Where are the keys?).',
+      lessonId: SEED_UUIDS.lessonHotel,
+    },
+  });
+  console.log('✅ Teaching created/updated: Chiave');
+
+  // Questions for Hotel
+  await prisma.question.upsert({
+    where: { id: SEED_UUIDS.questionCameraMultipleChoice },
+    update: {
+      teachingId: SEED_UUIDS.teachingCamera,
+      type: DELIVERY_METHOD.MULTIPLE_CHOICE,
+    },
+    create: {
+      id: SEED_UUIDS.questionCameraMultipleChoice,
+      teachingId: SEED_UUIDS.teachingCamera,
+      type: DELIVERY_METHOD.MULTIPLE_CHOICE,
+      multipleChoice: {
+        create: {
+          options: ['Camera', 'Chiave', 'Check-in', 'Hotel'],
+          correctIndices: [0],
+        },
+      },
+    },
+  });
+  await prisma.questionMultipleChoice.upsert({
+    where: { questionId: SEED_UUIDS.questionCameraMultipleChoice },
+    update: {
+      options: ['Camera', 'Chiave', 'Check-in', 'Hotel'],
+      correctIndices: [0],
+    },
+    create: {
+      questionId: SEED_UUIDS.questionCameraMultipleChoice,
+      options: ['Camera', 'Chiave', 'Check-in', 'Hotel'],
+      correctIndices: [0],
+    },
+  });
+  console.log('✅ Question created/updated: Camera (Multiple Choice)');
+
+  await prisma.question.upsert({
+    where: { id: SEED_UUIDS.questionCheckInTranslation },
+    update: {
+      teachingId: SEED_UUIDS.teachingCheckIn,
+      type: DELIVERY_METHOD.TEXT_TRANSLATION,
+    },
+    create: {
+      id: SEED_UUIDS.questionCheckInTranslation,
+      teachingId: SEED_UUIDS.teachingCheckIn,
+      type: DELIVERY_METHOD.TEXT_TRANSLATION,
+      textTranslation: {
+        create: {
+          acceptedAnswers: ['Check-in', 'check-in', 'Check in', 'check in'],
+        },
+      },
+    },
+  });
+  await prisma.questionTextTranslation.upsert({
+    where: { questionId: SEED_UUIDS.questionCheckInTranslation },
+    update: {
+      acceptedAnswers: ['Check-in', 'check-in', 'Check in', 'check in'],
+    },
+    create: {
+      questionId: SEED_UUIDS.questionCheckInTranslation,
+      acceptedAnswers: ['Check-in', 'check-in', 'Check in', 'check in'],
+    },
+  });
+  console.log('✅ Question created/updated: Check-in (Translation)');
+
+  await prisma.question.upsert({
+    where: { id: SEED_UUIDS.questionChiaveSpeechToText },
+    update: {
+      teachingId: SEED_UUIDS.teachingChiave,
+      type: DELIVERY_METHOD.SPEECH_TO_TEXT,
+    },
+    create: {
+      id: SEED_UUIDS.questionChiaveSpeechToText,
+      teachingId: SEED_UUIDS.teachingChiave,
+      type: DELIVERY_METHOD.SPEECH_TO_TEXT,
+      speechToText: {
+        create: {
+          acceptedAnswers: ['Chiave', 'chiave'],
+        },
+      },
+    },
+  });
+  await prisma.questionSpeechToText.upsert({
+    where: { questionId: SEED_UUIDS.questionChiaveSpeechToText },
+    update: {
+      acceptedAnswers: ['Chiave', 'chiave'],
+    },
+    create: {
+      questionId: SEED_UUIDS.questionChiaveSpeechToText,
+      acceptedAnswers: ['Chiave', 'chiave'],
+    },
+  });
+  console.log('✅ Question created/updated: Chiave (Speech to Text)');
+
+  // Lesson 3: Restaurant & Food
+  const lessonRestaurant = await prisma.lesson.upsert({
+    where: { id: SEED_UUIDS.lessonRestaurant },
+    update: {
+      title: 'Restaurant & Food',
+      description: 'Essential phrases for dining in Italian restaurants',
+      imageUrl: 'https://example.com/images/restaurant.jpg',
+      moduleId: SEED_UUIDS.moduleTravel,
+      numberOfItems: 3,
+    },
+    create: {
+      id: SEED_UUIDS.lessonRestaurant,
+      title: 'Restaurant & Food',
+      description: 'Essential phrases for dining in Italian restaurants',
+      imageUrl: 'https://example.com/images/restaurant.jpg',
+      moduleId: SEED_UUIDS.moduleTravel,
+      numberOfItems: 3,
+    },
+  });
+  console.log('✅ Lesson created/updated:', lessonRestaurant.title);
+
+  const teachingMenu = await prisma.teaching.upsert({
+    where: { id: SEED_UUIDS.teachingMenu },
+    update: {
+      knowledgeLevel: KNOWLEDGE_LEVEL.A1,
+      emoji: '📋',
+      userLanguageString: 'Menu',
+      learningLanguageString: 'Menu',
+      tip: 'Menu is the same in Italian and English. You might also hear "la carta" (the menu card).',
+      lessonId: SEED_UUIDS.lessonRestaurant,
+    },
+    create: {
+      id: SEED_UUIDS.teachingMenu,
+      knowledgeLevel: KNOWLEDGE_LEVEL.A1,
+      emoji: '📋',
+      userLanguageString: 'Menu',
+      learningLanguageString: 'Menu',
+      tip: 'Menu is the same in Italian and English. You might also hear "la carta" (the menu card).',
+      lessonId: SEED_UUIDS.lessonRestaurant,
+    },
+  });
+  console.log('✅ Teaching created/updated: Menu');
+
+  const teachingConto = await prisma.teaching.upsert({
+    where: { id: SEED_UUIDS.teachingConto },
+    update: {
+      knowledgeLevel: KNOWLEDGE_LEVEL.A1,
+      emoji: '💳',
+      userLanguageString: 'Bill / Check',
+      learningLanguageString: 'Conto',
+      tip: 'Conto means bill or check. You can ask "Il conto, per favore" (The bill, please).',
+      lessonId: SEED_UUIDS.lessonRestaurant,
+    },
+    create: {
+      id: SEED_UUIDS.teachingConto,
+      knowledgeLevel: KNOWLEDGE_LEVEL.A1,
+      emoji: '💳',
+      userLanguageString: 'Bill / Check',
+      learningLanguageString: 'Conto',
+      tip: 'Conto means bill or check. You can ask "Il conto, per favore" (The bill, please).',
+      lessonId: SEED_UUIDS.lessonRestaurant,
+    },
+  });
+  console.log('✅ Teaching created/updated: Conto');
+
+  const teachingAcqua = await prisma.teaching.upsert({
+    where: { id: SEED_UUIDS.teachingAcqua },
+    update: {
+      knowledgeLevel: KNOWLEDGE_LEVEL.A1,
+      emoji: '💧',
+      userLanguageString: 'Water',
+      learningLanguageString: 'Acqua',
+      tip: 'Acqua means water. "Acqua naturale" is still water, "acqua frizzante" is sparkling water.',
+      lessonId: SEED_UUIDS.lessonRestaurant,
+    },
+    create: {
+      id: SEED_UUIDS.teachingAcqua,
+      knowledgeLevel: KNOWLEDGE_LEVEL.A1,
+      emoji: '💧',
+      userLanguageString: 'Water',
+      learningLanguageString: 'Acqua',
+      tip: 'Acqua means water. "Acqua naturale" is still water, "acqua frizzante" is sparkling water.',
+      lessonId: SEED_UUIDS.lessonRestaurant,
+    },
+  });
+  console.log('✅ Teaching created/updated: Acqua');
+
+  // Questions for Restaurant
+  await prisma.question.upsert({
+    where: { id: SEED_UUIDS.questionMenuMultipleChoice },
+    update: {
+      teachingId: SEED_UUIDS.teachingMenu,
+      type: DELIVERY_METHOD.MULTIPLE_CHOICE,
+    },
+    create: {
+      id: SEED_UUIDS.questionMenuMultipleChoice,
+      teachingId: SEED_UUIDS.teachingMenu,
+      type: DELIVERY_METHOD.MULTIPLE_CHOICE,
+      multipleChoice: {
+        create: {
+          options: ['Menu', 'Conto', 'Acqua', 'Cibo'],
+          correctIndices: [0],
+        },
+      },
+    },
+  });
+  await prisma.questionMultipleChoice.upsert({
+    where: { questionId: SEED_UUIDS.questionMenuMultipleChoice },
+    update: {
+      options: ['Menu', 'Conto', 'Acqua', 'Cibo'],
+      correctIndices: [0],
+    },
+    create: {
+      questionId: SEED_UUIDS.questionMenuMultipleChoice,
+      options: ['Menu', 'Conto', 'Acqua', 'Cibo'],
+      correctIndices: [0],
+    },
+  });
+  console.log('✅ Question created/updated: Menu (Multiple Choice)');
+
+  await prisma.question.upsert({
+    where: { id: SEED_UUIDS.questionContoFillBlank },
+    update: {
+      teachingId: SEED_UUIDS.teachingConto,
+      type: DELIVERY_METHOD.FILL_BLANK,
+    },
+    create: {
+      id: SEED_UUIDS.questionContoFillBlank,
+      teachingId: SEED_UUIDS.teachingConto,
+      type: DELIVERY_METHOD.FILL_BLANK,
+      fillBlank: {
+        create: {
+          blankIndices: [0],
+          acceptedAnswers: { '0': ['Conto'] },
+        },
+      },
+    },
+  });
+  await prisma.questionFillBlank.upsert({
+    where: { questionId: SEED_UUIDS.questionContoFillBlank },
+    update: {
+      blankIndices: [0],
+      acceptedAnswers: { '0': ['Conto'] },
+    },
+    create: {
+      questionId: SEED_UUIDS.questionContoFillBlank,
+      blankIndices: [0],
+      acceptedAnswers: { '0': ['Conto'] },
+    },
+  });
+  console.log('✅ Question created/updated: Conto (Fill Blank)');
+
+  await prisma.question.upsert({
+    where: { id: SEED_UUIDS.questionAcquaTextToSpeech },
+    update: {
+      teachingId: SEED_UUIDS.teachingAcqua,
+      type: DELIVERY_METHOD.TEXT_TO_SPEECH,
+    },
+    create: {
+      id: SEED_UUIDS.questionAcquaTextToSpeech,
+      teachingId: SEED_UUIDS.teachingAcqua,
+      type: DELIVERY_METHOD.TEXT_TO_SPEECH,
+      textToSpeech: {
+        create: {},
+      },
+    },
+  });
+  await prisma.questionTextToSpeech.upsert({
+    where: { questionId: SEED_UUIDS.questionAcquaTextToSpeech },
+    update: {},
+    create: {
+      questionId: SEED_UUIDS.questionAcquaTextToSpeech,
+    },
+  });
+  console.log('✅ Question created/updated: Acqua (Text to Speech)');
+
   console.log('\n🎉 Seed completed successfully!');
   console.log('\n📊 Summary:');
-  console.log(`   - 1 Module: "${module.title}"`);
-  console.log(`   - 5 Lessons: "${lesson.title}", "${lessonNumbers.title}", "${lessonCommonPhrases.title}", "${lessonDaysOfWeek.title}", "${lessonColors.title}"`);
-  console.log('   - 15 Teaching items: Ciao, Grazie, Per favore, Uno, Due, Tre, Scusa, Prego, Buongiorno, Lunedì, Martedì, Mercoledì, Rosso, Blu, Verde');
-  console.log('   - 17 Questions covering all 6 delivery methods');
+  console.log(`   - 2 Modules: "${module.title}", "${moduleTravel.title}"`);
+  console.log(`   - 8 Lessons: "${lesson.title}", "${lessonNumbers.title}", "${lessonCommonPhrases.title}", "${lessonDaysOfWeek.title}", "${lessonColors.title}", "${lessonAirport.title}", "${lessonHotel.title}", "${lessonRestaurant.title}"`);
+  console.log('   - 24 Teaching items: Ciao, Grazie, Per favore, Uno, Due, Tre, Scusa, Prego, Buongiorno, Lunedì, Martedì, Mercoledì, Rosso, Blu, Verde, Biglietto, Bagaglio, Partenza, Camera, Check-in, Chiave, Menu, Conto, Acqua');
+  console.log('   - 26 Questions covering all 6 delivery methods');
 }
 
 main()
