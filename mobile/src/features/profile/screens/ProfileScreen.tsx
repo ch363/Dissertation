@@ -10,14 +10,15 @@ import { SurfaceCard } from '@/components/ui/SurfaceCard';
 
 import { getMyProfile, upsertMyProfile, getDashboard, getRecentActivity, type DashboardData, type RecentActivity, refreshSignedAvatarUrlFromUrl as refreshAvatarUrl, uploadAvatar } from '@/services/api/profile';
 import { getProgressSummary, type ProgressSummary } from '@/services/api/progress';
+import { getAllMastery, type SkillMastery } from '@/services/api/mastery';
 import { getCurrentUser } from '@/services/api/auth';
 import { getAvatarUri } from '@/services/cache/avatar-cache';
-import { Badge } from '@/components/profile/Badge';
 import { Card } from '@/components/profile/Card';
 import { ProfileHeader } from '@/components/profile/Header';
 import { ProgressBar } from '@/components/profile/ProgressBar';
 import { StatCard } from '@/components/profile/StatCard';
 import { ActivityCard } from '@/components/profile/ActivityCard';
+import { MasteryCard } from '@/components/profile/MasteryCard';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
@@ -28,6 +29,7 @@ export default function Profile() {
   const [progress, setProgress] = useState<ProgressSummary | null>(null);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [recentActivity, setRecentActivity] = useState<RecentActivity | null>(null);
+  const [mastery, setMastery] = useState<SkillMastery[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -38,10 +40,14 @@ export default function Profile() {
 
   const loadData = async () => {
     try {
-      const [profile, dashboardData, recentData] = await Promise.all([
+      const [profile, dashboardData, recentData, masteryData] = await Promise.all([
         getMyProfile(),
         getDashboard(),
         getRecentActivity(),
+        getAllMastery().catch((error) => {
+          console.error('Error loading mastery data:', error);
+          return [];
+        }),
       ]);
 
       if (profile) {
@@ -72,6 +78,7 @@ export default function Profile() {
       setProgress(progressData);
       setDashboard(dashboardData);
       setRecentActivity(recentData);
+      setMastery(masteryData);
     } catch (error) {
       console.error('Error loading profile data:', error);
     } finally {
@@ -304,30 +311,20 @@ export default function Profile() {
           </View>
         </Card>
 
+        {/* Skill Mastery */}
+        <View>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Skill Mastery</Text>
+          </View>
+          <Card>
+            <MasteryCard mastery={mastery || []} />
+          </Card>
+        </View>
+
         {/* Recent Activity */}
         {recentActivity && activityItems.length > 0 && (
           <ActivityCard title="Recent Activity" items={activityItems.slice(0, 3)} />
         )}
-
-        {/* Achievements Preview */}
-        <View>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Achievements</Text>
-            <Link href="/profile/achievements" asChild>
-              <Pressable accessibilityRole="button" hitSlop={8}>
-                <Text style={[styles.viewAllText, { color: theme.colors.primary }]}>See All</Text>
-              </Pressable>
-            </Link>
-          </View>
-          <Card>
-            <View style={styles.badges}>
-              <Badge text="Daily Learner" />
-              <Badge text="Grammar Guru" />
-              <Badge text="Pronunciation Pro" />
-              <Badge text="Consistent" />
-            </View>
-          </Card>
-        </View>
 
         {/* Account Settings */}
         <View>
@@ -348,16 +345,6 @@ export default function Profile() {
                 <View style={styles.accountItemLeft}>
                   <Ionicons name="stats-chart-outline" size={20} color={theme.colors.primary} />
                   <Text style={[styles.accountLabel, { color: theme.colors.text }]}>Progress</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
-              </Pressable>
-            </Link>
-            <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-            <Link href="/profile/achievements" asChild>
-              <Pressable accessibilityRole="button" style={styles.accountItem}>
-                <View style={styles.accountItemLeft}>
-                  <Ionicons name="trophy-outline" size={20} color={theme.colors.primary} />
-                  <Text style={[styles.accountLabel, { color: theme.colors.text }]}>Achievements</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
               </Pressable>
@@ -508,12 +495,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: baseTheme.typography.bold,
     fontSize: 18,
-  },
-  badges: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    rowGap: 8,
   },
   accountCard: {
     marginTop: baseTheme.spacing.sm,

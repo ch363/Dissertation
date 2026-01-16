@@ -61,14 +61,19 @@ export async function completeTeaching(teachingId: string) {
   return apiClient.post(`/progress/teachings/${teachingId}/complete`);
 }
 
+export interface QuestionAttemptResponse {
+  awardedXp: number;
+  [key: string]: any; // Allow other fields from backend response
+}
+
 /**
  * Record question attempt
  */
 export async function recordQuestionAttempt(
   questionId: string,
   attempt: QuestionAttemptDto,
-) {
-  return apiClient.post(`/progress/questions/${questionId}/attempt`, attempt);
+): Promise<QuestionAttemptResponse> {
+  return apiClient.post<QuestionAttemptResponse>(`/progress/questions/${questionId}/attempt`, attempt);
 }
 
 /**

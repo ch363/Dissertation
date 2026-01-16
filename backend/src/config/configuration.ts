@@ -28,4 +28,7 @@ export default () => ({
       ? parseInt(process.env.THROTTLE_USER_LIMIT, 10)
       : undefined, // Will use same as limit if not specified
   },
+  sessionPlanCache: {
+    ttlMs: parseInt(process.env.SESSION_PLAN_CACHE_TTL_MS || '300000', 10), // Default: 5 minutes (300000 ms)
+  },
 });

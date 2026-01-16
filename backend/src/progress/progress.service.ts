@@ -13,6 +13,7 @@ import { SrsService } from '../engine/srs/srs.service';
 import { XpService } from '../engine/scoring/xp.service';
 import { ContentLookupService } from '../content/content-lookup.service';
 import { MasteryService } from '../engine/mastery/mastery.service';
+import { SessionPlanCacheService } from '../engine/content-delivery/session-plan-cache.service';
 import { extractSkillTags } from '../engine/mastery/skill-extraction.util';
 
 @Injectable()
@@ -23,6 +24,7 @@ export class ProgressService {
     private xpService: XpService,
     private contentLookup: ContentLookupService,
     private masteryService: MasteryService,
+    private sessionPlanCache: SessionPlanCacheService,
   ) {}
 
   async startLesson(userId: string, lessonId: string) {
@@ -143,6 +145,12 @@ export class ProgressService {
           },
         },
       });
+
+      // Invalidate session plan cache when teaching is completed
+      // This ensures future session plans reflect the user's progress
+      if (wasNewlyCompleted) {
+        this.sessionPlanCache.invalidate(userId);
+      }
 
       return {
         userLesson,
@@ -282,6 +290,10 @@ export class ProgressService {
     }
 
     // SRS state is stored directly in UserQuestionPerformance (no separate table needed)
+
+    // Invalidate session plan cache when question is attempted
+    // This ensures future session plans reflect the user's progress and updated review schedule
+    this.sessionPlanCache.invalidate(userId);
 
     // Return performance with XP info
     return {

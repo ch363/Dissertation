@@ -3,7 +3,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScrollView } from '@/components/ui';
 
-import { Badge } from '@/components/profile/Badge';
 import { Card } from '@/components/profile/Card';
 import { ProgressBar } from '@/components/profile/ProgressBar';
 import { StatPill } from '@/components/profile/StatPill';
@@ -30,18 +29,6 @@ export default function ProfileProgress() {
           <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText, marginTop: 6 }]}>
             320 / 1000 XP
           </Text>
-        </Card>
-
-        <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>
-          Milestones
-        </Text>
-        <Card>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            <Badge text="First Lesson" />
-            <Badge text="7-day Streak" />
-            <Badge text="100 XP" />
-            <Badge text="Grammar Guru" />
-          </View>
         </Card>
 
         <Text style={[styles.sectionTitle, { color: theme.colors.text, marginTop: 24 }]}>

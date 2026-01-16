@@ -53,31 +53,6 @@ type Props = {
   onComplete: (attempts: AttemptLog[]) => void;
 };
 
-/**
- * Calculate XP for a single attempt using the same formula as the backend:
- * - Base: 5 XP for attempting
- * - Correct bonus: +10 XP if correct
- * - Speed bonus: +5 if < 5s, +3 if < 10s, +1 if < 20s
- */
-function calculateXpForAttempt(attempt: AttemptLog): number {
-  let xp = 5; // Base XP for attempting
-
-  if (attempt.isCorrect) {
-    xp += 10; // Bonus for correct answer
-
-    // Speed bonus (faster = more XP, up to +5)
-    if (attempt.elapsedMs < 5000) {
-      xp += 5;
-    } else if (attempt.elapsedMs < 10000) {
-      xp += 3;
-    } else if (attempt.elapsedMs < 20000) {
-      xp += 1;
-    }
-  }
-
-  return xp;
-}
-
 export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: Props) {
   const [index, setIndex] = useState(0);
   const [attempts, setAttempts] = useState<AttemptLog[]>([]);
@@ -91,6 +66,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
   const [recordedAttempts, setRecordedAttempts] = useState<Set<string>>(new Set());
   const [pronunciationResult, setPronunciationResult] = useState<PronunciationResult | null>(null);
   const [audioRecordingUri, setAudioRecordingUri] = useState<string | null>(null);
+  const [awardedXpByCard, setAwardedXpByCard] = useState<Map<string, number>>(new Map());
 
   const currentCard = plan.cards[index];
   const total = useMemo(() => plan.cards.length, [plan.cards]);
@@ -214,14 +190,16 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
         const timeToComplete = cardStartTime ? Date.now() - cardStartTime : undefined;
         const attemptNumber = attempts.filter((a) => a.cardId === currentCard.id).length + 1;
 
+        let awardedXp: number | undefined;
         if (!recordedAttempts.has(currentCard.id)) {
           try {
-            await recordQuestionAttempt(questionId, {
+            const attemptResponse = await recordQuestionAttempt(questionId, {
               score: pronunciationResponse.score,
               timeToComplete,
               percentageAccuracy: pronunciationResponse.overallScore,
               attempts: attemptNumber,
             });
+            awardedXp = attemptResponse.awardedXp;
 
             const delta = pronunciationResponse.isCorrect ? 0.1 : -0.05;
             try {
@@ -242,6 +220,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
           answer: pronunciationResponse.transcription,
           isCorrect: pronunciationResponse.isCorrect,
           elapsedMs: timeToComplete || 0,
+          awardedXp,
         };
         setAttempts((prev) => [...prev, newAttempt]);
         return;
@@ -286,14 +265,16 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
       const attemptNumber = attempts.filter((a) => a.cardId === currentCard.id).length + 1;
 
       // Record question attempt immediately after validation
+      let awardedXp: number | undefined;
       if (!recordedAttempts.has(currentCard.id)) {
         try {
-          await recordQuestionAttempt(questionId, {
+          const attemptResponse = await recordQuestionAttempt(questionId, {
             score: validationResult.score,
             timeToComplete,
             percentageAccuracy: validationResult.isCorrect ? 100 : 0,
             attempts: attemptNumber,
           });
+          awardedXp = attemptResponse.awardedXp;
 
           // Update delivery method score based on performance
           const delta = validationResult.isCorrect ? 0.1 : -0.05;
@@ -318,6 +299,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
         answer: userAnswerValue,
         isCorrect: validationResult.isCorrect,
         elapsedMs: timeToComplete || 0,
+        awardedXp,
       };
       setAttempts((prev) => [...prev, newAttempt]);
     } catch (error) {
@@ -355,14 +337,21 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
           const attemptNumber = attempts.filter((a) => a.cardId === currentCard.id).length + 1;
 
           // Record question attempt immediately after validation
+          let awardedXp: number | undefined;
           if (!recordedAttempts.has(currentCard.id)) {
             try {
-              await recordQuestionAttempt(questionId, {
+              const attemptResponse = await recordQuestionAttempt(questionId, {
                 score: validationResult.score,
                 timeToComplete,
                 percentageAccuracy: validationResult.isCorrect ? 100 : 0,
                 attempts: attemptNumber,
               });
+              awardedXp = attemptResponse.awardedXp;
+              
+              // Store awardedXp for this card
+              if (awardedXp !== undefined) {
+                setAwardedXpByCard((prev) => new Map(prev).set(currentCard.id, awardedXp!));
+              }
 
               // Update delivery method score based on performance
               const delta = validationResult.isCorrect ? 0.1 : -0.05;
@@ -419,6 +408,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
       const isCorrect = flashcardRating >= 2.5; // 2.5 and 5 are considered correct
       
       // Send rating to backend API for scoring
+      let awardedXp: number | undefined;
       if (currentCard.id.startsWith('question-')) {
         const questionId = currentCard.id.replace('question-', '');
         const deliveryMethod = getDeliveryMethodForCardKind(
@@ -432,12 +422,13 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
           const score = flashcardRating === 0 ? 0 : flashcardRating === 2.5 ? 50 : 100;
           const timeToComplete = cardStartTime ? Date.now() - cardStartTime : undefined;
           
-          await recordQuestionAttempt(questionId, {
+          const attemptResponse = await recordQuestionAttempt(questionId, {
             score,
             timeToComplete,
             percentageAccuracy: score,
             attempts: 1,
           });
+          awardedXp = attemptResponse.awardedXp;
 
           // Update delivery method score based on performance
           const delta = isCorrect ? 0.1 : -0.05;
@@ -461,6 +452,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
         answer: `rating:${flashcardRating}`,
         isCorrect,
         elapsedMs: 0,
+        awardedXp,
       };
       nextAttempts = [...attempts, newAttempt];
       setAttempts(nextAttempts);
@@ -475,12 +467,15 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
       !attempts.some((a) => a.cardId === currentCard.id)
     ) {
       // Save the attempt (validation already happened in handleSelectAnswer)
+      // Get awardedXp from state if available
+      const awardedXp = awardedXpByCard.get(currentCard.id);
       const newAttempt: AttemptLog = {
         cardId: currentCard.id,
         attemptNumber: 1,
         answer: selectedAnswer,
         isCorrect: true,
         elapsedMs: 0,
+        awardedXp,
       };
       nextAttempts = [...attempts, newAttempt];
       setAttempts(nextAttempts);
@@ -512,7 +507,10 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
 
     if (isLast) {
       // Calculate XP and teachings mastered for completion screen
-      const totalXp = nextAttempts.reduce((sum, attempt) => sum + calculateXpForAttempt(attempt), 0);
+      // Sum awardedXp from backend responses instead of calculating
+      const totalXp = nextAttempts
+        .filter((a) => a.awardedXp !== undefined)
+        .reduce((sum, attempt) => sum + (attempt.awardedXp || 0), 0);
       const teachingsMastered = plan.cards.filter((card) => card.kind === CardKind.Teach).length;
 
       // Navigate to completion screen

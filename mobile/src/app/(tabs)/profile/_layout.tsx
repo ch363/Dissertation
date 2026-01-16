@@ -15,7 +15,6 @@ export default function ProfileStackLayout() {
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="progress" options={{ headerShown: true, title: 'Progress' }} />
-      <Stack.Screen name="achievements" options={{ headerShown: true, title: 'Achievements' }} />
     </Stack>
   );
 }

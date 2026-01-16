@@ -281,7 +281,6 @@ export class SessionPlanService {
         timeSpentSec: 0, // Will be updated after session
         xpEarned: potentialXp,
         streakDays: undefined, // Can be fetched from user
-        badgesEarned: undefined, // Can be calculated
       },
     };
 

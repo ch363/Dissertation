@@ -85,6 +85,13 @@ export class MeController {
     return this.meService.getRecent(userId);
   }
 
+  @Get('mastery')
+  @ApiOperation({ summary: 'Get all skill mastery levels for user' })
+  @ApiResponse({ status: 200, description: 'Mastery data retrieved' })
+  async getAllMastery(@User() userId: string) {
+    return this.meService.getAllMastery(userId);
+  }
+
   @Post('reset')
   @ApiOperation({ summary: 'Reset all user progress (or scoped)' })
   @ApiResponse({ status: 200, description: 'Progress reset successfully' })

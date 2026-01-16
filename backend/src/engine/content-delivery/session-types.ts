@@ -56,7 +56,6 @@ export interface RecapStepItem {
     timeSpentSec: number;
     xpEarned: number;
     streakDays?: number;
-    badgesEarned?: string[];
   };
 }
 

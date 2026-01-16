@@ -91,4 +91,5 @@ export type AttemptLog = {
   elapsedMs: number;
   errorType?: string;
   timestamp?: string;
+  awardedXp?: number;
 };

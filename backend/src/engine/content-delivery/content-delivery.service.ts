@@ -18,6 +18,7 @@ import { DeliveryMode, ItemKind } from '../types';
 import { DeliveryCandidate, DashboardPlanDto } from './types';
 import { rankCandidates, mixReviewAndNew, pickOne, selectDeliveryMethod } from './selection.policy';
 import { SessionPlanService } from './session-plan.service';
+import { SessionPlanCacheService } from './session-plan-cache.service';
 import { SessionPlanDto, SessionContext } from './session-types';
 import { MasteryService } from '../mastery/mastery.service';
 
@@ -26,18 +27,40 @@ export class ContentDeliveryService {
   constructor(
     private prisma: PrismaService,
     private sessionPlanService: SessionPlanService,
+    private sessionPlanCache: SessionPlanCacheService,
     private masteryService: MasteryService,
   ) {}
 
 
   /**
    * Get a complete session plan for the user.
+   * Checks cache first, then generates plan if cache miss.
    * @param userId User ID
    * @param context Session context
    * @returns Complete session plan
    */
   async getSessionPlan(userId: string, context: SessionContext): Promise<SessionPlanDto> {
-    return this.sessionPlanService.createPlan(userId, context);
+    // Generate cache key from context
+    const cacheKey = this.sessionPlanCache.generateKey(
+      userId,
+      context.mode,
+      context.lessonId,
+      context.timeBudgetSec,
+    );
+
+    // Check cache first
+    const cachedPlan = this.sessionPlanCache.get(cacheKey);
+    if (cachedPlan) {
+      return cachedPlan;
+    }
+
+    // Cache miss - generate new plan
+    const plan = await this.sessionPlanService.createPlan(userId, context);
+
+    // Store in cache before returning
+    this.sessionPlanCache.set(cacheKey, plan);
+
+    return plan;
   }
 
   /**

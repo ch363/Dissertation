@@ -13,7 +13,6 @@ export const routes = {
       root: '/(tabs)/profile' as const,
       index: '/(tabs)/profile' as const,
       progress: '/(tabs)/profile/progress' as const,
-      achievements: '/(tabs)/profile/achievements' as const,
       edit: '/(tabs)/profile/edit' as const,
     },
     settings: {

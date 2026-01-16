@@ -286,6 +286,24 @@ export class MeService {
     });
   }
 
+  async getAllMastery(userId: string) {
+    const masteryRecords = await this.prisma.userSkillMastery.findMany({
+      where: { userId },
+      orderBy: { lastUpdated: 'desc' },
+      select: {
+        skillTag: true,
+        masteryProbability: true,
+        lastUpdated: true,
+      },
+    });
+
+    return masteryRecords.map((record) => ({
+      skillTag: record.skillTag,
+      masteryProbability: record.masteryProbability,
+      lastUpdated: record.lastUpdated,
+    }));
+  }
+
   async getRecent(userId: string) {
     // Get most recently accessed lesson that is partially completed
     // First, get all user lessons with their teachings count
