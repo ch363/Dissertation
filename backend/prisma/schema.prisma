@@ -70,6 +70,7 @@ model Teaching {
 
   questions              Question[]
   userTeachingsCompleted UserTeachingCompleted[]
+  skillTags              SkillTag[]
 
   @@map("teachings")
 }
@@ -91,6 +92,7 @@ model Question {
   textToSpeech    QuestionTextToSpeech?
 
   userQuestionPerformance UserQuestionPerformance[]
+  skillTags               SkillTag[]
 
   @@index([teachingId])
   @@index([type])
@@ -177,6 +179,7 @@ model User {
   userLessons                UserLesson[]
   userTeachingsCompleted     UserTeachingCompleted[]
   userQuestionPerformance    UserQuestionPerformance[]
+  userSkillMastery           UserSkillMastery[]
   xpEvents                   XpEvent[]
   onboardingAnswer           OnboardingAnswer?
 
@@ -254,6 +257,8 @@ model UserQuestionPerformance {
   nextReviewDue      DateTime? @map("next_review_due") @db.Timestamp(6)
   intervalDays       Int?      @map("interval_days")
   easeFactor         Float?    @map("ease_factor")
+  stability          Float?    @map("stability")
+  difficulty         Float?    @map("difficulty")
   repetitions        Int?      @default(0)
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -289,4 +294,38 @@ model OnboardingAnswer {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("onboarding_answers")
+}
+
+model SkillTag {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @unique @db.VarChar
+  description String?  @db.VarChar
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  teachings Teaching[]
+  questions Question[]
+
+  @@map("skill_tags")
+}
+
+model UserSkillMastery {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String   @map("user_id") @db.Uuid
+  skillTag           String   @map("skill_tag") @db.VarChar
+  masteryProbability Float    @map("mastery_probability")
+  prior              Float    @default(0.3)
+  learn              Float    @default(0.2)
+  guess              Float    @default(0.2)
+  slip               Float    @default(0.1)
+  lastUpdated        DateTime @updatedAt @map("last_updated") @db.Timestamp(6)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, skillTag])
+  @@index([userId])
+  @@index([skillTag])
+  @@index([userId, masteryProbability])
+  @@map("user_skill_mastery")
 }

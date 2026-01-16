@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
@@ -17,6 +17,41 @@ type Props = {
 
 export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult, isCorrect }: Props) {
   const [isPlaying, setIsPlaying] = useState(false);
+  const previousAnswerRef = useRef<string | undefined>(undefined);
+
+  // Speak the word when it's placed in the blank
+  useEffect(() => {
+    const speakSelectedWord = async () => {
+      // Only speak if:
+      // 1. There's a selected answer
+      // 2. It's different from the previous answer (new word was placed)
+      // 3. We're not showing results yet (only speak when first placed)
+      if (selectedAnswer && selectedAnswer !== previousAnswerRef.current && !showResult) {
+        try {
+          const enabled = await getTtsEnabled();
+          if (!enabled) {
+            return;
+          }
+          
+          const rate = await getTtsRate();
+          await SafeSpeech.stop();
+          // Small delay to ensure stop completes
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // Speak the selected word
+          console.log('FillBlankCard: Speaking selected word:', selectedAnswer);
+          await SafeSpeech.speak(selectedAnswer, { language: 'it-IT', rate });
+        } catch (error) {
+          console.error('FillBlankCard: Failed to speak selected word:', error);
+        }
+      }
+      
+      // Update the ref to track the current answer
+      previousAnswerRef.current = selectedAnswer;
+    };
+
+    speakSelectedWord();
+  }, [selectedAnswer, showResult]);
 
   const handlePlayAudio = async () => {
     if (!card.text) {

@@ -9,12 +9,18 @@ import { DELIVERY_METHOD } from '@prisma/client';
 /**
  * Rank candidates by their priority score.
  * Higher score = higher priority.
+ * 
+ * @param candidates Array of delivery candidates
+ * @param prioritizedSkills Optional array of skill tags to prioritize (low mastery skills)
  */
-export function rankCandidates(candidates: DeliveryCandidate[]): DeliveryCandidate[] {
+export function rankCandidates(
+  candidates: DeliveryCandidate[],
+  prioritizedSkills: string[] = [],
+): DeliveryCandidate[] {
   return candidates
     .map((candidate) => ({
       ...candidate,
-      priorityScore: calculatePriorityScore(candidate),
+      priorityScore: calculatePriorityScore(candidate, prioritizedSkills),
     }))
     .sort((a, b) => b.priorityScore - a.priorityScore);
 }
@@ -25,15 +31,33 @@ export function rankCandidates(candidates: DeliveryCandidate[]): DeliveryCandida
  * - Due-ness (if due, high score)
  * - Recent errors (more errors = higher priority)
  * - Time since last seen (longer = higher priority for reviews)
+ * - Prioritized skills (low mastery skills get bonus priority for 'New' items)
+ * 
+ * @param candidate Delivery candidate
+ * @param prioritizedSkills Array of skill tags to prioritize (low mastery skills)
  */
-function calculatePriorityScore(candidate: DeliveryCandidate): number {
+function calculatePriorityScore(
+  candidate: DeliveryCandidate,
+  prioritizedSkills: string[] = [],
+): number {
   // Due items get highest priority
   if (candidate.dueScore > 0) {
     return 1000 + candidate.dueScore + candidate.errorScore * 10;
   }
   
-  // New items get base priority
-  return candidate.errorScore * 5 + candidate.timeSinceLastSeen / 1000;
+  // Check if this candidate matches any prioritized skills (for 'New' items)
+  const hasPrioritizedSkill = prioritizedSkills.length > 0 &&
+    candidate.skillTags?.some(tag => prioritizedSkills.includes(tag));
+  
+  // Base priority for new items
+  let basePriority = candidate.errorScore * 5 + candidate.timeSinceLastSeen / 1000;
+  
+  // Boost priority for low mastery skills (prioritize 'New' teachings)
+  if (hasPrioritizedSkill) {
+    basePriority += 500; // Significant boost to prioritize these items
+  }
+  
+  return basePriority;
 }
 
 /**
@@ -113,10 +137,12 @@ export function selectDeliveryMethod(
  * This is the "first-class" interleaving implementation (SR-04).
  * 
  * Rules:
- * 1. No more than N of the same exercise type in a row
- * 2. Alternate skills/tags where possible
- * 3. Inject 1-2 "easy wins" after 2 consecutive errors (scaffolding)
- * 4. Ensure at least one listening/speaking per session if enabled
+ * 1. Error Scaffolding: If a SkillTag has 3+ errors (errorScore >= 3), inject a Review item
+ *    with high mastery (dueScore > 0 AND estimatedMastery > 0.7) for that SkillTag
+ * 2. SkillTag alternation is the PRIMARY variety metric (alternate between different SkillTags)
+ * 3. Exercise type alternation is the SECONDARY variety metric (no more than N of the same type in a row)
+ * 4. Inject "easy wins" after 2 consecutive errors (legacy scaffolding fallback)
+ * 5. Ensure at least one listening/speaking per session if enabled
  * 
  * @param candidates Ranked candidates to compose
  * @param options Interleaving options
@@ -147,16 +173,34 @@ export function composeWithInterleaving(
   const composed: DeliveryCandidate[] = [];
   const used = new Set<string>(); // Track used candidate IDs
   const recentTypes: string[] = []; // Track recent exercise types
-  const recentSkills: string[] = []; // Track recent skills
+  const recentSkillTags: string[] = []; // Track recent SkillTags (primary variety metric)
   const usedModalities = new Set<DELIVERY_METHOD>(); // Track used delivery methods
   let errorStreak = consecutiveErrors;
 
-  // Separate candidates by difficulty for scaffolding
+  // Track error streaks per SkillTag using historical errorScore
+  const skillTagErrorMap = new Map<string, number>();
+  for (const candidate of candidates) {
+    if (candidate.skillTags && candidate.skillTags.length > 0 && candidate.errorScore > 0) {
+      for (const skillTag of candidate.skillTags) {
+        const currentErrorCount = skillTagErrorMap.get(skillTag) || 0;
+        // Accumulate errorScore per SkillTag (errorScore represents recent errors)
+        skillTagErrorMap.set(skillTag, Math.max(currentErrorCount, candidate.errorScore));
+      }
+    }
+  }
+
+  // Separate candidates: Review items with high mastery vs regular candidates
+  const reviewItemsHighMastery: DeliveryCandidate[] = [];
   const easyCandidates: DeliveryCandidate[] = [];
   const mediumCandidates: DeliveryCandidate[] = [];
   const hardCandidates: DeliveryCandidate[] = [];
 
   for (const candidate of candidates) {
+    // Review items with high mastery: dueScore > 0 AND estimatedMastery > 0.7
+    if (candidate.dueScore > 0 && (candidate.estimatedMastery ?? 0) > 0.7) {
+      reviewItemsHighMastery.push(candidate);
+    }
+
     const difficulty = candidate.difficulty ?? 0.5;
     const mastery = candidate.estimatedMastery ?? 0.5;
     // Easy = low difficulty OR high mastery
@@ -182,23 +226,51 @@ export function composeWithInterleaving(
   };
 
   // Helper to find best alternative that doesn't violate constraints
+  // Prioritizes SkillTag alternation over exercise type alternation
   const findAlternative = (
     pool: DeliveryCandidate[],
     avoidType?: string,
-    preferSkill?: string,
+    preferSkillTag?: string, // SkillTag to prefer (for scaffolding) or avoid (for alternation)
+    requireSkillTag?: string, // Required SkillTag (for scaffolding)
+    avoidSkillTags?: string[], // SkillTags to avoid (for alternation)
   ): DeliveryCandidate | null => {
-    // First, try to find one with different type and different skill
-    for (const candidate of pool) {
-      if (used.has(candidate.id)) continue;
-      if (violatesConstraints(candidate)) continue;
-      if (avoidType && candidate.exerciseType === avoidType) continue;
-
-      // Prefer different skill if available
-      if (preferSkill && candidate.skillTags?.includes(preferSkill)) {
-        continue; // Skip if same skill
+    // Priority 1: If requiring a specific SkillTag (for scaffolding), find matching item
+    if (requireSkillTag) {
+      for (const candidate of pool) {
+        if (used.has(candidate.id)) continue;
+        if (violatesConstraints(candidate)) continue;
+        if (candidate.skillTags?.includes(requireSkillTag)) {
+          return candidate;
+        }
       }
+    }
 
-      return candidate;
+    // Priority 2: Find item with different SkillTag (primary variety metric)
+    if (avoidSkillTags && avoidSkillTags.length > 0) {
+      for (const candidate of pool) {
+        if (used.has(candidate.id)) continue;
+        if (violatesConstraints(candidate)) continue;
+        if (avoidType && candidate.exerciseType === avoidType) continue;
+
+        // Check if candidate has different SkillTags
+        const hasDifferentSkillTag = !candidate.skillTags?.some((tag) =>
+          avoidSkillTags.includes(tag),
+        );
+        if (hasDifferentSkillTag) {
+          return candidate;
+        }
+      }
+    }
+
+    // Priority 3: Find item with different exercise type (secondary variety metric)
+    if (avoidType) {
+      for (const candidate of pool) {
+        if (used.has(candidate.id)) continue;
+        if (violatesConstraints(candidate)) continue;
+        if (candidate.exerciseType !== avoidType) {
+          return candidate;
+        }
+      }
     }
 
     // Fallback: any that doesn't violate constraints
@@ -224,15 +296,43 @@ export function composeWithInterleaving(
   while (remaining.length > 0 || needsModalityCoverage) {
     let selected: DeliveryCandidate | null = null;
 
-    // Rule 3: Scaffolding - inject easy win after 2 consecutive errors
-    if (enableScaffolding && errorStreak >= 2 && easyCandidates.length > 0) {
+    // Rule 1: Error Scaffolding - inject Review item with high mastery if SkillTag has 3+ errors
+    if (enableScaffolding) {
+      // Find SkillTags that need scaffolding (errorScore >= 3)
+      const skillTagsNeedingScaffolding: string[] = [];
+      for (const [skillTag, errorCount] of skillTagErrorMap.entries()) {
+        if (errorCount >= 3) {
+          skillTagsNeedingScaffolding.push(skillTag);
+        }
+      }
+
+      // If any SkillTag needs scaffolding, inject Review item with high mastery
+      if (skillTagsNeedingScaffolding.length > 0) {
+        // Try to find Review item with high mastery for the first SkillTag needing scaffolding
+        const targetSkillTag = skillTagsNeedingScaffolding[0];
+        selected = findAlternative(
+          reviewItemsHighMastery,
+          undefined,
+          undefined,
+          targetSkillTag, // requireSkillTag
+        );
+
+        if (selected) {
+          // Reset error tracking for this SkillTag after injecting scaffold item
+          skillTagErrorMap.set(targetSkillTag, 0);
+        }
+      }
+    }
+
+    // Rule 2: Legacy scaffolding - inject easy win after 2 consecutive errors (fallback)
+    if (!selected && enableScaffolding && errorStreak >= 2 && easyCandidates.length > 0) {
       selected = findAlternative(easyCandidates);
       if (selected) {
         errorStreak = 0; // Reset error streak after easy win
       }
     }
 
-    // Rule 4: Ensure modality coverage (listening/speaking)
+    // Rule 3: Ensure modality coverage (listening/speaking)
     if (!selected && needsModalityCoverage) {
       const listeningSpeaking: DELIVERY_METHOD[] = [
         DELIVERY_METHOD.SPEECH_TO_TEXT,
@@ -251,13 +351,26 @@ export function composeWithInterleaving(
       }
     }
 
-    // Rule 1 & 2: Normal selection with type/skill alternation
+    // Rule 4 & 5: Normal selection with SkillTag alternation (primary) and type alternation (secondary)
     if (!selected) {
-      // Try to alternate skills
-      const lastSkill = recentSkills[recentSkills.length - 1];
-      if (lastSkill) {
-        // Try to find candidate with different skill
-        selected = findAlternative(remaining, undefined, lastSkill);
+      // Get recent SkillTags to avoid (for alternation)
+      const recentUniqueSkillTags = Array.from(new Set(recentSkillTags));
+      const lastExerciseType = recentTypes[recentTypes.length - 1];
+
+      // Priority: Try to alternate SkillTags (primary variety metric)
+      if (recentUniqueSkillTags.length > 0) {
+        selected = findAlternative(
+          remaining,
+          lastExerciseType,
+          undefined,
+          undefined,
+          recentUniqueSkillTags, // avoidSkillTags
+        );
+      }
+
+      // Fallback: Try to alternate exercise type (secondary variety metric)
+      if (!selected && lastExerciseType) {
+        selected = findAlternative(remaining, lastExerciseType);
       }
 
       // If no good alternative, pick best available
@@ -289,19 +402,34 @@ export function composeWithInterleaving(
     composed.push(selected);
     used.add(selected.id);
 
-    // Update tracking
+    // Update tracking - prioritize SkillTag history (primary variety metric)
+    if (selected.skillTags && selected.skillTags.length > 0) {
+      // Add all SkillTags from selected item
+      for (const skillTag of selected.skillTags) {
+        recentSkillTags.push(skillTag);
+      }
+      // Keep only last 5 unique SkillTags for alternation tracking
+      // Remove duplicates while preserving order (keep last occurrence of each tag)
+      const seen = new Set<string>();
+      const deduplicated: string[] = [];
+      // Process from end to beginning to keep last occurrence
+      for (let i = recentSkillTags.length - 1; i >= 0; i--) {
+        const tag = recentSkillTags[i];
+        if (!seen.has(tag)) {
+          seen.add(tag);
+          deduplicated.unshift(tag); // Add to front to maintain chronological order
+        }
+      }
+      // Keep only the last 5
+      recentSkillTags.length = 0;
+      recentSkillTags.push(...deduplicated.slice(-5));
+    }
+
+    // Update exercise type tracking (secondary variety metric)
     const exerciseType = selected.exerciseType || 'unknown';
     recentTypes.push(exerciseType);
     if (recentTypes.length > maxSameTypeInRow) {
       recentTypes.shift();
-    }
-
-    if (selected.skillTags && selected.skillTags.length > 0) {
-      recentSkills.push(...selected.skillTags);
-      // Keep only last few skills
-      if (recentSkills.length > 5) {
-        recentSkills.splice(0, recentSkills.length - 5);
-      }
     }
 
     if (selected.deliveryMethods) {

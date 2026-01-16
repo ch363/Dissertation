@@ -1,128 +1,87 @@
 // Lazy import to avoid crashing if native module isn't available
-let AudioModule: typeof import('expo-av') | null = null;
 let FileSystemModule: typeof import('expo-file-system') | null = null;
-let recording: any = null;
+let FileSystemAvailable: boolean | null = null;
 
-async function getAudioModule() {
-  if (!AudioModule) {
-    try {
-      AudioModule = await import('expo-av');
-    } catch (error) {
-      console.error('Failed to load expo-av module:', error);
-      throw new Error('Audio recording is not available. Please rebuild the app after installing expo-av.');
-    }
+async function getFileSystemModule(): Promise<typeof import('expo-file-system') | null> {
+  // Check if we've already determined availability
+  if (FileSystemAvailable === false) {
+    return null;
   }
-  return AudioModule;
-}
 
-async function getFileSystemModule() {
   if (!FileSystemModule) {
     try {
       FileSystemModule = await import('expo-file-system');
+      FileSystemAvailable = true;
+      return FileSystemModule;
     } catch (error) {
-      console.error('Failed to load expo-file-system module:', error);
-      throw new Error('File system is not available. Please rebuild the app after installing expo-file-system.');
+      console.warn('expo-file-system native module not available, using fetch fallback:', error);
+      FileSystemAvailable = false;
+      return null;
     }
   }
   return FileSystemModule;
 }
 
 /**
- * Request microphone permissions
+ * Manual base64 encoding for environments where btoa is not available
  */
-export async function requestMicrophonePermission(): Promise<boolean> {
-  try {
-    const Audio = await getAudioModule();
-    const { status } = await Audio.Audio.requestPermissionsAsync();
-    return status === 'granted';
-  } catch (error) {
-    console.error('Error requesting microphone permission:', error);
-    return false;
-  }
-}
-
-/**
- * Check if microphone permission is granted
- */
-export async function checkMicrophonePermission(): Promise<boolean> {
-  try {
-    const Audio = await getAudioModule();
-    const { status } = await Audio.Audio.getPermissionsAsync();
-    return status === 'granted';
-  } catch (error) {
-    console.error('Error checking microphone permission:', error);
-    return false;
-  }
-}
-
-/**
- * Start audio recording
- * @returns Recording URI if successful, null otherwise
- */
-export async function startRecording(): Promise<string | null> {
-  try {
-    const Audio = await getAudioModule();
+function encodeBase64(bytes: Uint8Array): string {
+  const base64Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let result = '';
+  let i = 0;
+  
+  while (i < bytes.length) {
+    const a = bytes[i++];
+    const b = i < bytes.length ? bytes[i++] : 0;
+    const c = i < bytes.length ? bytes[i++] : 0;
     
-    // Check permissions
-    const hasPermission = await checkMicrophonePermission();
-    if (!hasPermission) {
-      const granted = await requestMicrophonePermission();
-      if (!granted) {
-        throw new Error('Microphone permission denied');
-      }
-    }
-
-    // Configure audio mode for recording
-    await Audio.Audio.setAudioModeAsync({
-      allowsRecordingIOS: true,
-      playsInSilentModeIOS: true,
-    });
-
-    // Create and start recording
-    const { recording: newRecording } = await Audio.Audio.Recording.createAsync(
-      Audio.Audio.RecordingOptionsPresets.HIGH_QUALITY,
-    );
-
-    recording = newRecording;
-    return recording.getURI();
-  } catch (error) {
-    console.error('Failed to start recording:', error);
-    return null;
+    const bitmap = (a << 16) | (b << 8) | c;
+    
+    result += base64Chars.charAt((bitmap >> 18) & 63);
+    result += base64Chars.charAt((bitmap >> 12) & 63);
+    result += i - 2 < bytes.length ? base64Chars.charAt((bitmap >> 6) & 63) : '=';
+    result += i - 1 < bytes.length ? base64Chars.charAt(bitmap & 63) : '=';
   }
+  
+  return result;
 }
 
 /**
- * Stop audio recording
- * @returns Recording URI if successful, null otherwise
+ * Fallback method to read file as base64 using fetch API
+ * Works when expo-file-system native module is not available
+ * Compatible with React Native
  */
-export async function stopRecording(): Promise<string | null> {
+async function readFileAsBase64WithFetch(uri: string): Promise<string> {
+  // Fetch the file URI
+  const response = await fetch(uri);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
+  }
+
+  // Get the response as array buffer (works in React Native)
+  const arrayBuffer = await response.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  
+  // Try to use btoa if available (web environments)
   try {
-    if (!recording) {
-      console.warn('No active recording to stop');
-      return null;
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
     }
-
-    await recording.stopAndUnloadAsync();
-    const uri = recording.getURI();
-    recording = null;
-
-    // Reset audio mode
-    const Audio = await getAudioModule();
-    await Audio.Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
-      playsInSilentModeIOS: false,
-    });
-
-    return uri;
+    return btoa(binary);
   } catch (error) {
-    console.error('Failed to stop recording:', error);
-    recording = null;
-    return null;
+    // If btoa is not available (React Native), use manual encoding
+    if (error instanceof ReferenceError || (error as Error).message?.includes('btoa')) {
+      return encodeBase64(bytes);
+    }
+    throw error;
   }
 }
 
 /**
  * Get audio file as base64 or file URI for upload
+ * Tries expo-file-system first, falls back to fetch API if native module is unavailable
  * @param uri Recording URI
  * @returns Base64 string or file URI
  */
@@ -131,38 +90,35 @@ export async function getAudioFile(uri: string | null): Promise<{ uri: string; b
     return null;
   }
 
+  // Try expo-file-system first (preferred method)
   try {
     const FileSystem = await getFileSystemModule();
-    // Read file as base64 for upload
-    const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
+    if (FileSystem) {
+      // Read file as base64 for upload
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
 
+      return {
+        uri,
+        base64,
+      };
+    }
+  } catch (error) {
+    console.warn('expo-file-system read failed, trying fetch fallback:', error);
+  }
+
+  // Fallback to fetch API if expo-file-system is unavailable or fails
+  try {
+    const base64 = await readFileAsBase64WithFetch(uri);
     return {
       uri,
       base64,
     };
   } catch (error) {
-    console.error('Failed to read audio file:', error);
-    return { uri }; // Return URI as fallback
+    console.error('Failed to read audio file with both methods:', error);
+    // Return URI only as last resort
+    return { uri };
   }
 }
 
-/**
- * Clean up recording resources
- */
-export async function cleanup(): Promise<void> {
-  try {
-    if (recording) {
-      await recording.stopAndUnloadAsync();
-      recording = null;
-    }
-    const Audio = await getAudioModule();
-    await Audio.Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
-      playsInSilentModeIOS: false,
-    });
-  } catch (error) {
-    console.error('Error cleaning up recording:', error);
-  }
-}

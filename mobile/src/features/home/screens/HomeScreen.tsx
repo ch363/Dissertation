@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScrollView } from '@/components/ui';
 
-import { getMyProfile } from '@/services/api/profile';
+import { getMyProfile, getRecentActivity } from '@/services/api/profile';
 import { WelcomeContinueCard } from '@/features/home/components/WelcomeContinueCard';
 import { DueTodayGrid } from '@/features/home/components/due-today/DueTodayGrid';
 import type { DueTodayTileItem } from '@/features/home/components/due-today/DueTodayTile';
@@ -15,6 +15,8 @@ import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 import { getUserLessons, type UserLessonProgress } from '@/services/api/progress';
 import { getLessons, type Lesson } from '@/services/api/modules';
+import { makeSessionId } from '@/features/session/sessionBuilder';
+import { routeBuilders } from '@/services/navigation/routes';
 
 export default function HomeScreen() {
   const { theme } = useAppTheme();
@@ -22,12 +24,20 @@ export default function HomeScreen() {
   const [userProgress, setUserProgress] = useState<UserLessonProgress[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
 
+  const [continueLesson, setContinueLesson] = useState<{
+    lessonTitle: string;
+    lessonProgress: string;
+    estTime: string;
+    onContinue: () => void;
+  } | null>(null);
+
   const loadData = useCallback(async () => {
     try {
-      const [profile, progressData, lessonsData] = await Promise.all([
+      const [profile, progressData, lessonsData, recentActivity] = await Promise.all([
         getMyProfile().catch(() => null),
         getUserLessons().catch(() => [] as UserLessonProgress[]),
         getLessons().catch(() => [] as Lesson[]),
+        getRecentActivity().catch(() => null),
       ]);
       
       if (profile) {
@@ -36,6 +46,38 @@ export default function HomeScreen() {
       }
       setUserProgress(progressData);
       setLessons(lessonsData);
+
+      // Set continue lesson if there's a partially completed lesson
+      if (recentActivity?.recentLesson) {
+        const recent = recentActivity.recentLesson;
+        const totalTeachings = recent.totalTeachings ?? (recent.completedTeachings || 1);
+        
+        // Only show if lesson is partially completed
+        if (recent.completedTeachings < totalTeachings) {
+          const progressLabel = `${recent.completedTeachings}/${totalTeachings} complete`;
+          
+          // Estimate time based on remaining teachings (assuming ~2 min per teaching)
+          const remainingTeachings = totalTeachings - recent.completedTeachings;
+          const minutesAway = Math.max(1, Math.ceil(remainingTeachings * 2));
+          
+          const sessionId = makeSessionId('learn');
+          setContinueLesson({
+            lessonTitle: recent.lesson.title,
+            lessonProgress: progressLabel,
+            estTime: `${minutesAway} min`,
+            onContinue: () => {
+              router.push({
+                pathname: routeBuilders.sessionDetail(sessionId),
+                params: { lessonId: recent.lesson.id, kind: 'learn' },
+              });
+            },
+          });
+        } else {
+          setContinueLesson(null);
+        }
+      } else {
+        setContinueLesson(null);
+      }
     } catch (error) {
       console.error('Failed to load home data:', error);
     }
@@ -117,11 +159,8 @@ export default function HomeScreen() {
         <WelcomeContinueCard
           streakDays={4}
           minutesToday={22}
-          lessonTitle="Basic Greetings"
-          lessonProgress="Lesson 1 of 10"
-          estTime="4 min"
           displayName={displayName}
-          onContinue={() => router.push('/course/basics/run')}
+          lesson={continueLesson}
         />
 
         <DueTodayGrid

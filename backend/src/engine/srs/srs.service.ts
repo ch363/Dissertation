@@ -1,7 +1,7 @@
 /**
  * SRS (Spaced Repetition System) Service
  * 
- * This service manages spaced repetition scheduling using the SM-2 algorithm.
+ * This service manages spaced repetition scheduling using the FSRS algorithm.
  * SRS state is stored directly in UserQuestionPerformance (append-only).
  * 
  * This is a SERVICE LAYER, not middleware. It's called by ProgressService
@@ -10,7 +10,15 @@
 
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { calculateSm2, scoreToQuality, correctToQuality, getInitialSm2State } from './algo.sm2';
+import {
+  calculateFsrs,
+  attemptToGrade,
+  getInitialFsrsState,
+  FsrsState,
+  FsrsParameters,
+  DEFAULT_FSRS_PARAMETERS,
+} from './algo.fsrs';
+import { getOptimizedParametersForUser, ReviewRecord } from './fsrs-optimizer';
 import { AttemptFeatures } from './types';
 
 @Injectable()
@@ -35,6 +43,8 @@ export class SrsService {
     intervalDays: number;
     easeFactor: number;
     repetitions: number;
+    stability?: number;
+    difficulty?: number;
   }> {
     const now = new Date();
 
@@ -48,36 +58,146 @@ export class SrsService {
         createdAt: 'desc',
       },
       select: {
+        stability: true,
+        difficulty: true,
+        repetitions: true,
+        lastRevisedAt: true,
         intervalDays: true,
-        easeFactor: true,
+        easeFactor: true, // For migration compatibility
+      },
+    });
+
+    // Get all historical attempts for this user/question for parameter optimization
+    const allAttempts = await this.prisma.userQuestionPerformance.findMany({
+      where: {
+        userId,
+        questionId,
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+      select: {
+        createdAt: true,
+        lastRevisedAt: true,
+        nextReviewDue: true,
+        score: true,
+        stability: true,
+        difficulty: true,
+        intervalDays: true,
         repetitions: true,
       },
     });
 
-    const currentState = previousAttempt
-      ? {
-          intervalDays: previousAttempt.intervalDays || 1,
-          easeFactor: previousAttempt.easeFactor || 2.5,
-          repetitions: previousAttempt.repetitions || 0,
-        }
-      : getInitialSm2State();
+    // Get all user's historical data for parameter optimization
+    const allUserAttempts = await this.prisma.userQuestionPerformance.findMany({
+      where: {
+        userId,
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+      take: 1000, // Limit to prevent performance issues
+      select: {
+        createdAt: true,
+        lastRevisedAt: true,
+        nextReviewDue: true,
+        score: true,
+        stability: true,
+        difficulty: true,
+        intervalDays: true,
+        repetitions: true,
+      },
+    });
 
-    // Convert result to quality score
-    let quality: number;
-    if (result.score !== undefined) {
-      quality = scoreToQuality(result.score);
-    } else {
-      quality = correctToQuality(result.correct, result.timeMs);
+    // Convert to ReviewRecord format for optimizer
+    const reviewRecords: ReviewRecord[] = allUserAttempts.map((attempt) => ({
+      createdAt: attempt.createdAt,
+      lastRevisedAt: attempt.lastRevisedAt,
+      nextReviewDue: attempt.nextReviewDue,
+      score: attempt.score,
+      stability: attempt.stability,
+      difficulty: attempt.difficulty,
+      intervalDays: attempt.intervalDays,
+      repetitions: attempt.repetitions,
+    }));
+
+    // Get optimized parameters for user (or use defaults)
+    const params: FsrsParameters = getOptimizedParametersForUser(reviewRecords);
+
+    // Build current FSRS state
+    let currentState: FsrsState | null = null;
+
+    if (previousAttempt) {
+      // Check if we have FSRS state (stability/difficulty) or need to migrate from SM-2
+      if (previousAttempt.stability != null && previousAttempt.difficulty != null) {
+        // We have FSRS state
+        currentState = {
+          stability: previousAttempt.stability,
+          difficulty: previousAttempt.difficulty,
+          lastReview: previousAttempt.lastRevisedAt || now,
+          repetitions: previousAttempt.repetitions || 0,
+        };
+      } else if (previousAttempt.easeFactor != null) {
+        // Migrate from SM-2: approximate stability and difficulty from easeFactor
+        // This is a rough approximation for backward compatibility
+        const estimatedStability = (previousAttempt.intervalDays || 1) * 0.9;
+        const estimatedDifficulty = 5.0 - (previousAttempt.easeFactor - 1.3) * 2.0; // Rough mapping
+        currentState = {
+          stability: Math.max(0.1, estimatedStability),
+          difficulty: Math.max(0.1, Math.min(10.0, estimatedDifficulty)),
+          lastReview: previousAttempt.lastRevisedAt || now,
+          repetitions: previousAttempt.repetitions || 0,
+        };
+      }
     }
 
-    // Calculate new state using SM-2
-    const newState = calculateSm2(currentState, quality, now);
+    // Convert attempt result to grade (0-5)
+    const grade = attemptToGrade(result);
+
+    // Calculate new state using FSRS
+    const newState = calculateFsrs(currentState, grade, now, params);
+
+    // Validate all returned values to prevent database errors
+    const validatedStability = isFinite(newState.stability) && newState.stability > 0
+      ? Math.max(0.1, Math.min(365, newState.stability))
+      : 0.1;
+    
+    const validatedDifficulty = isFinite(newState.difficulty) && newState.difficulty > 0
+      ? Math.max(0.1, Math.min(10.0, newState.difficulty))
+      : 5.0;
+    
+    const validatedIntervalDays = isFinite(newState.intervalDays) && newState.intervalDays > 0
+      ? Math.max(1, Math.round(newState.intervalDays))
+      : 1;
+    
+    const validatedRepetitions = isFinite(newState.repetitions) && newState.repetitions >= 0
+      ? Math.max(0, Math.round(newState.repetitions))
+      : 0;
+    
+    // Validate next due date
+    let validatedNextDue: Date;
+    if (newState.nextDue instanceof Date && !isNaN(newState.nextDue.getTime())) {
+      validatedNextDue = newState.nextDue;
+    } else {
+      // Fallback: set to 1 day from now
+      validatedNextDue = new Date(now);
+      validatedNextDue.setDate(validatedNextDue.getDate() + 1);
+    }
+
+    // Return state (maintain backward compatibility with easeFactor)
+    // Calculate approximate easeFactor for backward compatibility
+    const approximateEaseFactor =
+      validatedIntervalDays > 0 && validatedStability > 0
+        ? validatedStability / validatedIntervalDays
+        : 2.5;
 
     return {
-      nextReviewDue: newState.nextDue,
-      intervalDays: newState.intervalDays,
-      easeFactor: newState.easeFactor,
-      repetitions: newState.repetitions,
+      nextReviewDue: validatedNextDue,
+      intervalDays: validatedIntervalDays,
+      easeFactor: approximateEaseFactor, // For backward compatibility
+      repetitions: validatedRepetitions,
+      stability: validatedStability,
+      difficulty: validatedDifficulty,
     };
   }
 }

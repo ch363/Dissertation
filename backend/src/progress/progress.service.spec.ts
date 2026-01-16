@@ -6,10 +6,18 @@ import { QuestionAttemptDto } from './dto/question-attempt.dto';
 import { DeliveryMethodScoreDto } from './dto/delivery-method-score.dto';
 import { KnowledgeLevelProgressDto } from './dto/knowledge-level-progress.dto';
 import { DELIVERY_METHOD } from '@prisma/client';
+import { SrsService } from '../engine/srs/srs.service';
+import { XpService } from '../engine/scoring/xp.service';
+import { ContentLookupService } from '../content/content-lookup.service';
+import { MasteryService } from '../engine/mastery/mastery.service';
 
 describe('ProgressService', () => {
   let service: ProgressService;
   let prisma: jest.Mocked<PrismaService>;
+  let srsService: jest.Mocked<SrsService>;
+  let xpService: jest.Mocked<XpService>;
+  let contentLookup: jest.Mocked<ContentLookupService>;
+  let masteryService: jest.Mocked<MasteryService>;
 
   const mockPrismaService = {
     userLesson: {
@@ -40,8 +48,25 @@ describe('ProgressService', () => {
     },
     user: {
       update: jest.fn(),
+      findUnique: jest.fn(),
     },
     $transaction: jest.fn(),
+  };
+
+  const mockSrsService = {
+    calculateQuestionState: jest.fn(),
+  };
+
+  const mockXpService = {
+    award: jest.fn(),
+  };
+
+  const mockContentLookupService = {
+    getQuestionData: jest.fn(),
+  };
+
+  const mockMasteryService = {
+    updateMastery: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -52,15 +77,40 @@ describe('ProgressService', () => {
           provide: PrismaService,
           useValue: mockPrismaService,
         },
+        {
+          provide: SrsService,
+          useValue: mockSrsService,
+        },
+        {
+          provide: XpService,
+          useValue: mockXpService,
+        },
+        {
+          provide: ContentLookupService,
+          useValue: mockContentLookupService,
+        },
+        {
+          provide: MasteryService,
+          useValue: mockMasteryService,
+        },
       ],
     }).compile();
 
     service = module.get<ProgressService>(ProgressService);
     prisma = module.get(PrismaService);
+    srsService = module.get(SrsService);
+    xpService = module.get(XpService);
+    contentLookup = module.get(ContentLookupService);
+    masteryService = module.get(MasteryService);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+    // Reset all service mocks
+    mockSrsService.calculateQuestionState.mockReset();
+    mockXpService.award.mockReset();
+    mockContentLookupService.getQuestionData.mockReset();
+    mockMasteryService.updateMastery.mockReset();
   });
 
   describe('startLesson', () => {
@@ -175,9 +225,30 @@ describe('ProgressService', () => {
   });
 
   describe('recordQuestionAttempt', () => {
+    const userId = 'user-1';
+    const questionId = 'question-1';
+    const teachingId = 'teaching-1';
+    const lessonId = 'lesson-1';
+
+    const mockSrsState = {
+      nextReviewDue: new Date(Date.now() + 86400000), // 1 day from now
+      intervalDays: 1,
+      easeFactor: 2.5,
+      stability: 1.0,
+      difficulty: 0.3,
+      repetitions: 1,
+    };
+
+    beforeEach(() => {
+      mockSrsService.calculateQuestionState.mockResolvedValue(mockSrsState);
+      mockXpService.award.mockResolvedValue(10);
+      prisma.user.findUnique.mockResolvedValue({
+        id: userId,
+        knowledgePoints: 100,
+      } as any);
+    });
+
     it('should create append-only performance record with spaced repetition', async () => {
-      const userId = 'user-1';
-      const questionId = 'question-1';
       const attemptDto: QuestionAttemptDto = {
         score: 85,
         timeToComplete: 5000,
@@ -185,28 +256,73 @@ describe('ProgressService', () => {
         attempts: 1,
       };
 
-      prisma.question.findUnique.mockResolvedValue({ id: questionId } as any);
+      const mockQuestion = {
+        id: questionId,
+        teachingId,
+        type: DELIVERY_METHOD.FLASHCARD,
+        skillTags: [],
+        teaching: {
+          id: teachingId,
+          lessonId,
+          skillTags: [],
+          lesson: {
+            id: lessonId,
+            title: 'Test Lesson',
+          },
+        },
+      };
+
+      prisma.question.findUnique.mockResolvedValue(mockQuestion as any);
       prisma.userQuestionPerformance.create.mockResolvedValue({
         id: 'perf-1',
         userId,
         questionId,
         ...attemptDto,
         lastRevisedAt: new Date(),
-        nextReviewDue: new Date(),
+        nextReviewDue: mockSrsState.nextReviewDue,
+        question: {
+          id: questionId,
+          teaching: {
+            id: teachingId,
+            userLanguageString: 'Hello',
+            learningLanguageString: 'Ciao',
+          },
+        },
       } as any);
 
       const result = await service.recordQuestionAttempt(userId, questionId, attemptDto);
 
       expect(prisma.question.findUnique).toHaveBeenCalledWith({
         where: { id: questionId },
+        include: {
+          teaching: {
+            include: {
+              lesson: {
+                select: {
+                  id: true,
+                  title: true,
+                },
+              },
+              skillTags: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+          skillTags: {
+            select: {
+              name: true,
+            },
+          },
+        },
       });
       expect(prisma.userQuestionPerformance.create).toHaveBeenCalled();
       expect(result).toBeDefined();
+      expect(result.awardedXp).toBe(10);
     });
 
     it('should throw NotFoundException if question not found', async () => {
-      const userId = 'user-1';
-      const questionId = 'non-existent';
       const attemptDto: QuestionAttemptDto = { score: 50 };
 
       prisma.question.findUnique.mockResolvedValue(null);
@@ -214,6 +330,266 @@ describe('ProgressService', () => {
       await expect(
         service.recordQuestionAttempt(userId, questionId, attemptDto),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should extract skill tags from loaded relations and update mastery', async () => {
+      const attemptDto: QuestionAttemptDto = {
+        score: 85,
+        timeToComplete: 5000,
+        percentageAccuracy: 90,
+        attempts: 1,
+      };
+
+      const mockQuestion = {
+        id: questionId,
+        teachingId,
+        type: DELIVERY_METHOD.FLASHCARD,
+        skillTags: [
+          { name: 'greetings' },
+          { name: 'verbs' },
+        ],
+        teaching: {
+          id: teachingId,
+          lessonId,
+          skillTags: [
+            { name: 'greetings' },
+            { name: 'pronouns' },
+          ],
+          lesson: {
+            id: lessonId,
+            title: 'Test Lesson',
+          },
+        },
+      };
+
+      prisma.question.findUnique.mockResolvedValue(mockQuestion as any);
+      prisma.userQuestionPerformance.create.mockResolvedValue({
+        id: 'perf-1',
+        userId,
+        questionId,
+        ...attemptDto,
+        lastRevisedAt: new Date(),
+        nextReviewDue: mockSrsState.nextReviewDue,
+        question: {
+          id: questionId,
+          teaching: {
+            id: teachingId,
+            userLanguageString: 'Hello',
+            learningLanguageString: 'Ciao',
+          },
+        },
+      } as any);
+
+      // Mock mastery updates - return different mastery values
+      mockMasteryService.updateMastery
+        .mockResolvedValueOnce(0.6) // greetings - above threshold
+        .mockResolvedValueOnce(0.4) // verbs - below threshold
+        .mockResolvedValueOnce(0.7); // pronouns - above threshold
+
+      const result = await service.recordQuestionAttempt(userId, questionId, attemptDto);
+
+      // Verify skillTags relation was loaded
+      expect(prisma.question.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.objectContaining({
+            skillTags: {
+              select: {
+                name: true,
+              },
+            },
+            teaching: expect.objectContaining({
+              include: expect.objectContaining({
+                skillTags: {
+                  select: {
+                    name: true,
+                  },
+                },
+              }),
+            }),
+          }),
+        }),
+      );
+
+      // Verify mastery was updated for all skill tags (greetings, verbs, pronouns)
+      // Note: extractSkillTags deduplicates, so 'greetings' appears once
+      expect(mockMasteryService.updateMastery).toHaveBeenCalledTimes(3);
+      expect(mockMasteryService.updateMastery).toHaveBeenCalledWith(userId, 'greetings', true);
+      expect(mockMasteryService.updateMastery).toHaveBeenCalledWith(userId, 'verbs', true);
+      expect(mockMasteryService.updateMastery).toHaveBeenCalledWith(userId, 'pronouns', true);
+
+      expect(result).toBeDefined();
+    });
+
+    it('should handle questions with no skill tags gracefully', async () => {
+      const attemptDto: QuestionAttemptDto = {
+        score: 85,
+        timeToComplete: 5000,
+        percentageAccuracy: 90,
+        attempts: 1,
+      };
+
+      const mockQuestion = {
+        id: questionId,
+        teachingId,
+        type: DELIVERY_METHOD.FLASHCARD,
+        skillTags: [],
+        teaching: {
+          id: teachingId,
+          lessonId,
+          skillTags: [],
+          lesson: {
+            id: lessonId,
+            title: 'Test Lesson',
+          },
+        },
+      };
+
+      prisma.question.findUnique.mockResolvedValue(mockQuestion as any);
+      prisma.userQuestionPerformance.create.mockResolvedValue({
+        id: 'perf-1',
+        userId,
+        questionId,
+        ...attemptDto,
+        lastRevisedAt: new Date(),
+        nextReviewDue: mockSrsState.nextReviewDue,
+        question: {
+          id: questionId,
+          teaching: {
+            id: teachingId,
+            userLanguageString: 'Hello',
+            learningLanguageString: 'Ciao',
+          },
+        },
+      } as any);
+
+      const result = await service.recordQuestionAttempt(userId, questionId, attemptDto);
+
+      // Verify skillTags relation was still loaded (even if empty)
+      expect(prisma.question.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.objectContaining({
+            skillTags: {
+              select: {
+                name: true,
+              },
+            },
+          }),
+        }),
+      );
+
+      // Verify mastery service was not called when no skill tags
+      expect(mockMasteryService.updateMastery).not.toHaveBeenCalled();
+
+      expect(result).toBeDefined();
+    });
+
+    it('should extract skill tags from question-level tags when teaching tags are empty', async () => {
+      const attemptDto: QuestionAttemptDto = {
+        score: 85,
+        timeToComplete: 5000,
+        percentageAccuracy: 90,
+        attempts: 1,
+      };
+
+      const mockQuestion = {
+        id: questionId,
+        teachingId,
+        type: DELIVERY_METHOD.FLASHCARD,
+        skillTags: [
+          { name: 'numbers' },
+        ],
+        teaching: {
+          id: teachingId,
+          lessonId,
+          skillTags: [],
+          lesson: {
+            id: lessonId,
+            title: 'Test Lesson',
+          },
+        },
+      };
+
+      prisma.question.findUnique.mockResolvedValue(mockQuestion as any);
+      prisma.userQuestionPerformance.create.mockResolvedValue({
+        id: 'perf-1',
+        userId,
+        questionId,
+        ...attemptDto,
+        lastRevisedAt: new Date(),
+        nextReviewDue: mockSrsState.nextReviewDue,
+        question: {
+          id: questionId,
+          teaching: {
+            id: teachingId,
+            userLanguageString: 'Hello',
+            learningLanguageString: 'Ciao',
+          },
+        },
+      } as any);
+
+      mockMasteryService.updateMastery.mockResolvedValue(0.6);
+
+      const result = await service.recordQuestionAttempt(userId, questionId, attemptDto);
+
+      // Verify mastery was updated for the question-level skill tag
+      expect(mockMasteryService.updateMastery).toHaveBeenCalledTimes(1);
+      expect(mockMasteryService.updateMastery).toHaveBeenCalledWith(userId, 'numbers', true);
+
+      expect(result).toBeDefined();
+    });
+
+    it('should handle mastery update errors gracefully without failing the attempt', async () => {
+      const attemptDto: QuestionAttemptDto = {
+        score: 85,
+        timeToComplete: 5000,
+        percentageAccuracy: 90,
+        attempts: 1,
+      };
+
+      const mockQuestion = {
+        id: questionId,
+        teachingId,
+        type: DELIVERY_METHOD.FLASHCARD,
+        skillTags: [
+          { name: 'greetings' },
+        ],
+        teaching: {
+          id: teachingId,
+          lessonId,
+          skillTags: [],
+          lesson: {
+            id: lessonId,
+            title: 'Test Lesson',
+          },
+        },
+      };
+
+      prisma.question.findUnique.mockResolvedValue(mockQuestion as any);
+      prisma.userQuestionPerformance.create.mockResolvedValue({
+        id: 'perf-1',
+        userId,
+        questionId,
+        ...attemptDto,
+        lastRevisedAt: new Date(),
+        nextReviewDue: mockSrsState.nextReviewDue,
+        question: {
+          id: questionId,
+          teaching: {
+            id: teachingId,
+            userLanguageString: 'Hello',
+            learningLanguageString: 'Ciao',
+          },
+        },
+      } as any);
+
+      // Mock mastery service to throw an error
+      mockMasteryService.updateMastery.mockRejectedValue(new Error('Mastery update failed'));
+
+      // Should not throw - mastery tracking is non-critical
+      const result = await service.recordQuestionAttempt(userId, questionId, attemptDto);
+
+      expect(result).toBeDefined();
+      expect(result.awardedXp).toBe(10);
     });
   });
 

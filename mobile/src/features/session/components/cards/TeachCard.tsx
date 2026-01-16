@@ -13,25 +13,35 @@ type Props = {
 
 export function TeachCard({ card }: Props) {
   const [isSpeaking, setIsSpeaking] = React.useState(false);
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleSpeak = async () => {
-    // Prevent multiple rapid calls
-    if (isSpeaking) {
-      return;
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
+
+    // Don't block clicks - let TTS service handle overlapping calls
+    // Just provide visual feedback
+    setIsSpeaking(true);
 
     try {
       const enabled = await getTtsEnabled();
       if (!enabled) {
         console.warn('TTS is disabled in settings');
+        setIsSpeaking(false);
         return;
       }
-      
-      setIsSpeaking(true);
-      const rate = await getTtsRate();
-      await SafeSpeech.stop();
-      // Small delay to ensure stop completes
-      await new Promise(resolve => setTimeout(resolve, 100));
       
       const phrase = card.content.phrase || '';
       if (!phrase) {
@@ -40,19 +50,33 @@ export function TeachCard({ card }: Props) {
         return;
       }
       
+      const rate = await getTtsRate();
+      
       console.log('Speaking phrase:', phrase, 'with language: it-IT');
       // Speak with Italian language - if voice not available, will use default
-      await SafeSpeech.speak(phrase, { language: 'it-IT', rate });
+      // TTS service will handle stopping any current speech
+      SafeSpeech.speak(phrase, { language: 'it-IT', rate }).catch((error) => {
+        console.error('TTS speak error in component:', error);
+        setIsSpeaking(false);
+      });
       console.log('TTS speak called successfully');
       
       // Reset speaking state after estimated duration
-      const estimatedDuration = Math.max(2000, phrase.length * 150);
-      setTimeout(() => {
+      // Use a shorter timeout for better responsiveness
+      const estimatedDuration = Math.max(2000, Math.min(phrase.length * 150, 8000));
+      timeoutRef.current = setTimeout(() => {
+        console.debug('TeachCard: Resetting speaking state after timeout');
         setIsSpeaking(false);
+        timeoutRef.current = null;
       }, estimatedDuration);
     } catch (error) {
       console.error('Failed to speak phrase:', error);
+      // Always reset on error to allow retry
       setIsSpeaking(false);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
     }
   };
 
@@ -70,9 +94,9 @@ export function TeachCard({ card }: Props) {
         <Pressable 
           style={[styles.speakerButton, isSpeaking && styles.speakerButtonDisabled]} 
           onPress={handleSpeak}
-          disabled={isSpeaking}
+          // Don't disable the button - allow rapid clicks, TTS service will handle it
         >
-          <Ionicons name={isSpeaking ? "volume-high" : "volume-high"} size={24} color="#fff" />
+          <Ionicons name="volume-high" size={24} color="#fff" />
         </Pressable>
       </View>
 
@@ -131,9 +155,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
-  },
-  speakerButtonDisabled: {
-    opacity: 0.6,
   },
   speakerButtonDisabled: {
     opacity: 0.6,

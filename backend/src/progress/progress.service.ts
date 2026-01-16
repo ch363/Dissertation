@@ -12,6 +12,8 @@ import { DELIVERY_METHOD } from '@prisma/client';
 import { SrsService } from '../engine/srs/srs.service';
 import { XpService } from '../engine/scoring/xp.service';
 import { ContentLookupService } from '../content/content-lookup.service';
+import { MasteryService } from '../engine/mastery/mastery.service';
+import { extractSkillTags } from '../engine/mastery/skill-extraction.util';
 
 @Injectable()
 export class ProgressService {
@@ -20,6 +22,7 @@ export class ProgressService {
     private srsService: SrsService,
     private xpService: XpService,
     private contentLookup: ContentLookupService,
+    private masteryService: MasteryService,
   ) {}
 
   async startLesson(userId: string, lessonId: string) {
@@ -141,9 +144,31 @@ export class ProgressService {
   }
 
   async recordQuestionAttempt(userId: string, questionId: string, attemptDto: QuestionAttemptDto) {
-    // Verify question exists
+    // Verify question exists and load teaching with lesson for skill extraction
     const question = await this.prisma.question.findUnique({
       where: { id: questionId },
+      include: {
+        teaching: {
+          include: {
+            lesson: {
+              select: {
+                id: true,
+                title: true,
+              },
+            },
+            skillTags: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+        skillTags: {
+          select: {
+            name: true,
+          },
+        },
+      },
     });
 
     if (!question) {
@@ -153,7 +178,7 @@ export class ProgressService {
     const now = new Date();
     const isCorrect = attemptDto.score >= 80; // Threshold for "correct"
 
-    // Calculate SRS state using SM-2 algorithm
+    // Calculate SRS state using FSRS algorithm
     const srsState = await this.srsService.calculateQuestionState(
       userId,
       questionId,
@@ -177,6 +202,8 @@ export class ProgressService {
         nextReviewDue: srsState.nextReviewDue,
         intervalDays: srsState.intervalDays,
         easeFactor: srsState.easeFactor,
+        stability: srsState.stability,
+        difficulty: srsState.difficulty,
         repetitions: srsState.repetitions,
       },
       include: {
@@ -194,6 +221,38 @@ export class ProgressService {
         },
       },
     });
+
+    // Update mastery for associated skill tags using BKT
+    try {
+      const skillTags = extractSkillTags(question);
+      const lowMasterySkills: string[] = [];
+
+      for (const skillTag of skillTags) {
+        const newMastery = await this.masteryService.updateMastery(
+          userId,
+          skillTag,
+          isCorrect,
+        );
+
+        // Check if mastery dropped below 0.5
+        if (newMastery < 0.5) {
+          lowMasterySkills.push(skillTag);
+        }
+      }
+
+      // Signal ContentDeliveryService to prioritize 'New' teachings for low mastery skills
+      // This is done implicitly - ContentDeliveryService will check for low mastery skills
+      // when creating session plans (see ContentDeliveryService enhancement)
+      if (lowMasterySkills.length > 0) {
+        // Log for debugging/monitoring
+        console.log(
+          `User ${userId} has low mastery (<0.5) for skills: ${lowMasterySkills.join(', ')}`,
+        );
+      }
+    } catch (error) {
+      // Log but don't fail - mastery tracking is non-critical
+      console.error('Error updating mastery:', error);
+    }
 
     // Award XP using engine
     const awardedXp = await this.xpService.award(userId, {
@@ -861,15 +920,27 @@ export class ProgressService {
       dto.deliveryMethod === DELIVERY_METHOD.TEXT_TRANSLATION ||
       dto.deliveryMethod === DELIVERY_METHOD.FLASHCARD
     ) {
-      // Translation: compare user answer against userLanguageString
+      // Translation: use acceptedAnswers from QuestionTextTranslation if available, otherwise fall back to userLanguageString
       const normalizedUserAnswer = dto.answer.toLowerCase().trim();
-      const correctAnswer = teaching.userLanguageString.toLowerCase().trim();
-      
-      // Handle multiple correct answers separated by "/" (e.g., "Hi / Bye")
-      const correctAnswers = correctAnswer
-        .split('/')
-        .map((ans) => ans.trim())
-        .filter((ans) => ans.length > 0);
+      let correctAnswers: string[] = [];
+
+      // Try to get acceptedAnswers from QuestionTextTranslation table
+      const textTranslation = await this.prisma.questionTextTranslation.findUnique({
+        where: { questionId },
+        select: { acceptedAnswers: true },
+      });
+
+      if (textTranslation && textTranslation.acceptedAnswers && textTranslation.acceptedAnswers.length > 0) {
+        // Use acceptedAnswers from database
+        correctAnswers = textTranslation.acceptedAnswers.map((ans) => ans.toLowerCase().trim());
+      } else {
+        // Fallback: use userLanguageString and split by "/"
+        const correctAnswer = teaching.userLanguageString.toLowerCase().trim();
+        correctAnswers = correctAnswer
+          .split('/')
+          .map((ans) => ans.trim())
+          .filter((ans) => ans.length > 0);
+      }
       
       isCorrect = correctAnswers.some((correctAns) => correctAns === normalizedUserAnswer);
       score = isCorrect ? 100 : 0;
@@ -961,13 +1032,43 @@ export class ProgressService {
       const audioBytes = Buffer.from(dto.audioBase64, 'base64');
 
       // Configure request for Italian language with pronunciation assessment
+      // Handle different audio formats correctly for Google Cloud Speech API
+      // Note: M4A files contain AAC audio, which Google Cloud Speech doesn't directly support
+      // We'll use MP3 encoding as a workaround, or better: record in a supported format
+      let encoding: string;
+      let sampleRateHertz: number;
+      
+      if (dto.audioFormat === 'wav') {
+        encoding = 'LINEAR16';
+        sampleRateHertz = 16000;
+      } else if (dto.audioFormat === 'flac') {
+        encoding = 'FLAC';
+        sampleRateHertz = 16000;
+      } else if (dto.audioFormat === 'm4a') {
+        // M4A contains AAC audio - Google Cloud Speech API doesn't support AAC directly
+        // Try using MP3 encoding as workaround (M4A container with AAC is similar)
+        // Better solution: record in WAV or FLAC format
+        encoding = 'MP3';
+        sampleRateHertz = 44100; // Match the recording sample rate from mobile app
+      } else if (dto.audioFormat === 'mp3') {
+        encoding = 'MP3';
+        sampleRateHertz = 44100;
+      } else if (dto.audioFormat === 'ogg') {
+        encoding = 'OGG_OPUS';
+        sampleRateHertz = 48000; // OGG Opus typically uses 48kHz
+      } else {
+        // Default to FLAC for unknown formats
+        encoding = 'FLAC';
+        sampleRateHertz = 16000;
+      }
+
       const request = {
         audio: {
           content: audioBytes,
         },
         config: {
-          encoding: dto.audioFormat === 'wav' ? 'LINEAR16' : 'FLAC',
-          sampleRateHertz: 16000,
+          encoding: encoding as any,
+          sampleRateHertz: sampleRateHertz,
           languageCode: 'it-IT',
           enableAutomaticPunctuation: true,
           enablePronunciationAssessment: true,

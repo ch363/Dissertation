@@ -23,6 +23,7 @@
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:push": "prisma db push",
     "prisma:push:reset": "prisma db push --force-reset",
+    "prisma:reset": "prisma generate && prisma db push --force-reset && npm run seed",
     "prisma:studio": "prisma studio",
     "seed": "node prisma/seed.js",
     "prisma:seed": "prisma db seed",

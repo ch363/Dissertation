@@ -19,12 +19,14 @@ import { DeliveryCandidate, DashboardPlanDto } from './types';
 import { rankCandidates, mixReviewAndNew, pickOne, selectDeliveryMethod } from './selection.policy';
 import { SessionPlanService } from './session-plan.service';
 import { SessionPlanDto, SessionContext } from './session-types';
+import { MasteryService } from '../mastery/mastery.service';
 
 @Injectable()
 export class ContentDeliveryService {
   constructor(
     private prisma: PrismaService,
     private sessionPlanService: SessionPlanService,
+    private masteryService: MasteryService,
   ) {}
 
 

@@ -35,12 +35,14 @@ import {
   mixByDeliveryMethod,
 } from './session-planning.policy';
 import { rankCandidates, composeWithInterleaving } from './selection.policy';
+import { MasteryService } from '../mastery/mastery.service';
 
 @Injectable()
 export class SessionPlanService {
   constructor(
     private prisma: PrismaService,
     private contentLookup: ContentLookupService,
+    private masteryService: MasteryService,
   ) {}
 
   /**
@@ -77,15 +79,12 @@ export class SessionPlanService {
     // content the user has already learned, even if it appears in a different lesson context
     const seenTeachingIds = await this.getSeenTeachingIds(userId);
 
+    // 3.5. Get low mastery skills to prioritize 'New' teachings
+    const prioritizedSkills = await this.masteryService.getLowMasterySkills(userId, 0.5);
+
     // 4. Gather candidates
     const reviewCandidates = await this.getReviewCandidates(userId, context.lessonId);
-    const newCandidates = await this.getNewCandidates(userId, context.lessonId);
-    const teachingCandidates = await this.getTeachingCandidates(
-      userId,
-      newCandidates,
-      seenTeachingIds,
-      context.lessonId,
-    );
+    const newCandidates = await this.getNewCandidates(userId, context.lessonId, prioritizedSkills);
 
     // 4. Filter by mode
     let selectedCandidates: DeliveryCandidate[] = [];
@@ -93,7 +92,7 @@ export class SessionPlanService {
       selectedCandidates = reviewCandidates;
     } else if (context.mode === 'learn') {
       // For learn mode, prioritize new items but include reviews if there aren't enough new items
-      const rankedNew = rankCandidates(newCandidates);
+      const rankedNew = rankCandidates(newCandidates, prioritizedSkills);
       const rankedReviews = rankCandidates(reviewCandidates);
       
       // If we have enough new items, use only new items
@@ -111,7 +110,7 @@ export class SessionPlanService {
     } else {
       // mixed: combine reviews and new
       const rankedReviews = rankCandidates(reviewCandidates);
-      const rankedNew = rankCandidates(newCandidates);
+      const rankedNew = rankCandidates(newCandidates, prioritizedSkills);
       // Mix 70% reviews, 30% new
       const reviewCount = Math.floor(targetItemCount * 0.7);
       const newCount = targetItemCount - reviewCount;
@@ -125,10 +124,18 @@ export class SessionPlanService {
     selectedCandidates = selectedCandidates.slice(0, targetItemCount);
 
     // 5. Apply teach-then-test (for new content only)
-    // Note: seenTeachingIds was already retrieved earlier (step 3) to filter teaching candidates
-    // It's reused here for planTeachThenTest() which also filters out seen teachings
+    // Get teaching candidates for the FINAL selected questions (not all newCandidates)
+    // This ensures teachings match the questions that will actually be shown
     const newQuestions = selectedCandidates.filter((c) => c.kind === 'question' && c.dueScore === 0);
     const reviews = selectedCandidates.filter((c) => c.dueScore > 0);
+
+    // Create teaching candidates from the selected new questions (not all newCandidates)
+    const teachingCandidates = await this.getTeachingCandidates(
+      userId,
+      newQuestions,
+      seenTeachingIds,
+      context.lessonId,
+    );
 
     let finalCandidates: DeliveryCandidate[] = [];
     if (context.mode === 'learn' || context.mode === 'mixed') {
@@ -449,9 +456,19 @@ export class SessionPlanService {
       const question = await this.prisma.question.findUnique({
         where: { id: perf.questionId },
         include: {
+          skillTags: {
+            select: {
+              name: true,
+            },
+          },
           teaching: {
             include: {
               lesson: true,
+              skillTags: {
+                select: {
+                  name: true,
+                },
+              },
             },
           },
         },
@@ -480,8 +497,10 @@ export class SessionPlanService {
           : 50;
         const estimatedMastery = avgScore / 100; // Convert 0-100 to 0-1
 
-        // Extract skill tags from teaching (could be enhanced with actual skill table)
-        const skillTags = this.extractSkillTags(question.teaching);
+        // Extract skill tags from both question and teaching, deduplicate
+        const questionTags = this.extractSkillTags(question);
+        const teachingTags = this.extractSkillTags(question.teaching);
+        const skillTags = Array.from(new Set([...questionTags, ...teachingTags]));
 
         // Determine exercise type from delivery method and teaching content
         const exerciseType = this.determineExerciseType(
@@ -526,10 +545,16 @@ export class SessionPlanService {
 
   /**
    * Get new candidates (not yet seen).
+   * Prioritizes candidates with skills that have low mastery (< 0.5).
+   * 
+   * @param userId User ID
+   * @param lessonId Optional lesson ID to filter candidates
+   * @param prioritizedSkills Array of skill tags to prioritize (low mastery skills)
    */
   private async getNewCandidates(
     userId: string,
     lessonId?: string,
+    prioritizedSkills: string[] = [],
   ): Promise<DeliveryCandidate[]> {
     const candidates: DeliveryCandidate[] = [];
 
@@ -541,9 +566,19 @@ export class SessionPlanService {
     const allQuestions = await this.prisma.question.findMany({
       where: whereClause,
       include: {
+        skillTags: {
+          select: {
+            name: true,
+          },
+        },
         teaching: {
           include: {
             lesson: true,
+            skillTags: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
       },
@@ -561,8 +596,10 @@ export class SessionPlanService {
         // For new items, estimate mastery as 0 (not yet attempted)
         const estimatedMastery = 0;
 
-        // Extract skill tags from teaching
-        const skillTags = this.extractSkillTags(question.teaching);
+        // Extract skill tags from both question and teaching, deduplicate
+        const questionTags = this.extractSkillTags(question);
+        const teachingTags = this.extractSkillTags(question.teaching);
+        const skillTags = Array.from(new Set([...questionTags, ...teachingTags]));
 
         // Determine exercise type
         const exerciseType = this.determineExerciseType(
@@ -603,39 +640,18 @@ export class SessionPlanService {
   }
 
   /**
-   * Extract skill tags from teaching content.
-   * This is a simple heuristic - can be enhanced with actual skill table later.
+   * Extract skill tags from teaching or question content.
+   * Fetches skill tags from the database relation.
    */
-  private extractSkillTags(teaching: any): string[] {
-    const tags: string[] = [];
-
-    // Extract from tip if available
-    if (teaching.tip) {
-      // Simple keyword extraction (can be enhanced)
-      const tipLower = teaching.tip.toLowerCase();
-      if (tipLower.includes('greeting') || tipLower.includes('hello')) {
-        tags.push('greetings');
-      }
-      if (tipLower.includes('number') || tipLower.includes('count')) {
-        tags.push('numbers');
-      }
-      if (tipLower.includes('verb') || tipLower.includes('essere') || tipLower.includes('avere')) {
-        tags.push('verbs');
-      }
-      if (tipLower.includes('article') || tipLower.includes('masculine') || tipLower.includes('feminine')) {
-        tags.push('articles');
-      }
+  private extractSkillTags(item: any): string[] {
+    // Extract skill tags from the skillTags relation if it's loaded
+    if (item.skillTags && Array.isArray(item.skillTags)) {
+      return item.skillTags.map((tag: any) => tag.name).filter((name: string) => name);
     }
-
-    // Use lesson title as a skill tag
-    if (teaching.lesson?.title) {
-      const lessonTitle = teaching.lesson.title.toLowerCase();
-      // Extract key words from lesson title
-      const words = lessonTitle.split(/\s+/);
-      tags.push(...words.slice(0, 2)); // Take first 2 words as tags
-    }
-
-    return Array.from(new Set(tags)); // Deduplicate
+    
+    // If skillTags is not loaded, return empty array
+    // The caller should ensure skillTags are included in Prisma queries
+    return [];
   }
 
   /**
@@ -712,6 +728,11 @@ export class SessionPlanService {
       where: whereClause,
       include: {
         lesson: true,
+        skillTags: {
+          select: {
+            name: true,
+          },
+        },
       },
     });
 
@@ -719,17 +740,21 @@ export class SessionPlanService {
     // This ensures we don't re-show content the user has already learned
     return teachings
       .filter((teaching) => !seenTeachingIds.has(teaching.id))
-      .map((teaching) => ({
-        kind: 'teaching' as const,
-        id: teaching.id,
-        teachingId: teaching.id,
-        lessonId: teaching.lessonId,
-        dueScore: 0,
-        errorScore: 0,
-        timeSinceLastSeen: Infinity,
-        title: teaching.userLanguageString,
-        prompt: teaching.learningLanguageString,
-      }));
+      .map((teaching) => {
+        const skillTags = this.extractSkillTags(teaching);
+        return {
+          kind: 'teaching' as const,
+          id: teaching.id,
+          teachingId: teaching.id,
+          lessonId: teaching.lessonId,
+          dueScore: 0,
+          errorScore: 0,
+          timeSinceLastSeen: Infinity,
+          title: teaching.userLanguageString,
+          prompt: teaching.learningLanguageString,
+          skillTags,
+        };
+      });
   }
 
   /**
@@ -797,7 +822,18 @@ export class SessionPlanService {
     // Load question-specific data from Teaching relationship
     try {
       const questionData = await this.contentLookup.getQuestionData(question.id, lessonId, deliveryMethod);
-      if (questionData) {
+      if (!questionData) {
+        console.error(`Failed to get question data for question ${question.id}. Question may be missing teaching relationship.`, {
+          questionId: question.id,
+          teachingId: question.teachingId,
+          lessonId,
+          deliveryMethod,
+        });
+        // For MULTIPLE_CHOICE, we cannot proceed without question data
+        if (deliveryMethod === DELIVERY_METHOD.MULTIPLE_CHOICE) {
+          console.error(`MULTIPLE_CHOICE question ${question.id} cannot proceed without question data. Frontend will show placeholder options.`);
+        }
+      } else {
         // Override prompt if available
         if (questionData.prompt) {
           baseItem.prompt = questionData.prompt;
@@ -805,9 +841,28 @@ export class SessionPlanService {
 
         // Populate delivery method specific fields
         if (deliveryMethod === DELIVERY_METHOD.MULTIPLE_CHOICE) {
-          baseItem.options = questionData.options;
-          baseItem.correctOptionId = questionData.correctOptionId;
-          baseItem.sourceText = questionData.sourceText; // For translation MCQ
+          // Only set options if they exist and are valid
+          if (questionData.options && Array.isArray(questionData.options) && questionData.options.length > 0) {
+            baseItem.options = questionData.options;
+          }
+          if (questionData.correctOptionId) {
+            baseItem.correctOptionId = questionData.correctOptionId;
+          }
+          if (questionData.sourceText) {
+            baseItem.sourceText = questionData.sourceText; // For translation MCQ
+          }
+          
+          // Validate that we have required fields for MCQ
+          if (!baseItem.options || !baseItem.correctOptionId) {
+            console.error(`MULTIPLE_CHOICE question ${question.id} missing required data:`, {
+              hasOptions: !!baseItem.options,
+              optionsLength: baseItem.options?.length,
+              hasCorrectOptionId: !!baseItem.correctOptionId,
+              questionDataKeys: Object.keys(questionData),
+              questionDataOptions: questionData.options,
+              questionDataCorrectOptionId: questionData.correctOptionId,
+            });
+          }
         } else if (deliveryMethod === DELIVERY_METHOD.FILL_BLANK) {
           baseItem.text = questionData.text;
           baseItem.answer = questionData.answer;
@@ -846,6 +901,22 @@ export class SessionPlanService {
       // For MULTIPLE_CHOICE, if options generation fails, log it specifically
       if (deliveryMethod === DELIVERY_METHOD.MULTIPLE_CHOICE) {
         console.error(`MULTIPLE_CHOICE question ${question.id} failed to generate options. Teaching ID: ${question.teachingId}, Lesson ID: ${lessonId}`);
+        // For MCQ, we cannot proceed without options - this will cause the frontend to show placeholders
+        // The error is logged above, and the baseItem will be returned without options
+        // The frontend transformer will detect this and create fallback options
+      }
+    }
+    
+    // Final validation for MULTIPLE_CHOICE - ensure we have required fields
+    if (deliveryMethod === DELIVERY_METHOD.MULTIPLE_CHOICE) {
+      if (!baseItem.options || !baseItem.correctOptionId) {
+        console.error(`MULTIPLE_CHOICE question ${question.id} final validation failed - missing options or correctOptionId. This will cause frontend to show placeholder options.`, {
+          hasOptions: !!baseItem.options,
+          optionsLength: baseItem.options?.length,
+          hasCorrectOptionId: !!baseItem.correctOptionId,
+          teachingId: question.teachingId,
+          lessonId,
+        });
       }
     }
 

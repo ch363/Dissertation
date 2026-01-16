@@ -243,8 +243,9 @@ export class MeService {
   }
 
   async getRecent(userId: string) {
-    // Get most recently accessed lesson
-    const recentLesson = await this.prisma.userLesson.findFirst({
+    // Get most recently accessed lesson that is partially completed
+    // First, get all user lessons with their teachings count
+    const userLessons = await this.prisma.userLesson.findMany({
       where: { userId },
       orderBy: { updatedAt: 'desc' },
       include: {
@@ -257,18 +258,34 @@ export class MeService {
               },
             },
             teachings: {
-              take: 1,
-              orderBy: { createdAt: 'asc' },
-              include: {
-                questions: {
-                  take: 1,
-                },
+              select: {
+                id: true,
               },
             },
           },
         },
       },
     });
+
+    // Find the first lesson that is partially completed
+    // Calculate actual completed count for each lesson to ensure accuracy
+    let recentLesson: (typeof userLessons)[0] | null = null;
+    for (const ul of userLessons) {
+      const totalTeachings = ul.lesson.teachings.length;
+      // Calculate actual completed count from UserTeachingCompleted
+      const actualCompletedCount = await this.prisma.userTeachingCompleted.count({
+        where: {
+          userId,
+          teachingId: {
+            in: ul.lesson.teachings.map((t) => t.id),
+          },
+        },
+      });
+      if (actualCompletedCount < totalTeachings) {
+        recentLesson = ul;
+        break;
+      }
+    }
 
     // Get most recently completed teaching
     const recentTeaching = await this.prisma.userTeachingCompleted.findFirst({
@@ -322,6 +339,21 @@ export class MeService {
       },
     });
 
+    // Calculate actual completed teachings count from UserTeachingCompleted
+    // to ensure accuracy (the counter might be out of sync)
+    let actualCompletedTeachings = 0;
+    if (recentLesson) {
+      const completedTeachings = await this.prisma.userTeachingCompleted.count({
+        where: {
+          userId,
+          teachingId: {
+            in: recentLesson.lesson.teachings.map((t) => t.id),
+          },
+        },
+      });
+      actualCompletedTeachings = completedTeachings;
+    }
+
     return {
       recentLesson: recentLesson
         ? {
@@ -332,7 +364,9 @@ export class MeService {
               module: recentLesson.lesson.module,
             },
             lastAccessedAt: recentLesson.updatedAt,
-            completedTeachings: recentLesson.completedTeachings,
+            completedTeachings: actualCompletedTeachings,
+            totalTeachings: recentLesson.lesson.teachings.length,
+            dueReviewCount: 0, // Will be calculated if needed elsewhere
           }
         : null,
       recentTeaching: recentTeaching

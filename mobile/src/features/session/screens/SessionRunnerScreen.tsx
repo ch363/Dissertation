@@ -12,7 +12,6 @@ import { getSessionPlan } from '@/services/api/learn';
 import { startLesson } from '@/services/api/progress';
 import { transformSessionPlan } from '@/services/api/session-plan-transformer';
 import { getCachedSessionPlan } from '@/services/api/session-plan-cache';
-import { warmupTts } from '@/services/tts';
 
 type Props = {
   lessonId?: string;
@@ -44,16 +43,10 @@ export default function SessionRunnerScreen(props?: Props) {
   const slideAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
-  // Trigger slide-up animation when content is ready and preload TTS
+  // Trigger slide-up animation when content is ready
+  // Note: TTS is now preloaded at app startup, so no need to warmup here
   useEffect(() => {
     if (plan && !loading && !error) {
-      // Preload TTS immediately when session plan is ready
-      // This ensures the first speaker button press has no delay
-      warmupTts().catch((error) => {
-        console.warn('Failed to preload TTS for session:', error);
-        // Continue anyway - TTS will initialize on first use
-      });
-      
       // Start animation when content is ready
       Animated.parallel([
         Animated.timing(slideAnim, {

@@ -29,6 +29,56 @@ export class ContentLookupService {
   }
 
   /**
+   * Detect if text is likely Italian or English
+   * Uses heuristics: Italian-specific characters and common Italian words
+   * @param text The text to analyze
+   * @returns true if text appears to be Italian, false if English
+   */
+  private isLikelyItalian(text: string): boolean {
+    if (!text) return false;
+    const lowerText = text.toLowerCase().trim();
+    
+    // Check for Italian-specific characters (à, è, é, ì, í, î, ò, ó, ù, ú)
+    const hasItalianChars = /[àèéìíîòóùú]/.test(text);
+    
+    // Check for common Italian words
+    const commonItalianWords = [
+      'ciao', 'grazie', 'prego', 'scusa', 'bene', 'sì', 'no', 
+      'buongiorno', 'buonasera', 'per favore', 'mille', 'molto',
+      'arrivederci', 'come', 'stai', 'sto', 'bene', 'male'
+    ];
+    const isCommonItalian = commonItalianWords.some(word => 
+      lowerText === word || lowerText.startsWith(word + ' ') || lowerText.endsWith(' ' + word) || lowerText.includes(' ' + word + ' ')
+    );
+    
+    return hasItalianChars || isCommonItalian;
+  }
+
+  /**
+   * Check if options are in the same language as sourceText
+   * @param sourceText The source text to translate
+   * @param options Array of option labels
+   * @returns true if options appear to be in the same language as sourceText
+   */
+  private areOptionsInSameLanguage(sourceText: string, options: string[]): boolean {
+    if (!sourceText || !options || options.length === 0) return false;
+    
+    const sourceIsItalian = this.isLikelyItalian(sourceText);
+    
+    // Check if majority of options are in the same language as source
+    let sameLanguageCount = 0;
+    for (const option of options) {
+      const optionIsItalian = this.isLikelyItalian(option);
+      if (optionIsItalian === sourceIsItalian) {
+        sameLanguageCount++;
+      }
+    }
+    
+    // If more than half the options are in the same language as source, consider it a match
+    return sameLanguageCount > options.length / 2;
+  }
+
+  /**
    * Get question data by question ID
    * Uses Teaching relationship instead of questionData JSON
    */
@@ -43,17 +93,37 @@ export class ContentLookupService {
     sourceText?: string; // For translation MCQ
     explanation?: string;
     prompt?: string;
+    skillTags?: string[];
   } | null> {
     const question = await this.prisma.question.findUnique({
       where: { id: questionId },
-      include: {
+      select: {
+        id: true,
+        teachingId: true,
+        type: true,
+        skillTags: {
+          select: {
+            name: true,
+          },
+        },
         teaching: {
           select: {
             userLanguageString: true,
             learningLanguageString: true,
             tip: true,
+            skillTags: {
+              select: {
+                name: true,
+              },
+            },
           },
         },
+        multipleChoice: true,
+        fillBlank: true,
+        speechToText: true,
+        textTranslation: true,
+        flashcard: true,
+        textToSpeech: true,
       },
     });
 
@@ -67,22 +137,94 @@ export class ContentLookupService {
     // Use tip from teaching as hint
     result.hint = teaching.tip || undefined;
 
+    // Extract skill tags from both question and teaching, deduplicate
+    const questionTagNames = question.skillTags?.map(tag => tag.name) || [];
+    const teachingTagNames = teaching.skillTags?.map(tag => tag.name) || [];
+    result.skillTags = Array.from(new Set([...questionTagNames, ...teachingTagNames]));
+
     // Determine answer and source based on delivery method
     switch (deliveryMethod) {
       case DELIVERY_METHOD.MULTIPLE_CHOICE:
-        // For MCQ, determine direction: learning->user or user->learning
-        // Determine direction dynamically based on question context (question ID)
-        const isLearningToUser = this.determineTranslationDirection(questionId);
-        const correctAnswer = isLearningToUser
-          ? teaching.userLanguageString
-          : teaching.learningLanguageString;
-        const sourceText = isLearningToUser
-          ? teaching.learningLanguageString
-          : teaching.userLanguageString;
+        // First, try to read options from QuestionMultipleChoice table
+        console.log(`[ContentLookup] MULTIPLE_CHOICE question ${questionId}:`, {
+          hasMultipleChoice: !!question.multipleChoice,
+          multipleChoiceData: question.multipleChoice ? {
+            hasOptions: !!question.multipleChoice.options,
+            optionsLength: question.multipleChoice.options?.length,
+            options: question.multipleChoice.options,
+            correctIndices: question.multipleChoice.correctIndices,
+          } : null,
+        });
+        
+        if (question.multipleChoice && question.multipleChoice.options && question.multipleChoice.options.length > 0) {
+          // Use options from database
+          const dbOptions = question.multipleChoice.options;
+          const correctIndices = question.multipleChoice.correctIndices || [0];
+          
+          // Determine source text for translation MCQ
+          // For MCQ, determine direction: learning->user or user->learning
+          const isLearningToUser = this.determineTranslationDirection(questionId);
+          const sourceText = isLearningToUser
+            ? teaching.learningLanguageString
+            : teaching.userLanguageString;
+          
+          // Validate that options are in the opposite language of sourceText
+          // If they're in the same language, regenerate them dynamically
+          if (this.areOptionsInSameLanguage(sourceText || '', dbOptions)) {
+            console.warn(`MULTIPLE_CHOICE question ${questionId} has options in same language as sourceText. Regenerating options dynamically.`, {
+              sourceText,
+              dbOptions,
+            });
+            // Fall through to dynamic generation
+          } else {
+            // Options are in correct language, use them
+            // Map options to frontend format with IDs
+            result.options = dbOptions.map((label, idx) => ({
+              id: `opt${idx + 1}`,
+              label,
+            }));
+            
+            // Find the correct option ID based on correctIndices
+            // correctIndices is an array, but typically there's one correct answer
+            const correctIndex = correctIndices[0] ?? 0;
+            if (correctIndex >= 0 && correctIndex < dbOptions.length) {
+              result.correctOptionId = `opt${correctIndex + 1}`;
+            } else {
+              console.warn(`MULTIPLE_CHOICE question ${questionId} has invalid correctIndex ${correctIndex}. Using first option.`);
+              result.correctOptionId = 'opt1';
+            }
+            
+            result.sourceText = sourceText;
+            result.prompt = sourceText ? `How do you say '${sourceText}'?` : undefined;
+            break; // Exit switch, we're done
+          }
+        }
+        
+        // Generate options dynamically (either no DB options, or DB options were in wrong language)
+        // Fallback: Generate options dynamically (for backwards compatibility)
+        if (!result.options) {
+          const isLearningToUser = this.determineTranslationDirection(questionId);
+          const correctAnswer = isLearningToUser
+            ? teaching.userLanguageString
+            : teaching.learningLanguageString;
+          const sourceText = isLearningToUser
+            ? teaching.learningLanguageString
+            : teaching.userLanguageString;
 
-        // Generate options dynamically
-        try {
-          const generatedOptions = await this.optionsGenerator.generateOptions(
+          // Validate that we have required data
+          if (!correctAnswer) {
+            console.error(`MULTIPLE_CHOICE question ${questionId} missing correct answer. Teaching:`, {
+              userLanguageString: teaching.userLanguageString,
+              learningLanguageString: teaching.learningLanguageString,
+              isLearningToUser,
+            });
+            // Return null to indicate failure
+            return null;
+          }
+
+          // Generate options dynamically
+          try {
+            const generatedOptions = await this.optionsGenerator.generateOptions(
             correctAnswer,
             lessonId,
             isLearningToUser,
@@ -202,8 +344,34 @@ export class ContentLookupService {
             ];
             result.correctOptionId = 'opt1';
           }
-          result.sourceText = sourceText;
-          result.prompt = `How do you say '${sourceText}'?`;
+          result.sourceText = sourceText || undefined;
+          result.prompt = sourceText ? `How do you say '${sourceText}'?` : undefined;
+        }
+        }
+        
+        // Final validation: ensure we always have options and correctOptionId
+        if (!result.options || result.options.length === 0 || !result.correctOptionId) {
+          console.error(`MULTIPLE_CHOICE question ${questionId} failed to generate valid options. Result:`, {
+            hasOptions: !!result.options,
+            optionsLength: result.options?.length,
+            hasCorrectOptionId: !!result.correctOptionId,
+          });
+          // Last resort: ensure we have at least minimal options
+          if (!result.options || result.options.length === 0) {
+            const isLearningToUser = this.determineTranslationDirection(questionId);
+            const correctAnswer = isLearningToUser
+              ? teaching.userLanguageString
+              : teaching.learningLanguageString;
+            result.options = [
+              { id: 'opt1', label: correctAnswer || 'Option 1' },
+              { id: 'opt2', label: isLearningToUser ? 'Yes' : 'Sì' },
+              { id: 'opt3', label: isLearningToUser ? 'No' : 'No' },
+              { id: 'opt4', label: isLearningToUser ? 'Hello' : 'Ciao' },
+            ];
+          }
+          if (!result.correctOptionId) {
+            result.correctOptionId = 'opt1';
+          }
         }
         break;
 

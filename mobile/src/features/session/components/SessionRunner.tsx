@@ -10,8 +10,40 @@ import { PronunciationResult } from '@/types/session';
 import * as SpeechRecognition from '@/services/speech-recognition';
 import { CardRenderer } from './CardRenderer';
 import { LessonProgressHeader } from './LessonProgressHeader';
-import { playSuccessSound, playErrorSound } from '@/services/sounds';
 import { routeBuilders } from '@/services/navigation/routes';
+
+// Lazy load haptics to avoid crashing if module isn't installed
+let HapticsModule: typeof import('expo-haptics') | null = null;
+
+async function getHapticsModule() {
+  if (!HapticsModule) {
+    try {
+      HapticsModule = await import('expo-haptics');
+    } catch (error) {
+      console.debug('expo-haptics not available, haptic feedback disabled:', error);
+      // Return null - haptics will be skipped gracefully
+    }
+  }
+  return HapticsModule;
+}
+
+/**
+ * Trigger haptic feedback if available
+ */
+async function triggerHaptic(style: 'light' | 'medium') {
+  try {
+    const Haptics = await getHapticsModule();
+    if (!Haptics) return;
+    
+    const feedbackStyle = style === 'light' 
+      ? Haptics.ImpactFeedbackStyle.Light 
+      : Haptics.ImpactFeedbackStyle.Medium;
+    await Haptics.impactAsync(feedbackStyle);
+  } catch (error) {
+    // Silently fail - haptics are non-critical
+    console.debug('Haptic feedback failed:', error);
+  }
+}
 
 type Props = {
   plan: SessionPlan;
@@ -111,27 +143,22 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
         // Check if the selected option is correct before validation
         const isCorrectOption = optionId === currentCard.correctOptionId;
         
-        // Play sound immediately based on whether the option is correct
+        // Haptic feedback immediately based on whether the option is correct
         // This provides instant feedback when user selects an option
         if (isCorrectOption) {
-          playSuccessSound().catch(() => {
-            // Silently fail - sound is non-critical
-          });
+          triggerHaptic('light');
         } else {
-          playErrorSound().catch(() => {
-            // Silently fail - sound is non-critical
-          });
+          triggerHaptic('medium');
         }
         
         // Pass optionId directly to avoid state timing issues
-        // playSounds is false here since we already played the sound above
         await handleCheckAnswer(optionId, undefined, false);
       }
       // For regular MCQ, wait for "Check Answer" button
     }
   };
 
-  const handleCheckAnswer = async (optionIdOverride?: string, audioUri?: string, playSounds: boolean = true) => {
+  const handleCheckAnswer = async (optionIdOverride?: string, audioUri?: string) => {
     // Only validate practice cards (not teach cards)
     if (currentCard.kind === CardKind.Teach) {
       return;
@@ -176,13 +203,11 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
         setIsCorrect(pronunciationResponse.isCorrect);
         setShowResult(true);
 
-        // Play appropriate sound (only if sounds are enabled)
-        if (playSounds) {
-          if (pronunciationResponse.isCorrect) {
-            playSuccessSound().catch(() => {});
-          } else {
-            playErrorSound().catch(() => {});
-          }
+        // Haptic feedback based on correctness
+        if (pronunciationResponse.isCorrect) {
+          triggerHaptic('light');
+        } else {
+          triggerHaptic('medium');
         }
 
         // Record attempt
@@ -249,17 +274,11 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
       setIsCorrect(validationResult.isCorrect);
       setShowResult(true);
       
-      // Play appropriate sound based on correctness (only if sounds are enabled)
-      if (playSounds) {
-        if (validationResult.isCorrect) {
-          playSuccessSound().catch(() => {
-            // Silently fail - sound is non-critical
-          });
-        } else {
-          playErrorSound().catch(() => {
-            // Silently fail - sound is non-critical
-          });
-        }
+      // Haptic feedback based on correctness
+      if (validationResult.isCorrect) {
+        triggerHaptic('light');
+      } else {
+        triggerHaptic('medium');
       }
 
       // Calculate time to complete
@@ -306,12 +325,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
       // Fallback: mark as incorrect if validation fails
       setIsCorrect(false);
       setShowResult(true);
-      // Play error sound for failed validation (only if sounds are enabled)
-      if (playSounds) {
-        playErrorSound().catch(() => {
-          // Silently fail - sound is non-critical
-        });
-      }
+      triggerHaptic('medium');
     }
   };
 
@@ -329,15 +343,11 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
           setIsCorrect(validationResult.isCorrect);
           setShowResult(true);
           
-          // Play sound immediately based on correctness
+          // Haptic feedback immediately based on correctness
           if (validationResult.isCorrect) {
-            playSuccessSound().catch(() => {
-              // Silently fail - sound is non-critical
-            });
+            triggerHaptic('light');
           } else {
-            playErrorSound().catch(() => {
-              // Silently fail - sound is non-critical
-            });
+            triggerHaptic('medium');
           }
 
           // Calculate time to complete
@@ -376,10 +386,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
           console.error('Error validating FillBlank answer:', error);
           setIsCorrect(false);
           setShowResult(true);
-          // Play error sound for failed validation
-          playErrorSound().catch(() => {
-            // Silently fail - sound is non-critical
-          });
+          triggerHaptic('medium');
         }
       }
     }
@@ -391,10 +398,8 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
     // This keeps UI responsive while user types
   };
 
-  // Wrapper for handleCheckAnswer - sounds are enabled for all card types
   const handleCheckAnswerWrapper = async (audioUri?: string) => {
-    // Play sounds for all question types including translation cards
-    await handleCheckAnswer(undefined, audioUri, true);
+    await handleCheckAnswer(undefined, audioUri);
   };
 
   const handleNext = async () => {

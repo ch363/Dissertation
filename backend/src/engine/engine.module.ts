@@ -5,6 +5,7 @@ import { ContentDeliveryService } from './content-delivery/content-delivery.serv
 import { SessionPlanService } from './content-delivery/session-plan.service';
 import { SrsService } from './srs/srs.service';
 import { XpService } from './scoring/xp.service';
+import { MasteryService } from './mastery/mastery.service';
 
 /**
  * Engine Module
@@ -14,13 +15,14 @@ import { XpService } from './scoring/xp.service';
  * - Session Planning: Generates complete learning session plans with teach-then-test, interleaving, and adaptive modality
  * - SRS (Spaced Repetition): Manages scheduling and intervals using SM-2 algorithm
  * - Scoring: Tracks XP and achievements
+ * - Mastery: Tracks skill mastery using Bayesian Knowledge Tracing (BKT)
  * 
  * This is a SERVICE LAYER, not middleware. It's called by domain services
  * (LearnService, ProgressService) to handle adaptive learning logic.
  */
 @Module({
   imports: [PrismaModule, ContentModule],
-  providers: [ContentDeliveryService, SessionPlanService, SrsService, XpService],
-  exports: [ContentDeliveryService, SessionPlanService, SrsService, XpService],
+  providers: [ContentDeliveryService, SessionPlanService, SrsService, XpService, MasteryService],
+  exports: [ContentDeliveryService, SessionPlanService, SrsService, XpService, MasteryService],
 })
 export class EngineModule {}

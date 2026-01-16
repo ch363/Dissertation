@@ -7,24 +7,25 @@ import { CARD_BORDER, OUTER_CARD_RADIUS, softShadow } from './homeStyles';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
-type Props = {
-  streakDays: number;
-  minutesToday: number;
+type LessonData = {
   lessonTitle: string;
   lessonProgress: string;
   estTime: string;
-  displayName?: string | null;
   onContinue: () => void;
+};
+
+type Props = {
+  streakDays: number;
+  minutesToday: number;
+  displayName?: string | null;
+  lesson?: LessonData | null;
 };
 
 export function WelcomeContinueCard({
   streakDays,
   minutesToday,
-  lessonTitle,
-  lessonProgress,
-  estTime,
   displayName,
-  onContinue,
+  lesson,
 }: Props) {
   const { theme } = useAppTheme();
   const greeting = displayName ? `Welcome back, ${displayName}` : 'Welcome back';
@@ -64,29 +65,48 @@ export function WelcomeContinueCard({
         </View>
       </View>
 
-      <View style={styles.lessonCard}>
-        <View style={styles.lessonTopRow}>
-          <View style={styles.lessonTitleWrap}>
-            <View style={styles.lessonIcon}>
-              <Ionicons name="sparkles" size={18} color="#1B6ED4" />
+      {lesson ? (
+        <View style={styles.lessonCard}>
+          <View style={styles.lessonTopRow}>
+            <View style={styles.lessonTitleWrap}>
+              <View style={styles.lessonIcon}>
+                <Ionicons name="sparkles" size={18} color="#1B6ED4" />
+              </View>
+              <View style={styles.lessonTextContainer}>
+                <Text 
+                  style={[styles.lessonTitle, { color: '#0D1B2A' }]} 
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {lesson.lessonTitle}
+                </Text>
+                <Text style={[styles.lessonSub, { color: '#0D1B2A' }]}>
+                  {lesson.lessonProgress}
+                </Text>
+              </View>
             </View>
-            <View>
-              <Text style={[styles.lessonTitle, { color: '#0D1B2A' }]}>{lessonTitle}</Text>
-              <Text style={[styles.lessonSub, { color: '#0D1B2A' }]}>{lessonProgress}</Text>
-            </View>
+            <Text style={[styles.timeText, { color: '#0D1B2A' }]}>{lesson.estTime}</Text>
           </View>
-          <Text style={[styles.timeText, { color: '#0D1B2A' }]}>{estTime}</Text>
-        </View>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Continue lesson"
-          onPress={onContinue}
-          style={styles.ctaButton}
-        >
-          <Text style={styles.ctaText}>Continue lesson</Text>
-        </Pressable>
-      </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Continue lesson"
+            onPress={lesson.onContinue}
+            style={styles.ctaButton}
+          >
+            <Text style={styles.ctaText}>Continue lesson</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <View style={styles.emptyStateCard}>
+          <View style={styles.emptyStateIcon}>
+            <Ionicons name="checkmark-circle" size={24} color="#5BA4F5" />
+          </View>
+          <Text style={[styles.emptyStateText, { color: '#0D1B2A' }]}>
+            Great job! No lessons to continue
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -167,6 +187,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: baseTheme.spacing.sm,
     flex: 1,
+    minWidth: 0, // Allow flex shrinking
+  },
+  lessonTextContainer: {
+    flex: 1,
+    minWidth: 0, // Allow flex shrinking for text truncation
   },
   lessonIcon: {
     width: 40,
@@ -175,19 +200,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#C8DCFF',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0, // Prevent icon from shrinking
   },
   lessonTitle: {
     fontFamily: baseTheme.typography.semiBold,
     fontSize: 20,
+    lineHeight: 24,
   },
   lessonSub: {
     fontFamily: baseTheme.typography.regular,
     fontSize: 15,
-    marginTop: 2,
+    marginTop: 4,
+    lineHeight: 20,
   },
   timeText: {
     fontFamily: baseTheme.typography.semiBold,
     fontSize: 15,
+    marginLeft: baseTheme.spacing.sm,
+    flexShrink: 0, // Prevent time from shrinking
   },
   ctaButton: {
     backgroundColor: '#5BA4F5',
@@ -206,5 +236,26 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontFamily: baseTheme.typography.semiBold,
     fontSize: 17,
+  },
+  emptyStateCard: {
+    borderRadius: 18,
+    padding: baseTheme.spacing.md,
+    backgroundColor: '#DCE9FF',
+    borderWidth: 1,
+    borderColor: '#C5D8FF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: baseTheme.spacing.sm,
+    minHeight: 64,
+  },
+  emptyStateIcon: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyStateText: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 16,
+    textAlign: 'center',
   },
 });

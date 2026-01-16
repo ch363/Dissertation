@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, Animated, ActivityIndicator } from 'react-native';
+import { Audio } from 'expo-av';
 
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { theme } from '@/services/theme/tokens';
@@ -35,6 +36,7 @@ export function ListeningCard({
   const [recordedAudioUri, setRecordedAudioUri] = useState<string | null>(null);
   const mode = card.mode || 'type'; // 'type' or 'speak'
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
+  const recordingRef = useRef<Audio.Recording | null>(null);
 
   // Animation for recording button
   useEffect(() => {
@@ -105,40 +107,174 @@ export function ListeningCard({
     }
   };
 
+  // Cleanup recording on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingRef.current) {
+        recordingRef.current.stopAndUnloadAsync().catch(console.error);
+        recordingRef.current = null;
+      }
+    };
+  }, []);
+
+  // Reset recording state when card changes
+  useEffect(() => {
+    setHasRecorded(false);
+    setRecordedAudioUri(null);
+    setRecordingError(null);
+    setIsRecording(false);
+    if (recordingRef.current) {
+      recordingRef.current.stopAndUnloadAsync().catch(console.error);
+      recordingRef.current = null;
+    }
+  }, [card.id]);
+
   const handleStartRecording = async () => {
     try {
       setRecordingError(null);
-      const uri = await SpeechRecognition.startRecording();
-      if (uri) {
-        setIsRecording(true);
-      } else {
-        setRecordingError('Failed to start recording. Please check microphone permissions.');
+      
+      // Request permissions
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
+        setRecordingError('Microphone permission is required to record audio.');
+        return;
       }
-    } catch (error) {
-      console.error('Error starting recording:', error);
-      setRecordingError('Failed to start recording. Please try again.');
+
+      // First, ensure any existing recording is cleaned up
+      if (recordingRef.current) {
+        try {
+          await recordingRef.current.stopAndUnloadAsync();
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+        recordingRef.current = null;
+      }
+
+      // Configure audio mode for recording BEFORE creating the recording
+      // This must be done first to activate the audio session
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldDuckAndroid: true,
+      });
+
+      // Small delay to ensure audio session is fully activated
+      // This is critical to avoid the "background" error
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Create a new recording optimized for Google Cloud Speech API
+      // Use WAV format (LINEAR16) with 16kHz sample rate for best compatibility
+      const { recording } = await Audio.Recording.createAsync(
+        {
+          android: {
+            extension: '.wav',
+            outputFormat: Audio.AndroidOutputFormat.DEFAULT, // WAV format
+            audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
+            sampleRate: 16000, // Google Cloud Speech API recommended sample rate
+            numberOfChannels: 1, // Mono for speech recognition
+            bitRate: 128000,
+          },
+          ios: {
+            extension: '.wav',
+            outputFormat: Audio.IOSOutputFormat.LINEARPCM, // WAV/PCM format
+            audioQuality: Audio.IOSAudioQuality.MIN, // Lower quality is fine for speech
+            sampleRate: 16000, // Google Cloud Speech API recommended sample rate
+            numberOfChannels: 1, // Mono for speech recognition
+            bitRate: 128000,
+            linearPCMBitDepth: 16,
+            linearPCMIsBigEndian: false,
+            linearPCMIsFloat: false,
+          },
+          web: {
+            mimeType: 'audio/wav',
+            bitsPerSecond: 128000,
+          },
+        },
+        undefined, // onRecordingStatusUpdate callback (optional)
+        1000 // progressUpdateIntervalMillis
+      );
+
+      recordingRef.current = recording;
+      setIsRecording(true);
+      setHasRecorded(false);
+      setRecordedAudioUri(null);
+    } catch (error: any) {
+      console.error('Failed to start recording:', error);
+      
+      // Provide user-friendly error message
+      let errorMessage = 'Failed to start recording. Please try again.';
+      if (error?.message?.includes('background')) {
+        errorMessage = 'Please ensure the app is in the foreground and try again.';
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      setRecordingError(errorMessage);
       setIsRecording(false);
+      
+      // Clean up on error
+      if (recordingRef.current) {
+        try {
+          await recordingRef.current.stopAndUnloadAsync();
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+        recordingRef.current = null;
+      }
+      
+      // Reset audio mode on error
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: false,
+        });
+      } catch (e) {
+        // Ignore audio mode reset errors
+      }
     }
   };
 
   const handleStopRecording = async () => {
     try {
-      const uri = await SpeechRecognition.stopRecording();
-      if (uri) {
-        setHasRecorded(true);
-        setRecordedAudioUri(uri);
+      if (!recordingRef.current) {
         setIsRecording(false);
-      } else {
-        setRecordingError('Failed to stop recording.');
-        setIsRecording(false);
+        return;
       }
-    } catch (error) {
-      console.error('Error stopping recording:', error);
-      setRecordingError('Failed to stop recording. Please try again.');
+
+      // Stop and unload the recording
+      await recordingRef.current.stopAndUnloadAsync();
+      
+      // Get the URI
+      const uri = recordingRef.current.getURI();
+      
+      if (!uri) {
+        setRecordingError('Failed to save recording.');
+        setIsRecording(false);
+        return;
+      }
+
+      // Reset audio mode
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: false,
+      });
+
+      setRecordedAudioUri(uri);
+      setHasRecorded(true);
       setIsRecording(false);
+      setRecordingError(null); // Clear any previous errors on success
+      recordingRef.current = null;
+    } catch (error: any) {
+      console.error('Failed to stop recording:', error);
+      setRecordingError(error?.message || 'Failed to stop recording.');
+      setIsRecording(false);
+      if (recordingRef.current) {
+        recordingRef.current.stopAndUnloadAsync().catch(console.error);
+        recordingRef.current = null;
+      }
     }
   };
-
 
   const handleRecordButtonPress = () => {
     if (isRecording) {
@@ -155,12 +291,6 @@ export function ListeningCard({
     }
   }, [showResult]);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      SpeechRecognition.cleanup().catch(console.error);
-    };
-  }, []);
 
   if (mode === 'speak') {
     // Speech Practice Mode (P22/P23)

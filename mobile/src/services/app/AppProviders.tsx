@@ -7,7 +7,7 @@ import { clearSessionPlanCache } from '@/services/api/session-plan-cache';
 import { AuthProvider } from '@/services/auth/AuthProvider';
 import { RouteGuard } from '@/services/navigation/RouteGuard';
 import { ThemeProvider } from '@/services/theme/ThemeProvider';
-import { preloadSpeech } from '@/services/tts';
+import { preloadSpeech, warmupTts } from '@/services/tts';
 
 type Props = {
   children: React.ReactNode;
@@ -20,18 +20,28 @@ export function AppProviders({ children }: Props) {
     console.log('Session plan cache cleared on app startup');
   }, []);
 
-  // Preload TTS module when app starts - do it immediately and wait for it
+  // Preload and warmup TTS module when app starts - do it immediately
+  // This ensures the audio system is ready before any user interaction
   useEffect(() => {
-    // Preload immediately on mount
-    const preload = async () => {
+    const initializeTts = async () => {
       try {
+        // First, preload the module
         await preloadSpeech();
-        console.log('TTS preloaded successfully at app startup');
+        console.log('TTS module preloaded at app startup');
+        
+        // Then warmup the audio system by doing a test speak
+        // This initializes the native audio device and eliminates first-click delay
+        await new Promise(resolve => setTimeout(resolve, 200)); // Small delay after preload
+        await warmupTts();
+        console.log('TTS warmed up successfully at app startup - ready for first click');
       } catch (error) {
-        console.warn('Failed to preload TTS:', error);
+        console.warn('Failed to initialize TTS at app startup:', error);
+        // Continue anyway - TTS will initialize on first use
       }
     };
-    preload();
+    
+    // Start initialization immediately, don't wait
+    initializeTts();
   }, []);
 
   return (
