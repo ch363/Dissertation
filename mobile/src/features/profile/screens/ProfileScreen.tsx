@@ -257,12 +257,16 @@ export default function Profile() {
         {/* Dashboard Stats */}
         {dashboard && (
           <View style={styles.statsRow}>
-            <StatCard
-              label="Due Reviews"
-              value={dashboard.dueReviewCount}
-              icon="time-outline"
-              color={dashboard.dueReviewCount > 0 ? theme.colors.error : theme.colors.mutedText}
-            />
+            <Link href="/profile/reviews" asChild>
+              <Pressable accessibilityRole="button">
+                <StatCard
+                  label="Due Reviews"
+                  value={dashboard.dueReviewCount}
+                  icon="time-outline"
+                  color={dashboard.dueReviewCount > 0 ? theme.colors.error : theme.colors.mutedText}
+                />
+              </Pressable>
+            </Link>
             <View style={styles.statSpacer} />
             <StatCard
               label="Active Lessons"
@@ -315,6 +319,11 @@ export default function Profile() {
         <View>
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Skill Mastery</Text>
+            <Link href="/profile/skills" asChild>
+              <Pressable accessibilityRole="button" hitSlop={8}>
+                <Text style={[styles.viewAllText, { color: theme.colors.primary }]}>View</Text>
+              </Pressable>
+            </Link>
           </View>
           <Card>
             <MasteryCard mastery={mastery || []} />
@@ -332,6 +341,26 @@ export default function Profile() {
             Account
           </Text>
           <SurfaceCard style={styles.accountCard}>
+            <Link href="/profile/skills" asChild>
+              <Pressable accessibilityRole="button" style={styles.accountItem}>
+                <View style={styles.accountItemLeft}>
+                  <Ionicons name="school-outline" size={20} color={theme.colors.primary} />
+                  <Text style={[styles.accountLabel, { color: theme.colors.text }]}>Skills</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
+              </Pressable>
+            </Link>
+            <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+            <Link href="/profile/reviews" asChild>
+              <Pressable accessibilityRole="button" style={styles.accountItem}>
+                <View style={styles.accountItemLeft}>
+                  <Ionicons name="time-outline" size={20} color={theme.colors.primary} />
+                  <Text style={[styles.accountLabel, { color: theme.colors.text }]}>Reviews</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
+              </Pressable>
+            </Link>
+            <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
             <Pressable accessibilityRole="button" style={styles.accountItem} onPress={handleEditPress}>
               <View style={styles.accountItemLeft}>
                 <Ionicons name="person-outline" size={20} color={theme.colors.primary} />

@@ -49,6 +49,7 @@ coverage/
 
 # Caches
 .npm/
+.npm-cache/
 .eslintcache
 .yarn-integrity
 

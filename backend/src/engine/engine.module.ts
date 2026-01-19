@@ -14,7 +14,7 @@ import { MasteryService } from './mastery/mastery.service';
  * This module provides the "brain" of the adaptive learning system:
  * - Content Delivery: Selects what content to show next (reviews vs new)
  * - Session Planning: Generates complete learning session plans with teach-then-test, interleaving, and adaptive modality
- * - SRS (Spaced Repetition): Manages scheduling and intervals using SM-2 algorithm
+ * - SRS (Spaced Repetition): Manages scheduling and intervals using FSRS algorithm
  * - Scoring: Tracks XP and achievements
  * - Mastery: Tracks skill mastery using Bayesian Knowledge Tracing (BKT)
  * 

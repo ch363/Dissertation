@@ -20,6 +20,7 @@ interface BackendSessionStep {
   item: BackendStepItem;
   estimatedTimeSec?: number;
   deliveryMethod?: string;
+  rationale?: string;
 }
 
 type BackendStepItem = BackendTeachItem | BackendPracticeItem | BackendRecapItem;
@@ -81,6 +82,7 @@ export function transformSessionPlan(
         id: `teach-${item.teachingId}`,
         kind: CardKind.Teach,
         prompt: 'New phrase',
+        rationale: step.rationale,
         content: {
           phrase: item.phrase,
           translation: item.translation,
@@ -114,6 +116,7 @@ export function transformSessionPlan(
             id: `question-${item.questionId}`,
             kind: CardKind.MultipleChoice,
             prompt: item.prompt || 'Select the correct answer',
+            rationale: step.rationale,
             options: item.options,
             correctOptionId: item.correctOptionId,
             explanation: item.explanation,
@@ -134,6 +137,7 @@ export function transformSessionPlan(
             id: `question-${item.questionId}`,
             kind: CardKind.MultipleChoice,
             prompt: item.prompt || 'Select the correct answer',
+            rationale: step.rationale,
             options: [
               { id: 'opt1', label: 'Option 1' },
               { id: 'opt2', label: 'Option 2' },
@@ -150,6 +154,7 @@ export function transformSessionPlan(
             id: `question-${item.questionId}`,
             kind: CardKind.FillBlank,
             prompt: item.prompt || 'Fill in the blank',
+            rationale: step.rationale,
             text: item.text,
             answer: item.answer,
             hint: item.hint,
@@ -179,6 +184,7 @@ export function transformSessionPlan(
             id: `question-${item.questionId}`,
             kind: cardKind,
             prompt: item.prompt || 'Translate',
+            rationale: step.rationale,
             source: item.source,
             targetLanguage: isItalianToEnglish ? 'en' : 'it',
             expected: item.answer,
@@ -202,6 +208,7 @@ export function transformSessionPlan(
             id: `question-${item.questionId}`,
             kind: CardKind.Listening,
             prompt: item.prompt || 'Listen and type what you hear',
+            rationale: step.rationale,
             audioUrl: item.audioUrl, // Optional - ListeningCard will use TTS if missing
             expected: item.answer,
             translation: item.translation, // Translation for "Speak This Phrase" mode
@@ -220,6 +227,7 @@ export function transformSessionPlan(
             id: `question-${item.questionId}`,
             kind: CardKind.TranslateToEn,
             prompt: item.prompt || 'What does this mean?',
+            rationale: step.rationale,
             source: item.source,
             targetLanguage: 'en',
             expected: item.answer,

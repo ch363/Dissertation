@@ -1,13 +1,45 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState, useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View, Animated, ActivityIndicator } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View, Animated, ActivityIndicator, Platform } from 'react-native';
 import { Audio } from 'expo-av';
+import Constants from 'expo-constants';
 
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { theme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
 import { ListeningCard as ListeningCardType, PronunciationResult } from '@/types/session';
 import * as SpeechRecognition from '@/services/speech-recognition';
+
+// Lazy load FileSystem to avoid native module errors
+// This is completely optional - if FileSystem isn't available, we just skip file size checking
+async function getFileSize(uri: string): Promise<number | null> {
+  // Completely optional feature - if FileSystem native module isn't linked,
+  // we just return null and don't show file size. This shouldn't break the app.
+  try {
+    // Use dynamic import with explicit error handling
+    let FileSystemModule: typeof import('expo-file-system') | null = null;
+    
+    try {
+      FileSystemModule = await import('expo-file-system');
+    } catch (importError) {
+      // Native module not available - this is fine, file size is optional
+      return null;
+    }
+    
+    if (!FileSystemModule || typeof FileSystemModule.getInfoAsync !== 'function') {
+      return null;
+    }
+    
+    const fileInfo = await FileSystemModule.getInfoAsync(uri);
+    if (fileInfo.exists && 'size' in fileInfo && typeof fileInfo.size === 'number') {
+      return fileInfo.size;
+    }
+    return null;
+  } catch (error) {
+    // Silently fail - file size checking is optional
+    return null;
+  }
+}
 
 type Props = {
   card: ListeningCardType;
@@ -34,9 +66,18 @@ export function ListeningCard({
   const [isProcessing, setIsProcessing] = useState(false);
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const [recordedAudioUri, setRecordedAudioUri] = useState<string | null>(null);
+  const [isPlayingRecording, setIsPlayingRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState<number | null>(null);
+  const [recordingFileSize, setRecordingFileSize] = useState<number | null>(null);
+  const playbackSoundRef = useRef<Audio.Sound | null>(null);
   const mode = card.mode || 'type'; // 'type' or 'speak'
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
   const recordingRef = useRef<Audio.Recording | null>(null);
+  
+  // Check if running on iOS Simulator
+  const isIOSSimulator = Platform.OS === 'ios' && 
+    (Constants?.deviceName?.includes('Simulator') || 
+     Constants?.executionEnvironment === 'storeClient');
 
   // Animation for recording button
   useEffect(() => {
@@ -107,12 +148,16 @@ export function ListeningCard({
     }
   };
 
-  // Cleanup recording on unmount
+  // Cleanup recording and playback on unmount
   useEffect(() => {
     return () => {
       if (recordingRef.current) {
         recordingRef.current.stopAndUnloadAsync().catch(console.error);
         recordingRef.current = null;
+      }
+      if (playbackSoundRef.current) {
+        playbackSoundRef.current.unloadAsync().catch(console.error);
+        playbackSoundRef.current = null;
       }
     };
   }, []);
@@ -123,9 +168,15 @@ export function ListeningCard({
     setRecordedAudioUri(null);
     setRecordingError(null);
     setIsRecording(false);
+    setRecordingDuration(null);
+    setIsPlayingRecording(false);
     if (recordingRef.current) {
       recordingRef.current.stopAndUnloadAsync().catch(console.error);
       recordingRef.current = null;
+    }
+    if (playbackSoundRef.current) {
+      playbackSoundRef.current.unloadAsync().catch(console.error);
+      playbackSoundRef.current = null;
     }
   }, [card.id]);
 
@@ -138,6 +189,13 @@ export function ListeningCard({
       if (status !== 'granted') {
         setRecordingError('Microphone permission is required to record audio.');
         return;
+      }
+
+      // Warn if on iOS Simulator
+      if (isIOSSimulator) {
+        console.warn('⚠️ Running on iOS Simulator - microphone input may not work properly.');
+        console.warn('💡 To enable: System Settings → Privacy → Microphone → Allow Xcode/Simulator');
+        console.warn('💡 Simulator menu: I/O → Audio Input → Select "Built-in Microphone"');
       }
 
       // First, ensure any existing recording is cleaned up
@@ -199,6 +257,7 @@ export function ListeningCard({
       setIsRecording(true);
       setHasRecorded(false);
       setRecordedAudioUri(null);
+      console.log('✅ Recording started successfully');
     } catch (error: any) {
       console.error('Failed to start recording:', error);
       
@@ -243,6 +302,7 @@ export function ListeningCard({
       }
 
       // Stop and unload the recording
+      const status = await recordingRef.current.getStatusAsync();
       await recordingRef.current.stopAndUnloadAsync();
       
       // Get the URI
@@ -254,11 +314,33 @@ export function ListeningCard({
         return;
       }
 
+      // Get recording duration if available
+      const duration = status.durationMillis ? status.durationMillis / 1000 : null;
+      setRecordingDuration(duration);
+
+      // Try to get file size to verify recording actually captured data
+      // This is optional - if FileSystem module isn't available, we just skip it
+      const fileSize = await getFileSize(uri);
+
+      setRecordingFileSize(fileSize);
+
       // Reset audio mode
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: false,
       });
+
+      console.log('✅ Recording saved:', { 
+        uri, 
+        duration: duration ? `${duration.toFixed(1)}s` : 'unknown',
+        fileSize: fileSize ? `${(fileSize / 1024).toFixed(2)} KB` : 'unknown',
+        isIOSSimulator
+      });
+
+      // Warn if on iOS Simulator and file size is suspiciously small
+      if (isIOSSimulator && fileSize !== null && fileSize < 1000) {
+        console.warn('⚠️ iOS Simulator detected: Recording may not work properly. File size is very small:', fileSize, 'bytes');
+      }
 
       setRecordedAudioUri(uri);
       setHasRecorded(true);
@@ -281,6 +363,66 @@ export function ListeningCard({
       handleStopRecording();
     } else {
       handleStartRecording();
+    }
+  };
+
+  const handlePlayRecording = async () => {
+    if (!recordedAudioUri || isPlayingRecording) {
+      return;
+    }
+
+    try {
+      setIsPlayingRecording(true);
+      setRecordingError(null);
+      
+      // Unload any existing sound
+      if (playbackSoundRef.current) {
+        await playbackSoundRef.current.unloadAsync();
+        playbackSoundRef.current = null;
+      }
+
+      console.log('🔊 Attempting to play recording:', recordedAudioUri);
+
+      // Load and play the recording
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: recordedAudioUri },
+        { shouldPlay: true }
+      );
+      
+      playbackSoundRef.current = sound;
+
+      // Wait for playback to finish
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (!status.isLoaded) {
+          // Handle error status
+          if ('error' in status) {
+            console.error('❌ Playback error:', status.error);
+            setIsPlayingRecording(false);
+            setRecordingError('Failed to play recording. The file may be empty or corrupted.');
+            sound.unloadAsync().catch(console.error);
+            playbackSoundRef.current = null;
+          }
+          return;
+        }
+        
+        // Handle success status
+        if (status.didJustFinish) {
+          console.log('✅ Playback finished');
+          setIsPlayingRecording(false);
+          sound.unloadAsync().catch(console.error);
+          playbackSoundRef.current = null;
+        }
+      });
+    } catch (error: any) {
+      console.error('❌ Failed to play recording:', error);
+      setIsPlayingRecording(false);
+      const errorMsg = error?.message || 'Failed to play back recording.';
+      setRecordingError(errorMsg);
+      
+      // If on iOS Simulator, provide helpful message
+      if (isIOSSimulator) {
+        setRecordingError('iOS Simulator doesn\'t support audio recording. Please test on a real device.');
+      }
     }
   };
 
@@ -336,25 +478,67 @@ export function ListeningCard({
               <Text style={styles.recordHint}>
                 {isRecording ? 'Recording...' : 'Tap to record your pronunciation'}
               </Text>
+              {isIOSSimulator && (
+                <View style={styles.simulatorWarning}>
+                  <Text style={styles.warningText}>
+                    ⚠️ iOS Simulator: Microphone may not work
+                  </Text>
+                  <Text style={styles.warningSubtext}>
+                    Try: System Settings → Privacy → Microphone → Allow Xcode
+                  </Text>
+                  <Text style={styles.warningSubtext}>
+                    Or: Simulator menu → I/O → Audio Input → Built-in Microphone
+                  </Text>
+                </View>
+              )}
               {recordingError && (
                 <Text style={styles.errorText}>{recordingError}</Text>
+              )}
+              {recordingDuration !== null && (
+                <Text style={styles.durationText}>
+                  Recorded: {recordingDuration.toFixed(1)}s
+                  {recordingFileSize !== null && ` • ${(recordingFileSize / 1024).toFixed(1)} KB`}
+                </Text>
+              )}
+              {recordingFileSize !== null && recordingFileSize < 1000 && (
+                <Text style={styles.warningText}>
+                  ⚠️ File size is very small. Recording may be empty.
+                </Text>
               )}
             </View>
 
             {hasRecorded && !isProcessing && (
-              <Pressable
-                style={styles.continueButton}
-                onPress={() => {
-                  if (recordedAudioUri && onCheckAnswer) {
-                    setIsProcessing(true);
-                    onCheckAnswer(recordedAudioUri);
-                  }
-                }}
-              >
-                <Text style={styles.continueButtonText}>
-                  Continue
-                </Text>
-              </Pressable>
+              <>
+                <View style={styles.playbackSection}>
+                  <Pressable
+                    style={styles.playbackButton}
+                    onPress={handlePlayRecording}
+                    disabled={isPlayingRecording}
+                  >
+                    <Ionicons
+                      name={isPlayingRecording ? 'pause' : 'play'}
+                      size={24}
+                      color="#fff"
+                    />
+                    <Text style={styles.playbackButtonText}>
+                      {isPlayingRecording ? 'Playing...' : 'Play Recording'}
+                    </Text>
+                  </Pressable>
+                </View>
+                <Pressable
+                  style={styles.continueButton}
+                  onPress={() => {
+                    if (recordedAudioUri && onCheckAnswer) {
+                      setIsProcessing(true);
+                      onCheckAnswer(recordedAudioUri);
+                    }
+                  }}
+                >
+                  <Text style={styles.continueButtonText}>
+                    Continue
+                  </Text>
+                </Pressable>
+              </>
             )}
             {!hasRecorded && (
               <Pressable
@@ -607,6 +791,28 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: theme.spacing.xs,
   },
+  simulatorWarning: {
+    backgroundColor: '#fff3cd',
+    borderRadius: 8,
+    padding: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
+    borderWidth: 1,
+    borderColor: '#ffc107',
+  },
+  warningText: {
+    fontFamily: theme.typography.semiBold,
+    fontSize: 11,
+    color: '#856404',
+    textAlign: 'center',
+    marginBottom: theme.spacing.xs,
+  },
+  warningSubtext: {
+    fontFamily: theme.typography.regular,
+    fontSize: 10,
+    color: '#856404',
+    textAlign: 'center',
+    marginTop: 2,
+  },
   continueButton: {
     backgroundColor: '#E0E0E0',
     padding: theme.spacing.md,
@@ -786,5 +992,30 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontFamily: theme.typography.semiBold,
     fontSize: 16,
+  },
+  durationText: {
+    fontFamily: theme.typography.regular,
+    fontSize: 12,
+    color: theme.colors.mutedText,
+    textAlign: 'center',
+    marginTop: theme.spacing.xs,
+  },
+  playbackSection: {
+    alignItems: 'center',
+    marginTop: theme.spacing.md,
+  },
+  playbackButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderRadius: 12,
+  },
+  playbackButtonText: {
+    color: '#fff',
+    fontFamily: theme.typography.semiBold,
+    fontSize: 14,
   },
 });

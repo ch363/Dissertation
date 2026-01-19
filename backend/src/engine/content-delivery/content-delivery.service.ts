@@ -45,6 +45,7 @@ export class ContentDeliveryService {
       userId,
       context.mode,
       context.lessonId,
+      context.moduleId,
       context.timeBudgetSec,
     );
 
@@ -202,6 +203,11 @@ export class ContentDeliveryService {
     const allQuestions = await this.prisma.question.findMany({
       where: whereClause,
       include: {
+        variants: {
+          select: {
+            deliveryMethod: true,
+          },
+        },
         teaching: {
           include: {
             lesson: true,
@@ -219,6 +225,8 @@ export class ContentDeliveryService {
 
     for (const question of allQuestions) {
       if (!attemptedSet.has(question.id)) {
+        const availableMethods: DELIVERY_METHOD[] =
+          question.variants?.map((v) => v.deliveryMethod) ?? [];
         const candidate: DeliveryCandidate = {
           kind: 'question',
           id: question.id,
@@ -228,7 +236,7 @@ export class ContentDeliveryService {
           dueScore: 0,
           errorScore: 0,
           timeSinceLastSeen: Infinity,
-          deliveryMethods: [question.type],
+          deliveryMethods: availableMethods,
         };
         candidates.push(candidate);
       }
@@ -248,6 +256,11 @@ export class ContentDeliveryService {
     const question = await this.prisma.question.findUnique({
       where: { id: questionId },
       include: {
+        variants: {
+          select: {
+            deliveryMethod: true,
+          },
+        },
         teaching: {
           include: {
             lesson: true,
@@ -274,6 +287,9 @@ export class ContentDeliveryService {
     const lastSeen = recentAttempts[0]?.createdAt || dueAt;
     const timeSinceLastSeen = Date.now() - lastSeen.getTime();
 
+    const availableMethods: DELIVERY_METHOD[] =
+      question.variants?.map((v) => v.deliveryMethod) ?? [];
+
     return {
       kind: 'question',
       id: question.id,
@@ -283,7 +299,7 @@ export class ContentDeliveryService {
       dueScore: 0, // Will be set by caller
       errorScore,
       timeSinceLastSeen,
-      deliveryMethods: [question.type],
+      deliveryMethods: availableMethods,
     };
   }
 

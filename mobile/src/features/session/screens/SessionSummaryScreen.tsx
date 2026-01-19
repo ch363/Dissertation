@@ -11,9 +11,19 @@ import { getCachedSessionPlan } from '@/services/api/session-plan-cache';
 import { getLesson, getLessonTeachings, type Teaching, type Lesson } from '@/services/api/modules';
 
 export default function SessionSummaryScreen() {
-  const params = useLocalSearchParams<{ sessionId?: string; kind?: string; lessonId?: string }>();
+  const params = useLocalSearchParams<{
+    sessionId?: string;
+    kind?: string;
+    lessonId?: string;
+    planMode?: string;
+    timeBudgetSec?: string;
+  }>();
   const kind = params.kind === 'review' ? 'review' : 'learn';
   const lessonId = params.lessonId;
+  const planMode = params.planMode === 'learn' || params.planMode === 'review' || params.planMode === 'mixed'
+    ? (params.planMode as 'learn' | 'review' | 'mixed')
+    : 'learn';
+  const timeBudgetSec = params.timeBudgetSec ? Number(params.timeBudgetSec) : null;
 
   const [teachings, setTeachings] = useState<Teaching[]>([]);
   const [loadingTeachings, setLoadingTeachings] = useState(false);
@@ -22,10 +32,14 @@ export default function SessionSummaryScreen() {
   // Get the session plan from cache to extract teachings
   const sessionPlan = useMemo(() => {
     if (lessonId && kind === 'learn') {
-      return getCachedSessionPlan(lessonId);
+      return getCachedSessionPlan({
+        lessonId,
+        mode: planMode,
+        timeBudgetSec: Number.isFinite(timeBudgetSec as any) ? timeBudgetSec : null,
+      });
     }
     return null;
-  }, [lessonId, kind]);
+  }, [lessonId, kind, planMode, timeBudgetSec]);
 
   // Extract teachings from cached session plan first
   const cachedTeachings = useMemo(() => {

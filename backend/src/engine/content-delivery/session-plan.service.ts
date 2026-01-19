@@ -83,8 +83,17 @@ export class SessionPlanService {
     const prioritizedSkills = await this.masteryService.getLowMasterySkills(userId, 0.5);
 
     // 4. Gather candidates
-    const reviewCandidates = await this.getReviewCandidates(userId, context.lessonId);
-    const newCandidates = await this.getNewCandidates(userId, context.lessonId, prioritizedSkills);
+    const reviewCandidates = await this.getReviewCandidates(
+      userId,
+      context.lessonId,
+      context.moduleId,
+    );
+    const newCandidates = await this.getNewCandidates(
+      userId,
+      context.lessonId,
+      context.moduleId,
+      prioritizedSkills,
+    );
 
     // 4. Filter by mode
     let selectedCandidates: DeliveryCandidate[] = [];
@@ -135,6 +144,7 @@ export class SessionPlanService {
       newQuestions,
       seenTeachingIds,
       context.lessonId,
+      context.moduleId,
     );
 
     let finalCandidates: DeliveryCandidate[] = [];
@@ -225,6 +235,7 @@ export class SessionPlanService {
             type: 'teach',
             item: stepItem,
             estimatedTimeSec: estimatedTime,
+            rationale: this.buildStepRationale(candidate, prioritizedSkills),
           });
         }
       } else if (candidate.kind === 'question') {
@@ -262,6 +273,7 @@ export class SessionPlanService {
               item: stepItem,
               estimatedTimeSec: estimatedTime,
               deliveryMethod: selectedMethod,
+              rationale: this.buildStepRationale(candidate, prioritizedSkills),
             });
           }
         }
@@ -330,11 +342,7 @@ export class SessionPlanService {
         where: { userId },
         select: {
           timeToComplete: true,
-          question: {
-            select: {
-              type: true,
-            },
-          },
+          deliveryMethod: true,
         },
         take: 100, // Sample last 100 for performance
       });
@@ -359,7 +367,7 @@ export class SessionPlanService {
         allPracticeTimes.push(perf.timeToComplete / 1000); // Convert ms to seconds
 
         // Group by delivery method
-        const deliveryMethod = perf.question.type;
+        const deliveryMethod = perf.deliveryMethod;
         if (!methodTimes.has(deliveryMethod)) {
           methodTimes.set(deliveryMethod, []);
         }
@@ -395,6 +403,7 @@ export class SessionPlanService {
   private async getReviewCandidates(
     userId: string,
     lessonId?: string,
+    moduleId?: string,
   ): Promise<DeliveryCandidate[]> {
     const now = new Date();
     const candidates: DeliveryCandidate[] = [];
@@ -416,6 +425,20 @@ export class SessionPlanService {
       });
       const questionIds = lessonQuestions.map((q) => q.id);
       // If no questions in lesson, return empty array early to avoid Prisma query error
+      if (questionIds.length === 0) {
+        return [];
+      }
+      questionWhere.questionId = { in: questionIds };
+    } else if (moduleId) {
+      const moduleQuestions = await this.prisma.question.findMany({
+        where: {
+          teaching: {
+            lesson: { moduleId },
+          },
+        },
+        select: { id: true },
+      });
+      const questionIds = moduleQuestions.map((q) => q.id);
       if (questionIds.length === 0) {
         return [];
       }
@@ -455,6 +478,11 @@ export class SessionPlanService {
       const question = await this.prisma.question.findUnique({
         where: { id: perf.questionId },
         include: {
+          variants: {
+            select: {
+              deliveryMethod: true,
+            },
+          },
           skillTags: {
             select: {
               name: true,
@@ -474,6 +502,8 @@ export class SessionPlanService {
       });
 
       if (question) {
+        const availableMethods: DELIVERY_METHOD[] =
+          question.variants?.map((v) => v.deliveryMethod) ?? [];
         const recentAttempts = await this.prisma.userQuestionPerformance.findMany({
           where: {
             userId,
@@ -503,7 +533,7 @@ export class SessionPlanService {
 
         // Determine exercise type from delivery method and teaching content
         const exerciseType = this.determineExerciseType(
-          [question.type],
+          availableMethods,
           question.teaching,
         );
 
@@ -530,7 +560,7 @@ export class SessionPlanService {
           dueScore,
           errorScore,
           timeSinceLastSeen,
-          deliveryMethods: [question.type],
+          deliveryMethods: availableMethods,
           skillTags,
           exerciseType,
           difficulty,
@@ -553,6 +583,7 @@ export class SessionPlanService {
   private async getNewCandidates(
     userId: string,
     lessonId?: string,
+    moduleId?: string,
     prioritizedSkills: string[] = [],
   ): Promise<DeliveryCandidate[]> {
     const candidates: DeliveryCandidate[] = [];
@@ -560,11 +591,18 @@ export class SessionPlanService {
     const whereClause: any = {};
     if (lessonId) {
       whereClause.teaching = { lessonId };
+    } else if (moduleId) {
+      whereClause.teaching = { lesson: { moduleId } };
     }
 
     const allQuestions = await this.prisma.question.findMany({
       where: whereClause,
       include: {
+        variants: {
+          select: {
+            deliveryMethod: true,
+          },
+        },
         skillTags: {
           select: {
             name: true,
@@ -600,9 +638,12 @@ export class SessionPlanService {
         const teachingTags = this.extractSkillTags(question.teaching);
         const skillTags = Array.from(new Set([...questionTags, ...teachingTags]));
 
+        const availableMethods: DELIVERY_METHOD[] =
+          question.variants?.map((v) => v.deliveryMethod) ?? [];
+
         // Determine exercise type
         const exerciseType = this.determineExerciseType(
-          [question.type],
+          availableMethods,
           question.teaching,
         );
 
@@ -626,7 +667,7 @@ export class SessionPlanService {
           dueScore: 0,
           errorScore: 0,
           timeSinceLastSeen: Infinity,
-          deliveryMethods: [question.type],
+          deliveryMethods: availableMethods,
           skillTags,
           exerciseType,
           difficulty,
@@ -706,6 +747,7 @@ export class SessionPlanService {
     questionCandidates: DeliveryCandidate[],
     seenTeachingIds: Set<string>,
     lessonId?: string,
+    moduleId?: string,
   ): Promise<DeliveryCandidate[]> {
     const teachingIds = new Set(
       questionCandidates.map((c) => c.teachingId).filter((id): id is string => !!id),
@@ -721,6 +763,8 @@ export class SessionPlanService {
 
     if (lessonId) {
       whereClause.lessonId = lessonId;
+    } else if (moduleId) {
+      whereClause.lesson = { moduleId };
     }
 
     const teachings = await this.prisma.teaching.findMany({
@@ -1006,6 +1050,51 @@ export class SessionPlanService {
     });
 
     return map;
+  }
+
+  private pickPrioritizedSkill(
+    stepSkillTags: string[] | undefined,
+    prioritizedSkills: string[] = [],
+  ): string | undefined {
+    if (!stepSkillTags || stepSkillTags.length === 0 || prioritizedSkills.length === 0) {
+      return undefined;
+    }
+
+    const prioritizedSet = new Set(prioritizedSkills);
+    return stepSkillTags.find((t) => prioritizedSet.has(t));
+  }
+
+  private buildStepRationale(
+    candidate: DeliveryCandidate,
+    prioritizedSkills: string[] = [],
+  ): string {
+    // Reviews
+    if (candidate.dueScore > 0) {
+      return 'Due review';
+    }
+
+    // Targeting low mastery skills (if skill tags are present)
+    const prioritizedTag = this.pickPrioritizedSkill(candidate.skillTags, prioritizedSkills);
+    if (prioritizedTag) {
+      return `Targets low mastery skill: ${prioritizedTag}`;
+    }
+
+    // Consolidation after errors
+    if (candidate.errorScore >= 2) {
+      return 'Consolidation after recent errors';
+    }
+
+    // Scaffolding: easy win
+    if (typeof candidate.difficulty === 'number' && candidate.difficulty <= 0.2) {
+      return 'Scaffolding: quick win';
+    }
+
+    // New teaching content
+    if (candidate.kind === 'teaching') {
+      return 'Introducing new phrase';
+    }
+
+    return 'Next practice item';
   }
 
   /**

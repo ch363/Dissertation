@@ -3,32 +3,44 @@ import { SessionPlanService } from './session-plan.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SessionContext } from './session-types';
 import { DELIVERY_METHOD } from '@prisma/client';
+import { ContentLookupService } from '../../content/content-lookup.service';
+import { MasteryService } from '../mastery/mastery.service';
 
 describe('SessionPlanService', () => {
   let service: SessionPlanService;
-  let prisma: jest.Mocked<PrismaService>;
-
-  const mockPrismaService = {
-    userQuestionPerformance: {
-      findMany: jest.fn(),
-    },
-    question: {
-      findMany: jest.fn(),
-      findUnique: jest.fn(),
-    },
-    teaching: {
-      findMany: jest.fn(),
-      findUnique: jest.fn(),
-    },
-    userTeachingCompleted: {
-      findMany: jest.fn(),
-    },
-    userDeliveryMethodScore: {
-      findMany: jest.fn(),
-    },
-  };
+  let prisma: any;
+  let contentLookup: any;
+  let masteryService: any;
 
   beforeEach(async () => {
+    const mockPrismaService = {
+      userQuestionPerformance: {
+        findMany: jest.fn(),
+      },
+      question: {
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+      },
+      teaching: {
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+      },
+      userTeachingCompleted: {
+        findMany: jest.fn(),
+      },
+      userDeliveryMethodScore: {
+        findMany: jest.fn(),
+      },
+    };
+
+    const mockContentLookupService = {
+      getQuestionData: jest.fn(),
+    };
+
+    const mockMasteryService = {
+      getLowMasterySkills: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SessionPlanService,
@@ -36,11 +48,21 @@ describe('SessionPlanService', () => {
           provide: PrismaService,
           useValue: mockPrismaService,
         },
+        {
+          provide: ContentLookupService,
+          useValue: mockContentLookupService,
+        },
+        {
+          provide: MasteryService,
+          useValue: mockMasteryService,
+        },
       ],
     }).compile();
 
     service = module.get<SessionPlanService>(SessionPlanService);
     prisma = module.get(PrismaService);
+    contentLookup = module.get(ContentLookupService);
+    masteryService = module.get(MasteryService);
   });
 
   afterEach(() => {
@@ -56,40 +78,24 @@ describe('SessionPlanService', () => {
         lessonId: 'lesson-1',
       };
 
-      // Mock: No previous attempts (new content)
-      prisma.userQuestionPerformance.findMany.mockResolvedValue([]);
-
-      // Mock: Questions in lesson
-      prisma.question.findMany.mockResolvedValue([
-        {
-          id: 'question-1',
-          teachingId: 'teaching-1',
-          teaching: {
-            id: 'teaching-1',
-            lessonId: 'lesson-1',
-            userLanguageString: 'Hello',
-            learningLanguageString: 'Ciao',
-          },
-          questionDeliveryMethods: [
-            { deliveryMethod: DELIVERY_METHOD.MULTIPLE_CHOICE },
-          ],
-        },
-      ] as any);
-
-      // Mock: Teaching data
-      prisma.teaching.findMany.mockResolvedValue([
-        {
+      const question1 = {
+        id: 'question-1',
+        teachingId: 'teaching-1',
+        type: DELIVERY_METHOD.MULTIPLE_CHOICE,
+        skillTags: [{ name: 'greetings' }],
+        teaching: {
           id: 'teaching-1',
           lessonId: 'lesson-1',
           userLanguageString: 'Hello',
           learningLanguageString: 'Ciao',
-          emoji: null,
-          tip: null,
           knowledgeLevel: 'A1',
+          tip: null,
+          lesson: { id: 'lesson-1' },
+          skillTags: [{ name: 'greetings' }],
         },
-      ] as any);
+      };
 
-      prisma.teaching.findUnique.mockResolvedValue({
+      const teaching1 = {
         id: 'teaching-1',
         lessonId: 'lesson-1',
         userLanguageString: 'Hello',
@@ -97,25 +103,51 @@ describe('SessionPlanService', () => {
         emoji: null,
         tip: null,
         knowledgeLevel: 'A1',
-      } as any);
+        lesson: { id: 'lesson-1' },
+        skillTags: [{ name: 'greetings' }],
+      };
 
-      prisma.question.findUnique.mockResolvedValue({
-        id: 'question-1',
-        teaching: {
-          id: 'teaching-1',
-          userLanguageString: 'Hello',
-          learningLanguageString: 'Ciao',
-        },
-        questionDeliveryMethods: [
-          { deliveryMethod: DELIVERY_METHOD.MULTIPLE_CHOICE },
-        ],
-      } as any);
+      // Prioritize a skill that exists on the item so rationale is stable.
+      masteryService.getLowMasterySkills.mockResolvedValue(['greetings']);
 
-      // Mock: User hasn't seen teaching
       prisma.userTeachingCompleted.findMany.mockResolvedValue([]);
-
-      // Mock: User preferences
       prisma.userDeliveryMethodScore.findMany.mockResolvedValue([]);
+
+      // Return the same question list for both lesson filtering + new candidates.
+      prisma.question.findMany.mockResolvedValue([question1] as any);
+
+      prisma.question.findUnique.mockImplementation(async (args: any) => {
+        if (args?.where?.id === 'question-1') return question1 as any;
+        return null;
+      });
+
+      prisma.teaching.findMany.mockResolvedValue([teaching1] as any);
+      prisma.teaching.findUnique.mockImplementation(async (args: any) => {
+        if (args?.where?.id === 'teaching-1') return teaching1 as any;
+        return null;
+      });
+
+      contentLookup.getQuestionData.mockResolvedValue({
+        prompt: 'Select the correct answer',
+        sourceText: 'Hello',
+        options: [
+          { id: 'opt1', label: 'Ciao' },
+          { id: 'opt2', label: 'Arrivederci' },
+        ],
+        correctOptionId: 'opt1',
+      });
+
+      prisma.userQuestionPerformance.findMany.mockImplementation(async (args: any) => {
+        // getUserAverageTimes
+        if (args?.select?.timeToComplete !== undefined) return [];
+        // attempted questions (distinct)
+        if (args?.distinct?.includes('questionId')) return [];
+        // due reviews
+        if (args?.where?.nextReviewDue?.lte) return [];
+        // recent attempts for review candidates
+        if (args?.take === 5) return [];
+        return [];
+      });
 
       const plan = await service.createPlan(userId, context);
 
@@ -134,6 +166,20 @@ describe('SessionPlanService', () => {
       expect(practiceSteps.length).toBeGreaterThan(0);
       expect(recapSteps.length).toBe(1);
 
+      // Rationale should exist for teach + practice, and be omitted for recap.
+      for (const step of plan.steps) {
+        if (step.type === 'recap') {
+          expect(step.rationale).toBeUndefined();
+        } else {
+          expect(step.rationale).toEqual(expect.any(String));
+          expect(step.rationale?.length).toBeGreaterThan(0);
+        }
+      }
+
+      // With low mastery skills mocked, rationale should be stable.
+      expect(teachSteps[0].rationale).toContain('Targets low mastery skill: greetings');
+      expect(practiceSteps[0].rationale).toContain('Targets low mastery skill: greetings');
+
       // Metadata should be populated
       expect(plan.metadata.totalSteps).toBe(plan.steps.length);
       expect(plan.metadata.teachSteps).toBe(teachSteps.length);
@@ -150,42 +196,81 @@ describe('SessionPlanService', () => {
 
       const now = new Date();
 
-      // Mock: Due reviews
-      prisma.userQuestionPerformance.findMany
-        .mockResolvedValueOnce([
-          {
-            id: 'perf-1',
-            userId: 'user-1',
-            questionId: 'question-1',
-            nextReviewDue: new Date(now.getTime() - 1000),
-            createdAt: new Date(),
-            timeToComplete: 5000,
-          },
-        ] as any)
-        .mockResolvedValueOnce([]) // For getUserAverageTimes
-        .mockResolvedValueOnce([]); // For getSeenTeachingIds
-
-      prisma.question.findUnique.mockResolvedValue({
+      const question1 = {
         id: 'question-1',
+        teachingId: 'teaching-1',
+        type: DELIVERY_METHOD.MULTIPLE_CHOICE,
+        skillTags: [{ name: 'greetings' }],
         teaching: {
           id: 'teaching-1',
           lessonId: 'lesson-1',
           userLanguageString: 'Hello',
           learningLanguageString: 'Ciao',
+          knowledgeLevel: 'A1',
+          tip: null,
+          lesson: { id: 'lesson-1' },
+          skillTags: [{ name: 'greetings' }],
         },
-        questionDeliveryMethods: [
-          { deliveryMethod: DELIVERY_METHOD.FLASHCARD },
-        ],
-      } as any);
+      };
+
+      const duePerformances = [
+        {
+          id: 'perf-1',
+          userId: 'user-1',
+          questionId: 'question-1',
+          nextReviewDue: new Date(now.getTime() - 1000),
+          createdAt: new Date(),
+          timeToComplete: 5000,
+          score: 90,
+        },
+      ];
+
+      masteryService.getLowMasterySkills.mockResolvedValue(['greetings']);
+
+      prisma.question.findMany.mockResolvedValue([question1] as any);
+      prisma.question.findUnique.mockResolvedValue(question1 as any);
 
       prisma.userTeachingCompleted.findMany.mockResolvedValue([]);
       prisma.userDeliveryMethodScore.findMany.mockResolvedValue([]);
+
+      contentLookup.getQuestionData.mockResolvedValue({
+        prompt: 'Select the correct answer',
+        sourceText: 'Hello',
+        options: [
+          { id: 'opt1', label: 'Ciao' },
+          { id: 'opt2', label: 'Arrivederci' },
+        ],
+        correctOptionId: 'opt1',
+      });
+
+      prisma.userQuestionPerformance.findMany.mockImplementation(async (args: any) => {
+        // getUserAverageTimes
+        if (args?.select?.timeToComplete !== undefined) return [];
+        // attempted questions (distinct)
+        if (args?.distinct?.includes('questionId')) return [{ questionId: 'question-1' }];
+        // recent attempts for difficulty/mastery
+        if (args?.take === 5) return [];
+        // due reviews
+        if (args?.where?.nextReviewDue?.lte) return duePerformances as any;
+        return [];
+      });
 
       const plan = await service.createPlan(userId, context);
 
       expect(plan.kind).toBe('review');
       expect(plan.steps.length).toBeGreaterThan(0);
       expect(plan.metadata.dueReviewsIncluded).toBeGreaterThan(0);
+
+      const practiceSteps = plan.steps.filter((s) => s.type === 'practice');
+      const recapSteps = plan.steps.filter((s) => s.type === 'recap');
+      expect(practiceSteps.length).toBeGreaterThan(0);
+      expect(recapSteps.length).toBe(1);
+
+      // Review steps should explain they're due reviews.
+      for (const s of practiceSteps) {
+        expect(s.rationale).toBe('Due review');
+      }
+      expect(recapSteps[0].rationale).toBeUndefined();
     });
 
     it('should create mixed session plan', async () => {
@@ -197,58 +282,144 @@ describe('SessionPlanService', () => {
 
       const now = new Date();
 
-      // Mock: Some due reviews
-      prisma.userQuestionPerformance.findMany
-        .mockResolvedValueOnce([
-          {
-            id: 'perf-1',
-            userId: 'user-1',
-            questionId: 'question-1',
-            nextReviewDue: new Date(now.getTime() - 1000),
-            createdAt: new Date(),
-            timeToComplete: 5000,
-          },
-        ] as any)
-        .mockResolvedValueOnce([]) // For getUserAverageTimes
-        .mockResolvedValueOnce([]) // For attempted questions
-        .mockResolvedValueOnce([]); // For getSeenTeachingIds
-
-      prisma.question.findMany.mockResolvedValue([
-        {
-          id: 'question-2',
-          teachingId: 'teaching-1',
-          teaching: {
-            id: 'teaching-1',
-            lessonId: 'lesson-1',
-            userLanguageString: 'Hello',
-            learningLanguageString: 'Ciao',
-          },
-          questionDeliveryMethods: [
-            { deliveryMethod: DELIVERY_METHOD.MULTIPLE_CHOICE },
-          ],
-        },
-      ] as any);
-
-      prisma.question.findUnique.mockResolvedValue({
+      const question1 = {
         id: 'question-1',
+        teachingId: 'teaching-1',
+        type: DELIVERY_METHOD.MULTIPLE_CHOICE,
+        skillTags: [{ name: 'greetings' }],
         teaching: {
           id: 'teaching-1',
           lessonId: 'lesson-1',
           userLanguageString: 'Hello',
           learningLanguageString: 'Ciao',
+          knowledgeLevel: 'A1',
+          tip: null,
+          lesson: { id: 'lesson-1' },
+          skillTags: [{ name: 'greetings' }],
         },
-        questionDeliveryMethods: [
-          { deliveryMethod: DELIVERY_METHOD.FLASHCARD },
-        ],
-      } as any);
+      };
+
+      const question2 = {
+        id: 'question-2',
+        teachingId: 'teaching-2',
+        type: DELIVERY_METHOD.MULTIPLE_CHOICE,
+        skillTags: [{ name: 'greetings' }],
+        teaching: {
+          id: 'teaching-2',
+          lessonId: 'lesson-1',
+          userLanguageString: 'Thank you',
+          learningLanguageString: 'Grazie',
+          knowledgeLevel: 'A1',
+          tip: null,
+          lesson: { id: 'lesson-1' },
+          skillTags: [{ name: 'greetings' }],
+        },
+      };
+
+      const teaching2 = {
+        id: 'teaching-2',
+        lessonId: 'lesson-1',
+        userLanguageString: 'Thank you',
+        learningLanguageString: 'Grazie',
+        emoji: null,
+        tip: null,
+        knowledgeLevel: 'A1',
+        lesson: { id: 'lesson-1' },
+        skillTags: [{ name: 'greetings' }],
+      };
+
+      const duePerformances = [
+        {
+          id: 'perf-1',
+          userId: 'user-1',
+          questionId: 'question-1',
+          nextReviewDue: new Date(now.getTime() - 1000),
+          createdAt: new Date(),
+          timeToComplete: 5000,
+          score: 90,
+        },
+      ];
+
+      masteryService.getLowMasterySkills.mockResolvedValue(['greetings']);
+
+      prisma.question.findMany.mockResolvedValue([question1, question2] as any);
+
+      prisma.question.findUnique.mockImplementation(async (args: any) => {
+        const id = args?.where?.id;
+        if (id === 'question-1') return question1 as any;
+        if (id === 'question-2') return question2 as any;
+        return null;
+      });
+
+      prisma.teaching.findMany.mockImplementation(async (args: any) => {
+        const ids: string[] = args?.where?.id?.in || [];
+        if (ids.includes('teaching-2')) return [teaching2] as any;
+        return [] as any;
+      });
+
+      prisma.teaching.findUnique.mockImplementation(async (args: any) => {
+        if (args?.where?.id === 'teaching-2') return teaching2 as any;
+        return null;
+      });
 
       prisma.userTeachingCompleted.findMany.mockResolvedValue([]);
       prisma.userDeliveryMethodScore.findMany.mockResolvedValue([]);
+
+      contentLookup.getQuestionData.mockImplementation(async (questionId: string) => {
+        if (questionId === 'question-1') {
+          return {
+            prompt: 'Select the correct answer',
+            sourceText: 'Hello',
+            options: [
+              { id: 'opt1', label: 'Ciao' },
+              { id: 'opt2', label: 'Arrivederci' },
+            ],
+            correctOptionId: 'opt1',
+          };
+        }
+        if (questionId === 'question-2') {
+          return {
+            prompt: 'Select the correct answer',
+            sourceText: 'Thank you',
+            options: [
+              { id: 'opt1', label: 'Grazie' },
+              { id: 'opt2', label: 'Prego' },
+            ],
+            correctOptionId: 'opt1',
+          };
+        }
+        return null;
+      });
+
+      prisma.userQuestionPerformance.findMany.mockImplementation(async (args: any) => {
+        // getUserAverageTimes
+        if (args?.select?.timeToComplete !== undefined) return [];
+        // attempted questions (distinct)
+        if (args?.distinct?.includes('questionId')) return [{ questionId: 'question-1' }];
+        // recent attempts for difficulty/mastery
+        if (args?.take === 5) return [];
+        // due reviews
+        if (args?.where?.nextReviewDue?.lte) return duePerformances as any;
+        return [];
+      });
 
       const plan = await service.createPlan(userId, context);
 
       expect(plan.kind).toBe('mixed');
       expect(plan.steps.length).toBeGreaterThan(0);
+
+      // Rationale should exist for teach + practice, and be omitted for recap.
+      for (const step of plan.steps) {
+        if (step.type === 'recap') {
+          expect(step.rationale).toBeUndefined();
+        } else {
+          expect(step.rationale).toEqual(expect.any(String));
+          expect(step.rationale?.length).toBeGreaterThan(0);
+        }
+      }
+
+      expect(plan.steps.some((s) => s.rationale === 'Due review')).toBe(true);
+      expect(plan.steps.some((s) => s.rationale?.includes('Targets low mastery skill: greetings'))).toBe(true);
     });
 
     it('should handle empty candidates gracefully', async () => {
@@ -258,8 +429,20 @@ describe('SessionPlanService', () => {
         timeBudgetSec: 300,
       };
 
+      masteryService.getLowMasterySkills.mockResolvedValue([]);
+
       // Mock: No content available
-      prisma.userQuestionPerformance.findMany.mockResolvedValue([]);
+      prisma.userQuestionPerformance.findMany.mockImplementation(async (args: any) => {
+        // getUserAverageTimes
+        if (args?.select?.timeToComplete !== undefined) return [];
+        // attempted questions (distinct)
+        if (args?.distinct?.includes('questionId')) return [];
+        // due reviews
+        if (args?.where?.nextReviewDue?.lte) return [];
+        // recent attempts for review candidates
+        if (args?.take === 5) return [];
+        return [];
+      });
       prisma.question.findMany.mockResolvedValue([]);
       prisma.userTeachingCompleted.findMany.mockResolvedValue([]);
       prisma.userDeliveryMethodScore.findMany.mockResolvedValue([]);
@@ -270,6 +453,7 @@ describe('SessionPlanService', () => {
       // Should still have recap step
       expect(plan.steps.length).toBe(1);
       expect(plan.steps[0].type).toBe('recap');
+      expect(plan.steps[0].rationale).toBeUndefined();
     });
   });
 });

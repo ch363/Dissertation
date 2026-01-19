@@ -10,9 +10,16 @@ import {
 // Lazy load FileSystem to avoid native module errors during hot reload
 let FileSystemModule: typeof import('expo-file-system') | null = null;
 
-async function getFileSystemModule() {
+async function getFileSystemModule(): Promise<typeof import('expo-file-system') | null> {
   if (!FileSystemModule) {
-    FileSystemModule = await import('expo-file-system');
+    // expo-file-system is not reliably available on web, and can be missing in stale native builds.
+    if (Platform.OS === 'web') return null;
+    try {
+      FileSystemModule = await import('expo-file-system');
+    } catch (error) {
+      console.warn('expo-file-system native module not available:', error);
+      return null;
+    }
   }
   return FileSystemModule;
 }
@@ -151,27 +158,24 @@ export async function uploadAvatar(imageUri: string, userId: string): Promise<st
 
     // Step 2: Read the file for upload
     const FileSystem = await getFileSystemModule();
-    const fileInfo = await FileSystem.getInfoAsync(imageUri);
-    if (!fileInfo.exists) {
-      throw new Error('Image file not found');
-    }
 
     // Get file extension from URI or default to jpg
     const extension = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
     const fileName = `${userId}/avatar.${extension}`;
 
     // Step 3: Upload to Supabase Storage
-    // Read file as base64 and convert to binary for upload
-    const base64Data = await FileSystem.readAsStringAsync(imageUri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
+    let bytes: Uint8Array;
+    if (FileSystem) {
+      const fileInfo = await FileSystem.getInfoAsync(imageUri);
+      if (!fileInfo.exists) {
+        throw new Error('Image file not found');
+      }
 
-    // Convert base64 to Uint8Array (React Native compatible)
-    // Use atob if available (web), otherwise manual decode for React Native
-    let binaryString: string;
-    if (Platform.OS === 'web' && typeof atob !== 'undefined') {
-      binaryString = atob(base64Data);
-    } else {
+      // Read file as base64 and convert to binary for upload
+      const base64Data = await FileSystem.readAsStringAsync(imageUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
       // Manual base64 decode for React Native
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
       let output = '';
@@ -189,12 +193,22 @@ export async function uploadAvatar(imageUri: string, userId: string): Promise<st
         if (enc3 !== 64) output += String.fromCharCode(chr2);
         if (enc4 !== 64) output += String.fromCharCode(chr3);
       }
-      binaryString = output;
-    }
-    
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
+
+      bytes = new Uint8Array(output.length);
+      for (let j = 0; j < output.length; j++) {
+        bytes[j] = output.charCodeAt(j);
+      }
+    } else if (Platform.OS === 'web') {
+      // Web fallback: fetch the blob and upload bytes
+      const resp = await fetch(imageUri);
+      if (!resp.ok) {
+        throw new Error(`Failed to read image for upload (HTTP ${resp.status})`);
+      }
+      const ab = await resp.arrayBuffer();
+      bytes = new Uint8Array(ab);
+    } else {
+      // Native fallback: this indicates a stale build (missing native module).
+      throw new Error('File system is not available. Please rebuild the app (expo run:ios / expo run:android).');
     }
 
     const supabase = getSupabaseClient();

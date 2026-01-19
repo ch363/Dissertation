@@ -1,6 +1,7 @@
-import { IsInt, IsOptional, Min, Max } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, Min, Max } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { sanitizeInt } from '../../common/utils/sanitize.util';
+import { DELIVERY_METHOD } from '@prisma/client';
 
 /**
  * DTO for recording a question attempt
@@ -12,6 +13,9 @@ import { sanitizeInt } from '../../common/utils/sanitize.util';
  * - Attempts: Optional, non-negative integer
  */
 export class QuestionAttemptDto {
+  @IsEnum(DELIVERY_METHOD, { message: 'Delivery method must be a valid delivery method' })
+  deliveryMethod: DELIVERY_METHOD;
+
   @IsInt()
   @Min(0, { message: 'Score must be non-negative' })
   @Max(100, { message: 'Score must not exceed 100' })

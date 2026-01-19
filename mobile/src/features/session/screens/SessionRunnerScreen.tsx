@@ -7,14 +7,20 @@ import { SessionRunner } from '@/features/session/components/SessionRunner';
 import { makeSessionId } from '@/features/session/sessionBuilder';
 import { routeBuilders } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
-import { AttemptLog, SessionKind, SessionPlan, CardKind } from '@/types/session';
+import { AttemptLog, SessionKind, SessionPlan } from '@/types/session';
 import { getSessionPlan } from '@/services/api/learn';
 import { startLesson } from '@/services/api/progress';
 import { transformSessionPlan } from '@/services/api/session-plan-transformer';
 import { getCachedSessionPlan } from '@/services/api/session-plan-cache';
+import {
+  getSessionDefaultLessonId,
+  getSessionDefaultMode,
+  getSessionDefaultTimeBudgetSec,
+} from '@/services/preferences/settings-facade';
 
 type Props = {
   lessonId?: string;
+  moduleId?: string;
   sessionId?: string;
   kind?: SessionKind;
 };
@@ -23,6 +29,7 @@ export default function SessionRunnerScreen(props?: Props) {
   const params = useLocalSearchParams<{
     sessionId?: string;
     lessonId?: string;
+    moduleId?: string;
     kind?: string;
   }>();
 
@@ -31,13 +38,18 @@ export default function SessionRunnerScreen(props?: Props) {
   const [sessionId] = useState(
     () => props?.sessionId ?? (params.sessionId as string | undefined) ?? makeSessionId('session'),
   );
-  const sessionKind: SessionKind = props?.kind ?? (params.kind === 'review' ? 'review' : 'learn');
-  const lessonId = props?.lessonId ?? (params.lessonId as string | undefined) ?? 'demo';
+  const requestedKind: SessionKind = props?.kind ?? (params.kind === 'review' ? 'review' : 'learn');
+  const requestedLessonId = props?.lessonId ?? (params.lessonId as string | undefined);
+  const moduleId = props?.moduleId ?? (params.moduleId as string | undefined);
 
   const { theme } = useAppTheme();
   const [plan, setPlan] = useState<SessionPlan | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [resolvedKind, setResolvedKind] = useState<SessionKind>(requestedKind);
+  const [resolvedLessonId, setResolvedLessonId] = useState<string | undefined>(requestedLessonId);
+  const [resolvedMode, setResolvedMode] = useState<'learn' | 'review' | 'mixed'>('mixed');
+  const [resolvedTimeBudgetSec, setResolvedTimeBudgetSec] = useState<number | null>(null);
   
   // Animation for slide-up transition
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -71,11 +83,39 @@ export default function SessionRunnerScreen(props?: Props) {
     let cancelled = false;
 
     const loadSessionPlan = async () => {
-      // Check cache first for learn sessions
-      if (sessionKind === 'learn' && lessonId && lessonId !== 'demo') {
-        const cachedPlan = getCachedSessionPlan(lessonId);
+      // Load session defaults (mode, timeBudget, optional lesson filter)
+      const [defaultMode, defaultTimeBudgetSec, defaultLessonFilter] = await Promise.all([
+        getSessionDefaultMode(),
+        getSessionDefaultTimeBudgetSec(),
+        getSessionDefaultLessonId(),
+      ]);
+
+      const effectiveLessonId = requestedLessonId ?? defaultLessonFilter ?? undefined;
+      const effectiveMode = defaultMode;
+      const effectiveKind: SessionKind = effectiveMode === 'review' ? 'review' : 'learn'; // mixed behaves like learn in UI
+
+      setResolvedKind(effectiveKind);
+      setResolvedLessonId(effectiveLessonId);
+      setResolvedMode(effectiveMode);
+      setResolvedTimeBudgetSec(defaultTimeBudgetSec);
+
+      // Guardrail: learn mode needs a lesson filter.
+      if (effectiveMode === 'learn' && !effectiveLessonId) {
+        setPlan(null);
+        setLoading(false);
+        setError('Learn mode requires a lesson filter. Set one in Settings → Session defaults.');
+        return;
+      }
+
+      // Check cache first for lesson-scoped sessions
+      if (effectiveKind === 'learn' && effectiveLessonId) {
+        const cachedPlan = getCachedSessionPlan({
+          lessonId: effectiveLessonId,
+          mode: effectiveMode,
+          timeBudgetSec: defaultTimeBudgetSec,
+        });
         if (cachedPlan) {
-          console.log('Using cached session plan for lesson:', lessonId);
+          console.log('Using cached session plan for lesson:', effectiveLessonId);
           setPlan(cachedPlan);
           setLoading(false);
           return;
@@ -86,92 +126,71 @@ export default function SessionRunnerScreen(props?: Props) {
       setError(null);
 
       try {
-        if (sessionKind === 'review') {
-          // For review sessions, fetch from backend
-          const response = await getSessionPlan({
-            mode: 'review',
-          });
-          
-          if (cancelled) return;
-          
-          const planData = response?.data || response;
-          const transformedPlan = transformSessionPlan(planData, sessionId);
-          
-          if (cancelled) return;
-          
-          if (transformedPlan.cards.length > 0) {
-            setPlan(transformedPlan);
-          } else {
-            console.error('Review session plan has no cards');
-            setError('No review items available');
-          }
-          setLoading(false);
-          return;
-        }
-
-        // For learn sessions, fetch from backend
-        if (lessonId && lessonId !== 'demo') {
-          // Start lesson engagement (creates/updates UserLesson)
+        // Start lesson engagement (creates/updates UserLesson) for learn-like sessions
+        if (effectiveKind === 'learn' && effectiveLessonId) {
           try {
-            await startLesson(lessonId);
+            await startLesson(effectiveLessonId);
           } catch (err) {
             console.error('Failed to start lesson:', err);
             // Continue even if this fails - non-critical
           }
+        }
 
-          const response = await getSessionPlan({
-            mode: 'learn',
-            lessonId,
+        // Fetch session plan using effective defaults
+        const response = await getSessionPlan({
+          mode: effectiveMode,
+          timeBudgetSec: defaultTimeBudgetSec ?? undefined,
+          lessonId: effectiveLessonId,
+          moduleId,
+        });
+
+        if (cancelled) return;
+
+        // Handle API response wrapper (success/data structure)
+        const planData = response?.data || response;
+
+        console.log('Session plan response:', {
+          hasData: !!planData,
+          hasSteps: !!planData?.steps,
+          stepsLength: planData?.steps?.length,
+          firstStep: planData?.steps?.[0],
+        });
+
+        // Transform backend session plan (steps) to frontend format (cards)
+        if (planData && planData.steps && Array.isArray(planData.steps) && planData.steps.length > 0) {
+          const transformedPlan = transformSessionPlan(planData, sessionId);
+          console.log('Transformed plan:', {
+            cardsCount: transformedPlan.cards.length,
+            cardTypes: transformedPlan.cards.map((c) => c.kind),
           });
-          
+
           if (cancelled) return;
-          
-          // Handle API response wrapper (success/data structure)
-          const planData = response?.data || response;
-          
-          console.log('Session plan response:', {
-            hasData: !!planData,
-            hasSteps: !!planData?.steps,
-            stepsLength: planData?.steps?.length,
-            firstStep: planData?.steps?.[0],
-          });
-          
-          // Transform backend session plan (steps) to frontend format (cards)
-          if (planData && planData.steps && Array.isArray(planData.steps) && planData.steps.length > 0) {
-            const transformedPlan = transformSessionPlan(planData, sessionId);
-            console.log('Transformed plan:', {
-              cardsCount: transformedPlan.cards.length,
-              cardTypes: transformedPlan.cards.map(c => c.kind),
-            });
-            
-            if (!cancelled) {
-              if (transformedPlan.cards.length > 0) {
-                setPlan(transformedPlan);
-              } else {
-                // If no cards (e.g., only recap steps), lesson is likely completed
-                // Redirect directly to summary screen instead of showing error
-                console.log('Session plan has no practice cards (lesson completed or only recap). Redirecting to summary.');
-                router.replace({
-                  pathname: routeBuilders.sessionSummary(sessionId),
-                  params: { kind: sessionKind, lessonId },
-                });
-                return;
-              }
-            }
+
+          if (transformedPlan.cards.length > 0) {
+            setPlan(transformedPlan);
           } else {
-            console.error('Invalid plan data:', { 
-              hasPlanData: !!planData, 
-              hasSteps: !!planData?.steps, 
-              stepsLength: planData?.steps?.length,
-              planDataKeys: planData ? Object.keys(planData) : [],
+            // If no cards (e.g., only recap steps), redirect directly to summary
+            console.log('Session plan has no practice cards. Redirecting to summary.');
+            router.replace({
+              pathname: routeBuilders.sessionSummary(sessionId),
+              params: {
+                kind: effectiveKind,
+                lessonId: effectiveLessonId,
+                planMode: effectiveMode,
+                timeBudgetSec: defaultTimeBudgetSec ? String(defaultTimeBudgetSec) : '',
+              },
             });
-            if (!cancelled) {
-              setError(`Unable to load session plan - no steps found`);
-            }
+            return;
           }
         } else {
+          console.error('Invalid plan data:', {
+            hasPlanData: !!planData,
+            hasSteps: !!planData?.steps,
+            stepsLength: planData?.steps?.length,
+            planDataKeys: planData ? Object.keys(planData) : [],
+          });
           if (!cancelled) {
-            setError('Lesson ID is required');
+            setError(`Unable to load session plan - no steps found`);
           }
         }
       } catch (err: any) {
@@ -191,7 +210,7 @@ export default function SessionRunnerScreen(props?: Props) {
     return () => {
       cancelled = true;
     };
-  }, [lessonId, sessionId, sessionKind]);
+  }, [requestedLessonId, moduleId, sessionId, requestedKind]);
 
   const handleComplete = async (attempts: AttemptLog[]) => {
     // Note: Question attempts are now recorded immediately in SessionRunner
@@ -199,7 +218,12 @@ export default function SessionRunnerScreen(props?: Props) {
     // This avoids duplicate records and ensures real-time progress tracking.
     router.replace({
       pathname: routeBuilders.sessionSummary(sessionId),
-      params: { kind: sessionKind, lessonId },
+      params: {
+        kind: resolvedKind,
+        lessonId: resolvedLessonId,
+        planMode: resolvedMode,
+        timeBudgetSec: resolvedTimeBudgetSec ? String(resolvedTimeBudgetSec) : '',
+      },
     });
   };
 
@@ -237,8 +261,10 @@ export default function SessionRunnerScreen(props?: Props) {
           <SessionRunner 
             plan={plan} 
             sessionId={sessionId}
-            kind={sessionKind}
-            lessonId={lessonId}
+            kind={resolvedKind}
+            lessonId={resolvedLessonId}
+            planMode={resolvedMode}
+            timeBudgetSec={resolvedTimeBudgetSec}
             onComplete={handleComplete} 
           />
         </Animated.View>

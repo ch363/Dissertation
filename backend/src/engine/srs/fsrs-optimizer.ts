@@ -6,7 +6,7 @@
  */
 
 import { FsrsParameters, DEFAULT_FSRS_PARAMETERS, calculateFsrs, FsrsState, attemptToGrade } from './algo.fsrs';
-import { scoreToQuality } from './algo.sm2';
+import { scoreToGrade } from './grade';
 
 export interface ReviewRecord {
   createdAt: Date;
@@ -55,7 +55,7 @@ export function calculatePredictionError(
 
   for (let i = 0; i < records.length; i++) {
     const record = records[i];
-    const grade = scoreToQuality(record.score); // Convert score (0-100) to grade (0-5)
+    const grade = scoreToGrade(record.score); // Convert score (0-100) to grade (0-5)
 
     if (i === 0) {
       // First review: initialize state

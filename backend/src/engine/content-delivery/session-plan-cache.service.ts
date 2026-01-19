@@ -11,7 +11,7 @@ interface CacheEntry {
  * Session Plan Cache Service
  * 
  * Provides in-memory caching for session plans to reduce expensive database queries.
- * Cache entries are keyed by userId, mode, lessonId, and timeBudgetSec.
+ * Cache entries are keyed by userId, mode, lessonId, moduleId, and timeBudgetSec.
  * 
  * Cache invalidation:
  * - Automatic TTL expiry (default: 5 minutes)
@@ -31,10 +31,17 @@ export class SessionPlanCacheService {
   /**
    * Generate cache key from session context
    */
-  generateKey(userId: string, mode: string, lessonId?: string, timeBudgetSec?: number): string {
+  generateKey(
+    userId: string,
+    mode: string,
+    lessonId?: string,
+    moduleId?: string,
+    timeBudgetSec?: number,
+  ): string {
     const lessonPart = lessonId || 'all';
+    const modulePart = moduleId || 'all';
     const timeBudgetPart = timeBudgetSec?.toString() || 'default';
-    return `${userId}:${mode}:${lessonPart}:${timeBudgetPart}`;
+    return `${userId}:${mode}:${lessonPart}:${modulePart}:${timeBudgetPart}`;
   }
 
   /**

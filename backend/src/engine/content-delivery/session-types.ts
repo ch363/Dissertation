@@ -70,6 +70,11 @@ export interface SessionStep {
   item: StepItem;
   estimatedTimeSec: number;
   deliveryMethod?: DELIVERY_METHOD; // For practice steps
+  /**
+   * Optional explanation for why this step was selected.
+   * Intended for “Why am I seeing this?” UI and research instrumentation.
+   */
+  rationale?: string;
 }
 
 /**
@@ -108,6 +113,7 @@ export interface SessionContext {
   mode: 'learn' | 'review' | 'mixed';
   timeBudgetSec?: number; // e.g., 300 (5 min), 600 (10 min), 900 (15 min)
   lessonId?: string;
+  moduleId?: string;
   theme?: string; // Optional topic filter
 }
 

@@ -5,7 +5,12 @@ const KEYS = {
   ttsRate: '@prefs/ttsRate',
   adaptivity: '@prefs/adaptivity',
   notifications: '@prefs/notifications',
+  sessionMode: '@prefs/sessionMode',
+  sessionTimeBudgetSec: '@prefs/sessionTimeBudgetSec',
+  sessionLessonId: '@prefs/sessionLessonId',
 } as const;
+
+export type SessionDefaultMode = 'learn' | 'review' | 'mixed';
 
 export async function getTtsEnabled(): Promise<boolean> {
   try {
@@ -80,5 +85,73 @@ export async function getNotificationsEnabled(): Promise<boolean> {
 export async function setNotificationsEnabled(value: boolean): Promise<void> {
   try {
     await AsyncStorage.setItem(KEYS.notifications, String(value));
+  } catch {}
+}
+
+// Session defaults (used for GET /learn/session-plan)
+const DEFAULT_SESSION_MODE: SessionDefaultMode = 'mixed';
+const MIN_TIME_BUDGET_SEC = 60;
+
+export async function getSessionDefaultMode(): Promise<SessionDefaultMode> {
+  try {
+    const raw = await AsyncStorage.getItem(KEYS.sessionMode);
+    if (raw === 'learn' || raw === 'review' || raw === 'mixed') return raw;
+    return DEFAULT_SESSION_MODE;
+  } catch {
+    return DEFAULT_SESSION_MODE;
+  }
+}
+
+export async function setSessionDefaultMode(mode: SessionDefaultMode): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEYS.sessionMode, mode);
+  } catch {}
+}
+
+export async function getSessionDefaultTimeBudgetSec(): Promise<number | null> {
+  try {
+    const raw = await AsyncStorage.getItem(KEYS.sessionTimeBudgetSec);
+    if (raw === null || raw === '') return null;
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return null;
+    if (n < MIN_TIME_BUDGET_SEC) return MIN_TIME_BUDGET_SEC;
+    return Math.floor(n);
+  } catch {
+    return null;
+  }
+}
+
+export async function setSessionDefaultTimeBudgetSec(sec: number | null): Promise<void> {
+  try {
+    if (sec === null) {
+      await AsyncStorage.removeItem(KEYS.sessionTimeBudgetSec);
+      return;
+    }
+    const n = Number(sec);
+    if (!Number.isFinite(n)) return;
+    const clamped = Math.max(MIN_TIME_BUDGET_SEC, Math.floor(n));
+    await AsyncStorage.setItem(KEYS.sessionTimeBudgetSec, String(clamped));
+  } catch {}
+}
+
+export async function getSessionDefaultLessonId(): Promise<string | null> {
+  try {
+    const raw = await AsyncStorage.getItem(KEYS.sessionLessonId);
+    if (!raw) return null;
+    return raw;
+  } catch {
+    return null;
+  }
+}
+
+export async function setSessionDefaultLessonId(lessonId: string | null): Promise<void> {
+  try {
+    if (lessonId === null) {
+      await AsyncStorage.removeItem(KEYS.sessionLessonId);
+      return;
+    }
+    const id = String(lessonId).trim();
+    if (!id) return;
+    await AsyncStorage.setItem(KEYS.sessionLessonId, id);
   } catch {}
 }

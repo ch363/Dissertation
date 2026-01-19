@@ -71,12 +71,14 @@ export async function getSessionPlan(options?: {
   mode?: 'learn' | 'review' | 'mixed';
   timeBudgetSec?: number;
   lessonId?: string;
+  moduleId?: string;
   theme?: string;
 }): Promise<any> {
   const params = new URLSearchParams();
   if (options?.mode) params.append('mode', options.mode);
   if (options?.timeBudgetSec) params.append('timeBudgetSec', options.timeBudgetSec.toString());
   if (options?.lessonId) params.append('lessonId', options.lessonId);
+  if (options?.moduleId) params.append('moduleId', options.moduleId);
   if (options?.theme) params.append('theme', options.theme);
   
   const query = params.toString();

@@ -233,7 +233,6 @@ describe('ProgressService', () => {
     const mockSrsState = {
       nextReviewDue: new Date(Date.now() + 86400000), // 1 day from now
       intervalDays: 1,
-      easeFactor: 2.5,
       stability: 1.0,
       difficulty: 0.3,
       repetitions: 1,

@@ -44,6 +44,10 @@ export class SessionPlanQueryDto {
   lessonId?: string;
 
   @IsOptional()
+  @IsString() // Accept deterministic IDs
+  moduleId?: string;
+
+  @IsOptional()
   @IsString()
   theme?: string;
 }
@@ -92,6 +96,7 @@ export class LearnController {
   @ApiQuery({ name: 'mode', enum: ['learn', 'review', 'mixed'], required: false })
   @ApiQuery({ name: 'timeBudgetSec', type: 'number', required: false })
   @ApiQuery({ name: 'lessonId', type: 'string', format: 'uuid', required: false })
+  @ApiQuery({ name: 'moduleId', type: 'string', format: 'uuid', required: false })
   @ApiQuery({ name: 'theme', type: 'string', required: false })
   @ApiResponse({ status: 200, description: 'Session plan retrieved', type: Object })
   async getSessionPlan(
@@ -102,6 +107,7 @@ export class LearnController {
       mode: query.mode || 'mixed',
       timeBudgetSec: query.timeBudgetSec,
       lessonId: query.lessonId,
+      moduleId: query.moduleId,
       theme: query.theme,
     });
   }

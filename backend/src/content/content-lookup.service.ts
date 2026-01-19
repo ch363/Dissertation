@@ -95,43 +95,50 @@ export class ContentLookupService {
     prompt?: string;
     skillTags?: string[];
   } | null> {
-    const question = await this.prisma.question.findUnique({
-      where: { id: questionId },
-      select: {
-        id: true,
-        teachingId: true,
-        type: true,
-        skillTags: {
-          select: {
-            name: true,
+    const [question, variant] = await Promise.all([
+      this.prisma.question.findUnique({
+        where: { id: questionId },
+        select: {
+          id: true,
+          teachingId: true,
+          skillTags: {
+            select: {
+              name: true,
+            },
           },
-        },
-        teaching: {
-          select: {
-            userLanguageString: true,
-            learningLanguageString: true,
-            tip: true,
-            skillTags: {
-              select: {
-                name: true,
+          teaching: {
+            select: {
+              userLanguageString: true,
+              learningLanguageString: true,
+              tip: true,
+              skillTags: {
+                select: {
+                  name: true,
+                },
               },
             },
           },
         },
-        multipleChoice: true,
-        fillBlank: true,
-        speechToText: true,
-        textTranslation: true,
-        flashcard: true,
-        textToSpeech: true,
-      },
-    });
+      }),
+      this.prisma.questionVariant.findUnique({
+        where: {
+          questionId_deliveryMethod: {
+            questionId,
+            deliveryMethod,
+          },
+        },
+        select: {
+          data: true,
+        },
+      }),
+    ]);
 
     if (!question || !question.teaching) {
       return null;
     }
 
     const teaching = question.teaching;
+    const variantData = (variant?.data ?? undefined) as any | undefined;
     const result: any = {};
 
     // Use tip from teaching as hint
@@ -145,71 +152,47 @@ export class ContentLookupService {
     // Determine answer and source based on delivery method
     switch (deliveryMethod) {
       case DELIVERY_METHOD.MULTIPLE_CHOICE:
-        // First, try to read options from QuestionMultipleChoice table
-        console.log(`[ContentLookup] MULTIPLE_CHOICE question ${questionId}:`, {
-          hasMultipleChoice: !!question.multipleChoice,
-          multipleChoiceData: question.multipleChoice ? {
-            hasOptions: !!question.multipleChoice.options,
-            optionsLength: question.multipleChoice.options?.length,
-            options: question.multipleChoice.options,
-            correctIndices: question.multipleChoice.correctIndices,
-          } : null,
-        });
-        
-        if (question.multipleChoice && question.multipleChoice.options && question.multipleChoice.options.length > 0) {
-          // Use options from database
-          const dbOptions = question.multipleChoice.options;
-          const correctIndices = question.multipleChoice.correctIndices || [0];
-          
-          // Determine source text for translation MCQ
-          // For MCQ, determine direction: learning->user or user->learning
-          const isLearningToUser = this.determineTranslationDirection(questionId);
-          const sourceText = isLearningToUser
-            ? teaching.learningLanguageString
-            : teaching.userLanguageString;
-          
-          // Validate that options are in the opposite language of sourceText
-          // If they're in the same language, regenerate them dynamically
-          if (this.areOptionsInSameLanguage(sourceText || '', dbOptions)) {
-            console.warn(`MULTIPLE_CHOICE question ${questionId} has options in same language as sourceText. Regenerating options dynamically.`, {
-              sourceText,
-              dbOptions,
-            });
-            // Fall through to dynamic generation
-          } else {
-            // Options are in correct language, use them
-            // Map options to frontend format with IDs
-            result.options = dbOptions.map((label, idx) => ({
-              id: `opt${idx + 1}`,
-              label,
-            }));
-            
-            // Find the correct option ID based on correctIndices
-            // correctIndices is an array, but typically there's one correct answer
-            const correctIndex = correctIndices[0] ?? 0;
-            if (correctIndex >= 0 && correctIndex < dbOptions.length) {
-              result.correctOptionId = `opt${correctIndex + 1}`;
-            } else {
-              console.warn(`MULTIPLE_CHOICE question ${questionId} has invalid correctIndex ${correctIndex}. Using first option.`);
-              result.correctOptionId = 'opt1';
-            }
-            
+        // Determine source text for translation MCQ (consistent per question)
+        // For MCQ, determine direction: learning->user or user->learning
+        const isLearningToUser = this.determineTranslationDirection(questionId);
+        const sourceText = isLearningToUser
+          ? teaching.learningLanguageString
+          : teaching.userLanguageString;
+
+        // Prefer QuestionVariant.data options when present
+        const variantOptions: Array<{ id: string; label: string; isCorrect?: boolean }> | undefined =
+          Array.isArray(variantData?.options) ? variantData.options : undefined;
+
+        if (variantOptions && variantOptions.length > 0) {
+          const labels = variantOptions.map((o) => o.label);
+          // If options look like they are in the same language as source, fall back to dynamic generation
+          if (!this.areOptionsInSameLanguage(sourceText || '', labels)) {
+            result.options = variantOptions.map((o) => ({ id: o.id, label: o.label }));
+            const correct = variantOptions.find((o) => o.isCorrect);
+            result.correctOptionId = correct?.id ?? variantOptions[0].id;
             result.sourceText = sourceText;
-            result.prompt = sourceText ? `How do you say '${sourceText}'?` : undefined;
-            break; // Exit switch, we're done
+            result.prompt =
+              typeof variantData?.prompt === 'string' && variantData.prompt.length > 0
+                ? variantData.prompt
+                : (sourceText ? `How do you say '${sourceText}'?` : undefined);
+            if (typeof variantData?.explanation === 'string') {
+              result.explanation = variantData.explanation;
+            }
+            break;
+          } else {
+            console.warn(
+              `MULTIPLE_CHOICE question ${questionId} has options in same language as sourceText. Regenerating options dynamically.`,
+              { sourceText, labels },
+            );
           }
         }
-        
+
         // Generate options dynamically (either no DB options, or DB options were in wrong language)
         // Fallback: Generate options dynamically (for backwards compatibility)
         if (!result.options) {
-          const isLearningToUser = this.determineTranslationDirection(questionId);
           const correctAnswer = isLearningToUser
             ? teaching.userLanguageString
             : teaching.learningLanguageString;
-          const sourceText = isLearningToUser
-            ? teaching.learningLanguageString
-            : teaching.userLanguageString;
 
           // Validate that we have required data
           if (!correctAnswer) {
@@ -358,7 +341,6 @@ export class ContentLookupService {
           });
           // Last resort: ensure we have at least minimal options
           if (!result.options || result.options.length === 0) {
-            const isLearningToUser = this.determineTranslationDirection(questionId);
             const correctAnswer = isLearningToUser
               ? teaching.userLanguageString
               : teaching.learningLanguageString;
@@ -377,13 +359,59 @@ export class ContentLookupService {
 
       case DELIVERY_METHOD.TEXT_TRANSLATION:
       case DELIVERY_METHOD.FLASHCARD:
-        // Translation: source is learning language, answer is user language
-        result.source = teaching.learningLanguageString;
-        result.answer = teaching.userLanguageString;
-        result.prompt = `Translate '${teaching.learningLanguageString}' to English`;
+        result.source = variantData?.source ?? teaching.learningLanguageString;
+        result.answer = variantData?.answer ?? teaching.userLanguageString;
+        result.hint = variantData?.hint ?? result.hint;
+        result.prompt =
+          typeof variantData?.prompt === 'string' && variantData.prompt.length > 0
+            ? variantData.prompt
+            : `Translate '${result.source}' to English`;
         break;
 
       case DELIVERY_METHOD.FILL_BLANK:
+        // Prefer variant payload if provided
+        if (variantData?.text && variantData?.answer) {
+          result.text = variantData.text;
+          result.answer = variantData.answer;
+          result.hint = variantData?.hint ?? result.hint;
+          result.prompt =
+            typeof variantData?.prompt === 'string' && variantData.prompt.length > 0
+              ? variantData.prompt
+              : 'Complete the sentence';
+
+          // Generate options for tap-to-fill UI (mobile expects options for FILL_BLANK)
+          const blankAnswer = String(result.answer);
+          try {
+            const generatedOptions = await this.optionsGenerator.generateOptions(
+              blankAnswer,
+              lessonId,
+              false, // Fill blank uses learning language
+            );
+            if (generatedOptions?.options?.length) {
+              result.options = generatedOptions.options.map((opt) => ({
+                id: opt.id,
+                label: opt.label,
+              }));
+            }
+          } catch (error) {
+            console.error(
+              `Error generating fill-blank options for question ${questionId} (variant payload):`,
+              error,
+            );
+          }
+
+          // Last resort: minimal options
+          if (!result.options || result.options.length === 0) {
+            result.options = [
+              { id: 'opt1', label: blankAnswer },
+              { id: 'opt2', label: 'Sì' },
+              { id: 'opt3', label: 'No' },
+              { id: 'opt4', label: 'Ciao' },
+            ];
+          }
+          break;
+        }
+
         // Fill blank: create a sentence with blank, generate options
         // For single words, create a simple sentence like "Grazie ___" 
         const learningPhrase = teaching.learningLanguageString.trim();
@@ -482,9 +510,11 @@ export class ContentLookupService {
 
       case DELIVERY_METHOD.SPEECH_TO_TEXT:
       case DELIVERY_METHOD.TEXT_TO_SPEECH:
-        // Listening: answer is the learning language string
-        result.answer = teaching.learningLanguageString;
-        result.prompt = `Listen and type what you hear`;
+        result.answer = variantData?.answer ?? teaching.learningLanguageString;
+        result.prompt =
+          typeof variantData?.prompt === 'string' && variantData.prompt.length > 0
+            ? variantData.prompt
+            : `Listen and type what you hear`;
         break;
     }
 

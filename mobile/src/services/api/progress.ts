@@ -40,6 +40,25 @@ export interface DueReview {
   createdAt: string;
 }
 
+export interface DueReviewLatest extends DueReview {
+  question?: {
+    id: string;
+    teaching?: {
+      id: string;
+      userLanguageString?: string;
+      learningLanguageString?: string;
+      lesson?: {
+        id: string;
+        title: string;
+        module?: {
+          id: string;
+          title: string;
+        };
+      };
+    };
+  };
+}
+
 /**
  * Start or update lesson engagement
  */
@@ -86,8 +105,8 @@ export async function getDueReviews(): Promise<DueReview[]> {
 /**
  * Get deduped due reviews (latest per question)
  */
-export async function getDueReviewsLatest(): Promise<DueReview[]> {
-  return apiClient.get<DueReview[]>('/progress/reviews/due/latest');
+export async function getDueReviewsLatest(): Promise<DueReviewLatest[]> {
+  return apiClient.get<DueReviewLatest[]>('/progress/reviews/due/latest');
 }
 
 /**

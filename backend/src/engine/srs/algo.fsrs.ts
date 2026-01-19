@@ -1,19 +1,19 @@
 /**
  * FSRS (Free Spaced Repetition Scheduler) Algorithm Implementation
- * 
+ *
  * Pure implementation of the FSRS algorithm for spaced repetition.
  * This is a pure function with no dependencies on NestJS or Prisma.
- * 
+ *
  * Algorithm details:
  * - Stability (S): Memory strength, duration until retention drops to 90%
  * - Difficulty (D): Inherent complexity of the material
  * - Retrievability (R): Current probability of recall
- * 
+ *
  * Based on FSRS-4.5 with 17 parameters (w0-w16)
  * @see https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm
  */
 
-import { scoreToQuality, correctToQuality } from './algo.sm2';
+import { correctToGrade, scoreToGrade } from './grade';
 
 export interface FsrsState {
   stability: number;
@@ -400,9 +400,9 @@ export function calculateFsrs(
  */
 export function attemptToGrade(result: { correct: boolean; timeMs: number; score?: number }): number {
   if (result.score !== undefined) {
-    return scoreToQuality(result.score);
+    return scoreToGrade(result.score);
   }
-  return correctToQuality(result.correct, result.timeMs);
+  return correctToGrade(result.correct, result.timeMs);
 }
 
 /**

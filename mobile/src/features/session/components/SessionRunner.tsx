@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { theme } from '@/services/theme/tokens';
 import { AttemptLog, CardKind, SessionPlan, SessionKind } from '@/types/session';
@@ -11,6 +12,7 @@ import * as SpeechRecognition from '@/services/speech-recognition';
 import { CardRenderer } from './CardRenderer';
 import { LessonProgressHeader } from './LessonProgressHeader';
 import { routeBuilders } from '@/services/navigation/routes';
+import { clearCachedSessionPlan } from '@/services/api/session-plan-cache';
 
 // Lazy load haptics to avoid crashing if module isn't installed
 let HapticsModule: typeof import('expo-haptics') | null = null;
@@ -50,10 +52,12 @@ type Props = {
   sessionId: string;
   kind: SessionKind;
   lessonId?: string;
+  planMode?: 'learn' | 'review' | 'mixed';
+  timeBudgetSec?: number | null;
   onComplete: (attempts: AttemptLog[]) => void;
 };
 
-export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: Props) {
+export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeBudgetSec, onComplete }: Props) {
   const [index, setIndex] = useState(0);
   const [attempts, setAttempts] = useState<AttemptLog[]>([]);
   const [selectedOptionId, setSelectedOptionId] = useState<string | undefined>(undefined);
@@ -67,9 +71,20 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
   const [pronunciationResult, setPronunciationResult] = useState<PronunciationResult | null>(null);
   const [audioRecordingUri, setAudioRecordingUri] = useState<string | null>(null);
   const [awardedXpByCard, setAwardedXpByCard] = useState<Map<string, number>>(new Map());
+  const [showRationale, setShowRationale] = useState(false);
 
   const currentCard = plan.cards[index];
   const total = useMemo(() => plan.cards.length, [plan.cards]);
+  const currentRationale = currentCard?.rationale?.trim();
+  const hasRationale = !!currentRationale;
+
+  const invalidateLessonPlanCache = () => {
+    // Only applicable to learn sessions with a real lessonId.
+    // This prevents reuse of a cached/preloaded plan after progress writes.
+    if (kind !== 'learn') return;
+    if (!lessonId || lessonId === 'demo') return;
+    clearCachedSessionPlan(lessonId);
+  };
 
   // Track when card is shown for time tracking
   useEffect(() => {
@@ -81,6 +96,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
     // Reset pronunciation result when card changes
     setPronunciationResult(null);
     setAudioRecordingUri(null);
+    setShowRationale(false);
   }, [index, currentCard]);
 
   const isLast = index >= total - 1;
@@ -162,10 +178,11 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
 
       if (isPronunciationMode && audioUri) {
         // Handle pronunciation validation
+        console.log('🎤 Processing pronunciation recording:', { audioUri, questionId });
         setAudioRecordingUri(audioUri);
         const audioFile = await SpeechRecognition.getAudioFile(audioUri);
         if (!audioFile?.base64) {
-          console.error('Failed to get audio file for pronunciation validation');
+          console.error('❌ Failed to get audio file for pronunciation validation');
           setIsCorrect(false);
           setShowResult(true);
           return;
@@ -174,7 +191,18 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
         const audioFormat = audioRecordingUri.endsWith('.m4a') ? 'm4a' : 
                           audioRecordingUri.endsWith('.flac') ? 'flac' : 'wav';
         
+        console.log('✅ Audio file loaded:', { 
+          format: audioFormat, 
+          base64Length: audioFile.base64.length,
+          uri: audioFile.uri 
+        });
+        
         const pronunciationResponse = await validatePronunciation(questionId, audioFile.base64, audioFormat);
+        console.log('✅ Pronunciation response received:', {
+          isCorrect: pronunciationResponse.isCorrect,
+          overallScore: pronunciationResponse.overallScore,
+          transcription: pronunciationResponse.transcription
+        });
         setPronunciationResult(pronunciationResponse);
         setIsCorrect(pronunciationResponse.isCorrect);
         setShowResult(true);
@@ -200,6 +228,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
               attempts: attemptNumber,
             });
             awardedXp = attemptResponse.awardedXp;
+            invalidateLessonPlanCache();
 
             const delta = pronunciationResponse.isCorrect ? 0.1 : -0.05;
             try {
@@ -275,6 +304,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
             attempts: attemptNumber,
           });
           awardedXp = attemptResponse.awardedXp;
+          invalidateLessonPlanCache();
 
           // Update delivery method score based on performance
           const delta = validationResult.isCorrect ? 0.1 : -0.05;
@@ -347,6 +377,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
                 attempts: attemptNumber,
               });
               awardedXp = attemptResponse.awardedXp;
+              invalidateLessonPlanCache();
               
               // Store awardedXp for this card
               if (awardedXp !== undefined) {
@@ -429,6 +460,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
             attempts: 1,
           });
           awardedXp = attemptResponse.awardedXp;
+          invalidateLessonPlanCache();
 
           // Update delivery method score based on performance
           const delta = isCorrect ? 0.1 : -0.05;
@@ -488,6 +520,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
         const teachingId = currentCard.id.replace('teach-', '');
         try {
           await completeTeaching(teachingId);
+          invalidateLessonPlanCache();
         } catch (error) {
           console.error('Error completing teaching:', error);
           // Continue even if API call fails
@@ -519,6 +552,8 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
         params: {
           kind,
           lessonId,
+          planMode: planMode ?? '',
+          timeBudgetSec: timeBudgetSec ? String(timeBudgetSec) : '',
           totalXp: totalXp.toString(),
           teachingsMastered: teachingsMastered.toString(),
         },
@@ -566,6 +601,31 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, onComplete }: P
           total={total}
           onBackPress={handleBack}
         />
+
+        {hasRationale ? (
+          <View style={styles.rationaleContainer}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Why am I seeing this?"
+              onPress={() => setShowRationale((s) => !s)}
+              hitSlop={10}
+              style={styles.whyButton}
+            >
+              <Ionicons
+                name={showRationale ? 'information-circle' : 'information-circle-outline'}
+                size={16}
+                color={theme.colors.mutedText}
+              />
+              <Text style={styles.whyButtonText}>{showRationale ? 'Hide why' : 'Why this?'}</Text>
+            </Pressable>
+
+            {showRationale ? (
+              <View style={styles.rationalePanel}>
+                <Text style={styles.rationaleText}>{currentRationale}</Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
       </View>
 
       <ScrollView 
@@ -622,6 +682,39 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingBottom: theme.spacing.md,
+  },
+  rationaleContainer: {
+    alignItems: 'center',
+    marginTop: theme.spacing.xs,
+    gap: theme.spacing.xs,
+  },
+  whyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    backgroundColor: theme.colors.card,
+  },
+  whyButtonText: {
+    fontFamily: theme.typography.semiBold,
+    fontSize: 13,
+    color: theme.colors.mutedText,
+  },
+  rationalePanel: {
+    width: '100%',
+    borderRadius: theme.radius.lg,
+    backgroundColor: theme.colors.card,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+  },
+  rationaleText: {
+    fontFamily: theme.typography.regular,
+    fontSize: 14,
+    color: theme.colors.text,
+    lineHeight: 20,
+    textAlign: 'center',
   },
   cardArea: {
     flex: 1,

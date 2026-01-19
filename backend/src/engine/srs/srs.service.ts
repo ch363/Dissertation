@@ -13,7 +13,6 @@ import { PrismaService } from '../../prisma/prisma.service';
 import {
   calculateFsrs,
   attemptToGrade,
-  getInitialFsrsState,
   FsrsState,
   FsrsParameters,
   DEFAULT_FSRS_PARAMETERS,
@@ -41,7 +40,6 @@ export class SrsService {
   ): Promise<{
     nextReviewDue: Date;
     intervalDays: number;
-    easeFactor: number;
     repetitions: number;
     stability?: number;
     difficulty?: number;
@@ -63,7 +61,6 @@ export class SrsService {
         repetitions: true,
         lastRevisedAt: true,
         intervalDays: true,
-        easeFactor: true, // For migration compatibility
       },
     });
 
@@ -128,23 +125,12 @@ export class SrsService {
     let currentState: FsrsState | null = null;
 
     if (previousAttempt) {
-      // Check if we have FSRS state (stability/difficulty) or need to migrate from SM-2
+      // Check if we have FSRS state (stability/difficulty)
       if (previousAttempt.stability != null && previousAttempt.difficulty != null) {
         // We have FSRS state
         currentState = {
           stability: previousAttempt.stability,
           difficulty: previousAttempt.difficulty,
-          lastReview: previousAttempt.lastRevisedAt || now,
-          repetitions: previousAttempt.repetitions || 0,
-        };
-      } else if (previousAttempt.easeFactor != null) {
-        // Migrate from SM-2: approximate stability and difficulty from easeFactor
-        // This is a rough approximation for backward compatibility
-        const estimatedStability = (previousAttempt.intervalDays || 1) * 0.9;
-        const estimatedDifficulty = 5.0 - (previousAttempt.easeFactor - 1.3) * 2.0; // Rough mapping
-        currentState = {
-          stability: Math.max(0.1, estimatedStability),
-          difficulty: Math.max(0.1, Math.min(10.0, estimatedDifficulty)),
           lastReview: previousAttempt.lastRevisedAt || now,
           repetitions: previousAttempt.repetitions || 0,
         };
@@ -184,17 +170,9 @@ export class SrsService {
       validatedNextDue.setDate(validatedNextDue.getDate() + 1);
     }
 
-    // Return state (maintain backward compatibility with easeFactor)
-    // Calculate approximate easeFactor for backward compatibility
-    const approximateEaseFactor =
-      validatedIntervalDays > 0 && validatedStability > 0
-        ? validatedStability / validatedIntervalDays
-        : 2.5;
-
     return {
       nextReviewDue: validatedNextDue,
       intervalDays: validatedIntervalDays,
-      easeFactor: approximateEaseFactor, // For backward compatibility
       repetitions: validatedRepetitions,
       stability: validatedStability,
       difficulty: validatedDifficulty,

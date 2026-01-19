@@ -1,13 +1,19 @@
+import { Platform } from 'react-native';
+
 // Lazy load FileSystem to avoid native module errors during hot reload
 let FileSystemModule: typeof import('expo-file-system') | null = null;
 
-async function getFileSystemModule() {
+async function getFileSystemModule(): Promise<typeof import('expo-file-system') | null> {
+  // expo-file-system is not reliably available on web.
+  if (Platform.OS === 'web') return null;
+
   if (!FileSystemModule) {
     try {
       FileSystemModule = await import('expo-file-system');
     } catch (error) {
-      console.error('Failed to load expo-file-system module:', error);
-      throw new Error('File system is not available. Please rebuild the app after installing expo-file-system.');
+      // Treat this as a non-fatal optional capability: avatar caching is best-effort.
+      console.warn('expo-file-system native module not available; avatar caching disabled:', error);
+      return null;
     }
   }
   return FileSystemModule;
@@ -18,11 +24,11 @@ const AVATAR_CACHE_DIR = 'avatars';
 /**
  * Get the cache directory path for avatars
  */
-async function getCacheDirectory(): Promise<string> {
+async function getCacheDirectory(): Promise<string | null> {
   const FileSystem = await getFileSystemModule();
-  const cacheDir = FileSystem.cacheDirectory;
+  const cacheDir = FileSystem?.cacheDirectory;
   if (!cacheDir) {
-    throw new Error('Cache directory is not available');
+    return null;
   }
   return `${cacheDir}${AVATAR_CACHE_DIR}`;
 }
@@ -30,8 +36,9 @@ async function getCacheDirectory(): Promise<string> {
 /**
  * Get the cached avatar file path for a user
  */
-async function getCachedAvatarFilePath(userId: string): Promise<string> {
+async function getCachedAvatarFilePath(userId: string): Promise<string | null> {
   const cacheDir = await getCacheDirectory();
+  if (!cacheDir) return null;
   return `${cacheDir}/${userId}.jpg`;
 }
 
@@ -41,6 +48,8 @@ async function getCachedAvatarFilePath(userId: string): Promise<string> {
 async function ensureCacheDirectory(): Promise<void> {
   const FileSystem = await getFileSystemModule();
   const cacheDir = await getCacheDirectory();
+  if (!FileSystem || !cacheDir) return;
+
   const dirInfo = await FileSystem.getInfoAsync(cacheDir);
   
   if (!dirInfo.exists) {
@@ -57,8 +66,11 @@ async function ensureCacheDirectory(): Promise<void> {
 export async function cacheAvatarFile(uri: string, userId: string): Promise<string> {
   try {
     const FileSystem = await getFileSystemModule();
+    if (!FileSystem) return uri;
+
     await ensureCacheDirectory();
     const cachedPath = await getCachedAvatarFilePath(userId);
+    if (!cachedPath) return uri;
     
     // Copy the file to cache directory
     await FileSystem.copyAsync({
@@ -81,10 +93,13 @@ export async function cacheAvatarFile(uri: string, userId: string): Promise<stri
 export async function getCachedAvatarPath(userId: string): Promise<string | null> {
   try {
     const FileSystem = await getFileSystemModule();
+    if (!FileSystem) return null;
+
     const cachedPath = await getCachedAvatarFilePath(userId);
+    if (!cachedPath) return null;
     const fileInfo = await FileSystem.getInfoAsync(cachedPath);
     
-    if (fileInfo.exists && fileInfo.isFile) {
+    if (fileInfo.exists && !fileInfo.isDirectory) {
       return cachedPath;
     }
     
@@ -102,7 +117,10 @@ export async function getCachedAvatarPath(userId: string): Promise<string | null
 export async function clearCachedAvatar(userId: string): Promise<void> {
   try {
     const FileSystem = await getFileSystemModule();
+    if (!FileSystem) return;
+
     const cachedPath = await getCachedAvatarFilePath(userId);
+    if (!cachedPath) return;
     const fileInfo = await FileSystem.getInfoAsync(cachedPath);
     
     if (fileInfo.exists) {

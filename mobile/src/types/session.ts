@@ -13,6 +13,7 @@ type BaseCard = {
   id: string;
   kind: CardKind;
   prompt: string;
+  rationale?: string;
 };
 
 export type TeachCard = BaseCard & {

@@ -14,10 +14,14 @@ export const routes = {
       index: '/(tabs)/profile' as const,
       progress: '/(tabs)/profile/progress' as const,
       edit: '/(tabs)/profile/edit' as const,
+      skills: '/(tabs)/profile/skills' as const,
+      reviews: '/(tabs)/profile/reviews' as const,
     },
     settings: {
       root: '/(tabs)/settings' as const,
       speech: '/(tabs)/settings/speech' as const,
+      session: '/(tabs)/settings/session' as const,
+      sessionLesson: '/(tabs)/settings/session-lesson' as const,
     },
   },
   auth: {

@@ -12,12 +12,16 @@ export default function CompletionScreen() {
     sessionId?: string; 
     kind?: string; 
     lessonId?: string;
+    planMode?: string;
+    timeBudgetSec?: string;
     totalXp?: string;
     teachingsMastered?: string;
   }>();
   const sessionId = params.sessionId;
   const kind = params.kind === 'review' ? 'review' : 'learn';
   const lessonId = params.lessonId;
+  const planMode = params.planMode;
+  const timeBudgetSec = params.timeBudgetSec;
 
   // Get stats from route params (calculated in SessionRunner)
   const stats = useMemo(() => {
@@ -34,7 +38,7 @@ export default function CompletionScreen() {
     if (sessionId) {
       router.replace({
         pathname: routeBuilders.sessionSummary(sessionId),
-        params: { kind, lessonId },
+        params: { kind, lessonId, planMode, timeBudgetSec },
       });
     }
   };

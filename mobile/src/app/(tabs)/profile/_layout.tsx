@@ -15,6 +15,8 @@ export default function ProfileStackLayout() {
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="progress" options={{ headerShown: true, title: 'Progress' }} />
+      <Stack.Screen name="skills" options={{ headerShown: true, title: 'Skills' }} />
+      <Stack.Screen name="reviews" options={{ headerShown: true, title: 'Reviews' }} />
     </Stack>
   );
 }

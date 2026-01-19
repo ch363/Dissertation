@@ -29,6 +29,21 @@ export class MeService {
     }
   }
 
+  /**
+   * Some environments may run against a database that hasn't been migrated yet.
+   * When newer columns (e.g. nextReviewDue/lastRevisedAt) are missing, Prisma can throw
+   * errors like "The column `(not available)` does not exist in the current database."
+   * In those cases, we fall back to safe defaults rather than 500'ing core endpoints.
+   */
+  private isMissingColumnOrSchemaMismatchError(error: any): boolean {
+    const message = String(error?.message ?? '');
+    return (
+      message.includes('does not exist in the current database') ||
+      message.includes('does not exist') ||
+      message.includes('(not available)')
+    );
+  }
+
   async getMe(userId: string) {
     // Provision user on first request
     const user = await this.usersService.upsertUser(userId);
@@ -90,18 +105,31 @@ export class MeService {
     const now = new Date();
 
     // Count deduped due reviews (latest per question where nextReviewDue <= now)
-    const dueReviews = await this.prisma.userQuestionPerformance.findMany({
-      where: {
-        userId,
-        nextReviewDue: {
-          lte: now,
-          not: null,
+    let dueReviews: Array<{ questionId: string; createdAt: Date }> = [];
+    try {
+      dueReviews = await this.prisma.userQuestionPerformance.findMany({
+        where: {
+          userId,
+          nextReviewDue: {
+            lte: now,
+            not: null,
+          },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+        orderBy: {
+          createdAt: 'desc',
+        },
+        select: {
+          questionId: true,
+          createdAt: true,
+        },
+      });
+    } catch (error: any) {
+      if (!this.isMissingColumnOrSchemaMismatchError(error)) {
+        throw error;
+      }
+      // DB hasn't been migrated yet; due review calculation is unavailable.
+      dueReviews = [];
+    }
 
     // Dedup by questionId - keep only the latest per question
     const questionIdSet = new Set<string>();
@@ -149,29 +177,56 @@ export class MeService {
 
     // Get all question performances from today
     // Use lastRevisedAt if available, otherwise createdAt
-    const todayPerformances = await this.prisma.userQuestionPerformance.findMany({
-      where: {
-        userId,
-        OR: [
-          {
-            lastRevisedAt: {
-              gte: startOfToday,
-              lt: endOfToday,
+    let todayPerformances: Array<{ timeToComplete: number | null }> = [];
+    try {
+      todayPerformances = await this.prisma.userQuestionPerformance.findMany({
+        where: {
+          userId,
+          OR: [
+            {
+              lastRevisedAt: {
+                gte: startOfToday,
+                lt: endOfToday,
+              },
             },
-          },
-          {
-            lastRevisedAt: null,
+            {
+              lastRevisedAt: null,
+              createdAt: {
+                gte: startOfToday,
+                lt: endOfToday,
+              },
+            },
+          ],
+        },
+        select: {
+          timeToComplete: true,
+        },
+      });
+    } catch (error: any) {
+      if (!this.isMissingColumnOrSchemaMismatchError(error)) {
+        throw error;
+      }
+      // Fallback for older DB schema: only use createdAt for "today"
+      try {
+        todayPerformances = await this.prisma.userQuestionPerformance.findMany({
+          where: {
+            userId,
             createdAt: {
               gte: startOfToday,
               lt: endOfToday,
             },
           },
-        ],
-      },
-      select: {
-        timeToComplete: true,
-      },
-    });
+          select: {
+            timeToComplete: true,
+          },
+        });
+      } catch (fallbackError: any) {
+        if (!this.isMissingColumnOrSchemaMismatchError(fallbackError)) {
+          throw fallbackError;
+        }
+        todayPerformances = [];
+      }
+    }
 
     // Sum up timeToComplete in milliseconds, convert to minutes
     const totalMs = todayPerformances.reduce((sum, perf) => {
@@ -224,19 +279,32 @@ export class MeService {
 
     // Get due reviews for questions in these lessons
     const questionIds = teachings.flatMap((t) => t.questions.map((q) => q.id));
-    const dueReviews = await this.prisma.userQuestionPerformance.findMany({
-      where: {
-        userId,
-        questionId: { in: questionIds },
-        nextReviewDue: {
-          lte: now,
-          not: null,
+    let dueReviews: Array<{ questionId: string; createdAt: Date }> = [];
+    try {
+      dueReviews = await this.prisma.userQuestionPerformance.findMany({
+        where: {
+          userId,
+          questionId: { in: questionIds },
+          nextReviewDue: {
+            lte: now,
+            not: null,
+          },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+        orderBy: {
+          createdAt: 'desc',
+        },
+        select: {
+          questionId: true,
+          createdAt: true,
+        },
+      });
+    } catch (error: any) {
+      if (!this.isMissingColumnOrSchemaMismatchError(error)) {
+        throw error;
+      }
+      // DB hasn't been migrated yet; due review calculation is unavailable.
+      dueReviews = [];
+    }
 
     // Dedup by questionId per lesson
     const dueReviewsByQuestionId = new Map<string, typeof dueReviews[0]>();
@@ -374,22 +442,44 @@ export class MeService {
     });
 
     // Get most recently attempted question
-    const recentQuestion = await this.prisma.userQuestionPerformance.findFirst({
-      where: { userId },
-      orderBy: { lastRevisedAt: 'desc' },
-      include: {
-        question: {
-          include: {
+    let recentQuestion:
+      | null
+      | {
+          lastRevisedAt?: Date | null;
+          nextReviewDue?: Date | null;
+          question: {
+            id: string;
             teaching: {
-              include: {
-                lesson: {
-                  select: {
-                    id: true,
-                    title: true,
-                    module: {
-                      select: {
-                        id: true,
-                        title: true,
+              id: string;
+              userLanguageString: string;
+              learningLanguageString: string;
+              lesson: {
+                id: string;
+                title: string;
+                module: { id: string; title: string };
+              };
+            };
+          };
+        } = null;
+
+    try {
+      recentQuestion = await this.prisma.userQuestionPerformance.findFirst({
+        where: { userId },
+        orderBy: { lastRevisedAt: 'desc' },
+        include: {
+          question: {
+            include: {
+              teaching: {
+                include: {
+                  lesson: {
+                    select: {
+                      id: true,
+                      title: true,
+                      module: {
+                        select: {
+                          id: true,
+                          title: true,
+                        },
                       },
                     },
                   },
@@ -398,8 +488,53 @@ export class MeService {
             },
           },
         },
-      },
-    });
+      });
+    } catch (error: any) {
+      if (!this.isMissingColumnOrSchemaMismatchError(error)) {
+        throw error;
+      }
+
+      // Fallback for older DB schema: avoid selecting/orderBy missing SRS fields.
+      const fallback = await this.prisma.userQuestionPerformance.findFirst({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          createdAt: true,
+          question: {
+            select: {
+              id: true,
+              teaching: {
+                select: {
+                  id: true,
+                  userLanguageString: true,
+                  learningLanguageString: true,
+                  lesson: {
+                    select: {
+                      id: true,
+                      title: true,
+                      module: {
+                        select: {
+                          id: true,
+                          title: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      recentQuestion = fallback
+        ? {
+            question: fallback.question,
+            lastRevisedAt: fallback.createdAt,
+            nextReviewDue: null,
+          }
+        : null;
+    }
 
     // Calculate actual completed teachings count from UserTeachingCompleted
     // to ensure accuracy (the counter might be out of sync)

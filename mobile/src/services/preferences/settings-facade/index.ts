@@ -23,6 +23,19 @@ export {
   getNotificationsEnabled,
   /** Persist notifications enabled flag. */
   setNotificationsEnabled,
+
+  /** Read default session mode for session plans (defaults to mixed). */
+  getSessionDefaultMode,
+  /** Persist default session mode for session plans. */
+  setSessionDefaultMode,
+  /** Read optional default time budget (seconds) for session plans. */
+  getSessionDefaultTimeBudgetSec,
+  /** Persist optional default time budget (seconds) for session plans. */
+  setSessionDefaultTimeBudgetSec,
+  /** Read optional default lesson filter for session plans. */
+  getSessionDefaultLessonId,
+  /** Persist optional default lesson filter for session plans. */
+  setSessionDefaultLessonId,
 } from '@/services/preferences';
 
 /** Safe speech wrapper; methods are no-ops if native module is unavailable. */

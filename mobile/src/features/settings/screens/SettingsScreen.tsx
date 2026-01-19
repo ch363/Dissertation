@@ -89,6 +89,18 @@ export default function SettingsScreen() {
           <Text style={[styles.label, { color: theme.colors.text }]}>Speech</Text>
           <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
         </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open Session Defaults"
+          onPress={() => router.push(routes.tabs.settings.session)}
+          style={[
+            styles.row,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+          ]}
+        >
+          <Text style={[styles.label, { color: theme.colors.text }]}>Session defaults</Text>
+          <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
+        </Pressable>
         <View
           style={[
             styles.row,

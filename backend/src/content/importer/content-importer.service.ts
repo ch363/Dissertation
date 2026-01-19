@@ -121,19 +121,23 @@ export class ContentImporterService {
             );
             
             for (const question of teachingQuestions) {
-              // Create one question per delivery method
+              // Create one conceptual Question, then one QuestionVariant per delivery method
+              const { id: questionId, created: questionCreated } = await this.importQuestion(
+                question,
+                teachingId,
+              );
+              if (questionCreated) {
+                stats.questionsCreated++;
+              } else {
+                stats.questionsUpdated++;
+              }
+
               for (const deliveryMethod of question.deliveryMethods) {
-                const { id: questionId, created: questionCreated } = await this.importQuestion(
+                await this.importQuestionVariantData(
                   question,
-                  teachingId,
+                  questionId,
                   deliveryMethod as DELIVERY_METHOD,
                 );
-                if (questionCreated) {
-                  stats.questionsCreated++;
-                } else {
-                  stats.questionsUpdated++;
-                }
-                await this.importQuestionDeliveryMethodData(question, questionId, deliveryMethod as DELIVERY_METHOD);
                 stats.deliveryMethodsCreated++;
               }
             }
@@ -251,15 +255,14 @@ export class ContentImporterService {
   /**
    * Import a question
    * Questions only link to teaching - all data comes from the Teaching relationship
-   * With new schema: each question has a single delivery method type
+   * With variants schema: a Question is conceptual, and QuestionVariant stores delivery-method-specific payload.
    */
   private async importQuestion(
     question: LessonContent['questions'][0],
     teachingId: string,
-    deliveryMethod: DELIVERY_METHOD,
   ): Promise<{ id: string; created: boolean }> {
-    // Create unique ID per question + delivery method combination
-    const id = `${questionIdFromSlug(question.slug)}-${deliveryMethod}`;
+    // One stable ID per conceptual question
+    const id = questionIdFromSlug(question.slug);
 
     const existing = await this.prisma.question.findUnique({ where: { id } });
     const created = !existing;
@@ -268,12 +271,10 @@ export class ContentImporterService {
       where: { id },
       update: {
         teachingId,
-        type: deliveryMethod,
       },
       create: {
         id,
         teachingId,
-        type: deliveryMethod,
       },
     });
 
@@ -281,78 +282,48 @@ export class ContentImporterService {
   }
 
   /**
-   * Import question delivery method data
-   * Creates the specific delivery method table entry based on type
+   * Import question variant data (delivery-method-specific payload).
    */
-  private async importQuestionDeliveryMethodData(
+  private async importQuestionVariantData(
     question: LessonContent['questions'][0],
     questionId: string,
     deliveryMethod: DELIVERY_METHOD,
   ): Promise<void> {
-    // Create/update the specific delivery method table entry
-    // For now, we'll create empty entries - actual data would come from question content
+    // Build the per-method payload from validated content schema
+    let data: any = {};
     switch (deliveryMethod) {
-      case DELIVERY_METHOD.FILL_BLANK:
-        await this.prisma.questionFillBlank.upsert({
-          where: { questionId },
-          update: {},
-          create: {
-            questionId,
-            blankIndices: [],
-            acceptedAnswers: {},
-          },
-        });
-        break;
       case DELIVERY_METHOD.MULTIPLE_CHOICE:
-        await this.prisma.questionMultipleChoice.upsert({
-          where: { questionId },
-          update: {},
-          create: {
-            questionId,
-            options: [],
-            correctIndices: [],
-          },
-        });
-        break;
-      case DELIVERY_METHOD.SPEECH_TO_TEXT:
-        await this.prisma.questionSpeechToText.upsert({
-          where: { questionId },
-          update: {},
-          create: {
-            questionId,
-            acceptedAnswers: [],
-          },
-        });
+        data = question.multipleChoice ?? {};
         break;
       case DELIVERY_METHOD.TEXT_TRANSLATION:
-        await this.prisma.questionTextTranslation.upsert({
-          where: { questionId },
-          update: {},
-          create: {
-            questionId,
-            acceptedAnswers: [],
-          },
-        });
-        break;
       case DELIVERY_METHOD.FLASHCARD:
-        await this.prisma.questionFlashcard.upsert({
-          where: { questionId },
-          update: {},
-          create: {
-            questionId,
-          },
-        });
+        data = question.translation ?? {};
         break;
+      case DELIVERY_METHOD.FILL_BLANK:
+        data = question.fillBlank ?? {};
+        break;
+      case DELIVERY_METHOD.SPEECH_TO_TEXT:
       case DELIVERY_METHOD.TEXT_TO_SPEECH:
-        await this.prisma.questionTextToSpeech.upsert({
-          where: { questionId },
-          update: {},
-          create: {
-            questionId,
-          },
-        });
+        data = question.listening ?? {};
         break;
     }
+
+    await this.prisma.questionVariant.upsert({
+      where: {
+        questionId_deliveryMethod: {
+          questionId,
+          deliveryMethod,
+        },
+      },
+      update: {
+        data,
+      },
+      create: {
+        questionId,
+        deliveryMethod,
+        data,
+      },
+    });
   }
 
   /**

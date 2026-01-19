@@ -81,87 +81,30 @@ model Question {
   teachingId String   @map("teaching_id") @db.Uuid
   teaching   Teaching @relation(fields: [teachingId], references: [id], onDelete: Cascade)
 
-  type DELIVERY_METHOD @map("type")
-
-  // One-to-One Relations
-  fillBlank       QuestionFillBlank?
-  multipleChoice  QuestionMultipleChoice?
-  speechToText    QuestionSpeechToText?
-  textTranslation QuestionTextTranslation?
-  flashcard       QuestionFlashcard?
-  textToSpeech    QuestionTextToSpeech?
+  // Variants represent delivery-method-specific forms of this conceptual question
+  variants QuestionVariant[]
 
   userQuestionPerformance UserQuestionPerformance[]
   skillTags               SkillTag[]
 
   @@index([teachingId])
-  @@index([type])
   @@map("questions")
 }
 
-model QuestionFillBlank {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+model QuestionVariant {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  questionId     String          @map("question_id") @db.Uuid
+  deliveryMethod DELIVERY_METHOD @map("delivery_method")
+  data           Json?           @map("data")
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  // Which tokens are blanked in Teaching.learningLanguageString
-  blankIndices Int[] @map("blank_indices")
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
-  // Per-blank accepted answers. Example: {"0":["sono"],"2":["andato","andata"]}
-  acceptedAnswers Json @map("accepted_answers")
-
-  questionId String   @unique @map("question_id") @db.Uuid
-  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-
-  @@map("question_fill_blanks")
-}
-
-model QuestionMultipleChoice {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-
-  options        String[]
-  correctIndices Int[]    @map("correct_indices")
-
-  questionId String   @unique @map("question_id") @db.Uuid
-  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-
-  @@map("question_multiple_choice")
-}
-
-model QuestionSpeechToText {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-
-  acceptedAnswers String[] @map("accepted_answers")
-
-  questionId String   @unique @map("question_id") @db.Uuid
-  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-
-  @@map("question_speech_to_text")
-}
-
-model QuestionTextTranslation {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-
-  acceptedAnswers String[] @map("accepted_answers")
-
-  questionId String   @unique @map("question_id") @db.Uuid
-  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-
-  @@map("question_text_translation")
-}
-
-model QuestionFlashcard {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  questionId String   @unique @map("question_id") @db.Uuid
-  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-
-  @@map("question_flashcards")
-}
-
-model QuestionTextToSpeech {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  questionId String   @unique @map("question_id") @db.Uuid
-  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-
-  @@map("question_text_to_speech")
+  @@unique([questionId, deliveryMethod])
+  @@index([questionId])
+  @@index([deliveryMethod])
+  @@map("question_variants")
 }
 
 model User {
@@ -248,6 +191,7 @@ model UserQuestionPerformance {
   id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId             String    @map("user_id") @db.Uuid
   questionId         String    @map("question_id") @db.Uuid
+  deliveryMethod     DELIVERY_METHOD @map("delivery_method")
   score              Int
   timeToComplete     Int?      @map("time_to_complete")
   percentageAccuracy Int?      @map("percentage_accuracy")
@@ -256,7 +200,6 @@ model UserQuestionPerformance {
   lastRevisedAt      DateTime? @map("last_revised_at") @db.Timestamp(6)
   nextReviewDue      DateTime? @map("next_review_due") @db.Timestamp(6)
   intervalDays       Int?      @map("interval_days")
-  easeFactor         Float?    @map("ease_factor")
   stability          Float?    @map("stability")
   difficulty         Float?    @map("difficulty")
   repetitions        Int?      @default(0)
@@ -267,6 +210,7 @@ model UserQuestionPerformance {
   @@index([userId])
   @@index([questionId])
   @@index([userId, questionId])
+  @@index([deliveryMethod])
   @@index([nextReviewDue])
   @@map("user_question_performance")
 }

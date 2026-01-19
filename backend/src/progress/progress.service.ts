@@ -8,7 +8,7 @@ import { ValidateAnswerDto } from './dto/validate-answer.dto';
 import { ValidateAnswerResponseDto } from './dto/validate-answer-response.dto';
 import { ValidatePronunciationDto } from './dto/validate-pronunciation.dto';
 import { PronunciationResponseDto, WordAnalysisDto } from './dto/pronunciation-response.dto';
-import { DELIVERY_METHOD } from '@prisma/client';
+import { DELIVERY_METHOD, Prisma } from '@prisma/client';
 import { SrsService } from '../engine/srs/srs.service';
 import { XpService } from '../engine/scoring/xp.service';
 import { ContentLookupService } from '../content/content-lookup.service';
@@ -210,6 +210,7 @@ export class ProgressService {
       data: {
         userId,
         questionId,
+        deliveryMethod: attemptDto.deliveryMethod,
         score: attemptDto.score,
         timeToComplete: attemptDto.timeToComplete,
         percentageAccuracy: attemptDto.percentageAccuracy,
@@ -217,7 +218,6 @@ export class ProgressService {
         lastRevisedAt: now,
         nextReviewDue: srsState.nextReviewDue,
         intervalDays: srsState.intervalDays,
-        easeFactor: srsState.easeFactor,
         stability: srsState.stability,
         difficulty: srsState.difficulty,
         repetitions: srsState.repetitions,
@@ -353,6 +353,12 @@ export class ProgressService {
                   select: {
                     id: true,
                     title: true,
+                    module: {
+                      select: {
+                        id: true,
+                        title: true,
+                      },
+                    },
                   },
                 },
               },
@@ -890,6 +896,28 @@ export class ProgressService {
     questionId: string,
     dto: ValidateAnswerDto,
   ): Promise<ValidateAnswerResponseDto> {
+    // Ensure this question supports the requested delivery method.
+    // Session planning should only emit supported methods, but we validate defensively.
+    const variant = await this.prisma.questionVariant.findUnique({
+      where: {
+        questionId_deliveryMethod: {
+          questionId,
+          deliveryMethod: dto.deliveryMethod,
+        },
+      },
+      select: {
+        data: true,
+      },
+    });
+
+    if (!variant) {
+      throw new BadRequestException(
+        `Question ${questionId} does not support ${dto.deliveryMethod} delivery method`,
+      );
+    }
+
+    const variantData = (variant.data ?? undefined) as any | undefined;
+
     // Get question from DB (includes teachingId)
     const question = await this.prisma.question.findUnique({
       where: { id: questionId },
@@ -940,27 +968,18 @@ export class ProgressService {
       dto.deliveryMethod === DELIVERY_METHOD.TEXT_TRANSLATION ||
       dto.deliveryMethod === DELIVERY_METHOD.FLASHCARD
     ) {
-      // Translation: use acceptedAnswers from QuestionTextTranslation if available, otherwise fall back to userLanguageString
+      // Translation/Flashcard: validate against variant answer (preferred), fallback to teaching.userLanguageString.
       const normalizedUserAnswer = dto.answer.toLowerCase().trim();
-      let correctAnswers: string[] = [];
+      const correctAnswerSource: string =
+        (typeof variantData?.answer === 'string' && variantData.answer.trim().length > 0)
+          ? variantData.answer
+          : teaching.userLanguageString;
 
-      // Try to get acceptedAnswers from QuestionTextTranslation table
-      const textTranslation = await this.prisma.questionTextTranslation.findUnique({
-        where: { questionId },
-        select: { acceptedAnswers: true },
-      });
-
-      if (textTranslation && textTranslation.acceptedAnswers && textTranslation.acceptedAnswers.length > 0) {
-        // Use acceptedAnswers from database
-        correctAnswers = textTranslation.acceptedAnswers.map((ans) => ans.toLowerCase().trim());
-      } else {
-        // Fallback: use userLanguageString and split by "/"
-        const correctAnswer = teaching.userLanguageString.toLowerCase().trim();
-        correctAnswers = correctAnswer
-          .split('/')
-          .map((ans) => ans.trim())
-          .filter((ans) => ans.length > 0);
-      }
+      const correctAnswers = correctAnswerSource
+        .toLowerCase()
+        .split('/')
+        .map((ans) => ans.trim())
+        .filter((ans) => ans.length > 0);
       
       isCorrect = correctAnswers.some((correctAns) => correctAns === normalizedUserAnswer);
       score = isCorrect ? 100 : 0;
@@ -971,7 +990,11 @@ export class ProgressService {
     } else if (dto.deliveryMethod === DELIVERY_METHOD.FILL_BLANK) {
       // Fill blank: compare against learningLanguageString
       const normalizedUserAnswer = dto.answer.toLowerCase().trim();
-      const correctAnswer = teaching.learningLanguageString.toLowerCase().trim();
+      const correctAnswer = (
+        (typeof variantData?.answer === 'string' && variantData.answer.trim().length > 0)
+          ? variantData.answer
+          : teaching.learningLanguageString
+      ).toLowerCase().trim();
       
       const correctAnswers = correctAnswer
         .split('/')
@@ -990,7 +1013,11 @@ export class ProgressService {
     ) {
       // Listening: compare against learningLanguageString
       const normalizedUserAnswer = dto.answer.toLowerCase().trim();
-      const correctAnswer = teaching.learningLanguageString.toLowerCase().trim();
+      const correctAnswer = (
+        (typeof variantData?.answer === 'string' && variantData.answer.trim().length > 0)
+          ? variantData.answer
+          : teaching.learningLanguageString
+      ).toLowerCase().trim();
       
       const correctAnswers = correctAnswer
         .split('/')
@@ -1018,30 +1045,49 @@ export class ProgressService {
     dto: ValidatePronunciationDto,
   ): Promise<PronunciationResponseDto> {
     // Verify question exists and is TEXT_TO_SPEECH type
-    const question = await this.prisma.question.findUnique({
-      where: { id: questionId },
-      include: {
-        teaching: {
-          select: {
-            id: true,
-            learningLanguageString: true,
-            userLanguageString: true,
+    const [question, variant] = await Promise.all([
+      this.prisma.question.findUnique({
+        where: { id: questionId },
+        include: {
+          teaching: {
+            select: {
+              id: true,
+              learningLanguageString: true,
+              userLanguageString: true,
+            },
           },
         },
-      },
-    });
+      }),
+      this.prisma.questionVariant.findUnique({
+        where: {
+          questionId_deliveryMethod: {
+            questionId,
+            deliveryMethod: DELIVERY_METHOD.TEXT_TO_SPEECH,
+          },
+        },
+        select: { data: true },
+      }),
+    ]);
 
     if (!question) {
       throw new NotFoundException(`Question with ID ${questionId} not found`);
     }
 
-    if (question.type !== DELIVERY_METHOD.TEXT_TO_SPEECH) {
+    if (!variant) {
       throw new BadRequestException(
         `Question ${questionId} does not support TEXT_TO_SPEECH delivery method`,
       );
     }
 
-    const expectedText = question.teaching.learningLanguageString;
+    const variantAnswer =
+      variant.data &&
+      typeof variant.data === 'object' &&
+      !Array.isArray(variant.data) &&
+      typeof (variant.data as Prisma.JsonObject)['answer'] === 'string'
+        ? ((variant.data as Prisma.JsonObject)['answer'] as string).trim()
+        : '';
+
+    const expectedText = variantAnswer.length > 0 ? variantAnswer : question.teaching.learningLanguageString;
 
     try {
       // Import Google Cloud Speech client
