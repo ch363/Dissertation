@@ -2,6 +2,9 @@ export type Theme = {
   colors: {
     primary: string;
     secondary: string;
+    onPrimary: string;
+    onSecondary: string;
+    link: string;
     background: string;
     success: string;
     error: string;
@@ -40,8 +43,14 @@ const typography = {
 
 export const lightTheme: Theme = {
   colors: {
-    primary: '#1F7AE0',
+    // WCAG AA: ensure contrast for links and primary buttons
+    primary: '#1A6FD6',
     secondary: '#12BFA1',
+    onPrimary: '#FFFFFF',
+    // Secondary is bright; dark text provides accessible contrast
+    onSecondary: '#0E141B',
+    // Use primary for link text to meet contrast on light backgrounds
+    link: '#1A6FD6',
     background: '#F4F8FF',
     success: '#34C759',
     error: '#FF3B30',
@@ -59,6 +68,10 @@ export const darkTheme: Theme = {
   colors: {
     primary: '#62A0FF',
     secondary: '#26D4BA',
+    // Primary is light in dark mode; use dark text for accessible contrast
+    onPrimary: '#0E141B',
+    onSecondary: '#0E141B',
+    link: '#62A0FF',
     background: '#0E141B',
     success: '#30D158',
     error: '#FF453A',

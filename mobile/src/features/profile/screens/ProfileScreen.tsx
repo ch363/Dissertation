@@ -390,7 +390,7 @@ export default function Profile() {
         onRequestClose={handleCancel}
       >
         <SafeAreaView style={[styles.modalContainer, { backgroundColor: theme.colors.background }]}>
-          <View style={styles.modalHeader}>
+          <View style={[styles.modalHeader, { borderBottomColor: theme.colors.border }]}>
             <Pressable onPress={handleCancel} disabled={saving} style={styles.modalCancelButton}>
               <Text style={[styles.modalCancelText, { color: theme.colors.text }]}>Cancel</Text>
             </Pressable>
@@ -415,7 +415,12 @@ export default function Profile() {
                     <Ionicons name="person" size={40} color={theme.colors.mutedText} />
                   </View>
                 )}
-                <View style={[styles.avatarEditBadge, { backgroundColor: theme.colors.primary }]}>
+                <View
+                  style={[
+                    styles.avatarEditBadge,
+                    { backgroundColor: theme.colors.primary, borderColor: theme.colors.background },
+                  ]}
+                >
                   <Ionicons name="camera" size={20} color="#fff" />
                 </View>
               </Pressable>
@@ -557,7 +562,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: baseTheme.spacing.md,
     paddingVertical: baseTheme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: baseTheme.colors.border,
   },
   modalCancelButton: {
     padding: baseTheme.spacing.xs,
@@ -610,7 +614,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: baseTheme.colors.card,
+    borderColor: 'transparent',
   },
   removeAvatarButton: {
     paddingVertical: baseTheme.spacing.sm,

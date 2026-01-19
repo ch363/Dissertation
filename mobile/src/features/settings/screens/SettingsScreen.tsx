@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, useNavigation } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { router } from 'expo-router';
+import { useEffect, useState, type ReactNode } from 'react';
 import { View, Text, StyleSheet, Switch, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ScrollView, SurfaceCard } from '@/components/ui';
 import { signOut } from '@/services/api/auth';
 import { routes } from '@/services/navigation/routes';
 import {
@@ -15,30 +16,29 @@ import {
 } from '@/services/preferences/settings-facade';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
+type SectionProps = {
+  title: string;
+  color: string;
+  children: ReactNode;
+};
+
+function Section({ title, color, children }: SectionProps) {
+  return (
+    <View style={styles.sectionWrap}>
+      <Text style={[styles.sectionHeader, { color }]}>{title}</Text>
+      {children}
+    </View>
+  );
+}
+
+function RowDivider({ color }: { color: string }) {
+  return <View style={[styles.divider, { backgroundColor: color }]} />;
+}
+
 export default function SettingsScreen() {
   const { theme, isDark, setMode } = useAppTheme();
   const [adaptivity, setAdaptivity] = useState<boolean>(true);
   const [notifications, setNotifications] = useState<boolean>(true);
-  const navigation = useNavigation();
-  // If this screen is rendered inside tab bar, no custom back button
-  const showBack = typeof navigation?.canGoBack === 'function' && navigation.canGoBack();
-
-  const handleBack = useCallback(() => {
-    try {
-      // Prefer going back if we have a stack history
-      // @ts-ignore - navigation type from expo-router bridges React Navigation
-      if (navigation?.canGoBack?.() === true) {
-        // @ts-ignore
-        navigation.goBack();
-        return;
-      }
-    } catch {}
-    try {
-      router.replace(routes.tabs.home);
-    } catch {
-      router.push(routes.tabs.home);
-    }
-  }, [navigation]);
 
   useEffect(() => {
     (async () => {
@@ -49,117 +49,125 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        {/* Top-right back arrow to return to Home */}
-        {showBack && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Back to Home"
-            hitSlop={12}
-            onPress={handleBack}
-            style={styles.backBtn}
-          >
-            <Ionicons name="chevron-back" size={22} color={theme.colors.mutedText} />
-          </Pressable>
-        )}
-
+      <ScrollView
+        style={[styles.scroll, { backgroundColor: theme.colors.background }]}
+        contentContainerStyle={styles.content}
+      >
         <Text style={[styles.title, { color: theme.colors.text }]}>Settings</Text>
-        <View
-          style={[
-            styles.row,
-            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
-          ]}
-        >
-          <Text style={[styles.label, { color: theme.colors.text }]}>Dark Mode</Text>
-          <Switch
-            value={isDark}
-            onValueChange={(v) => setMode(v ? 'dark' : 'light')}
-            trackColor={{ true: theme.colors.primary }}
-          />
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Open Speech Settings"
-          onPress={() => router.push(routes.tabs.settings.speech)}
-          style={[
-            styles.row,
-            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
-          ]}
-        >
-          <Text style={[styles.label, { color: theme.colors.text }]}>Speech</Text>
-          <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Open Session Defaults"
-          onPress={() => router.push(routes.tabs.settings.session)}
-          style={[
-            styles.row,
-            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
-          ]}
-        >
-          <Text style={[styles.label, { color: theme.colors.text }]}>Session defaults</Text>
-          <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
-        </Pressable>
-        <View
-          style={[
-            styles.row,
-            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
-          ]}
-        >
-          <Text style={[styles.label, { color: theme.colors.text }]}>Adaptivity</Text>
-          <Switch
-            value={adaptivity}
-            onValueChange={async (v) => {
-              setAdaptivity(v);
-              await setAdaptivityEnabled(v);
-            }}
-            trackColor={{ true: theme.colors.primary }}
-          />
-        </View>
+        <Text style={[styles.intro, { color: theme.colors.mutedText }]}>
+          Tailor Fluentia to how you learn best
+        </Text>
 
-        <View
-          style={[
-            styles.row,
-            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
-          ]}
-        >
-          <Text style={[styles.label, { color: theme.colors.text }]}>Notifications</Text>
-          <Switch
-            value={notifications}
-            onValueChange={async (v) => {
-              setNotifications(v);
-              await setNotificationsEnabled(v);
-            }}
-            trackColor={{ true: theme.colors.primary }}
-          />
-        </View>
+        <Section title="APPEARANCE" color={theme.colors.mutedText}>
+          <SurfaceCard style={styles.card}>
+            <View style={styles.row}>
+              <Text style={[styles.rowTitle, { color: theme.colors.text }]}>Dark Mode</Text>
+              <Switch
+                value={isDark}
+                onValueChange={(v) => setMode(v ? 'dark' : 'light')}
+                trackColor={{ true: theme.colors.primary }}
+              />
+            </View>
+          </SurfaceCard>
+        </Section>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Sign out"
-          onPress={async () => {
-            await signOut();
-            router.replace('/sign-in');
-          }}
-          style={[
-            styles.row,
-            styles.logout,
-            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
-          ]}
-        >
-          <Text style={[styles.label, { color: theme.colors.error }]}>Sign out</Text>
-          <Ionicons name="exit-outline" size={18} color={theme.colors.error} />
-        </Pressable>
-      </View>
+        <Section title="LEARNING" color={theme.colors.mutedText}>
+          <SurfaceCard style={styles.card}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open Speech Settings"
+              onPress={() => router.push(routes.tabs.settings.speech)}
+              style={styles.row}
+            >
+              <Text style={[styles.rowTitle, { color: theme.colors.text }]}>Speech</Text>
+              <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
+            </Pressable>
+
+            <RowDivider color={theme.colors.border} />
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open Session Defaults"
+              onPress={() => router.push(routes.tabs.settings.session)}
+              style={styles.row}
+            >
+              <View style={styles.rowLeft}>
+                <Text style={[styles.rowTitle, { color: theme.colors.text }]}>Session defaults</Text>
+                <Text style={[styles.rowSubtitle, { color: theme.colors.mutedText }]}>
+                  Preferred session length and exercise types
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
+            </Pressable>
+
+            <RowDivider color={theme.colors.border} />
+
+            <View style={styles.row}>
+              <View style={styles.rowLeft}>
+                <Text style={[styles.rowTitle, { color: theme.colors.text }]}>Adaptivity</Text>
+                <Text style={[styles.rowSubtitle, { color: theme.colors.mutedText }]}>
+                  Adjusts difficulty and review timing based on your performance
+                </Text>
+              </View>
+              <Switch
+                value={adaptivity}
+                onValueChange={async (v) => {
+                  setAdaptivity(v);
+                  await setAdaptivityEnabled(v);
+                }}
+                trackColor={{ true: theme.colors.primary }}
+              />
+            </View>
+          </SurfaceCard>
+        </Section>
+
+        <Section title="NOTIFICATIONS" color={theme.colors.mutedText}>
+          <SurfaceCard style={styles.card}>
+            <View style={styles.row}>
+              <Text style={[styles.rowTitle, { color: theme.colors.text }]}>Notifications</Text>
+              <Switch
+                value={notifications}
+                onValueChange={async (v) => {
+                  setNotifications(v);
+                  await setNotificationsEnabled(v);
+                }}
+                trackColor={{ true: theme.colors.primary }}
+              />
+            </View>
+          </SurfaceCard>
+        </Section>
+
+        <Section title="ACCOUNT" color={theme.colors.mutedText}>
+          <SurfaceCard
+            style={[
+              styles.card,
+              styles.accountCard,
+              { backgroundColor: theme.colors.background, borderColor: theme.colors.border },
+            ]}
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Sign out"
+              onPress={async () => {
+                await signOut();
+                router.replace('/sign-in');
+              }}
+              style={styles.row}
+            >
+              <Text style={[styles.rowTitle, { color: theme.colors.error }]}>Sign out</Text>
+              <Ionicons name="exit-outline" size={18} color={theme.colors.error} />
+            </Pressable>
+          </SurfaceCard>
+        </Section>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
-  container: {
-    flex: 1,
+  scroll: { flex: 1 },
+  content: {
     padding: baseTheme.spacing.lg,
     gap: baseTheme.spacing.md,
   },
@@ -167,24 +175,50 @@ const styles = StyleSheet.create({
     fontFamily: baseTheme.typography.semiBold,
     fontSize: 22,
   },
+  intro: {
+    marginTop: 2,
+    fontFamily: baseTheme.typography.regular,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  sectionWrap: {
+    gap: baseTheme.spacing.sm,
+  },
+  sectionHeader: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 12,
+    letterSpacing: 1,
+  },
+  card: {
+    padding: 0,
+  },
+  accountCard: {
+    borderRadius: baseTheme.radius.lg,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: baseTheme.spacing.md,
     paddingHorizontal: baseTheme.spacing.md,
-    borderRadius: baseTheme.radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
+    minHeight: 52,
   },
-  label: {
+  rowLeft: {
+    flex: 1,
+    paddingRight: baseTheme.spacing.md,
+    gap: 2,
+  },
+  rowTitle: {
     fontFamily: baseTheme.typography.regular,
     fontSize: 16,
   },
-  logout: {
-    marginTop: baseTheme.spacing.md,
+  rowSubtitle: {
+    fontFamily: baseTheme.typography.regular,
+    fontSize: 12,
+    lineHeight: 16,
   },
-  backBtn: {
-    alignSelf: 'flex-start',
-    marginBottom: baseTheme.spacing.md,
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: baseTheme.spacing.md,
   },
 });

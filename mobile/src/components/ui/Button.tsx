@@ -33,7 +33,13 @@ export function Button({
         ? theme.colors.secondary
         : theme.colors.primary;
 
-  const textColor = variant === 'ghost' ? theme.colors.text : '#fff';
+  const textColor = disabled
+    ? theme.colors.mutedText
+    : variant === 'ghost'
+      ? theme.colors.text
+      : variant === 'secondary'
+        ? theme.colors.onSecondary
+        : theme.colors.onPrimary;
   const borderColor = variant === 'ghost' ? theme.colors.border : 'transparent';
 
   return (
@@ -62,6 +68,7 @@ export function Button({
 
 const styles = StyleSheet.create({
   button: {
+    minHeight: 44,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,

@@ -222,6 +222,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
         if (!recordedAttempts.has(currentCard.id)) {
           try {
             const attemptResponse = await recordQuestionAttempt(questionId, {
+              deliveryMethod,
               score: pronunciationResponse.score,
               timeToComplete,
               percentageAccuracy: pronunciationResponse.overallScore,
@@ -298,6 +299,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
       if (!recordedAttempts.has(currentCard.id)) {
         try {
           const attemptResponse = await recordQuestionAttempt(questionId, {
+            deliveryMethod,
             score: validationResult.score,
             timeToComplete,
             percentageAccuracy: validationResult.isCorrect ? 100 : 0,
@@ -371,6 +373,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           if (!recordedAttempts.has(currentCard.id)) {
             try {
               const attemptResponse = await recordQuestionAttempt(questionId, {
+                deliveryMethod,
                 score: validationResult.score,
                 timeToComplete,
                 percentageAccuracy: validationResult.isCorrect ? 100 : 0,
@@ -454,6 +457,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           const timeToComplete = cardStartTime ? Date.now() - cardStartTime : undefined;
           
           const attemptResponse = await recordQuestionAttempt(questionId, {
+            deliveryMethod,
             score,
             timeToComplete,
             percentageAccuracy: score,

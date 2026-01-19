@@ -4,15 +4,16 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ScrollView } from '@/components/ui';
 
-import { LearningPathCard } from '@/features/learn/mock';
+import type { LearningPathItem } from '@/features/learn/utils/buildLearningPathItems';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
 type Props = {
-  items: LearningPathCard[];
+  items: LearningPathItem[];
+  onPressItem: (route: string) => void;
 };
 
-export function LearningPathCarousel({ items }: Props) {
+export function LearningPathCarousel({ items, onPressItem }: Props) {
   const { theme } = useAppTheme();
 
   return (
@@ -31,8 +32,8 @@ export function LearningPathCarousel({ items }: Props) {
       >
         {items.map((item) => {
           const isLocked = item.status === 'locked';
-          const totalSegments = item.total ?? 0;
-          const completedSegments = item.completed ?? 0;
+          const totalSegments = item.totalSegments ?? 0;
+          const completedSegments = item.completedSegments ?? 0;
           return (
             <View
               key={item.id}
@@ -48,7 +49,7 @@ export function LearningPathCarousel({ items }: Props) {
             >
               <View style={styles.cardHeader}>
                 <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
-                  {item.title} {item.flag} {item.level}
+                  {item.title}
                 </Text>
                 {isLocked ? (
                   <Ionicons name="lock-closed" size={16} color={theme.colors.mutedText} />
@@ -68,27 +69,32 @@ export function LearningPathCarousel({ items }: Props) {
                           styles.segment,
                           {
                             backgroundColor:
-                              idx < completedSegments ? theme.colors.primary : '#E4EAF4',
+                              idx < completedSegments ? theme.colors.primary : theme.colors.border,
                           },
                         ]}
                       />
                     ))}
                   </View>
                   <Text style={[styles.progressLabel, { color: theme.colors.mutedText }]}>
-                    {completedSegments}/{totalSegments} completed
+                    {item.completedLessons}/{item.totalLessons} completed
                   </Text>
                 </View>
               ) : null}
 
-              {item.status === 'active' && item.cta ? (
-                <Pressable style={[styles.ctaButton, { backgroundColor: theme.colors.primary }]}>
-                  <Text style={[styles.ctaLabel, { color: '#fff' }]}>{item.cta}</Text>
+              {item.status === 'active' && item.ctaLabel ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={item.ctaLabel}
+                  onPress={() => onPressItem(item.route)}
+                  style={[styles.ctaButton, { backgroundColor: theme.colors.primary }]}
+                >
+                  <Text style={[styles.ctaLabel, { color: theme.colors.onPrimary }]}>{item.ctaLabel}</Text>
                 </Pressable>
               ) : (
                 <View style={styles.lockRow}>
                   <Ionicons name="lock-closed" size={16} color={theme.colors.mutedText} />
                   <Text style={[styles.lockText, { color: theme.colors.mutedText }]}>
-                    {item.subtitle}
+                    Locked
                   </Text>
                 </View>
               )}

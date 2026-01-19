@@ -2,18 +2,20 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui/Button';
-import { ReviewSummary } from '@/features/learn/mock';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
 type Props = {
-  data: ReviewSummary;
+  dueCount: number;
   onStart?: () => void;
 };
 
-export function ReviewSection({ data, onStart }: Props) {
+export function ReviewSection({ dueCount, onStart }: Props) {
   const { theme } = useAppTheme();
-  const progressWidth = Math.min(1, Math.max(0, data.progress));
+  const subtitle =
+    dueCount === 0
+      ? 'No cards due today'
+      : `${dueCount} ${dueCount === 1 ? 'card' : 'cards'} due today`;
 
   return (
     <View style={styles.section}>
@@ -35,16 +37,8 @@ export function ReviewSection({ data, onStart }: Props) {
           <View style={{ flex: 1, gap: baseTheme.spacing.xs }}>
             <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Due for Review</Text>
             <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>
-              {data.subtitle}
+              {subtitle}
             </Text>
-            <View style={[styles.progressTrack, { backgroundColor: '#E0E7F5' }]}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${progressWidth * 100}%`, backgroundColor: theme.colors.primary },
-                ]}
-              />
-            </View>
           </View>
           <View
             style={[
@@ -59,6 +53,7 @@ export function ReviewSection({ data, onStart }: Props) {
         <Button
           title="Start Review"
           onPress={onStart ?? (() => {})}
+          disabled={dueCount === 0}
           style={{
             marginTop: baseTheme.spacing.md,
             borderRadius: baseTheme.radius.lg,
@@ -105,15 +100,6 @@ const styles = StyleSheet.create({
   cardSubtitle: {
     fontFamily: baseTheme.typography.regular,
     fontSize: 14,
-  },
-  progressTrack: {
-    height: 12,
-    borderRadius: 999,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: 12,
-    borderRadius: 999,
   },
   illustration: {
     width: 96,

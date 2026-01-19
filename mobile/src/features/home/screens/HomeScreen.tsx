@@ -1,255 +1,207 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScrollView } from '@/components/ui';
-
-import { getMyProfile, getRecentActivity, getDashboard, getStats } from '@/services/api/profile';
+import { HomePrimaryCtaCard, type HomePrimaryAction } from '@/features/home/components/HomePrimaryCtaCard';
+import { HomeTodayAtAGlance } from '@/features/home/components/HomeTodayAtAGlance';
 import { WelcomeContinueCard } from '@/features/home/components/WelcomeContinueCard';
-import { DueTodayGrid } from '@/features/home/components/due-today/DueTodayGrid';
-import type { DueTodayTileItem } from '@/features/home/components/due-today/DueTodayTile';
-import { PickPathList } from '@/features/home/components/pick-path/PickPathList';
-import { routes } from '@/services/navigation/routes';
+import { HomeWhyThisNext } from '@/features/home/components/HomeWhyThisNext';
+import { selectHomeNextAction, type HomeNextAction } from '@/features/home/utils/selectHomeNextAction';
+import { getSuggestions } from '@/services/api/learn';
+import { getDashboard, getMyProfile, getRecentActivity, getStats } from '@/services/api/profile';
+import { routeBuilders, routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
-import { getUserLessons, type UserLessonProgress } from '@/services/api/progress';
-import { getLessons, getModules, type Lesson, type Module } from '@/services/api/modules';
 import { makeSessionId } from '@/features/session/sessionBuilder';
-import { routeBuilders } from '@/services/navigation/routes';
+import { getLesson, getLessonTeachings } from '@/services/api/modules';
+import { buildLessonOutcome } from '@/features/learn/utils/lessonOutcome';
 
 export default function HomeScreen() {
   const { theme } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const [displayName, setDisplayName] = useState<string | null>(null);
-  const [userProgress, setUserProgress] = useState<UserLessonProgress[]>([]);
-  const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [modules, setModules] = useState<Module[]>([]);
   const [streakDays, setStreakDays] = useState<number>(0);
   const [minutesToday, setMinutesToday] = useState<number>(0);
-  const [dueTodayItems, setDueTodayItems] = useState<DueTodayTileItem[]>([]);
-  const [pickPaths, setPickPaths] = useState<DueTodayTileItem[]>([]);
-
-  const [continueLesson, setContinueLesson] = useState<{
-    lessonTitle: string;
-    lessonProgress: string;
-    estTime: string;
-    onContinue: () => void;
-  } | null>(null);
+  const [dueReviewCount, setDueReviewCount] = useState<number>(0);
+  const [nextAction, setNextAction] = useState<HomeNextAction | null>(null);
+  const [nextLessonItemCount, setNextLessonItemCount] = useState<number | null>(null);
+  const [whyThisText, setWhyThisText] = useState<string>('You’ll build confidence with practical phrases.');
 
   const loadData = useCallback(async () => {
     try {
-      const [profile, progressData, lessonsData, modulesData, dashboardData, statsData, recentActivity] = await Promise.all([
+      const [profile, dashboardData, statsData, recentActivity, suggestions] = await Promise.all([
         getMyProfile().catch(() => null),
-        getUserLessons().catch(() => [] as UserLessonProgress[]),
-        getLessons().catch(() => [] as Lesson[]),
-        getModules().catch(() => [] as Module[]),
         getDashboard().catch(() => ({ streak: 0, dueReviewCount: 0, activeLessonCount: 0, xpTotal: 0 })),
         getStats().catch(() => ({ minutesToday: 0 })),
         getRecentActivity().catch(() => null),
+        getSuggestions({ limit: 1 }).catch(() => ({ lessons: [], modules: [] })),
       ]);
-      
-      if (profile) {
-        const name = profile?.name?.trim();
-        if (name) setDisplayName(name);
-      }
-      setUserProgress(progressData);
-      setLessons(lessonsData);
-      setModules(modulesData);
+
+      const name = profile?.name?.trim();
+      setDisplayName(name || null);
       setStreakDays(dashboardData.streak || 0);
       setMinutesToday(statsData.minutesToday || 0);
-
-      // Set continue lesson if there's a partially completed lesson
-      if (recentActivity?.recentLesson) {
-        const recent = recentActivity.recentLesson;
-        const totalTeachings = recent.totalTeachings ?? (recent.completedTeachings || 1);
-        
-        // Only show if lesson is partially completed
-        if (recent.completedTeachings < totalTeachings) {
-          const progressLabel = `${recent.completedTeachings}/${totalTeachings} complete`;
-          
-          // Estimate time based on remaining teachings (assuming ~2 min per teaching)
-          const remainingTeachings = totalTeachings - recent.completedTeachings;
-          const minutesAway = Math.max(1, Math.ceil(remainingTeachings * 2));
-          
-          const sessionId = makeSessionId('learn');
-          setContinueLesson({
-            lessonTitle: recent.lesson.title,
-            lessonProgress: progressLabel,
-            estTime: `${minutesAway} min`,
-            onContinue: () => {
-              router.push({
-                pathname: routeBuilders.sessionDetail(sessionId),
-                params: { lessonId: recent.lesson.id, kind: 'learn' },
-              });
-            },
-          });
-        } else {
-          setContinueLesson(null);
-        }
-      } else {
-        setContinueLesson(null);
-      }
+      setDueReviewCount(dashboardData.dueReviewCount || 0);
+      setNextAction(
+        selectHomeNextAction({
+          dashboard: dashboardData,
+          recentActivity,
+          suggestions,
+        }),
+      );
     } catch (error) {
       console.error('Failed to load home data:', error);
+      setNextAction({
+        kind: 'startNext',
+        statusMessage: 'You’re all caught up. Want to start something new?',
+      });
     }
   }, []);
 
-  // Load data on mount
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Refresh data when screen comes into focus (e.g., returning from a session)
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [loadData])
+    }, [loadData]),
   );
 
-  // Helper function to get icon for module
-  const getModuleIcon = (title: string): keyof typeof Ionicons.glyphMap => {
-    const titleLower = title.toLowerCase();
-    if (titleLower.includes('basic')) return 'star';
-    if (titleLower.includes('travel')) return 'airplane';
-    if (titleLower.includes('food')) return 'restaurant';
-    if (titleLower.includes('work')) return 'briefcase';
-    return 'book';
-  };
-
-  // Helper function to generate slug from module title
-  const getSlugFromTitle = (title: string): string => {
-    return title.toLowerCase().replace(/\s+/g, '-');
-  };
-
-  // Calculate module completion status
-  const calculateModuleCompletion = useCallback(() => {
-    // Create a map of module ID to lessons in that module
-    const lessonsByModuleId = new Map<string, Lesson[]>();
-    lessons.forEach((lesson) => {
-      const existing = lessonsByModuleId.get(lesson.moduleId) || [];
-      existing.push(lesson);
-      lessonsByModuleId.set(lesson.moduleId, existing);
-    });
-
-    // Create a map of lesson ID to progress
-    const progressByLessonId = new Map<string, UserLessonProgress>();
-    userProgress.forEach((progress) => {
-      progressByLessonId.set(progress.lesson.id, progress);
-    });
-
-    // Calculate completion for each module
-    const moduleCompletion = new Map<string, { completed: boolean; lessonCount: number }>();
-    modules.forEach((module) => {
-      const moduleLessons = lessonsByModuleId.get(module.id) || [];
-      let completedLessons = 0;
-      
-      moduleLessons.forEach((lesson) => {
-        const progress = progressByLessonId.get(lesson.id);
-        if (progress && progress.completedTeachings >= progress.totalTeachings) {
-          completedLessons++;
-        }
-      });
-
-      moduleCompletion.set(module.id, {
-        completed: moduleLessons.length > 0 && completedLessons === moduleLessons.length,
-        lessonCount: moduleLessons.length,
-      });
-    });
-
-    return moduleCompletion;
-  }, [modules, lessons, userProgress]);
-
-  // Build dynamic module lists
   useEffect(() => {
-    if (modules.length === 0) {
-      setDueTodayItems([]);
-      setPickPaths([]);
+    let cancelled = false;
+    const lessonId =
+      nextAction && nextAction.kind !== 'review' ? (nextAction.lessonId ?? null) : null;
+
+    // Reset derived signals when we don't have a lesson.
+    if (!lessonId) {
+      setNextLessonItemCount(null);
+      setWhyThisText(nextAction?.reason ?? 'You’ll build confidence with practical phrases.');
       return;
     }
 
-    const moduleCompletion = calculateModuleCompletion();
-    
-    // Sort modules by creation date
-    const sortedModules = [...modules].sort((a, b) => 
-      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
+    (async () => {
+      try {
+        const [lesson, teachings] = await Promise.all([
+          getLesson(lessonId).catch(() => null),
+          // Best-effort: only used for passive copy.
+          getLessonTeachings(lessonId).catch(() => []),
+        ]);
 
-    // Build pick paths - all modules are unlocked
-    const paths: DueTodayTileItem[] = sortedModules.map((module) => {
-      const completion = moduleCompletion.get(module.id);
-      const isCompleted = completion?.completed || false;
-      const lessonCount = completion?.lessonCount || 0;
+        if (cancelled) return;
 
-      // Calculate ETA: estimate 2 minutes per lesson
-      const estimatedMinutes = Math.max(1, Math.ceil(lessonCount * 2));
-      const eta = lessonCount > 0 ? `≈${estimatedMinutes} min` : '≈1 min';
+        setNextLessonItemCount(typeof lesson?.numberOfItems === 'number' ? lesson.numberOfItems : null);
+        const outcome = teachings.length > 0 ? buildLessonOutcome(teachings) : null;
+        const fallback = nextAction?.reason ?? 'You’ll build confidence with practical phrases.';
+        setWhyThisText(outcome ?? fallback);
+      } catch {
+        if (cancelled) return;
+        setNextLessonItemCount(null);
+        setWhyThisText(nextAction?.reason ?? 'You’ll build confidence with practical phrases.');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [nextAction]);
+
+  const primaryAction: HomePrimaryAction = useMemo(() => {
+    if (!nextAction) {
+      return {
+        kind: 'startNext',
+        label: 'Start Next Lesson',
+        subtitle: 'Loading your next step…',
+      };
+    }
+
+    if (nextAction.kind === 'review') {
+      const dueCount = nextAction.dueReviewCount;
+      return {
+        kind: 'review',
+        label: 'Start Review',
+        dueCount,
+        subtitle: dueCount === 1 ? '1 card due for review today' : `${dueCount} cards due for review today`,
+      };
+    }
+
+    if (nextAction.kind === 'continue') {
+      const detailLine =
+        typeof nextLessonItemCount === 'number'
+          ? (() => {
+              const minutes = Math.max(1, Math.ceil(nextLessonItemCount * 1.5));
+              const itemsLabel = nextLessonItemCount === 1 ? 'exercise' : 'exercises';
+              return `~${minutes} min · ${nextLessonItemCount} ${itemsLabel}`;
+            })()
+          : undefined;
 
       return {
-        title: module.title,
-        lessons: lessonCount > 0 ? `${lessonCount} ${lessonCount === 1 ? 'lesson' : 'lessons'}` : '0 lessons',
-        eta,
-        icon: getModuleIcon(module.title),
-        locked: false,
-        completed: isCompleted,
-        route: routeBuilders.courseDetail(getSlugFromTitle(module.title)),
+        kind: 'continue',
+        label: 'Continue Lesson',
+        subtitle: nextAction.moduleTitle ?? nextAction.lessonTitle,
+        detailLine,
       };
-    });
+    }
 
-    setPickPaths(paths);
+    const detailLine =
+      typeof nextLessonItemCount === 'number'
+        ? (() => {
+            const minutes = Math.max(1, Math.ceil(nextLessonItemCount * 1.5));
+            const itemsLabel = nextLessonItemCount === 1 ? 'exercise' : 'exercises';
+            return `~${minutes} min · ${nextLessonItemCount} ${itemsLabel}`;
+          })()
+        : undefined;
 
-    // Build due today items: modules with due reviews or incomplete lessons
-    const dueItems: DueTodayTileItem[] = [];
-    sortedModules.forEach((module) => {
-      const completion = moduleCompletion.get(module.id);
-      const moduleLessons = lessons.filter((l) => l.moduleId === module.id);
-      
-      // Check if module has due reviews or incomplete lessons
-      let hasDueReviews = false;
-      let hasIncompleteLessons = false;
-      
-      moduleLessons.forEach((lesson) => {
-        const progress = userProgress.find((p) => p.lesson.id === lesson.id);
-        if (progress) {
-          if (progress.dueReviewCount > 0) {
-            hasDueReviews = true;
-          }
-          if (progress.completedTeachings < progress.totalTeachings) {
-            hasIncompleteLessons = true;
-          }
-        } else {
-          // Lesson not started yet
-          hasIncompleteLessons = true;
-        }
+    return {
+      kind: 'startNext',
+      label: 'Start Next Lesson',
+      subtitle: nextAction.moduleTitle ?? nextAction.lessonTitle ?? 'Jump into something new',
+      detailLine,
+    };
+  }, [nextAction, nextLessonItemCount]);
+
+  const handlePrimaryPress = () => {
+    if (!nextAction) return;
+
+    if (nextAction.kind === 'review') {
+      router.push(routes.tabs.review);
+      return;
+    }
+
+    if (nextAction.kind === 'continue') {
+      const sessionId = makeSessionId('learn');
+      router.push({
+        pathname: routeBuilders.sessionDetail(sessionId),
+        params: { lessonId: nextAction.lessonId, kind: 'learn' },
       });
+      return;
+    }
 
-      if (hasDueReviews || hasIncompleteLessons) {
-        const lessonCount = completion?.lessonCount || 0;
-        const estimatedMinutes = Math.max(1, Math.ceil(lessonCount * 2));
-        const eta = lessonCount > 0 ? `≈${estimatedMinutes} min` : '≈1 min';
+    if (nextAction.lessonId) {
+      const sessionId = makeSessionId('learn');
+      router.push({
+        pathname: routeBuilders.sessionDetail(sessionId),
+        params: { lessonId: nextAction.lessonId, kind: 'learn' },
+      });
+      return;
+    }
 
-        dueItems.push({
-          title: module.title,
-          lessons: lessonCount > 0 ? `${lessonCount} ${lessonCount === 1 ? 'lesson' : 'lessons'}` : '0 lessons',
-          eta,
-          icon: getModuleIcon(module.title),
-          route: routeBuilders.courseDetail(getSlugFromTitle(module.title)),
-        });
-      }
-    });
-
-    // Limit to first 2 for "due today" section
-    setDueTodayItems(dueItems.slice(0, 2));
-  }, [modules, lessons, userProgress, calculateModuleCompletion]);
+    router.navigate(routes.tabs.learn);
+  };
 
   return (
-    <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.safeArea]}>
+    <SafeAreaView
+      edges={['left', 'right', 'bottom']}
+      style={[styles.safeArea, { backgroundColor: theme.colors.background }]}
+    >
       <View
         style={[
           styles.topBackdrop,
           {
-            backgroundColor: '#EAF2FF',
-            shadowColor: theme.colors.text,
+            backgroundColor: theme.colors.background,
           },
         ]}
         pointerEvents="none"
@@ -258,32 +210,53 @@ export default function HomeScreen() {
         contentContainerStyle={[
           styles.scrollContent,
           {
-            backgroundColor: theme.colors.background,
+            backgroundColor: 'transparent',
+            paddingBottom: insets.bottom + baseTheme.spacing.xl,
           },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <WelcomeContinueCard
-          streakDays={streakDays}
-          minutesToday={minutesToday}
-          displayName={displayName}
-          lesson={continueLesson}
-        />
+        <View style={styles.sectionTop}>
+          <WelcomeContinueCard
+            streakDays={streakDays}
+            minutesToday={minutesToday}
+            displayName={displayName}
+            message={nextAction?.statusMessage ?? 'Checking what’s next…'}
+            onPressMessage={handlePrimaryPress}
+          />
+        </View>
 
-        <DueTodayGrid
-          items={dueTodayItems}
-          onPressTile={(routePath: string) => router.push(routePath)}
-          onPressMore={() => router.push('/course')}
-        />
+        <View style={styles.sectionTight}>
+          <HomeTodayAtAGlance dueReviewCount={dueReviewCount} minutesToday={minutesToday} />
+        </View>
 
-        <PickPathList
-          items={pickPaths}
-          onPressItem={(routePath: string) => router.push(routePath)}
-          headerLabel="Pick a path"
-        />
+        <View style={styles.sectionMainCta}>
+          <HomePrimaryCtaCard
+            action={primaryAction}
+            onPress={handlePrimaryPress}
+            onPressMore={primaryAction.kind === 'review' ? () => router.navigate(routes.tabs.learn) : undefined}
+          />
+        </View>
 
-        {/* Spacer to avoid overlap with the tab bar */}
-        <View style={{ height: baseTheme.spacing.xl }} />
+        <View style={styles.sectionSecondary}>
+          <HomeWhyThisNext text={whyThisText} />
+        </View>
+
+        <View style={[styles.footerDivider, { backgroundColor: theme.colors.border }]} />
+
+        <View style={styles.footerPrompt}>
+          <Text style={[styles.footerPromptText, { color: theme.colors.mutedText }]}>Want to explore more?</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Browse learning paths"
+            onPress={() => router.navigate(routes.tabs.learn)}
+            hitSlop={8}
+            style={styles.footerLinkRow}
+          >
+            <Text style={[styles.footerLinkText, { color: theme.colors.primary }]}>Browse learning paths</Text>
+            <Ionicons name="arrow-forward" size={16} color={theme.colors.primary} />
+          </Pressable>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -292,7 +265,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   topBackdrop: {
     position: 'absolute',
@@ -302,13 +274,52 @@ const styles = StyleSheet.create({
     height: 320,
     borderBottomLeftRadius: 48,
     borderBottomRightRadius: 48,
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 14 },
-    elevation: 4,
+    // Important: keep this layer visually neutral so the page reads as one background color.
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
   },
   scrollContent: {
     paddingHorizontal: baseTheme.spacing.md,
+    paddingTop: baseTheme.spacing.sm,
     gap: baseTheme.spacing.md,
+  },
+  sectionTop: {
+    marginTop: 0,
+  },
+  sectionTight: {
+    marginTop: 0,
+  },
+  sectionSecondary: {
+    marginTop: 0,
+  },
+  sectionMainCta: {
+    marginTop: 0,
+  },
+  footerPrompt: {
+    marginTop: 0,
+    paddingHorizontal: baseTheme.spacing.xs,
+    gap: baseTheme.spacing.xs,
+  },
+  footerDivider: {
+    marginTop: 0,
+    height: 1,
+    opacity: 0.7,
+  },
+  footerPromptText: {
+    fontFamily: baseTheme.typography.regular,
+    fontSize: 14,
+  },
+  footerLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+  },
+  footerLinkText: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 15,
   },
 });

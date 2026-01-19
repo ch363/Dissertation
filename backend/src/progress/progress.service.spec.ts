@@ -10,6 +10,7 @@ import { SrsService } from '../engine/srs/srs.service';
 import { XpService } from '../engine/scoring/xp.service';
 import { ContentLookupService } from '../content/content-lookup.service';
 import { MasteryService } from '../engine/mastery/mastery.service';
+import { SessionPlanCacheService } from '../engine/content-delivery/session-plan-cache.service';
 
 describe('ProgressService', () => {
   let service: ProgressService;
@@ -18,6 +19,7 @@ describe('ProgressService', () => {
   let xpService: jest.Mocked<XpService>;
   let contentLookup: jest.Mocked<ContentLookupService>;
   let masteryService: jest.Mocked<MasteryService>;
+  let sessionPlanCache: jest.Mocked<SessionPlanCacheService>;
 
   const mockPrismaService = {
     userLesson: {
@@ -31,6 +33,7 @@ describe('ProgressService', () => {
     },
     userTeachingCompleted: {
       create: jest.fn(),
+      findUnique: jest.fn(),
     },
     question: {
       findUnique: jest.fn(),
@@ -69,6 +72,10 @@ describe('ProgressService', () => {
     updateMastery: jest.fn(),
   };
 
+  const mockSessionPlanCacheService = {
+    invalidate: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -93,6 +100,10 @@ describe('ProgressService', () => {
           provide: MasteryService,
           useValue: mockMasteryService,
         },
+        {
+          provide: SessionPlanCacheService,
+          useValue: mockSessionPlanCacheService,
+        },
       ],
     }).compile();
 
@@ -102,6 +113,7 @@ describe('ProgressService', () => {
     xpService = module.get(XpService);
     contentLookup = module.get(ContentLookupService);
     masteryService = module.get(MasteryService);
+    sessionPlanCache = module.get(SessionPlanCacheService);
   });
 
   afterEach(() => {
@@ -111,6 +123,7 @@ describe('ProgressService', () => {
     mockXpService.award.mockReset();
     mockContentLookupService.getQuestionData.mockReset();
     mockMasteryService.updateMastery.mockReset();
+    mockSessionPlanCacheService.invalidate.mockReset();
   });
 
   describe('startLesson', () => {
@@ -181,6 +194,7 @@ describe('ProgressService', () => {
       prisma.$transaction.mockImplementation(async (callback) => {
         const tx = prisma as any;
         tx.teaching.findUnique = jest.fn().mockResolvedValue(mockTeaching);
+        tx.userTeachingCompleted.findUnique = jest.fn().mockResolvedValue(null);
         tx.userTeachingCompleted.create = jest.fn().mockResolvedValue({});
         tx.userLesson.updateMany = jest.fn().mockResolvedValue({ count: 1 });
         tx.userLesson.findUnique = jest.fn().mockResolvedValue(mockUserLesson);
@@ -207,13 +221,14 @@ describe('ProgressService', () => {
         lesson: { id: lessonId, title: 'Test Lesson' },
       };
 
-      // Mock transaction where create fails (already exists)
+      // Mock transaction where completion already exists
       prisma.$transaction.mockImplementation(async (callback) => {
         const tx = prisma as any;
         tx.teaching.findUnique = jest.fn().mockResolvedValue(mockTeaching);
-        tx.userTeachingCompleted.create = jest.fn().mockRejectedValue(
-          new Error('Unique constraint violation'),
-        );
+        tx.userTeachingCompleted.findUnique = jest
+          .fn()
+          .mockResolvedValue({ userId, teachingId });
+        tx.userLesson.updateMany = jest.fn().mockResolvedValue({ count: 0 });
         tx.userLesson.findUnique = jest.fn().mockResolvedValue(mockUserLesson);
         return callback(tx);
       });

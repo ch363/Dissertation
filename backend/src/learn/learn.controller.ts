@@ -6,6 +6,8 @@ import { User } from '../common/decorators/user.decorator';
 import { IsUUID, IsOptional, IsInt, Min, IsEnum, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { SessionPlanDto } from '../engine/content-delivery/session-types';
+import { LearningPathCardDto } from './learning-path.dto';
+import { ReviewSummaryDto } from './review-summary.dto';
 
 export class LearnNextQueryDto {
   @IsString() // Accept deterministic IDs (not strict UUIDs)
@@ -60,6 +62,20 @@ export class SessionPlanQueryDto {
 // Consider using @Throttle() decorator for higher limits if needed
 export class LearnController {
   constructor(private readonly learnService: LearnService) {}
+
+  @Get('learning-path')
+  @ApiOperation({ summary: 'Get Learning Hub learning path cards with user progress' })
+  @ApiResponse({ status: 200, description: 'Learning path retrieved', type: [LearningPathCardDto] })
+  async getLearningPath(@User() userId: string): Promise<LearningPathCardDto[]> {
+    return this.learnService.getLearningPath(userId);
+  }
+
+  @Get('review-summary')
+  @ApiOperation({ summary: 'Get Learning Hub review summary' })
+  @ApiResponse({ status: 200, description: 'Review summary retrieved', type: ReviewSummaryDto })
+  async getReviewSummary(@User() userId: string): Promise<ReviewSummaryDto> {
+    return this.learnService.getReviewSummary(userId);
+  }
 
   @Get('next')
   @ApiOperation({ 

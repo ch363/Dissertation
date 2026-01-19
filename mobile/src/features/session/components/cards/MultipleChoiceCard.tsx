@@ -26,6 +26,17 @@ export function MultipleChoiceCard({
 }: Props) {
   const [isPlaying, setIsPlaying] = useState(false);
 
+  function isItalianText(text: string) {
+    // Heuristic: check for Italian-specific characters or a few high-frequency words.
+    // This avoids speaking English MC options on tap.
+    const t = text.trim();
+    if (!t) return false;
+    const hasItalianChars = /[àèéìíîòóùú]/.test(t);
+    const isCommonItalian =
+      /^(ciao|grazie|prego|scusa|bene|sì|no|buongiorno|buonasera|arrivederci|per favore)$/i.test(t);
+    return hasItalianChars || isCommonItalian;
+  }
+
   const handlePlayAudio = async () => {
     if (!card.sourceText) return;
     // Prevent multiple rapid calls
@@ -59,7 +70,22 @@ export function MultipleChoiceCard({
     }
   };
 
-  // Removed handleSpeakOption - don't read English words aloud when clicking options
+  const handleSpeakOption = async (label: string) => {
+    // Only speak options that look like Italian (learning language in this project).
+    // If options are English MCQ distractors, do nothing.
+    if (!isItalianText(label)) return;
+    try {
+      const enabled = await getTtsEnabled();
+      if (!enabled) return;
+      const rate = await getTtsRate();
+      await SafeSpeech.stop();
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      await SafeSpeech.speak(label, { language: 'it-IT', rate });
+    } catch (error) {
+      // Best-effort: never block selection due to TTS.
+      console.debug('Failed to speak option (non-critical):', error);
+    }
+  };
 
   const isTranslation = !!card.sourceText;
 
@@ -108,7 +134,8 @@ export function MultipleChoiceCard({
               key={opt.id}
               onPress={() => {
                 if (showResult) return; // Disable selection after checking
-                // Don't speak options - removed audio on click
+                // Speak learning-language (Italian) options on tap; keep English MC options silent.
+                void handleSpeakOption(opt.label);
                 onSelectOption?.(opt.id);
               }}
               style={[

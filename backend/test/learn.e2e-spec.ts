@@ -64,4 +64,20 @@ describe('Learn (e2e)', () => {
     // 3. User progress data
     // 4. Verification of suggestion algorithm
   });
+
+  describe('GET /learn/learning-path', () => {
+    it('should return 401 without authentication', () => {
+      return request(app.getHttpServer())
+        .get('/learn/learning-path')
+        .expect(401);
+    });
+  });
+
+  describe('GET /learn/review-summary', () => {
+    it('should return 401 without authentication', () => {
+      return request(app.getHttpServer())
+        .get('/learn/review-summary')
+        .expect(401);
+    });
+  });
 });

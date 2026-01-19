@@ -6,8 +6,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
-import { getLessons, type Lesson } from '@/services/api/modules';
+import { getLessons, getLessonTeachings, type Lesson } from '@/services/api/modules';
 import { getUserLessons, type UserLessonProgress } from '@/services/api/progress';
+import { LessonMicroProgress } from '@/components/learn/LessonMicroProgress';
+import { buildLessonOutcome } from '@/features/learn/utils/lessonOutcome';
 
 export default function LessonListScreen() {
   const { theme } = useAppTheme();
@@ -16,6 +18,40 @@ export default function LessonListScreen() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [userProgress, setUserProgress] = React.useState<UserLessonProgress[]>([]);
+  const [lessonOutcomes, setLessonOutcomes] = React.useState<Record<string, string>>({});
+  const outcomeRequestsRef = React.useRef(new Set<string>());
+
+  const preloadLessonOutcomes = useCallback(async (lessonsData: Lesson[]) => {
+    const missing = lessonsData
+      .map((l) => l.id)
+      .filter((id) => !lessonOutcomes[id] && !outcomeRequestsRef.current.has(id))
+      .slice(0, 25);
+
+    if (missing.length === 0) return;
+
+    missing.forEach((id) => outcomeRequestsRef.current.add(id));
+
+    const results = await Promise.allSettled(
+      missing.map(async (lessonId) => {
+        const teachings = await getLessonTeachings(lessonId).catch(() => []);
+        const outcome = buildLessonOutcome(teachings);
+        return outcome ? { lessonId, outcome } : null;
+      }),
+    );
+
+    setLessonOutcomes((prev) => {
+      const next = { ...prev };
+      for (const r of results) {
+        if (r.status !== 'fulfilled') continue;
+        const v = r.value;
+        if (!v) continue;
+        next[v.lessonId] = v.outcome;
+      }
+      return next;
+    });
+
+    missing.forEach((id) => outcomeRequestsRef.current.delete(id));
+  }, [lessonOutcomes]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -27,6 +63,8 @@ export default function LessonListScreen() {
       ]);
       setLessons(lessonsData);
       setUserProgress(progressData);
+      // Best-effort: populate motivating “what you'll learn” lines for cards.
+      void preloadLessonOutcomes(lessonsData);
     } catch (err: any) {
       console.error('Failed to load lessons:', err);
       setError(err?.message || 'Failed to load lessons');
@@ -54,6 +92,9 @@ export default function LessonListScreen() {
     const progress = userProgress.find((p) => p.lesson.id === item.id);
     const isCompleted = completedLessonIds.has(item.id);
     const locked = false; // Remove locking logic for now - can be re-implemented if needed
+    const total = progress?.totalTeachings ?? item.numberOfItems ?? 0;
+    const completed = progress?.completedTeachings ?? 0;
+    const preview = lessonOutcomes[item.id] ?? item.description ?? null;
     return (
       <Pressable
         accessibilityRole="button"
@@ -72,30 +113,28 @@ export default function LessonListScreen() {
         ]}
       >
         <View style={styles.cardHeader}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>{item.title}</Text>
-          {isCompleted ? (
-            <Ionicons name="checkmark-circle" size={16} color={theme.colors.primary} />
-          ) : locked ? (
+          <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={1}>
+            {item.title}
+          </Text>
+          {locked ? (
             <Ionicons name="lock-closed" size={16} color={theme.colors.mutedText} />
-          ) : null}
-        </View>
-        {item.description ? (
-          <Text style={[styles.subtitle, { color: theme.colors.mutedText }]} numberOfLines={2}>
-            {item.description}
-          </Text>
-        ) : null}
-        <View style={styles.metaRow}>
-          <Text style={[styles.meta, { color: theme.colors.mutedText }]}>
-            {progress
-              ? `${progress.completedTeachings}/${progress.totalTeachings} completed`
-              : `${item.numberOfItems} items`}
-          </Text>
-          {!locked ? (
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.mutedText} />
           ) : (
-            <Text style={[styles.meta, { color: theme.colors.mutedText }]}>Locked</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.colors.mutedText} />
           )}
         </View>
+
+        <View style={styles.progressRow}>
+          <LessonMicroProgress completed={completed} total={total} />
+          {isCompleted ? (
+            <Ionicons name="checkmark-circle" size={16} color={theme.colors.primary} />
+          ) : null}
+        </View>
+
+        {preview ? (
+          <Text style={[styles.subtitle, { color: theme.colors.mutedText }]} numberOfLines={1}>
+            {preview}
+          </Text>
+        ) : null}
       </Pressable>
     );
   };
@@ -165,20 +204,16 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: baseTheme.typography.semiBold,
     fontSize: 16,
+    flexShrink: 1,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   subtitle: {
     fontFamily: baseTheme.typography.regular,
     fontSize: 14,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: baseTheme.spacing.xs,
-  },
-  meta: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 12,
   },
   stateRow: {
     padding: baseTheme.spacing.lg,

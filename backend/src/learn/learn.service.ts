@@ -3,6 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { DELIVERY_METHOD } from '@prisma/client';
 import { ContentDeliveryService } from '../engine/content-delivery/content-delivery.service';
 import { SessionPlanDto, SessionContext } from '../engine/content-delivery/session-types';
+import { LearningPathCardDto } from './learning-path.dto';
+import { ReviewSummaryDto } from './review-summary.dto';
 
 @Injectable()
 export class LearnService {
@@ -10,6 +12,137 @@ export class LearnService {
     private prisma: PrismaService,
     private contentDelivery: ContentDeliveryService,
   ) {}
+
+  /**
+   * Learning Hub: Build the "Learning Path" carousel cards with user progress.
+   *
+   * Placeholders:
+   * - `flag`: hardcoded until we model target language/user preferences.
+   * - `level`: derived from user.knowledgeLevel as a coarse label.
+   * - `cta`: heuristic; can be replaced with product rules later.
+   */
+  async getLearningPath(userId: string): Promise<LearningPathCardDto[]> {
+    const [user, modules] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { knowledgeLevel: true },
+      }),
+      this.prisma.module.findMany({
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          lessons: {
+            select: {
+              id: true,
+              _count: { select: { teachings: true } },
+            },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
+      }),
+    ]);
+
+    const level = String(user?.knowledgeLevel ?? 'A1');
+    const flag = '🇮🇹';
+
+    const allLessonIds = modules.flatMap((m) => m.lessons.map((l) => l.id));
+    const userLessons = allLessonIds.length
+      ? await this.prisma.userLesson.findMany({
+          where: {
+            userId,
+            lessonId: { in: allLessonIds },
+          },
+          select: {
+            lessonId: true,
+            completedTeachings: true,
+          },
+        })
+      : [];
+
+    const completedTeachingsByLessonId = new Map<string, number>();
+    userLessons.forEach((ul) => completedTeachingsByLessonId.set(ul.lessonId, ul.completedTeachings));
+
+    return modules.map((m) => {
+      const total = m.lessons.length;
+      let completed = 0;
+
+      for (const lesson of m.lessons) {
+        const teachingsCount = lesson._count.teachings;
+        const completedTeachings = completedTeachingsByLessonId.get(lesson.id) ?? 0;
+        // Avoid marking empty lessons as completed.
+        if (teachingsCount > 0 && completedTeachings >= teachingsCount) {
+          completed++;
+        }
+      }
+
+      const subtitle =
+        m.description && m.description.trim().length > 0
+          ? m.description.trim()
+          : `${total} ${total === 1 ? 'lesson' : 'lessons'}`;
+
+      // Placeholder CTA rules:
+      // - all completed => Review
+      // - some progress => Continue
+      // - none => Start
+      const cta =
+        total > 0 && completed === total ? 'Review' : completed > 0 ? 'Continue' : 'Start';
+
+      return {
+        id: m.id,
+        title: m.title,
+        subtitle,
+        level,
+        flag,
+        completed,
+        total,
+        status: 'active',
+        cta,
+      };
+    });
+  }
+
+  /**
+   * Learning Hub: Review summary (due items).
+   *
+   * Note: There is already `GET /me/dashboard` which includes `dueReviewCount`.
+   * This endpoint exists as a convenience to match the mobile UI shape.
+   */
+  async getReviewSummary(userId: string): Promise<ReviewSummaryDto> {
+    const now = new Date();
+
+    const dueReviews = await this.prisma.userQuestionPerformance.findMany({
+      where: {
+        userId,
+        nextReviewDue: {
+          lte: now,
+          not: null,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        questionId: true,
+        createdAt: true,
+      },
+    });
+
+    const seen = new Set<string>();
+    const deduped = dueReviews.filter((r) => {
+      if (seen.has(r.questionId)) return false;
+      seen.add(r.questionId);
+      return true;
+    });
+
+    const dueCount = deduped.length;
+    const progress = Math.max(0, Math.min(1, 1 - dueCount / 10));
+
+    return {
+      dueCount,
+      progress,
+      subtitle: `${dueCount} ${dueCount === 1 ? 'item needs' : 'items need'} review today`,
+    };
+  }
 
   /**
    * @deprecated This method is maintained for backward compatibility.
@@ -233,7 +366,8 @@ export class LearnService {
         },
       });
 
-      if (currentLesson) {
+      // If moduleId is provided, only use currentLessonId if it belongs to the requested module.
+      if (currentLesson && (!moduleId || currentLesson.module.id === moduleId)) {
         const moduleLessons = currentLesson.module.lessons;
         const currentIndex = moduleLessons.findIndex((l) => l.id === currentLessonId);
         const nextLesson = moduleLessons[currentIndex + 1];
@@ -259,6 +393,7 @@ export class LearnService {
     if (userKnowledgeLevel) {
       const alignedLessons = await this.prisma.lesson.findMany({
         where: {
+          ...(moduleId ? { moduleId } : {}),
           teachings: {
             some: {
               knowledgeLevel: userKnowledgeLevel,

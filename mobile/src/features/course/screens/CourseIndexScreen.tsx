@@ -30,10 +30,6 @@ export default function CourseIndex() {
     loadModules();
   }, []);
 
-  const getSlugFromTitle = (title: string): string => {
-    return title.toLowerCase().replace(/\s+/g, '-');
-  };
-
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: appTheme.colors.background }]}>
@@ -59,7 +55,6 @@ export default function CourseIndex() {
         </Text>
       ) : (
         modules.map((module, index) => {
-          const slug = getSlugFromTitle(module.title);
           const isPrimary = index % 2 === 0;
           return (
             <Pressable
@@ -69,9 +64,16 @@ export default function CourseIndex() {
                 isPrimary ? styles.primary : styles.secondary,
                 { backgroundColor: isPrimary ? appTheme.colors.primary : appTheme.colors.secondary },
               ]}
-              onPress={() => router.push(`/course/${slug}`)}
+              onPress={() => router.push(`/course/${module.id}`)}
             >
-              <Text style={styles.buttonText}>{module.title}</Text>
+              <Text
+                style={[
+                  styles.buttonText,
+                  { color: isPrimary ? appTheme.colors.onPrimary : appTheme.colors.onSecondary },
+                ]}
+              >
+                {module.title}
+              </Text>
             </Pressable>
           );
         })
@@ -112,7 +114,6 @@ const styles = StyleSheet.create({
   primary: {},
   secondary: {},
   buttonText: {
-    color: '#fff',
     fontFamily: theme.typography.semiBold,
     fontSize: 16,
   },

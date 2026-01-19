@@ -45,44 +45,30 @@ export interface StatsData {
 }
 
 export interface RecentActivity {
-  recentLesson: {
-    lesson: {
-      id: string;
-      title: string;
-      imageUrl: string | null;
-      module: {
-        id: string;
-        title: string;
-      };
-    };
-    completedTeachings: number;
-    totalTeachings: number;
-    dueReviewCount: number;
-  };
-  recentTeaching: {
-    teaching: {
-      id: string;
-      userLanguageString: string;
-      learningLanguageString: string;
-      lesson: {
-        id: string;
-        title: string;
-        module: {
+  recentLesson:
+    | {
+        lesson: {
           id: string;
           title: string;
+          imageUrl: string | null;
+          module: {
+            id: string;
+            title: string;
+          };
         };
-      };
-    };
-    completedAt: string;
-  } | null;
-  recentQuestion: {
-    question: {
-      id: string;
-      prompt: string;
-      teaching: {
-        id: string;
-        userLanguageString: string;
-        learningLanguageString: string;
+        lastAccessedAt: string;
+        completedTeachings: number;
+        totalTeachings: number;
+        dueReviewCount: number;
+      }
+    | null;
+  recentTeaching:
+    | {
+        teaching: {
+          id: string;
+          userLanguageString: string;
+          learningLanguageString: string;
+        };
         lesson: {
           id: string;
           title: string;
@@ -91,10 +77,31 @@ export interface RecentActivity {
             title: string;
           };
         };
-      };
-    };
-    lastRevisedAt: string;
-  } | null;
+        completedAt: string;
+      }
+    | null;
+  recentQuestion:
+    | {
+        question: {
+          id: string;
+        };
+        teaching: {
+          id: string;
+          userLanguageString: string;
+          learningLanguageString: string;
+        };
+        lesson: {
+          id: string;
+          title: string;
+          module: {
+            id: string;
+            title: string;
+          };
+        };
+        lastRevisedAt: string;
+        nextReviewDue?: string;
+      }
+    | null;
 }
 
 /**

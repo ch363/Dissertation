@@ -82,6 +82,7 @@ describe('SessionPlanService', () => {
         id: 'question-1',
         teachingId: 'teaching-1',
         type: DELIVERY_METHOD.MULTIPLE_CHOICE,
+        variants: [{ deliveryMethod: DELIVERY_METHOD.MULTIPLE_CHOICE }],
         skillTags: [{ name: 'greetings' }],
         teaching: {
           id: 'teaching-1',
@@ -200,6 +201,7 @@ describe('SessionPlanService', () => {
         id: 'question-1',
         teachingId: 'teaching-1',
         type: DELIVERY_METHOD.MULTIPLE_CHOICE,
+        variants: [{ deliveryMethod: DELIVERY_METHOD.MULTIPLE_CHOICE }],
         skillTags: [{ name: 'greetings' }],
         teaching: {
           id: 'teaching-1',
@@ -286,6 +288,7 @@ describe('SessionPlanService', () => {
         id: 'question-1',
         teachingId: 'teaching-1',
         type: DELIVERY_METHOD.MULTIPLE_CHOICE,
+        variants: [{ deliveryMethod: DELIVERY_METHOD.MULTIPLE_CHOICE }],
         skillTags: [{ name: 'greetings' }],
         teaching: {
           id: 'teaching-1',
@@ -303,6 +306,7 @@ describe('SessionPlanService', () => {
         id: 'question-2',
         teachingId: 'teaching-2',
         type: DELIVERY_METHOD.MULTIPLE_CHOICE,
+        variants: [{ deliveryMethod: DELIVERY_METHOD.MULTIPLE_CHOICE }],
         skillTags: [{ name: 'greetings' }],
         teaching: {
           id: 'teaching-2',

@@ -1,17 +1,19 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ScrollView } from '@/components/ui';
 
-import { DiscoverCard } from '@/features/learn/mock';
+import type { DiscoverItem } from '@/features/learn/types';
+import type { RoutePath } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
 type Props = {
-  items: DiscoverCard[];
+  items: DiscoverItem[];
+  onPressItem: (route: RoutePath) => void;
 };
 
-export function DiscoverCarousel({ items }: Props) {
+export function DiscoverCarousel({ items, onPressItem }: Props) {
   const { theme } = useAppTheme();
 
   return (
@@ -27,14 +29,18 @@ export function DiscoverCarousel({ items }: Props) {
         }}
       >
         {items.map((item) => (
-          <View
+          <Pressable
             key={item.id}
-            style={[
+            accessibilityRole="button"
+            accessibilityLabel={`${item.ctaLabel ?? 'Open'}: ${item.title}`}
+            onPress={() => onPressItem(item.route)}
+            style={({ pressed }) => [
               styles.card,
               {
                 backgroundColor: item.background,
                 borderColor: theme.colors.border,
                 shadowColor: '#0D1B2A',
+                opacity: pressed ? 0.92 : 1,
               },
             ]}
           >
@@ -43,7 +49,15 @@ export function DiscoverCarousel({ items }: Props) {
             <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>
               {item.subtitle}
             </Text>
-          </View>
+            <View style={styles.footerRow}>
+              <View style={{ flex: 1 }} />
+              <View style={[styles.ctaPill, { borderColor: 'rgba(0,0,0,0.08)' }]}>
+                <Text style={[styles.ctaText, { color: theme.colors.primary }]}>
+                  {item.ctaLabel ?? 'Open'}
+                </Text>
+              </View>
+            </View>
+          </Pressable>
         ))}
       </ScrollView>
     </View>
@@ -83,6 +97,21 @@ const styles = StyleSheet.create({
   },
   cardSubtitle: {
     fontFamily: baseTheme.typography.regular,
+    fontSize: 13,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ctaPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.65)',
+    borderWidth: 1,
+  },
+  ctaText: {
+    fontFamily: baseTheme.typography.semiBold,
     fontSize: 13,
   },
 });

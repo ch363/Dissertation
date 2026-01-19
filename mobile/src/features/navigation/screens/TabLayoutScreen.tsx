@@ -25,22 +25,16 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
       style={[
         styles.tabBarWrapper,
         {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: theme.colors.card,
+          borderTopColor: theme.colors.border,
           shadowColor: '#0D1B2A',
-          paddingTop: baseTheme.spacing.xs,
-          paddingBottom: insets.bottom + baseTheme.spacing.xs, // paint safe area
+          // Keep the background extending into the home-indicator safe area,
+          // but avoid adding extra spacing that makes the bar look oversized.
+          paddingBottom: insets.bottom,
         },
       ]}
     >
-      <View
-        style={[
-          styles.tabBar,
-          {
-            backgroundColor: theme.colors.card,
-            borderColor: theme.colors.border,
-          },
-        ]}
-      >
+      <View style={styles.tabBar}>
         {visibleRoutes.map((route: any, idx: number) => {
           const isFocused = state.index === idx;
           const onPress = () => {
@@ -70,16 +64,17 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 }
 
 export default function TabsLayout() {
+  const { theme } = useAppTheme();
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Tabs
         initialRouteName="home"
         tabBar={(props) => <CustomTabBar {...props} />}
         screenOptions={{
           headerShown: false,
-          // Also enforce white bar background (we use a custom bar, but keep defaults consistent)
-          tabBarStyle: { backgroundColor: '#FFFFFF' },
-          tabBarBackground: () => <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />,
+          // Keep defaults consistent with our themed custom bar
+          tabBarStyle: { backgroundColor: theme.colors.card },
+          tabBarBackground: () => <View style={{ flex: 1, backgroundColor: theme.colors.card }} />,
         }}
       >
         <Tabs.Screen name="home" options={{ title: 'Home' }} />
@@ -93,16 +88,7 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   tabBarWrapper: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'flex-end',
-    backgroundColor: '#FFFFFF',
-
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    zIndex: 2,
+    borderTopWidth: StyleSheet.hairlineWidth,
     shadowOpacity: 0.06,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: -2 },
@@ -111,11 +97,10 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
     paddingHorizontal: baseTheme.spacing.sm,
-
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    backgroundColor: '#FFFFFF',
+    paddingTop: baseTheme.spacing.xs,
+    paddingBottom: baseTheme.spacing.xs,
+    minHeight: 56,
   },
 });

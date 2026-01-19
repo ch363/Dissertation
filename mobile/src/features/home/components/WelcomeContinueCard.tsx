@@ -7,28 +7,25 @@ import { CARD_BORDER, OUTER_CARD_RADIUS, softShadow } from './homeStyles';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
-type LessonData = {
-  lessonTitle: string;
-  lessonProgress: string;
-  estTime: string;
-  onContinue: () => void;
-};
-
 type Props = {
   streakDays: number;
   minutesToday: number;
   displayName?: string | null;
-  lesson?: LessonData | null;
+  message: string;
+  onPressMessage?: () => void;
 };
 
 export function WelcomeContinueCard({
   streakDays,
   minutesToday,
   displayName,
-  lesson,
+  message,
+  onPressMessage,
 }: Props) {
   const { theme } = useAppTheme();
   const greeting = displayName ? `Welcome back, ${displayName}` : 'Welcome back';
+  const showStreak = streakDays > 0;
+  const showMinutesToday = minutesToday > 0;
 
   return (
     <View
@@ -51,60 +48,48 @@ export function WelcomeContinueCard({
         <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" />
       </View>
 
-      <View style={styles.metaRow}>
-        <View style={styles.flamePill}>
-          <Ionicons name="flame" size={20} color="#D44F00" />
-        </View>
-        <View style={styles.metaTextWrap}>
-          <Text
-            style={[styles.metaTitle, { color: theme.colors.text }]}
-          >{`${streakDays} day streak`}</Text>
-          <Text style={[styles.metaSub, { color: '#5F6F86' }]}>
-            {`Studied ${minutesToday} min today`}
-          </Text>
-        </View>
-      </View>
-
-      {lesson ? (
-        <View style={styles.lessonCard}>
-          <View style={styles.lessonTopRow}>
-            <View style={styles.lessonTitleWrap}>
-              <View style={styles.lessonIcon}>
-                <Ionicons name="sparkles" size={18} color="#1B6ED4" />
-              </View>
-              <View style={styles.lessonTextContainer}>
-                <Text 
-                  style={[styles.lessonTitle, { color: '#0D1B2A' }]} 
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  {lesson.lessonTitle}
-                </Text>
-                <Text style={[styles.lessonSub, { color: '#0D1B2A' }]}>
-                  {lesson.lessonProgress}
-                </Text>
-              </View>
+      {showStreak || showMinutesToday ? (
+        <View style={styles.metaRow}>
+          {showStreak ? (
+            <View style={styles.flamePill}>
+              <Ionicons name="flame" size={20} color="#D44F00" />
             </View>
-            <Text style={[styles.timeText, { color: '#0D1B2A' }]}>{lesson.estTime}</Text>
+          ) : null}
+          <View style={styles.metaTextWrap}>
+            {showStreak ? (
+              <Text style={[styles.metaTitle, { color: theme.colors.text }]}>{`${streakDays} day streak`}</Text>
+            ) : null}
+            {showMinutesToday ? (
+              <Text style={[styles.metaSub, { color: '#5F6F86' }]}>{`Studied ${minutesToday} min today`}</Text>
+            ) : null}
           </View>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Continue lesson"
-            onPress={lesson.onContinue}
-            style={styles.ctaButton}
-          >
-            <Text style={styles.ctaText}>Continue lesson</Text>
-          </Pressable>
         </View>
+      ) : null}
+
+      {onPressMessage ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={message}
+          onPress={onPressMessage}
+          style={({ pressed }) => [
+            styles.messageCard,
+            {
+              borderColor: '#D9E6FF',
+              opacity: pressed ? 0.92 : 1,
+            },
+          ]}
+        >
+            <View style={styles.messageIcon}>
+              <Ionicons name="sparkles" size={20} color="#1B6ED4" />
+            </View>
+            <Text style={[styles.messageText, { color: '#0D1B2A' }]}>{message}</Text>
+        </Pressable>
       ) : (
-        <View style={styles.emptyStateCard}>
-          <View style={styles.emptyStateIcon}>
-            <Ionicons name="checkmark-circle" size={24} color="#5BA4F5" />
+        <View style={styles.messageCard}>
+          <View style={styles.messageIcon}>
+            <Ionicons name="sparkles" size={20} color="#1B6ED4" />
           </View>
-          <Text style={[styles.emptyStateText, { color: '#0D1B2A' }]}>
-            Great job! No lessons to continue
-          </Text>
+          <Text style={[styles.messageText, { color: '#0D1B2A' }]}>{message}</Text>
         </View>
       )}
     </View>
@@ -115,10 +100,16 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: OUTER_CARD_RADIUS,
     borderWidth: 1,
-    padding: baseTheme.spacing.lg,
-    gap: baseTheme.spacing.md,
-    backgroundColor: '#F9FBFF',
-    ...softShadow,
+    paddingTop: baseTheme.spacing.md,
+    paddingHorizontal: baseTheme.spacing.lg,
+    paddingBottom: baseTheme.spacing.md,
+    gap: baseTheme.spacing.sm,
+    backgroundColor: '#FBFCFF',
+    // Soften the welcome card so “Next up” can be the hero.
+    shadowOpacity: 0.05,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 4,
   },
   headerRow: {
     flexDirection: 'row',
@@ -131,8 +122,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   logo: {
-    width: 56,
-    height: 56,
+    width: 48,
+    height: 48,
   },
   flamePill: {
     flexDirection: 'row',
@@ -164,98 +155,27 @@ const styles = StyleSheet.create({
     fontFamily: baseTheme.typography.regular,
     fontSize: 15,
   },
-  lessonCard: {
+  messageCard: {
     borderRadius: 18,
-    padding: baseTheme.spacing.md,
-    backgroundColor: '#DCE9FF',
+    paddingVertical: baseTheme.spacing.sm + 6,
+    paddingHorizontal: baseTheme.spacing.md,
+    backgroundColor: '#EEF5FF',
     borderWidth: 1,
-    borderColor: '#C5D8FF',
-    gap: baseTheme.spacing.md,
-    shadowColor: '#1A3356',
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
-  },
-  lessonTopRow: {
+    borderColor: '#D9E6FF',
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  lessonTitleWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: baseTheme.spacing.sm,
-    flex: 1,
-    minWidth: 0, // Allow flex shrinking
+    minHeight: 52,
   },
-  lessonTextContainer: {
-    flex: 1,
-    minWidth: 0, // Allow flex shrinking for text truncation
-  },
-  lessonIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#C8DCFF',
+  messageIcon: {
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0, // Prevent icon from shrinking
+    paddingTop: 1,
   },
-  lessonTitle: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 20,
-    lineHeight: 24,
-  },
-  lessonSub: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 15,
-    marginTop: 4,
-    lineHeight: 20,
-  },
-  timeText: {
+  messageText: {
+    flex: 1,
     fontFamily: baseTheme.typography.semiBold,
     fontSize: 15,
-    marginLeft: baseTheme.spacing.sm,
-    flexShrink: 0, // Prevent time from shrinking
-  },
-  ctaButton: {
-    backgroundColor: '#5BA4F5',
-    borderRadius: 16,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,
-    shadowColor: '#3D82D6',
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
-  },
-  ctaText: {
-    color: '#FFFFFF',
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 17,
-  },
-  emptyStateCard: {
-    borderRadius: 18,
-    padding: baseTheme.spacing.md,
-    backgroundColor: '#DCE9FF',
-    borderWidth: 1,
-    borderColor: '#C5D8FF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: baseTheme.spacing.sm,
-    minHeight: 64,
-  },
-  emptyStateIcon: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyStateText: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 16,
-    textAlign: 'center',
+    lineHeight: 22,
   },
 });

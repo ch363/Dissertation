@@ -1,24 +1,81 @@
 import { useLocalSearchParams, router, useNavigation } from 'expo-router';
-import { useEffect, useState, useLayoutEffect } from 'react';
+import { useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
-import { getModule, getModuleLessons, type Module, type Lesson } from '@/services/api/modules';
+import { getModule, getModuleLessons, getLessonTeachings, type Module, type Lesson } from '@/services/api/modules';
+import { getSuggestions } from '@/services/api/learn';
+import { getRecentActivity, type RecentActivity } from '@/services/api/profile';
 import { routeBuilders, routes } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { makeSessionId } from '@/features/session/sessionBuilder';
 import { preloadSessionPlan } from '@/services/api/session-plan-cache';
+import { getUserLessons, type UserLessonProgress } from '@/services/api/progress';
+import { LessonMicroProgress } from '@/components/learn/LessonMicroProgress';
+import { buildLessonOutcome } from '@/features/learn/utils/lessonOutcome';
+import { BreadcrumbTitle } from '@/components/navigation';
+import { FirstLessonNudge, ModuleCompleteBanner, OfflineNotice } from '@/components/course';
+
+type PrimaryAction =
+  | {
+      kind: 'continue';
+      label: 'Continue lesson';
+      lessonId: string;
+      helperText?: string;
+    }
+  | {
+      kind: 'start';
+      label: 'Start lesson';
+      lessonId: string;
+      helperText?: string;
+    };
 
 export default function CourseDetail() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { theme: appTheme } = useAppTheme();
   const [module, setModule] = useState<Module | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [userProgress, setUserProgress] = useState<UserLessonProgress[]>([]);
+  const [lessonOutcomes, setLessonOutcomes] = useState<Record<string, string>>({});
+  const [recentActivity, setRecentActivity] = useState<RecentActivity | null>(null);
+  const [suggestedLessonId, setSuggestedLessonId] = useState<string | null>(null);
+  const [suggestedLessonTitle, setSuggestedLessonTitle] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lessonsLoadError, setLessonsLoadError] = useState<string | null>(null);
 
   const navigation = useNavigation();
+  const outcomeRequestsRef = useRef(new Set<string>());
+
+  const preloadLessonOutcomes = (lessonsData: Lesson[]) => {
+    const missing = lessonsData
+      .map((l) => l.id)
+      .filter((id) => !lessonOutcomes[id] && !outcomeRequestsRef.current.has(id))
+      .slice(0, 25);
+
+    if (missing.length === 0) return;
+
+    missing.forEach((id, index) => {
+      outcomeRequestsRef.current.add(id);
+      // Stagger slightly to avoid overwhelming the network.
+      setTimeout(() => {
+        getLessonTeachings(id)
+          .then((teachings) => {
+            const outcome = buildLessonOutcome(teachings);
+            if (!outcome) return;
+            setLessonOutcomes((prev) => ({ ...prev, [id]: outcome }));
+          })
+          .catch(() => {
+            // best-effort
+          })
+          .finally(() => {
+            outcomeRequestsRef.current.delete(id);
+          });
+      }, index * 40);
+    });
+  };
 
   useEffect(() => {
     const loadModule = async () => {
@@ -30,21 +87,29 @@ export default function CourseDetail() {
 
       setLoading(true);
       setError(null);
+      setLessonsLoadError(null);
       try {
-        // Convert slug to title format (e.g., "basics" -> "Basics")
-        const normalizedSlug = slug
-          .split('-')
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-          .join(' ');
-        
-        const moduleData = await getModule(normalizedSlug);
+        // Treat the route param as a module identifier. Backend supports either:
+        // - UUID module ID (preferred)
+        // - module title (case-insensitive)
+        const moduleData = await getModule(String(slug));
         setModule(moduleData);
         
         // Fetch all lessons for this module
         try {
-          const lessonsData = await getModuleLessons(moduleData.id);
+          const [lessonsData, progressData, recent, suggestions] = await Promise.all([
+            getModuleLessons(moduleData.id),
+            getUserLessons().catch(() => [] as UserLessonProgress[]),
+            getRecentActivity().catch(() => null),
+            getSuggestions({ moduleId: moduleData.id, limit: 1 }).catch(() => ({ lessons: [], modules: [] })),
+          ]);
           console.log('Loaded lessons:', lessonsData.length, lessonsData);
           setLessons(lessonsData);
+          setUserProgress(progressData);
+          setRecentActivity(recent);
+          const first = suggestions?.lessons?.[0];
+          setSuggestedLessonId(first?.lesson?.id ?? null);
+          setSuggestedLessonTitle(first?.lesson?.title ?? null);
           
           // Preload all lesson session plans in the background
           // This happens silently while user views the lesson list
@@ -58,8 +123,22 @@ export default function CourseDetail() {
               });
             }, index * 50);
           });
+
+          // Best-effort: fetch lesson teachings to generate a motivating outcome line.
+          preloadLessonOutcomes(lessonsData);
         } catch (lessonErr) {
           console.error('Failed to load lessons:', lessonErr);
+          setLessonsLoadError(lessonErr instanceof Error ? lessonErr.message : String(lessonErr));
+          // Still try to populate recent activity / suggestions so CTA can work.
+          void Promise.all([
+            getRecentActivity().catch(() => null),
+            getSuggestions({ moduleId: moduleData.id, limit: 1 }).catch(() => ({ lessons: [], modules: [] })),
+          ]).then(([recent, suggestions]) => {
+            setRecentActivity(recent);
+            const first = suggestions?.lessons?.[0];
+            setSuggestedLessonId(first?.lesson?.id ?? null);
+            setSuggestedLessonTitle(first?.lesson?.title ?? null);
+          });
           // Continue without lesson data
         }
       } catch (err: any) {
@@ -85,7 +164,7 @@ export default function CourseDetail() {
       };
 
       navigation.setOptions({
-        title: module.title,
+        headerTitle: () => <BreadcrumbTitle parent="Modules" current={module.title} />,
         headerRight: () => (
           <Pressable
             accessibilityRole="button"
@@ -101,6 +180,119 @@ export default function CourseDetail() {
     }
   }, [module, navigation, appTheme.colors.mutedText, router]);
 
+  // Use module title and description for the header
+  const displayTitle = module?.title ?? '';
+  const displayDescription = module?.description || 'A tailored course based on your onboarding preferences.';
+  
+  // Calculate total items across all lessons
+  const totalItems = lessons.reduce((sum, lesson) => sum + (lesson.numberOfItems || 0), 0);
+
+  const progressByLessonId = useMemo(() => {
+    return new Map(userProgress.map((p) => [p.lesson.id, p]));
+  }, [userProgress]);
+
+  const moduleCompleted = useMemo(() => {
+    if (lessons.length === 0) return false;
+    return lessons.every((lesson) => {
+      const p = progressByLessonId.get(lesson.id);
+      const total = p?.totalTeachings ?? lesson.numberOfItems ?? 0;
+      const completed = p?.completedTeachings ?? 0;
+      return total > 0 && completed >= total;
+    });
+  }, [lessons, progressByLessonId]);
+
+  const isFirstEverLesson = useMemo(() => {
+    // “First-ever lesson” = no progress recorded at all, or everything is at 0.
+    if (userProgress.length === 0) return true;
+    return userProgress.every((p) => (p.completedTeachings ?? 0) === 0);
+  }, [userProgress]);
+
+  const completionExampleOutcome = useMemo(() => {
+    // Prefer a strong “outcome” line if we already generated one.
+    const first = lessons.find((l) => lessonOutcomes[l.id])?.id;
+    return first ? lessonOutcomes[first] : null;
+  }, [lessonOutcomes, lessons]);
+
+  const primaryAction: PrimaryAction | null = useMemo(() => {
+    const moduleId = module?.id;
+    if (!moduleId) return null;
+
+    // Continue (module-only) if user's recent lesson is in this module and incomplete
+    const recentLesson = recentActivity?.recentLesson ?? null;
+    const isRecentInThisModule = recentLesson?.lesson?.module?.id === moduleId;
+    const isIncomplete =
+      typeof recentLesson?.completedTeachings === 'number' &&
+      typeof recentLesson?.totalTeachings === 'number' &&
+      recentLesson.completedTeachings < recentLesson.totalTeachings;
+
+    if (isRecentInThisModule && isIncomplete && recentLesson?.lesson?.id) {
+      const helperText =
+        typeof recentLesson.completedTeachings === 'number' && typeof recentLesson.totalTeachings === 'number'
+          ? `${recentLesson.completedTeachings}/${recentLesson.totalTeachings} complete`
+          : undefined;
+      return {
+        kind: 'continue',
+        label: 'Continue lesson',
+        lessonId: recentLesson.lesson.id,
+        helperText,
+      };
+    }
+
+    // Start recommended lesson (module-scoped suggestions), else fallback to first lesson in list
+    const startLessonId = suggestedLessonId ?? lessons[0]?.id ?? null;
+    if (!startLessonId) return null;
+    return { kind: 'start', label: 'Start lesson', lessonId: startLessonId };
+  }, [lessons, module?.id, recentActivity, suggestedLessonId, suggestedLessonTitle]);
+
+  const recommendedLessonTitle = useMemo(() => {
+    if (!suggestedLessonId) return null;
+    return suggestedLessonTitle ?? lessons.find((l) => l.id === suggestedLessonId)?.title ?? null;
+  }, [lessons, suggestedLessonId, suggestedLessonTitle]);
+
+  const handlePrimaryActionPress = () => {
+    if (!primaryAction) return;
+    const sessionId = makeSessionId('learn');
+    router.push({
+      pathname: routeBuilders.sessionDetail(sessionId),
+      params: { lessonId: primaryAction.lessonId, kind: 'learn' },
+    });
+  };
+
+  const handlePrimaryActionPressIn = () => {
+    if (!primaryAction) return;
+    preloadSessionPlan(primaryAction.lessonId).catch((error) => {
+      console.debug('Preload failed (non-critical):', error);
+    });
+  };
+
+  const handleRetry = () => {
+    // Trigger a full reload by re-running the effect.
+    // (Expo Router screens re-run effect on param changes; we keep it simple by just calling the API path again.)
+    setLoading(true);
+    setError(null);
+    setLessonsLoadError(null);
+    // Reuse the module slug; the effect will re-run because `slug` is stable, so call the internal loader again via navigation refresh.
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    (async () => {
+      try {
+        const moduleData = await getModule(String(slug));
+        setModule(moduleData);
+        const [lessonsData, progressData] = await Promise.all([
+          getModuleLessons(moduleData.id),
+          getUserLessons().catch(() => [] as UserLessonProgress[]),
+        ]);
+        setLessons(lessonsData);
+        setUserProgress(progressData);
+        preloadLessonOutcomes(lessonsData);
+      } catch (e: any) {
+        setError(e?.message || 'Failed to reload course');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  };
+
+  // IMPORTANT: Hooks must run before any early returns.
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: appTheme.colors.background }]}>
@@ -118,13 +310,6 @@ export default function CourseDetail() {
       </View>
     );
   }
-
-  // Use module title and description for the header
-  const displayTitle = module.title;
-  const displayDescription = module.description || 'A tailored course based on your onboarding preferences.';
-  
-  // Calculate total items across all lessons
-  const totalItems = lessons.reduce((sum, lesson) => sum + (lesson.numberOfItems || 0), 0);
 
   return (
     <ScrollView 
@@ -152,7 +337,7 @@ export default function CourseDetail() {
               {lessons.length} {lessons.length === 1 ? 'lesson' : 'lessons'}
             </Text>
           </View>
-          <View style={styles.statDivider} />
+          <View style={[styles.statDivider, { backgroundColor: appTheme.colors.border }]} />
           <View style={styles.statItem}>
             <Ionicons name="time-outline" size={20} color={appTheme.colors.primary} />
             <Text style={[styles.statText, { color: appTheme.colors.text }]}>
@@ -162,6 +347,67 @@ export default function CourseDetail() {
         </View>
       )}
 
+      {/* Future-proof empty states */}
+      {moduleCompleted ? (
+        <View style={styles.bannerRow}>
+          <ModuleCompleteBanner moduleTitle={module.title} exampleOutcome={completionExampleOutcome} />
+        </View>
+      ) : lessons.length === 0 && lessonsLoadError ? (
+        <View style={styles.bannerRow}>
+          <OfflineNotice onRetry={handleRetry} />
+        </View>
+      ) : isFirstEverLesson && primaryAction?.kind === 'start' ? (
+        <View style={styles.bannerRow}>
+          <FirstLessonNudge onStart={handlePrimaryActionPress} />
+        </View>
+      ) : null}
+
+      {/* Primary Action CTA (reduce choice friction) */}
+      {primaryAction ? (
+        <View style={styles.primaryActionSection}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={primaryAction.label}
+            onPress={handlePrimaryActionPress}
+            onPressIn={handlePrimaryActionPressIn}
+            hitSlop={6}
+            style={({ pressed }) => [
+              styles.primaryCta,
+              { backgroundColor: appTheme.colors.primary, opacity: pressed ? 0.9 : 1 },
+            ]}
+          >
+            <Text style={[styles.primaryCtaText, { color: appTheme.colors.onPrimary }]}>
+              {primaryAction.label}
+            </Text>
+            <Ionicons
+              name="arrow-forward"
+              size={18}
+              color={appTheme.colors.onPrimary}
+              style={styles.primaryCtaIcon}
+            />
+          </Pressable>
+          {primaryAction.kind === 'start' && recommendedLessonTitle ? (
+            <View
+              style={[
+                styles.recommendationPill,
+                { backgroundColor: appTheme.colors.primary + '10', borderColor: appTheme.colors.primary + '2A' },
+              ]}
+              accessibilityLabel={`Recommended next: ${recommendedLessonTitle}`}
+            >
+              <Ionicons name="sparkles" size={14} color={appTheme.colors.primary} />
+              <Text style={[styles.recommendationLabel, { color: appTheme.colors.primary }]}>Recommended next</Text>
+              <Text style={[styles.recommendationTitle, { color: appTheme.colors.text }]} numberOfLines={1}>
+                {recommendedLessonTitle}
+              </Text>
+            </View>
+          ) : primaryAction.helperText ? (
+            <Text style={[styles.primaryCtaHelper, { color: appTheme.colors.mutedText }]}>
+              {primaryAction.helperText}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+
       {/* Lessons List Section */}
       {lessons.length > 0 ? (
         <View style={styles.lessonsSection}>
@@ -170,6 +416,9 @@ export default function CourseDetail() {
           </Text>
           <View style={styles.lessonsList}>
             {lessons.map((lesson, index) => {
+              const progress = progressByLessonId.get(lesson.id);
+              const preview = lessonOutcomes[lesson.id] ?? lesson.description ?? null;
+
               const handleLessonPress = () => {
                 const sessionId = makeSessionId('learn');
                 router.push({
@@ -189,32 +438,40 @@ export default function CourseDetail() {
               return (
               <Pressable
                 key={lesson.id}
-                style={[styles.lessonCard, { backgroundColor: appTheme.colors.card }]}
+                style={[styles.lessonCard, { backgroundColor: appTheme.colors.card, borderColor: appTheme.colors.border }]}
                 onPress={handleLessonPress}
                 onPressIn={handleLessonPressIn}
               >
                 <View style={styles.lessonCardContent}>
                   <View style={styles.lessonCardLeft}>
-                    <View style={[styles.lessonNumber, { backgroundColor: appTheme.colors.primary + '15' }]}>
+                    <LinearGradient
+                      colors={[appTheme.colors.primary + '22', appTheme.colors.primary + '10']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={[styles.lessonNumber, { borderColor: appTheme.colors.primary + '33' }]}
+                    >
                       <Text style={[styles.lessonNumberText, { color: appTheme.colors.primary }]}>
                         {index + 1}
                       </Text>
-                    </View>
+                    </LinearGradient>
                     <View style={styles.lessonCardText}>
                       <Text style={[styles.lessonTitle, { color: appTheme.colors.text }]}>
                         {lesson.title}
                       </Text>
-                      {lesson.description && (
+                      <View style={styles.lessonMetaRow}>
+                        <LessonMicroProgress
+                          completed={progress?.completedTeachings ?? 0}
+                          total={progress?.totalTeachings ?? (lesson.numberOfItems || 0)}
+                        />
+                      </View>
+                      {preview ? (
                         <Text style={[styles.lessonDescription, { color: appTheme.colors.mutedText }]} numberOfLines={1}>
-                          {lesson.description}
+                          {preview}
                         </Text>
-                      )}
+                      ) : null}
                     </View>
                   </View>
                   <View style={styles.lessonCardRight}>
-                    <Text style={[styles.lessonStats, { color: appTheme.colors.mutedText }]}>
-                      {lesson.numberOfItems || 0} items
-                    </Text>
                     <Ionicons name="chevron-forward" size={20} color={appTheme.colors.mutedText} />
                   </View>
                 </View>
@@ -235,6 +492,10 @@ export default function CourseDetail() {
 }
 
 const styles = StyleSheet.create({
+  bannerRow: {
+    width: '100%',
+    marginBottom: theme.spacing.lg,
+  },
   container: {
     flex: 1,
   },
@@ -244,7 +505,7 @@ const styles = StyleSheet.create({
   },
   headerSection: {
     alignItems: 'center',
-    marginBottom: theme.spacing.xl,
+    marginBottom: theme.spacing.xl + theme.spacing.sm,
   },
   iconContainer: {
     width: 96,
@@ -287,12 +548,64 @@ const styles = StyleSheet.create({
   },
   statDivider: {
     width: 1,
-    backgroundColor: '#e0e0e0',
     marginHorizontal: theme.spacing.md,
   },
   statText: {
     fontFamily: theme.typography.semiBold,
     fontSize: 14,
+  },
+  primaryActionSection: {
+    width: '100%',
+    marginBottom: theme.spacing.xl,
+    gap: theme.spacing.sm,
+  },
+  primaryCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.md,
+    paddingVertical: 16,
+    width: '100%',
+    minHeight: 52,
+    gap: theme.spacing.sm,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+  primaryCtaText: {
+    fontFamily: theme.typography.semiBold,
+    fontSize: 16,
+  },
+  primaryCtaIcon: {
+    marginRight: -4,
+  },
+  primaryCtaHelper: {
+    fontFamily: theme.typography.regular,
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  recommendationPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignSelf: 'center',
+    maxWidth: '100%',
+  },
+  recommendationLabel: {
+    fontFamily: theme.typography.semiBold,
+    fontSize: 12,
+  },
+  recommendationTitle: {
+    fontFamily: theme.typography.semiBold,
+    fontSize: 12,
+    maxWidth: 220,
   },
   sectionTitle: {
     fontFamily: theme.typography.bold,
@@ -300,6 +613,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   lessonsSection: {
+    marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.xl,
   },
   lessonsList: {
@@ -308,11 +622,12 @@ const styles = StyleSheet.create({
   lessonCard: {
     borderRadius: theme.radius.md,
     padding: theme.spacing.md,
+    borderWidth: StyleSheet.hairlineWidth,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 4,
   },
   lessonCardContent: {
     flexDirection: 'row',
@@ -321,7 +636,7 @@ const styles = StyleSheet.create({
   },
   lessonCardLeft: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     flex: 1,
     gap: theme.spacing.md,
   },
@@ -331,6 +646,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
   },
   lessonNumberText: {
     fontFamily: theme.typography.bold,
@@ -342,15 +658,19 @@ const styles = StyleSheet.create({
   lessonTitle: {
     fontFamily: theme.typography.semiBold,
     fontSize: 16,
-    marginBottom: theme.spacing.xs,
+  },
+  lessonMetaRow: {
+    marginTop: 6,
   },
   lessonDescription: {
     fontFamily: theme.typography.regular,
     fontSize: 14,
+    marginTop: 6,
   },
   lessonCardRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
     gap: theme.spacing.sm,
   },
   lessonStats: {
@@ -369,24 +689,6 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.regular,
     fontSize: 16,
     textAlign: 'center',
-  },
-  button: {
-    flexDirection: 'row',
-    paddingVertical: 16,
-    borderRadius: theme.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    gap: theme.spacing.sm,
-  },
-  primary: { backgroundColor: theme.colors.primary },
-  buttonIcon: {
-    marginRight: -4,
-  },
-  buttonText: { 
-    color: '#fff', 
-    fontFamily: theme.typography.semiBold,
-    fontSize: 16,
   },
   homeButton: {
     width: 36,

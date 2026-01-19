@@ -10,7 +10,7 @@ describe('UsersService', () => {
 
   const mockPrismaService = {
     user: {
-      upsert: jest.fn(),
+      create: jest.fn(),
       update: jest.fn(),
       findUnique: jest.fn(),
     },
@@ -46,14 +46,14 @@ describe('UsersService', () => {
         preferredDeliveryMethod: null,
       };
 
-      prisma.user.upsert.mockResolvedValue(mockUser as any);
+      prisma.user.findUnique.mockResolvedValue(null);
+      prisma.user.create.mockResolvedValue(mockUser as any);
 
       const result = await service.upsertUser(authUid);
 
-      expect(prisma.user.upsert).toHaveBeenCalledWith({
-        where: { id: authUid },
-        update: {},
-        create: {
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { id: authUid } });
+      expect(prisma.user.create).toHaveBeenCalledWith({
+        data: {
           id: authUid,
           knowledgePoints: 0,
           knowledgeLevel: 'A1',
@@ -72,11 +72,12 @@ describe('UsersService', () => {
         preferredDeliveryMethod: 'FLASHCARD',
       };
 
-      prisma.user.upsert.mockResolvedValue(mockUser as any);
+      prisma.user.findUnique.mockResolvedValue(mockUser as any);
 
       const result = await service.upsertUser(authUid);
 
-      expect(prisma.user.upsert).toHaveBeenCalled();
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { id: authUid } });
+      expect(prisma.user.create).not.toHaveBeenCalled();
       expect(result).toEqual(mockUser);
     });
   });
