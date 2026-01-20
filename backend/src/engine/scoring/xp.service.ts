@@ -1,9 +1,9 @@
 /**
  * XP (Experience Points) Service
- * 
+ *
  * This service manages XP awards and tracking. XP is stored as events over time,
  * allowing for historical analysis and daily summaries.
- * 
+ *
  * This is a SERVICE LAYER, not middleware. It's called by ProgressService
  * after recording an attempt. It does NOT handle HTTP requests directly.
  */
@@ -29,7 +29,7 @@ export class XpService {
 
   /**
    * Award XP for an event and return the amount awarded.
-   * 
+   *
    * @param userId User ID
    * @param event Event that triggered XP
    * @returns Amount of XP awarded
@@ -62,12 +62,15 @@ export class XpService {
 
   /**
    * Get XP summary for a date range.
-   * 
+   *
    * @param userId User ID
    * @param rangeDays Number of days to look back (default: 30)
    * @returns Daily XP totals
    */
-  async getXpSummary(userId: string, rangeDays: number = 30): Promise<XpSummary[]> {
+  async getXpSummary(
+    userId: string,
+    rangeDays: number = 30,
+  ): Promise<XpSummary[]> {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - rangeDays);
 

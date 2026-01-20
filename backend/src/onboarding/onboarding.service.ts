@@ -70,9 +70,12 @@ interface OnboardingSubmission {
  * Build onboarding submission from raw answers
  * This business logic was moved from frontend to backend
  */
-function buildOnboardingSubmission(answers: OnboardingAnswers): OnboardingSubmission {
+function buildOnboardingSubmission(
+  answers: OnboardingAnswers,
+): OnboardingSubmission {
   const challengeWeight = DIFFICULTY_WEIGHTS[answers.difficulty ?? ''] ?? 0.5;
-  const prefersGamification = GAMIFICATION_WEIGHTS[answers.gamification ?? ''] ?? null;
+  const prefersGamification =
+    GAMIFICATION_WEIGHTS[answers.gamification ?? ''] ?? null;
   const feedbackDepthScore = FEEDBACK_DEPTH[answers.feedback ?? ''] ?? null;
   const sessionMinutesScore = answers.sessionStyle
     ? (SESSION_MINUTES[answers.sessionStyle] ?? null)
@@ -115,13 +118,16 @@ function buildOnboardingSubmission(answers: OnboardingAnswers): OnboardingSubmis
 export class OnboardingService {
   constructor(private prisma: PrismaService) {}
 
-  async saveOnboarding(userId: string, dto: SaveOnboardingDto): Promise<OnboardingResponseDto> {
+  async saveOnboarding(
+    userId: string,
+    dto: SaveOnboardingDto,
+  ): Promise<OnboardingResponseDto> {
     // Accept raw OnboardingAnswers and process them server-side
     const rawAnswers = dto.answers as OnboardingAnswers;
-    
+
     // Build complete submission with computed fields
     const submission = buildOnboardingSubmission(rawAnswers);
-    
+
     // Store processed submission in database
     const onboarding = await this.prisma.onboardingAnswer.upsert({
       where: { userId },

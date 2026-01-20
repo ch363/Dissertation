@@ -9,7 +9,14 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { QuestionsService } from './questions.service';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { UpdateDeliveryMethodsDto } from './dto/update-delivery-methods.dto';
@@ -29,7 +36,12 @@ export class QuestionsController {
 
   @Get()
   @ApiOperation({ summary: 'List all questions' })
-  @ApiQuery({ name: 'teachingId', type: 'string', format: 'uuid', required: false })
+  @ApiQuery({
+    name: 'teachingId',
+    type: 'string',
+    format: 'uuid',
+    required: false,
+  })
   @ApiResponse({ status: 200, description: 'Questions retrieved' })
   findAll(@Query() query: QuestionsQueryDto) {
     return this.questionsService.findAll(query.teachingId);
@@ -76,6 +88,9 @@ export class QuestionsController {
     @Body() updateDto: UpdateDeliveryMethodsDto,
   ) {
     // TODO: Add admin check
-    return this.questionsService.updateDeliveryMethods(id, updateDto.deliveryMethods);
+    return this.questionsService.updateDeliveryMethods(
+      id,
+      updateDto.deliveryMethods,
+    );
   }
 }

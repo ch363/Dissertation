@@ -3,9 +3,10 @@ import { ProgressController } from './progress.controller';
 import { ProgressService } from './progress.service';
 import { EngineModule } from '../engine/engine.module';
 import { ContentModule } from '../content/content.module';
+import { SpeechModule } from '../speech/speech.module';
 
 @Module({
-  imports: [EngineModule, ContentModule],
+  imports: [EngineModule, ContentModule, SpeechModule],
   controllers: [ProgressController],
   providers: [ProgressService],
   exports: [ProgressService],

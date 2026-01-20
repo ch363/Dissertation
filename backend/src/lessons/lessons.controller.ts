@@ -9,7 +9,14 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { LessonsService } from './lessons.service';
 import { CreateLessonDto } from './dto/create-lesson.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
@@ -29,7 +36,12 @@ export class LessonsController {
 
   @Get()
   @ApiOperation({ summary: 'List all lessons' })
-  @ApiQuery({ name: 'moduleId', type: 'string', format: 'uuid', required: false })
+  @ApiQuery({
+    name: 'moduleId',
+    type: 'string',
+    format: 'uuid',
+    required: false,
+  })
   @ApiResponse({ status: 200, description: 'Lessons retrieved' })
   findAll(@Query() query: LessonsQueryDto) {
     return this.lessonsService.findAll(query.moduleId);
@@ -85,8 +97,16 @@ export class LessonsController {
   }
 
   @Get('recommended')
-  @ApiOperation({ summary: 'Get recommended lessons (curated + algorithmic discovery)' })
-  @ApiQuery({ name: 'userId', type: 'string', format: 'uuid', required: false, description: 'Optional: for personalized recommendations' })
+  @ApiOperation({
+    summary: 'Get recommended lessons (curated + algorithmic discovery)',
+  })
+  @ApiQuery({
+    name: 'userId',
+    type: 'string',
+    format: 'uuid',
+    required: false,
+    description: 'Optional: for personalized recommendations',
+  })
   @ApiResponse({ status: 200, description: 'Recommended lessons retrieved' })
   findRecommended(@Query('userId') userId?: string) {
     return this.lessonsService.findRecommended(userId);

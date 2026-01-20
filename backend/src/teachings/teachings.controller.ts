@@ -9,7 +9,14 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { TeachingsService } from './teachings.service';
 import { CreateTeachingDto } from './dto/create-teaching.dto';
 import { UpdateTeachingDto } from './dto/update-teaching.dto';
@@ -29,7 +36,12 @@ export class TeachingsController {
 
   @Get()
   @ApiOperation({ summary: 'List all teachings' })
-  @ApiQuery({ name: 'lessonId', type: 'string', format: 'uuid', required: false })
+  @ApiQuery({
+    name: 'lessonId',
+    type: 'string',
+    format: 'uuid',
+    required: false,
+  })
   @ApiResponse({ status: 200, description: 'Teachings retrieved' })
   findAll(@Query() query: TeachingsQueryDto) {
     return this.teachingsService.findAll(query.lessonId);

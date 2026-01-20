@@ -1,8 +1,15 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { DELIVERY_METHOD } from '@prisma/client';
 import { ContentDeliveryService } from '../engine/content-delivery/content-delivery.service';
-import { SessionPlanDto, SessionContext } from '../engine/content-delivery/session-types';
+import {
+  SessionPlanDto,
+  SessionContext,
+} from '../engine/content-delivery/session-types';
 import { LearningPathCardDto } from './learning-path.dto';
 import { ReviewSummaryDto } from './review-summary.dto';
 
@@ -62,7 +69,9 @@ export class LearnService {
       : [];
 
     const completedTeachingsByLessonId = new Map<string, number>();
-    userLessons.forEach((ul) => completedTeachingsByLessonId.set(ul.lessonId, ul.completedTeachings));
+    userLessons.forEach((ul) =>
+      completedTeachingsByLessonId.set(ul.lessonId, ul.completedTeachings),
+    );
 
     return modules.map((m) => {
       const total = m.lessons.length;
@@ -70,7 +79,8 @@ export class LearnService {
 
       for (const lesson of m.lessons) {
         const teachingsCount = lesson._count.teachings;
-        const completedTeachings = completedTeachingsByLessonId.get(lesson.id) ?? 0;
+        const completedTeachings =
+          completedTeachingsByLessonId.get(lesson.id) ?? 0;
         // Avoid marking empty lessons as completed.
         if (teachingsCount > 0 && completedTeachings >= teachingsCount) {
           completed++;
@@ -87,7 +97,11 @@ export class LearnService {
       // - some progress => Continue
       // - none => Start
       const cta =
-        total > 0 && completed === total ? 'Review' : completed > 0 ? 'Continue' : 'Start';
+        total > 0 && completed === total
+          ? 'Review'
+          : completed > 0
+            ? 'Continue'
+            : 'Start';
 
       return {
         id: m.id,
@@ -184,7 +198,9 @@ export class LearnService {
       throw new NotFoundException(`Lesson with ID ${lessonId} not found`);
     }
 
-    const allQuestionIds = lesson.teachings.flatMap((t) => t.questions.map((q) => q.id));
+    const allQuestionIds = lesson.teachings.flatMap((t) =>
+      t.questions.map((q) => q.id),
+    );
 
     if (allQuestionIds.length === 0) {
       return {
@@ -222,7 +238,10 @@ export class LearnService {
     // Convert step to existing response format
     if (firstStep.type === 'practice' && firstStep.item.type === 'practice') {
       // Check if it's a review or new
-      const isReview = await this.isReviewItem(userId, firstStep.item.questionId);
+      const isReview = await this.isReviewItem(
+        userId,
+        firstStep.item.questionId,
+      );
 
       return {
         type: isReview ? ('review' as const) : ('new' as const),
@@ -257,7 +276,10 @@ export class LearnService {
   /**
    * Check if a question is a review item (has due nextReviewDue).
    */
-  private async isReviewItem(userId: string, questionId: string): Promise<boolean> {
+  private async isReviewItem(
+    userId: string,
+    questionId: string,
+  ): Promise<boolean> {
     const latest = await this.prisma.userQuestionPerformance.findFirst({
       where: {
         userId,
@@ -316,12 +338,16 @@ export class LearnService {
     limit: number = 3,
   ) {
     // Get user's completed teachings
-    const completedTeachings = await this.prisma.userTeachingCompleted.findMany({
-      where: { userId },
-      select: { teachingId: true },
-    });
+    const completedTeachings = await this.prisma.userTeachingCompleted.findMany(
+      {
+        where: { userId },
+        select: { teachingId: true },
+      },
+    );
 
-    const completedTeachingIds = new Set(completedTeachings.map((ct) => ct.teachingId));
+    const completedTeachingIds = new Set(
+      completedTeachings.map((ct) => ct.teachingId),
+    );
 
     // Get user's started lessons
     const startedLessons = await this.prisma.userLesson.findMany({
@@ -367,9 +393,14 @@ export class LearnService {
       });
 
       // If moduleId is provided, only use currentLessonId if it belongs to the requested module.
-      if (currentLesson && (!moduleId || currentLesson.module.id === moduleId)) {
+      if (
+        currentLesson &&
+        (!moduleId || currentLesson.module.id === moduleId)
+      ) {
         const moduleLessons = currentLesson.module.lessons;
-        const currentIndex = moduleLessons.findIndex((l) => l.id === currentLessonId);
+        const currentIndex = moduleLessons.findIndex(
+          (l) => l.id === currentLessonId,
+        );
         const nextLesson = moduleLessons[currentIndex + 1];
 
         if (nextLesson && !startedLessonIds.has(nextLesson.id)) {
@@ -468,7 +499,10 @@ export class LearnService {
    * @param context Session context
    * @returns Complete session plan
    */
-  async getSessionPlan(userId: string, context: SessionContext): Promise<SessionPlanDto> {
+  async getSessionPlan(
+    userId: string,
+    context: SessionContext,
+  ): Promise<SessionPlanDto> {
     return this.contentDelivery.getSessionPlan(userId, context);
   }
 }

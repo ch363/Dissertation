@@ -22,8 +22,25 @@ export class OptionsGeneratorService {
     food: string[];
     time: string[];
   } = {
-    greetings: ['Ciao', 'Buongiorno', 'Buonasera', 'Arrivederci', 'Salve', 'Prego'],
-    common: ['Grazie', 'Per favore', 'Scusa', 'Mi dispiace', 'Prego', 'Sì', 'No', 'Bene', 'Male'],
+    greetings: [
+      'Ciao',
+      'Buongiorno',
+      'Buonasera',
+      'Arrivederci',
+      'Salve',
+      'Prego',
+    ],
+    common: [
+      'Grazie',
+      'Per favore',
+      'Scusa',
+      'Mi dispiace',
+      'Prego',
+      'Sì',
+      'No',
+      'Bene',
+      'Male',
+    ],
     numbers: ['Uno', 'Due', 'Tre', 'Quattro', 'Cinque'],
     colors: ['Rosso', 'Blu', 'Verde', 'Giallo', 'Nero', 'Bianco'],
     family: ['Madre', 'Padre', 'Fratello', 'Sorella', 'Nonno', 'Nonna'],
@@ -42,7 +59,10 @@ export class OptionsGeneratorService {
     correctAnswer: string,
     lessonId: string,
     isLearningToUser: boolean = false,
-  ): Promise<{ options: Array<{ id: string; label: string; isCorrect: boolean }>; correctOptionId: string }> {
+  ): Promise<{
+    options: Array<{ id: string; label: string; isCorrect: boolean }>;
+    correctOptionId: string;
+  }> {
     // Get other teachings from the same lesson for contextual distractors
     const lesson = await this.prisma.lesson.findUnique({
       where: { id: lessonId },
@@ -82,7 +102,11 @@ export class OptionsGeneratorService {
 
     // Remove duplicates and the correct answer
     const uniqueDistractors = Array.from(
-      new Set(allDistractors.filter((d) => d && d.toLowerCase() !== correctAnswer.toLowerCase())),
+      new Set(
+        allDistractors.filter(
+          (d) => d && d.toLowerCase() !== correctAnswer.toLowerCase(),
+        ),
+      ),
     );
 
     // Ensure we have at least 3 distractors (pad with common words if needed)
@@ -91,31 +115,42 @@ export class OptionsGeneratorService {
       // Add more common distractors if we don't have enough
       const additionalDistractors = this.commonDistractors.common
         .filter((d) => d && d.toLowerCase() !== correctAnswer.toLowerCase())
-        .filter((d) => !selectedDistractors.some((s) => s && s.toLowerCase() === d.toLowerCase()));
+        .filter(
+          (d) =>
+            !selectedDistractors.some(
+              (s) => s && s.toLowerCase() === d.toLowerCase(),
+            ),
+        );
       selectedDistractors = [...selectedDistractors, ...additionalDistractors];
-      
+
       // If still not enough, use all common distractors
       if (selectedDistractors.length < 3) {
-        const allCommon = this.commonDistractors.common
-          .filter((d) => d && d.toLowerCase() !== correctAnswer.toLowerCase());
+        const allCommon = this.commonDistractors.common.filter(
+          (d) => d && d.toLowerCase() !== correctAnswer.toLowerCase(),
+        );
         selectedDistractors = [...selectedDistractors, ...allCommon];
         // Remove duplicates again
         selectedDistractors = Array.from(new Set(selectedDistractors));
       }
     }
     selectedDistractors = selectedDistractors.slice(0, 3);
-    
+
     // Final safety check - if we still don't have 3, use placeholder options
     if (selectedDistractors.length < 3) {
-      console.warn(`Warning: Only generated ${selectedDistractors.length} distractors for answer "${correctAnswer}". Using fallback options.`);
+      console.warn(
+        `Warning: Only generated ${selectedDistractors.length} distractors for answer "${correctAnswer}". Using fallback options.`,
+      );
       // Use generic fallback options
-      const fallbacks = isLearningToUser 
+      const fallbacks = isLearningToUser
         ? ['Yes', 'No', 'Hello', 'Goodbye', 'Please', 'Sorry']
         : ['Sì', 'No', 'Ciao', 'Arrivederci', 'Per favore', 'Scusa'];
       const fallbackDistractors = fallbacks
         .filter((d) => d.toLowerCase() !== correctAnswer.toLowerCase())
         .slice(0, 3 - selectedDistractors.length);
-      selectedDistractors = [...selectedDistractors, ...fallbackDistractors].slice(0, 3);
+      selectedDistractors = [
+        ...selectedDistractors,
+        ...fallbackDistractors,
+      ].slice(0, 3);
     }
 
     // Create options with the correct answer
@@ -149,16 +184,32 @@ export class OptionsGeneratorService {
     const relevant: string[] = [];
 
     // Check which category the answer might belong to
-    if (this.commonDistractors.greetings.some((g) => lowerAnswer.includes(g.toLowerCase()))) {
+    if (
+      this.commonDistractors.greetings.some((g) =>
+        lowerAnswer.includes(g.toLowerCase()),
+      )
+    ) {
       relevant.push(...this.commonDistractors.greetings);
     }
-    if (this.commonDistractors.common.some((c) => lowerAnswer.includes(c.toLowerCase()))) {
+    if (
+      this.commonDistractors.common.some((c) =>
+        lowerAnswer.includes(c.toLowerCase()),
+      )
+    ) {
       relevant.push(...this.commonDistractors.common);
     }
-    if (this.commonDistractors.food.some((f) => lowerAnswer.includes(f.toLowerCase()))) {
+    if (
+      this.commonDistractors.food.some((f) =>
+        lowerAnswer.includes(f.toLowerCase()),
+      )
+    ) {
       relevant.push(...this.commonDistractors.food);
     }
-    if (this.commonDistractors.family.some((f) => lowerAnswer.includes(f.toLowerCase()))) {
+    if (
+      this.commonDistractors.family.some((f) =>
+        lowerAnswer.includes(f.toLowerCase()),
+      )
+    ) {
       relevant.push(...this.commonDistractors.family);
     }
 

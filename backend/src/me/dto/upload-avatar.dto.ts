@@ -5,7 +5,7 @@ import { sanitizeUrl } from '../../common/utils/sanitize.util';
 
 /**
  * DTO for uploading user avatar
- * 
+ *
  * Security: Input validation and sanitization
  * - AvatarUrl: Required, validated URL format (HTTP/HTTPS only), sanitized
  */
@@ -16,7 +16,9 @@ export class UploadAvatarDto {
   })
   @IsString()
   @MaxLength(2048, { message: 'Avatar URL must not exceed 2048 characters' })
-  @Matches(/^https?:\/\/.+/, { message: 'Avatar URL must be a valid HTTP/HTTPS URL' })
+  @Matches(/^https?:\/\/.+/, {
+    message: 'Avatar URL must be a valid HTTP/HTTPS URL',
+  })
   @Transform(({ value }) => sanitizeUrl(value))
   avatarUrl: string;
 }

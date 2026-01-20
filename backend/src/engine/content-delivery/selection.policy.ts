@@ -9,7 +9,7 @@ import { DELIVERY_METHOD } from '@prisma/client';
 /**
  * Rank candidates by their priority score.
  * Higher score = higher priority.
- * 
+ *
  * @param candidates Array of delivery candidates
  * @param prioritizedSkills Optional array of skill tags to prioritize (low mastery skills)
  */
@@ -32,7 +32,7 @@ export function rankCandidates(
  * - Recent errors (more errors = higher priority)
  * - Time since last seen (longer = higher priority for reviews)
  * - Prioritized skills (low mastery skills get bonus priority for 'New' items)
- * 
+ *
  * @param candidate Delivery candidate
  * @param prioritizedSkills Array of skill tags to prioritize (low mastery skills)
  */
@@ -44,19 +44,21 @@ function calculatePriorityScore(
   if (candidate.dueScore > 0) {
     return 1000 + candidate.dueScore + candidate.errorScore * 10;
   }
-  
+
   // Check if this candidate matches any prioritized skills (for 'New' items)
-  const hasPrioritizedSkill = prioritizedSkills.length > 0 &&
-    candidate.skillTags?.some(tag => prioritizedSkills.includes(tag));
-  
+  const hasPrioritizedSkill =
+    prioritizedSkills.length > 0 &&
+    candidate.skillTags?.some((tag) => prioritizedSkills.includes(tag));
+
   // Base priority for new items
-  let basePriority = candidate.errorScore * 5 + candidate.timeSinceLastSeen / 1000;
-  
+  let basePriority =
+    candidate.errorScore * 5 + candidate.timeSinceLastSeen / 1000;
+
   // Boost priority for low mastery skills (prioritize 'New' teachings)
   if (hasPrioritizedSkill) {
     basePriority += 500; // Significant boost to prioritize these items
   }
-  
+
   return basePriority;
 }
 
@@ -103,7 +105,9 @@ export function mixReviewAndNew(
 /**
  * Pick the single best candidate from a ranked list.
  */
-export function pickOne(candidates: DeliveryCandidate[]): DeliveryCandidate | null {
+export function pickOne(
+  candidates: DeliveryCandidate[],
+): DeliveryCandidate | null {
   if (candidates.length === 0) {
     return null;
   }
@@ -135,7 +139,7 @@ export function selectDeliveryMethod(
 /**
  * Interleaving composer: applies constraint-based rules to ensure variety.
  * This is the "first-class" interleaving implementation (SR-04).
- * 
+ *
  * Rules:
  * 1. Error Scaffolding: If a SkillTag has 3+ errors (errorScore >= 3), inject a Review item
  *    with high mastery (dueScore > 0 AND estimatedMastery > 0.7) for that SkillTag
@@ -143,7 +147,7 @@ export function selectDeliveryMethod(
  * 3. Exercise type alternation is the SECONDARY variety metric (no more than N of the same type in a row)
  * 4. Inject "easy wins" after 2 consecutive errors (legacy scaffolding fallback)
  * 5. Ensure at least one listening/speaking per session if enabled
- * 
+ *
  * @param candidates Ranked candidates to compose
  * @param options Interleaving options
  * @returns Composed sequence with interleaving constraints applied
@@ -180,11 +184,18 @@ export function composeWithInterleaving(
   // Track error streaks per SkillTag using historical errorScore
   const skillTagErrorMap = new Map<string, number>();
   for (const candidate of candidates) {
-    if (candidate.skillTags && candidate.skillTags.length > 0 && candidate.errorScore > 0) {
+    if (
+      candidate.skillTags &&
+      candidate.skillTags.length > 0 &&
+      candidate.errorScore > 0
+    ) {
       for (const skillTag of candidate.skillTags) {
         const currentErrorCount = skillTagErrorMap.get(skillTag) || 0;
         // Accumulate errorScore per SkillTag (errorScore represents recent errors)
-        skillTagErrorMap.set(skillTag, Math.max(currentErrorCount, candidate.errorScore));
+        skillTagErrorMap.set(
+          skillTag,
+          Math.max(currentErrorCount, candidate.errorScore),
+        );
       }
     }
   }
@@ -325,7 +336,12 @@ export function composeWithInterleaving(
     }
 
     // Rule 2: Legacy scaffolding - inject easy win after 2 consecutive errors (fallback)
-    if (!selected && enableScaffolding && errorStreak >= 2 && easyCandidates.length > 0) {
+    if (
+      !selected &&
+      enableScaffolding &&
+      errorStreak >= 2 &&
+      easyCandidates.length > 0
+    ) {
       selected = findAlternative(easyCandidates);
       if (selected) {
         errorStreak = 0; // Reset error streak after easy win
@@ -437,7 +453,7 @@ export function composeWithInterleaving(
     }
 
     // Remove from remaining
-    remaining = remaining.filter((c) => c.id !== selected!.id);
+    remaining = remaining.filter((c) => c.id !== selected.id);
 
     // If we've covered modality, mark as done
     if (needsModalityCoverage) {

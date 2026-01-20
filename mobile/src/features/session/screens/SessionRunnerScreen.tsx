@@ -23,6 +23,7 @@ type Props = {
   moduleId?: string;
   sessionId?: string;
   kind?: SessionKind;
+  returnTo?: string;
 };
 
 export default function SessionRunnerScreen(props?: Props) {
@@ -31,6 +32,7 @@ export default function SessionRunnerScreen(props?: Props) {
     lessonId?: string;
     moduleId?: string;
     kind?: string;
+    returnTo?: string;
   }>();
 
   // Use useState with lazy initializer to prevent infinite re-renders
@@ -41,6 +43,7 @@ export default function SessionRunnerScreen(props?: Props) {
   const requestedKind: SessionKind = props?.kind ?? (params.kind === 'review' ? 'review' : 'learn');
   const requestedLessonId = props?.lessonId ?? (params.lessonId as string | undefined);
   const moduleId = props?.moduleId ?? (params.moduleId as string | undefined);
+  const returnTo = props?.returnTo ?? (params.returnTo as string | undefined);
 
   const { theme } = useAppTheme();
   const [plan, setPlan] = useState<SessionPlan | null>(null);
@@ -90,8 +93,20 @@ export default function SessionRunnerScreen(props?: Props) {
         getSessionDefaultLessonId(),
       ]);
 
-      const effectiveLessonId = requestedLessonId ?? defaultLessonFilter ?? undefined;
-      const effectiveMode = defaultMode;
+      // For review sessions, avoid implicitly scoping by the user's default lesson filter.
+      // Only scope reviews if an explicit lessonId/moduleId is provided via params.
+      const effectiveLessonId =
+        requestedKind === 'review' ? requestedLessonId ?? undefined : requestedLessonId ?? defaultLessonFilter ?? undefined;
+
+      // Respect explicit request intent over saved defaults:
+      // - Review CTA must always start a review-mode plan
+      // - Explicit lessonId implies a learn-mode plan (lesson-scoped)
+      const effectiveMode: 'learn' | 'review' | 'mixed' =
+        requestedKind === 'review'
+          ? 'review'
+          : requestedLessonId
+            ? 'learn'
+            : defaultMode;
       const effectiveKind: SessionKind = effectiveMode === 'review' ? 'review' : 'learn'; // mixed behaves like learn in UI
 
       setResolvedKind(effectiveKind);
@@ -178,6 +193,7 @@ export default function SessionRunnerScreen(props?: Props) {
                 lessonId: effectiveLessonId,
                 planMode: effectiveMode,
                 timeBudgetSec: defaultTimeBudgetSec ? String(defaultTimeBudgetSec) : '',
+                ...(returnTo ? { returnTo } : {}),
               },
             });
             return;
@@ -223,6 +239,7 @@ export default function SessionRunnerScreen(props?: Props) {
         lessonId: resolvedLessonId,
         planMode: resolvedMode,
         timeBudgetSec: resolvedTimeBudgetSec ? String(resolvedTimeBudgetSec) : '',
+        ...(returnTo ? { returnTo } : {}),
       },
     });
   };
@@ -265,6 +282,7 @@ export default function SessionRunnerScreen(props?: Props) {
             lessonId={resolvedLessonId}
             planMode={resolvedMode}
             timeBudgetSec={resolvedTimeBudgetSec}
+            returnTo={returnTo}
             onComplete={handleComplete} 
           />
         </Animated.View>

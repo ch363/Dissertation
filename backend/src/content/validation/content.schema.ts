@@ -1,7 +1,14 @@
 import { z } from 'zod';
 
 // Enums matching Prisma schema
-export const KnowledgeLevelSchema = z.enum(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']);
+export const KnowledgeLevelSchema = z.enum([
+  'A1',
+  'A2',
+  'B1',
+  'B2',
+  'C1',
+  'C2',
+]);
 
 export const DeliveryMethodSchema = z.enum([
   'FILL_BLANK',
@@ -49,64 +56,72 @@ const ListeningQuestionSchema = z.object({
 });
 
 // Question schema - supports different question types
-const QuestionSchema = z.object({
-  slug: z.string().min(1),
-  teachingSlug: z.string().min(1),
-  deliveryMethods: z.array(DeliveryMethodSchema).min(1),
-  multipleChoice: MultipleChoiceQuestionSchema.optional(),
-  translation: TranslationQuestionSchema.optional(),
-  fillBlank: FillBlankQuestionSchema.optional(),
-  listening: ListeningQuestionSchema.optional(),
-}).refine(
-  (data) => {
-    // Validate that question type matches delivery methods
-    const hasMultipleChoice = data.multipleChoice !== undefined;
-    const hasTranslation = data.translation !== undefined;
-    const hasFillBlank = data.fillBlank !== undefined;
-    const hasListening = data.listening !== undefined;
+const QuestionSchema = z
+  .object({
+    slug: z.string().min(1),
+    teachingSlug: z.string().min(1),
+    deliveryMethods: z.array(DeliveryMethodSchema).min(1),
+    multipleChoice: MultipleChoiceQuestionSchema.optional(),
+    translation: TranslationQuestionSchema.optional(),
+    fillBlank: FillBlankQuestionSchema.optional(),
+    listening: ListeningQuestionSchema.optional(),
+  })
+  .refine(
+    (data) => {
+      // Validate that question type matches delivery methods
+      const hasMultipleChoice = data.multipleChoice !== undefined;
+      const hasTranslation = data.translation !== undefined;
+      const hasFillBlank = data.fillBlank !== undefined;
+      const hasListening = data.listening !== undefined;
 
-    // Check if delivery methods match question types
-    const hasMultipleChoiceMethod = data.deliveryMethods.includes('MULTIPLE_CHOICE');
-    const hasTranslationMethod = 
-      data.deliveryMethods.includes('TEXT_TRANSLATION') ||
-      data.deliveryMethods.includes('FLASHCARD'); // FLASHCARD uses translation structure
-    const hasFillBlankMethod = data.deliveryMethods.includes('FILL_BLANK');
-    const hasListeningMethod =
-      data.deliveryMethods.includes('SPEECH_TO_TEXT') ||
-      data.deliveryMethods.includes('TEXT_TO_SPEECH');
+      // Check if delivery methods match question types
+      const hasMultipleChoiceMethod =
+        data.deliveryMethods.includes('MULTIPLE_CHOICE');
+      const hasTranslationMethod =
+        data.deliveryMethods.includes('TEXT_TRANSLATION') ||
+        data.deliveryMethods.includes('FLASHCARD'); // FLASHCARD uses translation structure
+      const hasFillBlankMethod = data.deliveryMethods.includes('FILL_BLANK');
+      const hasListeningMethod =
+        data.deliveryMethods.includes('SPEECH_TO_TEXT') ||
+        data.deliveryMethods.includes('TEXT_TO_SPEECH');
 
-    // At least one question type must be provided
-    if (!hasMultipleChoice && !hasTranslation && !hasFillBlank && !hasListening) {
-      return false;
-    }
+      // At least one question type must be provided
+      if (
+        !hasMultipleChoice &&
+        !hasTranslation &&
+        !hasFillBlank &&
+        !hasListening
+      ) {
+        return false;
+      }
 
-    // If multiple choice is provided, MULTIPLE_CHOICE method must be present
-    if (hasMultipleChoice && !hasMultipleChoiceMethod) {
-      return false;
-    }
+      // If multiple choice is provided, MULTIPLE_CHOICE method must be present
+      if (hasMultipleChoice && !hasMultipleChoiceMethod) {
+        return false;
+      }
 
-    // If translation is provided, TEXT_TRANSLATION method must be present
-    if (hasTranslation && !hasTranslationMethod) {
-      return false;
-    }
+      // If translation is provided, TEXT_TRANSLATION method must be present
+      if (hasTranslation && !hasTranslationMethod) {
+        return false;
+      }
 
-    // If fill blank is provided, FILL_BLANK method must be present
-    if (hasFillBlank && !hasFillBlankMethod) {
-      return false;
-    }
+      // If fill blank is provided, FILL_BLANK method must be present
+      if (hasFillBlank && !hasFillBlankMethod) {
+        return false;
+      }
 
-    // If listening is provided, SPEECH_TO_TEXT or TEXT_TO_SPEECH must be present
-    if (hasListening && !hasListeningMethod) {
-      return false;
-    }
+      // If listening is provided, SPEECH_TO_TEXT or TEXT_TO_SPEECH must be present
+      if (hasListening && !hasListeningMethod) {
+        return false;
+      }
 
-    return true;
-  },
-  {
-    message:
-      'Question type (multipleChoice, translation, fillBlank, listening) must match delivery methods',
-  },
-);
+      return true;
+    },
+    {
+      message:
+        'Question type (multipleChoice, translation, fillBlank, listening) must match delivery methods',
+    },
+  );
 
 // Teaching schema
 const TeachingSchema = z.object({

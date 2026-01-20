@@ -1,9 +1,9 @@
 /**
  * Mastery Service
- * 
+ *
  * Implements Bayesian Knowledge Tracing (BKT) to track the probability
  * that a user knows each skill.
- * 
+ *
  * BKT Parameters:
  * - Prior (P(L0)): Initial probability of knowing the skill
  * - Learn (P(T)): Probability of learning the skill after a practice opportunity
@@ -43,16 +43,16 @@ export class MasteryService {
 
   /**
    * Update mastery probability for a skill using BKT algorithm.
-   * 
+   *
    * BKT Update Formula:
    * If correct:
    *   P(L|correct) = (P(L) * (1 - P(S))) / (P(L) * (1 - P(S)) + (1 - P(L)) * P(G))
    *   P(L|next) = P(L|correct) + (1 - P(L|correct)) * P(T)
-   * 
+   *
    * If incorrect:
    *   P(L|incorrect) = (P(L) * P(S)) / (P(L) * P(S) + (1 - P(L)) * (1 - P(G)))
    *   P(L|next) = P(L|incorrect)
-   * 
+   *
    * @param userId User ID
    * @param skillTag Skill tag identifier
    * @param isCorrect Whether the user answered correctly
@@ -65,7 +65,7 @@ export class MasteryService {
   ): Promise<number> {
     // Get or initialize mastery record
     let mastery = await this.getMasteryRecord(userId, skillTag);
-    
+
     if (!mastery) {
       mastery = await this.initializeMastery(userId, skillTag);
     }
@@ -114,7 +114,7 @@ export class MasteryService {
   /**
    * Get current mastery probability for a skill.
    * Returns the Prior if no record exists.
-   * 
+   *
    * @param userId User ID
    * @param skillTag Skill tag identifier
    * @returns Mastery probability (0.0 to 1.0)
@@ -126,7 +126,7 @@ export class MasteryService {
 
   /**
    * Get full mastery record including BKT parameters.
-   * 
+   *
    * @param userId User ID
    * @param skillTag Skill tag identifier
    * @returns Mastery record or null if not found
@@ -160,7 +160,7 @@ export class MasteryService {
 
   /**
    * Get all skills with mastery below the threshold.
-   * 
+   *
    * @param userId User ID
    * @param threshold Mastery threshold (default: 0.5)
    * @returns Array of skill tags with low mastery
@@ -186,7 +186,7 @@ export class MasteryService {
 
   /**
    * Initialize mastery record with default BKT parameters.
-   * 
+   *
    * @param userId User ID
    * @param skillTag Skill tag identifier
    * @param parameters Optional custom BKT parameters
@@ -233,7 +233,7 @@ export class MasteryService {
 
   /**
    * Get mastery for multiple skills at once.
-   * 
+   *
    * @param userId User ID
    * @param skillTags Array of skill tag identifiers
    * @returns Map of skillTag -> mastery probability

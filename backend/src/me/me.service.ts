@@ -18,7 +18,9 @@ export class MeService {
   ) {
     // Initialize Supabase admin client for accessing user metadata
     const supabaseUrl = this.configService.get<string>('supabase.url');
-    const serviceRoleKey = this.configService.get<string>('supabase.serviceRoleKey');
+    const serviceRoleKey = this.configService.get<string>(
+      'supabase.serviceRoleKey',
+    );
     if (supabaseUrl && serviceRoleKey) {
       this.supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
         auth: {
@@ -44,36 +46,67 @@ export class MeService {
     );
   }
 
+  private getEndOfLocalDayUtc(now: Date, tzOffsetMinutes?: number): Date {
+    if (!Number.isFinite(tzOffsetMinutes)) return now;
+    // Guardrail: ignore clearly invalid offsets (outside common -14h..+14h range)
+    if (tzOffsetMinutes! < -14 * 60 || tzOffsetMinutes! > 14 * 60) return now;
+
+    const offsetMs = tzOffsetMinutes! * 60_000;
+    // Shift "now" into the user's local timeline.
+    const localNow = new Date(now.getTime() - offsetMs);
+    // Compute end-of-day in that shifted timeline using UTC getters (so it's timezone-agnostic).
+    const endOfLocalDayShiftedUtc = new Date(
+      Date.UTC(
+        localNow.getUTCFullYear(),
+        localNow.getUTCMonth(),
+        localNow.getUTCDate(),
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
+    // Shift back to real UTC.
+    return new Date(endOfLocalDayShiftedUtc.getTime() + offsetMs);
+  }
+
   async getMe(userId: string) {
     // Provision user on first request
     const user = await this.usersService.upsertUser(userId);
-    
+
     // Compute displayName with priority: DB name → auth metadata name → email extraction → "User"
     let displayName = user.name;
-    
+
     if (!displayName || displayName.trim() === '') {
       // Try to get name from Supabase auth metadata
       if (this.supabaseAdmin) {
         try {
-          const { data: authUser, error } = await this.supabaseAdmin.auth.admin.getUserById(userId);
+          const { data: authUser, error } =
+            await this.supabaseAdmin.auth.admin.getUserById(userId);
           if (!error && authUser?.user) {
             const authMetadataName = (authUser.user.user_metadata as any)?.name;
             if (authMetadataName && authMetadataName.trim()) {
               displayName = authMetadataName.trim();
               // Auto-sync to database if found in auth but not in DB
               try {
-                await this.usersService.updateUser(userId, { name: displayName || undefined });
+                await this.usersService.updateUser(userId, {
+                  name: displayName || undefined,
+                });
                 user.name = displayName; // Update local object
               } catch (syncError) {
                 // Log but don't fail - name will still be returned
-                console.warn('Failed to sync name from auth metadata to DB:', syncError);
+                console.warn(
+                  'Failed to sync name from auth metadata to DB:',
+                  syncError,
+                );
               }
             } else {
               // Fallback to email (extract name part)
               const email = authUser.user.email;
               if (email) {
                 const emailName = email.split('@')[0];
-                displayName = emailName.charAt(0).toUpperCase() + emailName.slice(1);
+                displayName =
+                  emailName.charAt(0).toUpperCase() + emailName.slice(1);
               } else {
                 displayName = 'User';
               }
@@ -93,7 +126,7 @@ export class MeService {
         displayName = 'User';
       }
     }
-    
+
     // Return user with computed displayName
     return {
       ...user,
@@ -101,17 +134,18 @@ export class MeService {
     };
   }
 
-  async getDashboard(userId: string) {
+  async getDashboard(userId: string, tzOffsetMinutes?: number) {
     const now = new Date();
+    const dueCutoff = this.getEndOfLocalDayUtc(now, tzOffsetMinutes);
 
-    // Count deduped due reviews (latest per question where nextReviewDue <= now)
+    // Count deduped due reviews (latest per question where nextReviewDue <= end-of-day local)
     let dueReviews: Array<{ questionId: string; createdAt: Date }> = [];
     try {
       dueReviews = await this.prisma.userQuestionPerformance.findMany({
         where: {
           userId,
           nextReviewDue: {
-            lte: now,
+            lte: dueCutoff,
             not: null,
           },
         },
@@ -171,7 +205,11 @@ export class MeService {
 
   async getStats(userId: string) {
     const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
     const endOfToday = new Date(startOfToday);
     endOfToday.setDate(endOfToday.getDate() + 1);
 
@@ -307,7 +345,7 @@ export class MeService {
     }
 
     // Dedup by questionId per lesson
-    const dueReviewsByQuestionId = new Map<string, typeof dueReviews[0]>();
+    const dueReviewsByQuestionId = new Map<string, (typeof dueReviews)[0]>();
     dueReviews.forEach((review) => {
       const existing = dueReviewsByQuestionId.get(review.questionId);
       if (!existing || review.createdAt > existing.createdAt) {
@@ -328,7 +366,10 @@ export class MeService {
     dueReviewsByQuestionId.forEach((review) => {
       const lessonId = questionToLessonId.get(review.questionId);
       if (lessonId) {
-        dueCountByLessonId.set(lessonId, (dueCountByLessonId.get(lessonId) || 0) + 1);
+        dueCountByLessonId.set(
+          lessonId,
+          (dueCountByLessonId.get(lessonId) || 0) + 1,
+        );
       }
     });
 
@@ -403,14 +444,15 @@ export class MeService {
     for (const ul of userLessons) {
       const totalTeachings = ul.lesson.teachings.length;
       // Calculate actual completed count from UserTeachingCompleted
-      const actualCompletedCount = await this.prisma.userTeachingCompleted.count({
-        where: {
-          userId,
-          teachingId: {
-            in: ul.lesson.teachings.map((t) => t.id),
+      const actualCompletedCount =
+        await this.prisma.userTeachingCompleted.count({
+          where: {
+            userId,
+            teachingId: {
+              in: ul.lesson.teachings.map((t) => t.id),
+            },
           },
-        },
-      });
+        });
       if (actualCompletedCount < totalTeachings) {
         recentLesson = ul;
         break;
@@ -442,25 +484,23 @@ export class MeService {
     });
 
     // Get most recently attempted question
-    let recentQuestion:
-      | null
-      | {
-          lastRevisedAt?: Date | null;
-          nextReviewDue?: Date | null;
-          question: {
+    let recentQuestion: null | {
+      lastRevisedAt?: Date | null;
+      nextReviewDue?: Date | null;
+      question: {
+        id: string;
+        teaching: {
+          id: string;
+          userLanguageString: string;
+          learningLanguageString: string;
+          lesson: {
             id: string;
-            teaching: {
-              id: string;
-              userLanguageString: string;
-              learningLanguageString: string;
-              lesson: {
-                id: string;
-                title: string;
-                module: { id: string; title: string };
-              };
-            };
+            title: string;
+            module: { id: string; title: string };
           };
-        } = null;
+        };
+      };
+    } = null;
 
     try {
       recentQuestion = await this.prisma.userQuestionPerformance.findFirst({
@@ -571,7 +611,8 @@ export class MeService {
             teaching: {
               id: recentTeaching.teaching.id,
               userLanguageString: recentTeaching.teaching.userLanguageString,
-              learningLanguageString: recentTeaching.teaching.learningLanguageString,
+              learningLanguageString:
+                recentTeaching.teaching.learningLanguageString,
             },
             lesson: recentTeaching.teaching.lesson,
             completedAt: recentTeaching.createdAt,
@@ -584,8 +625,10 @@ export class MeService {
             },
             teaching: {
               id: recentQuestion.question.teaching.id,
-              userLanguageString: recentQuestion.question.teaching.userLanguageString,
-              learningLanguageString: recentQuestion.question.teaching.learningLanguageString,
+              userLanguageString:
+                recentQuestion.question.teaching.userLanguageString,
+              learningLanguageString:
+                recentQuestion.question.teaching.learningLanguageString,
             },
             lesson: recentQuestion.question.teaching.lesson,
             lastRevisedAt: recentQuestion.lastRevisedAt,

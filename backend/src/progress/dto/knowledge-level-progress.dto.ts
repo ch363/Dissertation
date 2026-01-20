@@ -4,7 +4,7 @@ import { sanitizeInt } from '../../common/utils/sanitize.util';
 
 /**
  * DTO for recording knowledge level progress (XP)
- * 
+ *
  * Security: Input validation and sanitization
  * - Value: Required, non-negative integer (XP points)
  */

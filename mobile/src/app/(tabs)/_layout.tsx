@@ -1,9 +1,10 @@
-import { Tabs } from 'expo-router';
+import { Tabs, router } from 'expo-router';
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TabBarButton } from '@/components/navigation/TabBarButton';
+import { routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
@@ -12,6 +13,14 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
   const allowed = new Set(['home/index', 'learn', 'learn/index', 'settings', 'profile']);
   const visibleRoutes = state.routes.filter((route: any) => allowed.has(route.name));
+  const focusedKey = state.routes?.[state.index]?.key;
+
+  const targetPathForRouteName = (routeName: string) => {
+    if (routeName.includes('learn')) return routes.tabs.learn;
+    if (routeName.includes('settings')) return routes.tabs.settings.root;
+    if (routeName.includes('profile')) return routes.tabs.profile.root;
+    return routes.tabs.home;
+  };
 
   const iconNameForRoute = (route: any) => {
     const rn: string = String(route.name ?? '');
@@ -43,14 +52,19 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         ]}
       >
         {visibleRoutes.map((route: any, idx: number) => {
-          const isFocused = state.index === idx;
+          const isFocused = route.key === focusedKey;
           const onPress = () => {
+            const routeName = String(route.name ?? '');
+            const targetPath = targetPathForRouteName(routeName);
             const event = navigation.emit({
               type: 'tabPress',
               target: route.key,
               canPreventDefault: true,
             });
-            if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name);
+            if (event.defaultPrevented) return;
+            // Always jump to the tab's root route so deep stacks can't "trap" users.
+            // Also supports "tap tab again to pop-to-top".
+            router.replace(targetPath);
           };
           const onLongPress = () => navigation.emit({ type: 'tabLongPress', target: route.key });
           const label = descriptors[route.key]?.options?.title ?? route.name;

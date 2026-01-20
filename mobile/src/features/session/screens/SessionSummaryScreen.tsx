@@ -4,11 +4,12 @@ import { Pressable, ScrollView, StyleSheet, Text, View, ActivityIndicator } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { routes } from '@/services/navigation/routes';
+import { routeBuilders, routes } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 import { CardKind, SessionPlan } from '@/types/session';
 import { getCachedSessionPlan } from '@/services/api/session-plan-cache';
-import { getLesson, getLessonTeachings, type Teaching, type Lesson } from '@/services/api/modules';
+import { getLesson, getLessonTeachings, getModuleLessons, type Teaching, type Lesson, type Module } from '@/services/api/modules';
+import { getUserLessons, type UserLessonProgress } from '@/services/api/progress';
 
 export default function SessionSummaryScreen() {
   const params = useLocalSearchParams<{
@@ -17,6 +18,7 @@ export default function SessionSummaryScreen() {
     lessonId?: string;
     planMode?: string;
     timeBudgetSec?: string;
+    returnTo?: string;
   }>();
   const kind = params.kind === 'review' ? 'review' : 'learn';
   const lessonId = params.lessonId;
@@ -24,10 +26,12 @@ export default function SessionSummaryScreen() {
     ? (params.planMode as 'learn' | 'review' | 'mixed')
     : 'learn';
   const timeBudgetSec = params.timeBudgetSec ? Number(params.timeBudgetSec) : null;
+  const returnTo = params.returnTo;
 
   const [teachings, setTeachings] = useState<Teaching[]>([]);
   const [loadingTeachings, setLoadingTeachings] = useState(false);
   const [lesson, setLesson] = useState<Lesson | null>(null);
+  const [moduleHasRemainingLessons, setModuleHasRemainingLessons] = useState<boolean | null>(null);
 
   // Get the session plan from cache to extract teachings
   const sessionPlan = useMemo(() => {
@@ -80,6 +84,47 @@ export default function SessionSummaryScreen() {
     fetchLesson();
   }, [lessonId, kind]);
 
+  // Determine whether the parent module still has incomplete lessons.
+  // If the module is fully complete, the secondary CTA should return to Learn hub instead.
+  useEffect(() => {
+    const moduleId = lesson?.moduleId;
+    if (!moduleId || kind !== 'learn') {
+      setModuleHasRemainingLessons(null);
+      return;
+    }
+
+    let cancelled = false;
+    setModuleHasRemainingLessons(null);
+
+    const loadModuleRemaining = async () => {
+      try {
+        const [moduleLessons, progress] = await Promise.all([
+          getModuleLessons(moduleId).catch(() => [] as Lesson[]),
+          getUserLessons().catch(() => [] as UserLessonProgress[]),
+        ]);
+        if (cancelled) return;
+
+        const progressByLessonId = new Map(progress.map((p) => [p.lesson.id, p] as const));
+        const hasRemaining = moduleLessons.some((l) => {
+          const p = progressByLessonId.get(l.id);
+          const total = p?.totalTeachings ?? l.numberOfItems ?? 0;
+          const completed = p?.completedTeachings ?? 0;
+          const isComplete = total > 0 && completed >= total;
+          return !isComplete;
+        });
+
+        setModuleHasRemainingLessons(hasRemaining);
+      } catch (e) {
+        if (!cancelled) setModuleHasRemainingLessons(null);
+      }
+    };
+
+    loadModuleRemaining();
+    return () => {
+      cancelled = true;
+    };
+  }, [lesson?.moduleId, kind]);
+
   // Fetch teachings from API if we have a lessonId and no cached teachings
   useEffect(() => {
     const fetchTeachings = async () => {
@@ -121,16 +166,39 @@ export default function SessionSummaryScreen() {
   }, [lessonId, kind, cachedTeachings]);
 
   const handleBackToHome = () => {
-    // Dismiss all modals/stacks to reveal the home screen underneath
-    router.dismissAll();
-    // Navigate to home - this will slide the current screen right, revealing home underneath
-    // Using navigate instead of replace to get the stack animation
-    router.navigate(routes.tabs.home);
+    router.replace(routes.tabs.home);
   };
 
   const handleBackToLearn = () => {
     router.replace(routes.tabs.learn);
   };
+
+  const handleBackToReview = () => {
+    router.replace(routes.tabs.review);
+  };
+
+  const handleReturnTo = () => {
+    if (returnTo && typeof returnTo === 'string' && returnTo.trim().length > 0) {
+      router.replace(returnTo as any);
+      return;
+    }
+    if (kind === 'review') {
+      handleBackToReview();
+      return;
+    }
+    handleBackToLearn();
+  };
+
+  const handleBackToModule = () => {
+    const moduleId = lesson?.moduleId;
+    if (!moduleId) {
+      handleBackToLearn();
+      return;
+    }
+    router.replace(routeBuilders.courseDetail(moduleId));
+  };
+
+  const showBackToModule = kind === 'learn' && moduleHasRemainingLessons === true;
 
   // Determine header title
   const headerTitle = lesson?.title || (kind === 'review' ? 'Review Summary' : 'Lesson Summary');
@@ -198,8 +266,10 @@ export default function SessionSummaryScreen() {
             <Pressable style={styles.primary} onPress={handleBackToHome}>
               <Text style={styles.primaryLabel}>Back to home</Text>
             </Pressable>
-            <Pressable style={styles.secondary} onPress={handleBackToLearn}>
-              <Text style={styles.secondaryLabel}>Back to learn</Text>
+            <Pressable style={styles.secondary} onPress={showBackToModule ? handleBackToModule : handleReturnTo}>
+              <Text style={styles.secondaryLabel}>
+                {showBackToModule ? 'Back to module' : kind === 'review' ? 'Back to review' : 'Back to learn'}
+              </Text>
             </Pressable>
           </View>
         </View>

@@ -91,7 +91,9 @@ export function selectModality(
 
     // Penalize recent repetition if avoidRepetition is true
     if (context?.avoidRepetition && context.recentMethods) {
-      const recentCount = context.recentMethods.filter((m) => m === method).length;
+      const recentCount = context.recentMethods.filter(
+        (m) => m === method,
+      ).length;
       score *= Math.pow(0.8, recentCount); // Exponential decay for repetition
     }
 
@@ -108,7 +110,9 @@ export function selectModality(
  * @param items Items to group
  * @returns Map of topic key to items
  */
-export function groupByTopic(items: DeliveryCandidate[]): Map<string, DeliveryCandidate[]> {
+export function groupByTopic(
+  items: DeliveryCandidate[],
+): Map<string, DeliveryCandidate[]> {
   const groups = new Map<string, DeliveryCandidate[]>();
 
   for (const item of items) {
@@ -217,7 +221,9 @@ export function getDefaultTimeAverages(): UserTimeAverages {
  * @param items Items to mix
  * @returns Mixed array with variety across delivery methods
  */
-export function mixByDeliveryMethod(items: DeliveryCandidate[]): DeliveryCandidate[] {
+export function mixByDeliveryMethod(
+  items: DeliveryCandidate[],
+): DeliveryCandidate[] {
   // Group by delivery method
   const byMethod = new Map<DELIVERY_METHOD, DeliveryCandidate[]>();
   const noMethod: DeliveryCandidate[] = [];

@@ -143,8 +143,12 @@ export class LessonsService {
       if (user?.knowledgeLevel) {
         // Sort by number of teachings matching user's level
         lessons.sort((a, b) => {
-          const aMatches = a.teachings.filter((t) => t.knowledgeLevel === user.knowledgeLevel).length;
-          const bMatches = b.teachings.filter((t) => t.knowledgeLevel === user.knowledgeLevel).length;
+          const aMatches = a.teachings.filter(
+            (t) => t.knowledgeLevel === user.knowledgeLevel,
+          ).length;
+          const bMatches = b.teachings.filter(
+            (t) => t.knowledgeLevel === user.knowledgeLevel,
+          ).length;
           return bMatches - aMatches;
         });
       }

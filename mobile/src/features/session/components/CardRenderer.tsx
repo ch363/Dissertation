@@ -30,6 +30,7 @@ type Props = {
   isCorrect?: boolean;
   showHint?: boolean;
   onCheckAnswer?: (audioUri?: string) => void;
+  onContinue?: () => void;
   onRating?: (rating: number) => void;
   selectedRating?: number;
   pronunciationResult?: PronunciationResult | null;
@@ -47,6 +48,7 @@ export function CardRenderer({
   isCorrect,
   showHint,
   onCheckAnswer,
+  onContinue,
   onRating,
   selectedRating,
   pronunciationResult,
@@ -71,6 +73,7 @@ export function CardRenderer({
         isCorrect,
         showHint,
         onCheckAnswer,
+        onContinue,
         onRating,
         selectedRating,
         pronunciationResult,
@@ -90,7 +93,8 @@ function renderCardByKind(
   showResult?: boolean,
   isCorrect?: boolean,
   showHint?: boolean,
-  onCheckAnswer?: () => void,
+  onCheckAnswer?: (audioUri?: string) => void,
+  onContinue?: () => void,
   onRating?: (rating: number) => void,
   selectedRating?: number,
   pronunciationResult?: PronunciationResult | null,
@@ -141,6 +145,7 @@ function renderCardByKind(
           showResult={showResult}
           isCorrect={isCorrect}
           onCheckAnswer={onCheckAnswer}
+          onContinue={onContinue}
           pronunciationResult={pronunciationResult}
         />
       );

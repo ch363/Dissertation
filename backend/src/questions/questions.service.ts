@@ -80,7 +80,10 @@ export class QuestionsService {
     }
   }
 
-  async updateDeliveryMethods(questionId: string, deliveryMethods: DELIVERY_METHOD[]) {
+  async updateDeliveryMethods(
+    questionId: string,
+    deliveryMethods: DELIVERY_METHOD[],
+  ) {
     // Authorization: Admin access required. Authorization is enforced at the Controller level via @UseGuards(SupabaseJwtGuard).
     // TODO: Implement admin role check in Controller guard (see questions.controller.ts)
     // With variants schema, this method ensures the specified variants exist.

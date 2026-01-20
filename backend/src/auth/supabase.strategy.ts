@@ -30,7 +30,7 @@ export class SupabaseStrategy extends PassportStrategy(Strategy, 'supabase') {
   async validate(payload: JwtPayload): Promise<{ id: string }> {
     // Extract user ID from 'sub' claim (Supabase standard)
     const userId = payload.sub;
-    
+
     if (!userId) {
       throw new UnauthorizedException('Invalid token: missing user ID');
     }

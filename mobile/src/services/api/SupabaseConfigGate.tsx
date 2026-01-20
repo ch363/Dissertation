@@ -66,13 +66,17 @@ export function SupabaseConfigGate({ children }: { children: React.ReactNode }) 
           ) : null}
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel="Retry configuration check"
+            accessibilityHint="Attempts to reinitialize Supabase with the current environment configuration"
             onPress={retry}
             style={[
               styles.button,
               { backgroundColor: theme.colors.primary, marginTop: theme.spacing.md },
             ]}
           >
-            <Text style={{ color: '#fff', fontFamily: theme.typography.semiBold }}>Retry</Text>
+            <Text style={{ color: theme.colors.onPrimary, fontFamily: theme.typography.semiBold }}>
+              Retry
+            </Text>
           </Pressable>
         </View>
       );

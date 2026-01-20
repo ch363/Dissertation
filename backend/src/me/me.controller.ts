@@ -1,5 +1,20 @@
-import { Controller, Get, Patch, Body, Post, Delete, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Patch,
+  Body,
+  Post,
+  Delete,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { MeService } from './me.service';
 import { UsersService } from '../users/users.service';
 import { SupabaseJwtGuard } from '../common/guards/supabase-jwt.guard';
@@ -35,12 +50,11 @@ export class MeController {
   }
 
   @Post('profile/ensure')
-  @ApiOperation({ summary: 'Ensure profile exists (provisioning with optional name)' })
+  @ApiOperation({
+    summary: 'Ensure profile exists (provisioning with optional name)',
+  })
   @ApiResponse({ status: 200, description: 'Profile ensured' })
-  async ensureProfile(
-    @User() userId: string,
-    @Body() dto: EnsureProfileDto,
-  ) {
+  async ensureProfile(@User() userId: string, @Body() dto: EnsureProfileDto) {
     // First ensure user exists (provisioning)
     const user = await this.meService.getMe(userId);
     // Update name if provided and different (already sanitized by DTO)
@@ -59,9 +73,14 @@ export class MeController {
 
   @Get('dashboard')
   @ApiOperation({ summary: 'Get user dashboard statistics' })
+  @ApiQuery({ name: 'tzOffsetMinutes', type: 'number', required: false })
   @ApiResponse({ status: 200, description: 'Dashboard data retrieved' })
-  async getDashboard(@User() userId: string) {
-    return this.meService.getDashboard(userId);
+  async getDashboard(
+    @User() userId: string,
+    @Query('tzOffsetMinutes') tzOffsetMinutes?: string,
+  ) {
+    const parsed = tzOffsetMinutes !== undefined ? Number(tzOffsetMinutes) : undefined;
+    return this.meService.getDashboard(userId, Number.isFinite(parsed) ? parsed : undefined);
   }
 
   @Get('stats')
@@ -72,14 +91,16 @@ export class MeController {
   }
 
   @Get('lessons')
-  @ApiOperation({ summary: 'Get user\'s started lessons with progress' })
+  @ApiOperation({ summary: "Get user's started lessons with progress" })
   @ApiResponse({ status: 200, description: 'User lessons retrieved' })
   async getMyLessons(@User() userId: string) {
     return this.meService.getMyLessons(userId);
   }
 
   @Get('recent')
-  @ApiOperation({ summary: 'Get recent activity - continue where you left off' })
+  @ApiOperation({
+    summary: 'Get recent activity - continue where you left off',
+  })
   @ApiResponse({ status: 200, description: 'Recent activity retrieved' })
   async getRecent(@User() userId: string) {
     return this.meService.getRecent(userId);
@@ -104,7 +125,10 @@ export class MeController {
 
   @Delete()
   @ApiOperation({ summary: 'Delete user account and all associated data' })
-  @ApiResponse({ status: 200, description: 'Account deletion requested/processed' })
+  @ApiResponse({
+    status: 200,
+    description: 'Account deletion requested/processed',
+  })
   async deleteAccount(@User() userId: string) {
     return this.meService.deleteAccount(userId);
   }
@@ -112,10 +136,7 @@ export class MeController {
   @Post('avatar')
   @ApiOperation({ summary: 'Upload avatar image' })
   @ApiResponse({ status: 200, description: 'Avatar uploaded successfully' })
-  async uploadAvatar(
-    @User() userId: string,
-    @Body() dto: UploadAvatarDto,
-  ) {
+  async uploadAvatar(@User() userId: string, @Body() dto: UploadAvatarDto) {
     // Security: avatarUrl is validated and sanitized by UploadAvatarDto
     return this.usersService.updateUser(userId, { avatarUrl: dto.avatarUrl });
   }

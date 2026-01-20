@@ -135,20 +135,33 @@ describe('Session Planning Policy', () => {
         dueScore: 0,
         errorScore: 0,
         timeSinceLastSeen: 0,
-        deliveryMethods: [DELIVERY_METHOD.FLASHCARD, DELIVERY_METHOD.MULTIPLE_CHOICE],
+        deliveryMethods: [
+          DELIVERY_METHOD.FLASHCARD,
+          DELIVERY_METHOD.MULTIPLE_CHOICE,
+        ],
       };
 
       // First selection
-      const result1 = selectModality(candidate, candidate.deliveryMethods!, preferences, {
-        recentMethods: [],
-        avoidRepetition: true,
-      });
+      const result1 = selectModality(
+        candidate,
+        candidate.deliveryMethods!,
+        preferences,
+        {
+          recentMethods: [],
+          avoidRepetition: true,
+        },
+      );
 
       // Second selection with repetition
-      const result2 = selectModality(candidate, candidate.deliveryMethods!, preferences, {
-        recentMethods: [result1!],
-        avoidRepetition: true,
-      });
+      const result2 = selectModality(
+        candidate,
+        candidate.deliveryMethods!,
+        preferences,
+        {
+          recentMethods: [result1!],
+          avoidRepetition: true,
+        },
+      );
 
       // Should prefer different method on second call
       expect(result2).not.toBe(result1);
@@ -261,7 +274,11 @@ describe('Session Planning Policy', () => {
         timeSinceLastSeen: 0,
       };
 
-      const result = estimateTime(candidate, userHistory, DELIVERY_METHOD.FLASHCARD);
+      const result = estimateTime(
+        candidate,
+        userHistory,
+        DELIVERY_METHOD.FLASHCARD,
+      );
       expect(result).toBe(20);
     });
 
@@ -275,7 +292,11 @@ describe('Session Planning Policy', () => {
         timeSinceLastSeen: 0,
       };
 
-      const result = estimateTime(candidate, userHistory, DELIVERY_METHOD.TEXT_TRANSLATION);
+      const result = estimateTime(
+        candidate,
+        userHistory,
+        DELIVERY_METHOD.TEXT_TRANSLATION,
+      );
       expect(result).toBe(60);
     });
   });
@@ -417,9 +438,13 @@ describe('Session Planning Policy', () => {
       expect(result.length).toBe(4);
       // Should interleave methods
       expect(result[0].deliveryMethods?.[0]).toBe(DELIVERY_METHOD.FLASHCARD);
-      expect(result[1].deliveryMethods?.[0]).toBe(DELIVERY_METHOD.MULTIPLE_CHOICE);
+      expect(result[1].deliveryMethods?.[0]).toBe(
+        DELIVERY_METHOD.MULTIPLE_CHOICE,
+      );
       expect(result[2].deliveryMethods?.[0]).toBe(DELIVERY_METHOD.FLASHCARD);
-      expect(result[3].deliveryMethods?.[0]).toBe(DELIVERY_METHOD.MULTIPLE_CHOICE);
+      expect(result[3].deliveryMethods?.[0]).toBe(
+        DELIVERY_METHOD.MULTIPLE_CHOICE,
+      );
     });
 
     it('should handle items without delivery methods', () => {

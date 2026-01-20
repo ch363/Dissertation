@@ -166,6 +166,11 @@ Copy `.env.example` to `.env` and fill in your Supabase credentials:
 - `SUPABASE_ANON_KEY`: Optional, for client-side operations
 - `SUPABASE_SERVICE_ROLE_KEY`: Optional, for admin operations (fallback for JWT verification)
 
+Azure Speech (pronunciation assessment):
+- `AZURE_SPEECH_KEY`: Azure Speech subscription key
+- `AZURE_SPEECH_REGION`: Azure Speech region (e.g. `westeurope`)
+- `AZURE_SPEECH_DEFAULT_LOCALE`: Optional (default `it-IT`)
+
 ### Key Design Principles
 
 1. **Append-Only Logs**: `UserQuestionPerformance` is append-only (never updated, always inserted)

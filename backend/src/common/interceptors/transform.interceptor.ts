@@ -9,22 +9,33 @@ import { map } from 'rxjs/operators';
 import { ApiResponseDto } from '../dto/api-response.dto';
 
 @Injectable()
-export class TransformInterceptor<T> implements NestInterceptor<T, ApiResponseDto<T>> {
-  intercept(context: ExecutionContext, next: CallHandler): Observable<ApiResponseDto<T>> {
+export class TransformInterceptor<T> implements NestInterceptor<
+  T,
+  ApiResponseDto<T>
+> {
+  intercept(
+    context: ExecutionContext,
+    next: CallHandler,
+  ): Observable<ApiResponseDto<T>> {
     return next.handle().pipe(
       map((data) => {
         // Skip transformation if data is already in ApiResponseDto format
-        if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
+        if (
+          data &&
+          typeof data === 'object' &&
+          'success' in data &&
+          'data' in data
+        ) {
           return data as ApiResponseDto<T>;
         }
 
         // Skip transformation for health checks and certain endpoints
         const request = context.switchToHttp().getRequest();
         const url = request.url;
-        
+
         // Don't transform health check endpoints
         if (url.startsWith('/health')) {
-          return data as any;
+          return data;
         }
 
         // Wrap response in standard format

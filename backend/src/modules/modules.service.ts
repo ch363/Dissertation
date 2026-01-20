@@ -15,8 +15,11 @@ export class ModulesService {
 
   async findOne(idOrSlug: string) {
     // Check if it's a UUID (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
-    
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        idOrSlug,
+      );
+
     let module;
     if (isUuid) {
       // Try to find by UUID
@@ -29,9 +32,11 @@ export class ModulesService {
       const normalizedTitle = idOrSlug
         .trim()
         .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .map(
+          (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+        )
         .join(' ');
-      
+
       const modules = await this.prisma.module.findMany({
         where: {
           title: {
@@ -40,14 +45,16 @@ export class ModulesService {
           },
         },
       });
-      
+
       if (modules.length > 0) {
         module = modules[0]; // Take first match
       }
     }
 
     if (!module) {
-      throw new NotFoundException(`Module with ID or slug '${idOrSlug}' not found`);
+      throw new NotFoundException(
+        `Module with ID or slug '${idOrSlug}' not found`,
+      );
     }
 
     return module;
@@ -89,8 +96,11 @@ export class ModulesService {
 
   async findLessons(moduleIdOrSlug: string) {
     // Check if it's a UUID (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(moduleIdOrSlug);
-    
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        moduleIdOrSlug,
+      );
+
     let module;
     if (isUuid) {
       // Try to find by UUID
@@ -108,9 +118,11 @@ export class ModulesService {
       const normalizedTitle = moduleIdOrSlug
         .trim()
         .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .map(
+          (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+        )
         .join(' ');
-      
+
       const modules = await this.prisma.module.findMany({
         where: {
           title: {
@@ -124,14 +136,16 @@ export class ModulesService {
           },
         },
       });
-      
+
       if (modules.length > 0) {
         module = modules[0]; // Take first match
       }
     }
 
     if (!module) {
-      throw new NotFoundException(`Module with ID or title '${moduleIdOrSlug}' not found`);
+      throw new NotFoundException(
+        `Module with ID or title '${moduleIdOrSlug}' not found`,
+      );
     }
 
     return module.lessons;

@@ -51,7 +51,9 @@ describe('UsersService', () => {
 
       const result = await service.upsertUser(authUid);
 
-      expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { id: authUid } });
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: authUid },
+      });
       expect(prisma.user.create).toHaveBeenCalledWith({
         data: {
           id: authUid,
@@ -76,7 +78,9 @@ describe('UsersService', () => {
 
       const result = await service.upsertUser(authUid);
 
-      expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { id: authUid } });
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: authUid },
+      });
       expect(prisma.user.create).not.toHaveBeenCalled();
       expect(result).toEqual(mockUser);
     });

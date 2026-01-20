@@ -49,4 +49,3 @@ describe('FSRS grade mapping', () => {
     });
   });
 });
-

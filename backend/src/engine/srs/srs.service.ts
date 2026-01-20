@@ -1,9 +1,9 @@
 /**
  * SRS (Spaced Repetition System) Service
- * 
+ *
  * This service manages spaced repetition scheduling using the FSRS algorithm.
  * SRS state is stored directly in UserQuestionPerformance (append-only).
- * 
+ *
  * This is a SERVICE LAYER, not middleware. It's called by ProgressService
  * after recording an attempt. It does NOT handle HTTP requests directly.
  */
@@ -27,7 +27,7 @@ export class SrsService {
   /**
    * Calculate SRS state for a question attempt.
    * Returns the state that should be stored in UserQuestionPerformance.
-   * 
+   *
    * @param userId User ID
    * @param questionId Question ID
    * @param result Attempt result
@@ -45,24 +45,27 @@ export class SrsService {
     difficulty?: number;
   }> {
     const now = new Date();
+    const minIntervalDays = 5 / (24 * 60); // 5 minutes
 
     // Get previous SRS state from latest UserQuestionPerformance row
-    const previousAttempt = await this.prisma.userQuestionPerformance.findFirst({
-      where: {
-        userId,
-        questionId,
+    const previousAttempt = await this.prisma.userQuestionPerformance.findFirst(
+      {
+        where: {
+          userId,
+          questionId,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        select: {
+          stability: true,
+          difficulty: true,
+          repetitions: true,
+          lastRevisedAt: true,
+          intervalDays: true,
+        },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      select: {
-        stability: true,
-        difficulty: true,
-        repetitions: true,
-        lastRevisedAt: true,
-        intervalDays: true,
-      },
-    });
+    );
 
     // Get all historical attempts for this user/question for parameter optimization
     const allAttempts = await this.prisma.userQuestionPerformance.findMany({
@@ -126,7 +129,10 @@ export class SrsService {
 
     if (previousAttempt) {
       // Check if we have FSRS state (stability/difficulty)
-      if (previousAttempt.stability != null && previousAttempt.difficulty != null) {
+      if (
+        previousAttempt.stability != null &&
+        previousAttempt.difficulty != null
+      ) {
         // We have FSRS state
         currentState = {
           stability: previousAttempt.stability,
@@ -144,25 +150,38 @@ export class SrsService {
     const newState = calculateFsrs(currentState, grade, now, params);
 
     // Validate all returned values to prevent database errors
-    const validatedStability = isFinite(newState.stability) && newState.stability > 0
-      ? Math.max(0.1, Math.min(365, newState.stability))
-      : 0.1;
-    
-    const validatedDifficulty = isFinite(newState.difficulty) && newState.difficulty > 0
-      ? Math.max(0.1, Math.min(10.0, newState.difficulty))
-      : 5.0;
-    
-    const validatedIntervalDays = isFinite(newState.intervalDays) && newState.intervalDays > 0
-      ? Math.max(1, Math.round(newState.intervalDays))
-      : 1;
-    
-    const validatedRepetitions = isFinite(newState.repetitions) && newState.repetitions >= 0
-      ? Math.max(0, Math.round(newState.repetitions))
-      : 0;
-    
+    const validatedStability =
+      isFinite(newState.stability) && newState.stability > 0
+        ? Math.max(0.1, Math.min(365, newState.stability))
+        : 0.1;
+
+    const validatedDifficulty =
+      isFinite(newState.difficulty) && newState.difficulty > 0
+        ? Math.max(0.1, Math.min(10.0, newState.difficulty))
+        : 5.0;
+
+    const validatedIntervalDaysFloat =
+      isFinite(newState.intervalDays) && newState.intervalDays > 0
+        ? Math.max(minIntervalDays, newState.intervalDays)
+        : 1;
+
+    // Prisma schema stores intervalDays as Int; use 0 for intra-day intervals.
+    const intervalDaysForDb =
+      validatedIntervalDaysFloat < 1
+        ? 0
+        : Math.max(1, Math.round(validatedIntervalDaysFloat));
+
+    const validatedRepetitions =
+      isFinite(newState.repetitions) && newState.repetitions >= 0
+        ? Math.max(0, Math.round(newState.repetitions))
+        : 0;
+
     // Validate next due date
     let validatedNextDue: Date;
-    if (newState.nextDue instanceof Date && !isNaN(newState.nextDue.getTime())) {
+    if (
+      newState.nextDue instanceof Date &&
+      !isNaN(newState.nextDue.getTime())
+    ) {
       validatedNextDue = newState.nextDue;
     } else {
       // Fallback: set to 1 day from now
@@ -172,7 +191,7 @@ export class SrsService {
 
     return {
       nextReviewDue: validatedNextDue,
-      intervalDays: validatedIntervalDays,
+      intervalDays: intervalDaysForDb,
       repetitions: validatedRepetitions,
       stability: validatedStability,
       difficulty: validatedDifficulty,

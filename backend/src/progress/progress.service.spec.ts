@@ -11,6 +11,7 @@ import { XpService } from '../engine/scoring/xp.service';
 import { ContentLookupService } from '../content/content-lookup.service';
 import { MasteryService } from '../engine/mastery/mastery.service';
 import { SessionPlanCacheService } from '../engine/content-delivery/session-plan-cache.service';
+import { PronunciationService } from '../speech/pronunciation/pronunciation.service';
 
 describe('ProgressService', () => {
   let service: ProgressService;
@@ -20,6 +21,7 @@ describe('ProgressService', () => {
   let contentLookup: jest.Mocked<ContentLookupService>;
   let masteryService: jest.Mocked<MasteryService>;
   let sessionPlanCache: jest.Mocked<SessionPlanCacheService>;
+  let pronunciationService: jest.Mocked<PronunciationService>;
 
   const mockPrismaService = {
     userLesson: {
@@ -76,6 +78,10 @@ describe('ProgressService', () => {
     invalidate: jest.fn(),
   };
 
+  const mockPronunciationService = {
+    assess: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -104,6 +110,10 @@ describe('ProgressService', () => {
           provide: SessionPlanCacheService,
           useValue: mockSessionPlanCacheService,
         },
+        {
+          provide: PronunciationService,
+          useValue: mockPronunciationService,
+        },
       ],
     }).compile();
 
@@ -114,6 +124,7 @@ describe('ProgressService', () => {
     contentLookup = module.get(ContentLookupService);
     masteryService = module.get(MasteryService);
     sessionPlanCache = module.get(SessionPlanCacheService);
+    pronunciationService = module.get(PronunciationService);
   });
 
   afterEach(() => {
@@ -124,6 +135,7 @@ describe('ProgressService', () => {
     mockContentLookupService.getQuestionData.mockReset();
     mockMasteryService.updateMastery.mockReset();
     mockSessionPlanCacheService.invalidate.mockReset();
+    mockPronunciationService.assess.mockReset();
   });
 
   describe('startLesson', () => {
@@ -304,7 +316,11 @@ describe('ProgressService', () => {
         },
       } as any);
 
-      const result = await service.recordQuestionAttempt(userId, questionId, attemptDto);
+      const result = await service.recordQuestionAttempt(
+        userId,
+        questionId,
+        attemptDto,
+      );
 
       expect(prisma.question.findUnique).toHaveBeenCalledWith({
         where: { id: questionId },
@@ -358,17 +374,11 @@ describe('ProgressService', () => {
         id: questionId,
         teachingId,
         type: DELIVERY_METHOD.FLASHCARD,
-        skillTags: [
-          { name: 'greetings' },
-          { name: 'verbs' },
-        ],
+        skillTags: [{ name: 'greetings' }, { name: 'verbs' }],
         teaching: {
           id: teachingId,
           lessonId,
-          skillTags: [
-            { name: 'greetings' },
-            { name: 'pronouns' },
-          ],
+          skillTags: [{ name: 'greetings' }, { name: 'pronouns' }],
           lesson: {
             id: lessonId,
             title: 'Test Lesson',
@@ -400,7 +410,11 @@ describe('ProgressService', () => {
         .mockResolvedValueOnce(0.4) // verbs - below threshold
         .mockResolvedValueOnce(0.7); // pronouns - above threshold
 
-      const result = await service.recordQuestionAttempt(userId, questionId, attemptDto);
+      const result = await service.recordQuestionAttempt(
+        userId,
+        questionId,
+        attemptDto,
+      );
 
       // Verify skillTags relation was loaded
       expect(prisma.question.findUnique).toHaveBeenCalledWith(
@@ -427,9 +441,21 @@ describe('ProgressService', () => {
       // Verify mastery was updated for all skill tags (greetings, verbs, pronouns)
       // Note: extractSkillTags deduplicates, so 'greetings' appears once
       expect(mockMasteryService.updateMastery).toHaveBeenCalledTimes(3);
-      expect(mockMasteryService.updateMastery).toHaveBeenCalledWith(userId, 'greetings', true);
-      expect(mockMasteryService.updateMastery).toHaveBeenCalledWith(userId, 'verbs', true);
-      expect(mockMasteryService.updateMastery).toHaveBeenCalledWith(userId, 'pronouns', true);
+      expect(mockMasteryService.updateMastery).toHaveBeenCalledWith(
+        userId,
+        'greetings',
+        true,
+      );
+      expect(mockMasteryService.updateMastery).toHaveBeenCalledWith(
+        userId,
+        'verbs',
+        true,
+      );
+      expect(mockMasteryService.updateMastery).toHaveBeenCalledWith(
+        userId,
+        'pronouns',
+        true,
+      );
 
       expect(result).toBeDefined();
     });
@@ -476,7 +502,11 @@ describe('ProgressService', () => {
         },
       } as any);
 
-      const result = await service.recordQuestionAttempt(userId, questionId, attemptDto);
+      const result = await service.recordQuestionAttempt(
+        userId,
+        questionId,
+        attemptDto,
+      );
 
       // Verify skillTags relation was still loaded (even if empty)
       expect(prisma.question.findUnique).toHaveBeenCalledWith(
@@ -509,9 +539,7 @@ describe('ProgressService', () => {
         id: questionId,
         teachingId,
         type: DELIVERY_METHOD.FLASHCARD,
-        skillTags: [
-          { name: 'numbers' },
-        ],
+        skillTags: [{ name: 'numbers' }],
         teaching: {
           id: teachingId,
           lessonId,
@@ -543,11 +571,19 @@ describe('ProgressService', () => {
 
       mockMasteryService.updateMastery.mockResolvedValue(0.6);
 
-      const result = await service.recordQuestionAttempt(userId, questionId, attemptDto);
+      const result = await service.recordQuestionAttempt(
+        userId,
+        questionId,
+        attemptDto,
+      );
 
       // Verify mastery was updated for the question-level skill tag
       expect(mockMasteryService.updateMastery).toHaveBeenCalledTimes(1);
-      expect(mockMasteryService.updateMastery).toHaveBeenCalledWith(userId, 'numbers', true);
+      expect(mockMasteryService.updateMastery).toHaveBeenCalledWith(
+        userId,
+        'numbers',
+        true,
+      );
 
       expect(result).toBeDefined();
     });
@@ -564,9 +600,7 @@ describe('ProgressService', () => {
         id: questionId,
         teachingId,
         type: DELIVERY_METHOD.FLASHCARD,
-        skillTags: [
-          { name: 'greetings' },
-        ],
+        skillTags: [{ name: 'greetings' }],
         teaching: {
           id: teachingId,
           lessonId,
@@ -597,10 +631,16 @@ describe('ProgressService', () => {
       } as any);
 
       // Mock mastery service to throw an error
-      mockMasteryService.updateMastery.mockRejectedValue(new Error('Mastery update failed'));
+      mockMasteryService.updateMastery.mockRejectedValue(
+        new Error('Mastery update failed'),
+      );
 
       // Should not throw - mastery tracking is non-critical
-      const result = await service.recordQuestionAttempt(userId, questionId, attemptDto);
+      const result = await service.recordQuestionAttempt(
+        userId,
+        questionId,
+        attemptDto,
+      );
 
       expect(result).toBeDefined();
       expect(result.awardedXp).toBe(10);
@@ -625,7 +665,11 @@ describe('ProgressService', () => {
         score: 0.7,
       } as any);
 
-      const result = await service.updateDeliveryMethodScore(userId, method, scoreDto);
+      const result = await service.updateDeliveryMethodScore(
+        userId,
+        method,
+        scoreDto,
+      );
 
       expect(prisma.userDeliveryMethodScore.upsert).toHaveBeenCalled();
       expect(result.score).toBe(0.7);
@@ -648,7 +692,11 @@ describe('ProgressService', () => {
         score: 1.0,
       } as any);
 
-      const result = await service.updateDeliveryMethodScore(userId, method, scoreDto);
+      const result = await service.updateDeliveryMethodScore(
+        userId,
+        method,
+        scoreDto,
+      );
 
       expect(result.score).toBeLessThanOrEqual(1.0);
     });
@@ -680,7 +728,10 @@ describe('ProgressService', () => {
         return callback(tx);
       });
 
-      const result = await service.recordKnowledgeLevelProgress(userId, progressDto);
+      const result = await service.recordKnowledgeLevelProgress(
+        userId,
+        progressDto,
+      );
 
       expect(prisma.$transaction).toHaveBeenCalled();
       expect(result.knowledgePoints).toBe(150);

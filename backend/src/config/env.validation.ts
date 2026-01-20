@@ -4,6 +4,13 @@ export const envValidationSchema = Joi.object({
   // Database
   DATABASE_URL: Joi.string().required(),
   DIRECT_URL: Joi.string().optional(),
+  DATABASE_POOL_MAX: Joi.number().integer().min(1).optional(),
+  DATABASE_POOL_IDLE_TIMEOUT_MS: Joi.number().integer().min(1000).optional(),
+  DATABASE_POOL_CONNECTION_TIMEOUT_MS: Joi.number()
+    .integer()
+    .min(1000)
+    .optional(),
+  DATABASE_SSL_REJECT_UNAUTHORIZED: Joi.boolean().optional(),
 
   // Supabase
   SUPABASE_URL: Joi.string().required(),
@@ -17,15 +24,17 @@ export const envValidationSchema = Joi.object({
     .valid('development', 'production', 'test')
     .default('development'),
   CORS_ORIGIN: Joi.string().optional(),
-  
+
   // Rate Limiting
   THROTTLE_TTL: Joi.number().optional(), // Time window in milliseconds (default: 60000 = 1 minute)
   THROTTLE_LIMIT: Joi.number().optional(), // Max requests per time window for IP-based (default: 100 in prod, 1000 in dev)
   THROTTLE_USER_LIMIT: Joi.number().optional(), // Max requests per time window for user-based (default: same as THROTTLE_LIMIT)
-  
-  // Google Cloud Speech API (optional - for pronunciation validation)
-  // Google Cloud libraries use GOOGLE_APPLICATION_CREDENTIALS environment variable
-  // or service account key file path. Set this in your deployment environment.
-  // See: https://cloud.google.com/docs/authentication/application-default-credentials
-  GOOGLE_APPLICATION_CREDENTIALS: Joi.string().optional(),
+
+  // Azure Speech (required - pronunciation assessment)
+  AZURE_SPEECH_KEY: Joi.string().required(),
+  AZURE_SPEECH_REGION: Joi.string().required(),
+  AZURE_SPEECH_DEFAULT_LOCALE: Joi.string().optional(),
+
+  // Health
+  HEALTH_DB_DEBUG: Joi.boolean().optional(),
 }).unknown(true); // Allow unknown keys for test environment

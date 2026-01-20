@@ -31,7 +31,6 @@
     "content:import": "ts-node scripts/import-content.ts import"
   },
   "dependencies": {
-    "@google-cloud/speech": "^7.2.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
@@ -50,6 +49,7 @@
     "joi": "^18.0.2",
     "js-yaml": "^4.1.1",
     "jsonwebtoken": "^9.0.3",
+    "microsoft-cognitiveservices-speech-sdk": "^1.47.0",
     "multer": "^2.0.2",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",

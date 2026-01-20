@@ -6,8 +6,16 @@ import {
   Param,
   UseGuards,
   Delete,
+  Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { ProgressService } from './progress.service';
 import { SupabaseJwtGuard } from '../common/guards/supabase-jwt.guard';
 import { User } from '../common/decorators/user.decorator';
@@ -33,22 +41,33 @@ export class ProgressController {
   @ApiOperation({ summary: 'Start or update lesson engagement' })
   @ApiParam({ name: 'lessonId', type: 'string', format: 'uuid' })
   @ApiResponse({ status: 200, description: 'Lesson started or updated' })
-  async startLesson(@User() userId: string, @Param('lessonId') lessonId: string) {
+  async startLesson(
+    @User() userId: string,
+    @Param('lessonId') lessonId: string,
+  ) {
     return this.progressService.startLesson(userId, lessonId);
   }
 
   @Get('lessons')
-  @ApiOperation({ summary: 'Get user\'s lesson progress' })
+  @ApiOperation({ summary: "Get user's lesson progress" })
+  @ApiQuery({ name: 'tzOffsetMinutes', type: 'number', required: false })
   @ApiResponse({ status: 200, description: 'User lessons retrieved' })
-  async getUserLessons(@User() userId: string) {
-    return this.progressService.getUserLessons(userId);
+  async getUserLessons(
+    @User() userId: string,
+    @Query('tzOffsetMinutes') tzOffsetMinutes?: string,
+  ) {
+    const parsed = tzOffsetMinutes !== undefined ? Number(tzOffsetMinutes) : undefined;
+    return this.progressService.getUserLessons(userId, Number.isFinite(parsed) ? parsed : undefined);
   }
 
   @Post('teachings/:teachingId/complete')
   @ApiOperation({ summary: 'Mark teaching as completed' })
   @ApiParam({ name: 'teachingId', type: 'string', format: 'uuid' })
   @ApiResponse({ status: 200, description: 'Teaching marked as completed' })
-  async completeTeaching(@User() userId: string, @Param('teachingId') teachingId: string) {
+  async completeTeaching(
+    @User() userId: string,
+    @Param('teachingId') teachingId: string,
+  ) {
     return this.progressService.completeTeaching(userId, teachingId);
   }
 
@@ -61,7 +80,11 @@ export class ProgressController {
     @Param('questionId') questionId: string,
     @Body() attemptDto: QuestionAttemptDto,
   ) {
-    return this.progressService.recordQuestionAttempt(userId, questionId, attemptDto);
+    return this.progressService.recordQuestionAttempt(
+      userId,
+      questionId,
+      attemptDto,
+    );
   }
 
   @Get('reviews/due')
@@ -87,7 +110,11 @@ export class ProgressController {
     @Param('method') method: DELIVERY_METHOD,
     @Body() scoreDto: DeliveryMethodScoreDto,
   ) {
-    return this.progressService.updateDeliveryMethodScore(userId, method, scoreDto);
+    return this.progressService.updateDeliveryMethodScore(
+      userId,
+      method,
+      scoreDto,
+    );
   }
 
   @Post('knowledge-level-progress')
@@ -97,13 +124,19 @@ export class ProgressController {
     @User() userId: string,
     @Body() progressDto: KnowledgeLevelProgressDto,
   ) {
-    return this.progressService.recordKnowledgeLevelProgress(userId, progressDto);
+    return this.progressService.recordKnowledgeLevelProgress(
+      userId,
+      progressDto,
+    );
   }
 
   @Post('lessons/:lessonId/reset')
   @ApiOperation({ summary: 'Reset progress for a specific lesson' })
   @ApiParam({ name: 'lessonId', type: 'string', format: 'uuid' })
-  @ApiResponse({ status: 200, description: 'Lesson progress reset successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lesson progress reset successfully',
+  })
   async resetLessonProgress(
     @User() userId: string,
     @Param('lessonId') lessonId: string,
@@ -112,9 +145,15 @@ export class ProgressController {
   }
 
   @Post('questions/:questionId/reset')
-  @ApiOperation({ summary: 'Reset progress for a specific question (e.g., "I already know this" or "start over")' })
+  @ApiOperation({
+    summary:
+      'Reset progress for a specific question (e.g., "I already know this" or "start over")',
+  })
   @ApiParam({ name: 'questionId', type: 'string', format: 'uuid' })
-  @ApiResponse({ status: 200, description: 'Question progress reset successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Question progress reset successfully',
+  })
   async resetQuestionProgress(
     @User() userId: string,
     @Param('questionId') questionId: string,
@@ -123,15 +162,30 @@ export class ProgressController {
   }
 
   @Get('summary')
-  @ApiOperation({ summary: 'Get progress summary (XP, completed lessons, completed modules, streak, due review count)' })
+  @ApiOperation({
+    summary:
+      'Get progress summary (XP, completed lessons, completed modules, streak, due review count)',
+  })
+  @ApiQuery({ name: 'tzOffsetMinutes', type: 'number', required: false })
   @ApiResponse({ status: 200, description: 'Progress summary retrieved' })
-  async getProgressSummary(@User() userId: string) {
-    return this.progressService.getProgressSummary(userId);
+  async getProgressSummary(
+    @User() userId: string,
+    @Query('tzOffsetMinutes') tzOffsetMinutes?: string,
+  ) {
+    const parsed = tzOffsetMinutes !== undefined ? Number(tzOffsetMinutes) : undefined;
+    return this.progressService.getProgressSummary(userId, Number.isFinite(parsed) ? parsed : undefined);
   }
 
   @Post('modules/:moduleIdOrSlug/complete')
-  @ApiOperation({ summary: 'Mark module as completed (marks all lessons in module as completed)' })
-  @ApiParam({ name: 'moduleIdOrSlug', type: 'string', description: 'Module ID (UUID) or slug (title)' })
+  @ApiOperation({
+    summary:
+      'Mark module as completed (marks all lessons in module as completed)',
+  })
+  @ApiParam({
+    name: 'moduleIdOrSlug',
+    type: 'string',
+    description: 'Module ID (UUID) or slug (title)',
+  })
   @ApiResponse({ status: 200, description: 'Module marked as completed' })
   async markModuleCompleted(
     @User() userId: string,
@@ -150,7 +204,11 @@ export class ProgressController {
   @Post('questions/:questionId/validate')
   @ApiOperation({ summary: 'Validate user answer and calculate score' })
   @ApiParam({ name: 'questionId', type: 'string', format: 'uuid' })
-  @ApiResponse({ status: 200, description: 'Answer validated', type: ValidateAnswerResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Answer validated',
+    type: ValidateAnswerResponseDto,
+  })
   async validateAnswer(
     @User() userId: string,
     @Param('questionId') questionId: string,
@@ -162,12 +220,20 @@ export class ProgressController {
   @Post('questions/:questionId/pronunciation')
   @ApiOperation({ summary: 'Validate pronunciation from audio recording' })
   @ApiParam({ name: 'questionId', type: 'string', format: 'uuid' })
-  @ApiResponse({ status: 200, description: 'Pronunciation validated', type: PronunciationResponseDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Pronunciation validated',
+    type: PronunciationResponseDto,
+  })
   async validatePronunciation(
     @User() userId: string,
     @Param('questionId') questionId: string,
     @Body() pronunciationDto: ValidatePronunciationDto,
   ): Promise<PronunciationResponseDto> {
-    return this.progressService.validatePronunciation(userId, questionId, pronunciationDto);
+    return this.progressService.validatePronunciation(
+      userId,
+      questionId,
+      pronunciationDto,
+    );
   }
 }

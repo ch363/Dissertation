@@ -20,9 +20,10 @@ export function TabBarButton({ label, iconName, isFocused, onPress, onLongPress 
 
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityState={isFocused ? { selected: true } : {}}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: isFocused }}
       accessibilityLabel={label}
+      accessibilityHint={`Switch to ${label} tab`}
       onPress={onPress}
       onLongPress={onLongPress}
       style={styles.container}
@@ -56,6 +57,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 44,
+    paddingVertical: 8,
   },
   inner: {
     alignItems: 'center',

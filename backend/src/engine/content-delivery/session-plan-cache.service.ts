@@ -9,10 +9,10 @@ interface CacheEntry {
 
 /**
  * Session Plan Cache Service
- * 
+ *
  * Provides in-memory caching for session plans to reduce expensive database queries.
  * Cache entries are keyed by userId, mode, lessonId, moduleId, and timeBudgetSec.
- * 
+ *
  * Cache invalidation:
  * - Automatic TTL expiry (default: 5 minutes)
  * - Manual invalidation when user progress changes

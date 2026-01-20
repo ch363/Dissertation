@@ -2,6 +2,25 @@ export default () => ({
   database: {
     url: process.env.DATABASE_URL,
     directUrl: process.env.DIRECT_URL,
+    // Pool tuning (pg.Pool)
+    pool: {
+      max: parseInt(process.env.DATABASE_POOL_MAX || '20', 10),
+      idleTimeoutMillis: parseInt(
+        process.env.DATABASE_POOL_IDLE_TIMEOUT_MS || '30000',
+        10,
+      ),
+      // Supabase pooler connections can occasionally take a few seconds; 2s is often too aggressive.
+      connectionTimeoutMillis: parseInt(
+        process.env.DATABASE_POOL_CONNECTION_TIMEOUT_MS || '10000',
+        10,
+      ),
+    },
+    // SSL configuration for Postgres connections.
+    // In dev we allow rejecting to be disabled (some local DBs / proxies), but Supabase is fine with true.
+    sslRejectUnauthorized:
+      process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== undefined
+        ? process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === 'true'
+        : process.env.NODE_ENV === 'production',
   },
   supabase: {
     url: process.env.SUPABASE_URL,
@@ -30,5 +49,14 @@ export default () => ({
   },
   sessionPlanCache: {
     ttlMs: parseInt(process.env.SESSION_PLAN_CACHE_TTL_MS || '300000', 10), // Default: 5 minutes (300000 ms)
+  },
+  speech: {
+    azureKey: process.env.AZURE_SPEECH_KEY,
+    azureRegion: process.env.AZURE_SPEECH_REGION,
+    defaultLocale: process.env.AZURE_SPEECH_DEFAULT_LOCALE || 'it-IT',
+  },
+  health: {
+    // When enabled (or in non-production), /health/db includes sanitized DB diagnostics (no credentials).
+    dbDebug: process.env.HEALTH_DB_DEBUG === 'true',
   },
 });

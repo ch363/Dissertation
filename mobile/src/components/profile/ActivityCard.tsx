@@ -65,10 +65,16 @@ export function ActivityCard({ title, items, emptyMessage = 'No recent activity'
                   </Text>
                 </View>
                 <View style={styles.meta}>
-                  <Text style={[styles.time, { color: theme.colors.mutedText }]}>{formatTimeAgo(item.time)}</Text>
-                  {(item.route || item.onPress) && (
-                    <Ionicons name="chevron-forward" size={16} color={theme.colors.mutedText} style={styles.chevron} />
-                  )}
+                  <Text style={[styles.time, { color: theme.colors.mutedText }]} numberOfLines={1}>
+                    {formatTimeAgo(item.time)}
+                  </Text>
+                  {/* Keep alignment uniform by reserving chevron space for all rows */}
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={theme.colors.mutedText}
+                    style={[styles.chevron, !(item.route || item.onPress) && styles.chevronPlaceholder]}
+                  />
                 </View>
               </Pressable>
             );
@@ -117,6 +123,9 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    // Prevent the content column from forcing the meta column off-screen.
+    // This also makes `numberOfLines` truncation behave consistently in flex rows.
+    minWidth: 0,
   },
   itemTitle: {
     fontFamily: baseTheme.typography.semiBold,
@@ -128,15 +137,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   meta: {
-    alignItems: 'flex-end',
-    gap: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flexShrink: 0,
+    gap: baseTheme.spacing.xs,
+    // Align time/chevron with the title line (not vertically centered across title+subtitle)
+    alignSelf: 'flex-start',
+    marginTop: 2,
   },
   time: {
     fontFamily: baseTheme.typography.regular,
     fontSize: 12,
+    minWidth: 56,
+    textAlign: 'right',
   },
   chevron: {
-    marginTop: 2,
+    marginTop: 0,
+  },
+  chevronPlaceholder: {
+    opacity: 0,
   },
   emptyText: {
     fontFamily: baseTheme.typography.regular,

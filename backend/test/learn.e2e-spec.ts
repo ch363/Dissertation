@@ -53,9 +53,7 @@ describe('Learn (e2e)', () => {
 
   describe('GET /learn/suggestions', () => {
     it('should return 401 without authentication', () => {
-      return request(app.getHttpServer())
-        .get('/learn/suggestions')
-        .expect(401);
+      return request(app.getHttpServer()).get('/learn/suggestions').expect(401);
     });
 
     // Note: Full integration test would require:

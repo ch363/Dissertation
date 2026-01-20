@@ -18,6 +18,7 @@ import type { DiscoverItem } from '@/features/learn/types';
 import { routeBuilders, routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
+import { makeSessionId } from '@/features/session/sessionBuilder';
 
 export default function LearnScreen() {
   const { theme, isDark } = useAppTheme();
@@ -144,7 +145,18 @@ export default function LearnScreen() {
         {discoverItems.length > 0 && (
           <DiscoverCarousel
             items={discoverItems}
-            onPressItem={(route) => router.push(route)}
+            onPressItem={(item) => {
+              if (item.kind === 'lesson') {
+                const sessionId = makeSessionId('learn');
+                router.push({
+                  pathname: routeBuilders.sessionDetail(sessionId),
+                  params: { lessonId: item.id, kind: 'learn' },
+                });
+                return;
+              }
+
+              router.push(item.route);
+            }}
           />
         )}
         <View style={{ height: baseTheme.spacing.xl }} />

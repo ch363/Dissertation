@@ -11,7 +11,6 @@ import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { getMyProfile, upsertMyProfile, getDashboard, getRecentActivity, type DashboardData, type RecentActivity, refreshSignedAvatarUrlFromUrl as refreshAvatarUrl, uploadAvatar } from '@/services/api/profile';
 import { getProgressSummary, type ProgressSummary } from '@/services/api/progress';
 import { getAllMastery, type SkillMastery } from '@/services/api/mastery';
-import { getCurrentUser } from '@/services/api/auth';
 import { getAvatarUri } from '@/services/cache/avatar-cache';
 import { Card } from '@/components/profile/Card';
 import { ProfileHeader } from '@/components/profile/Header';
@@ -200,18 +199,18 @@ export default function Profile() {
     );
   }
 
-  const currentLevel = progress?.level || 1;
-  const currentXP = progress?.xp || 0;
-  const nextLevelXP = currentLevel * 100;
-  const xpInLevel = currentXP % 100;
-  const progressToNext = xpInLevel / 100;
+  const XP_PER_LEVEL = 100;
+  const currentXP = progress?.xp ?? 0;
+  const currentLevel = Math.floor(currentXP / XP_PER_LEVEL) + 1;
+  const xpInLevel = currentXP % XP_PER_LEVEL;
+  const progressToNext = xpInLevel / XP_PER_LEVEL;
 
   // Build activity items from recent data
   const activityItems = [];
   if (recentActivity?.recentLesson) {
     activityItems.push({
       title: recentActivity.recentLesson.lesson.title,
-      subtitle: `${recentActivity.recentLesson.lesson.module.title} � ${recentActivity.recentLesson.completedTeachings} teachings completed`,
+      subtitle: `${recentActivity.recentLesson.lesson.module.title} • ${recentActivity.recentLesson.completedTeachings} teachings completed`,
       time: recentActivity.recentLesson.lastAccessedAt,
       icon: 'book-outline' as const,
       route: `/(tabs)/learn/${recentActivity.recentLesson.lesson.id}/start`,
@@ -220,7 +219,7 @@ export default function Profile() {
   if (recentActivity?.recentTeaching) {
     activityItems.push({
       title: 'Completed teaching',
-      subtitle: `${recentActivity.recentTeaching.teaching.learningLanguageString} � ${recentActivity.recentTeaching.lesson.title}`,
+      subtitle: `${recentActivity.recentTeaching.teaching.learningLanguageString} • ${recentActivity.recentTeaching.lesson.title}`,
       time: recentActivity.recentTeaching.completedAt,
       icon: 'checkmark-circle-outline' as const,
     });
@@ -228,7 +227,7 @@ export default function Profile() {
   if (recentActivity?.recentQuestion) {
     activityItems.push({
       title: 'Reviewed question',
-      subtitle: `${recentActivity.recentQuestion.teaching.learningLanguageString} � ${recentActivity.recentQuestion.lesson.title}`,
+      subtitle: `${recentActivity.recentQuestion.teaching.learningLanguageString} • ${recentActivity.recentQuestion.lesson.title}`,
       time: recentActivity.recentQuestion.lastRevisedAt,
       icon: 'refresh-outline' as const,
     });
@@ -241,10 +240,10 @@ export default function Profile() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
       >
         {/* Enhanced Header */}
-        <View style={[styles.headerCard, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+        <SurfaceCard style={styles.headerCard}>
           <ProfileHeader
             title={displayName || 'Your Profile'}
-            subtitle={progress ? `Level ${currentLevel} � ${currentXP} XP` : 'Loading�'}
+            subtitle={progress ? `Level ${currentLevel} • ${currentXP} XP` : 'Loading…'}
             avatarUrl={avatarUrl}
             right={
               <Pressable style={styles.editButton} onPress={handleEditPress} accessibilityRole="button">
@@ -252,7 +251,7 @@ export default function Profile() {
               </Pressable>
             }
           />
-        </View>
+        </SurfaceCard>
 
         {/* Dashboard Stats */}
         {dashboard && (
@@ -267,13 +266,11 @@ export default function Profile() {
                 />
               </Pressable>
             </Link>
-            <View style={styles.statSpacer} />
             <StatCard
               label="Active Lessons"
               value={dashboard.activeLessonCount}
               icon="book-outline"
             />
-            <View style={styles.statSpacer} />
             <StatCard
               label="Streak"
               value={dashboard.streak || 0}
@@ -296,8 +293,8 @@ export default function Profile() {
           <ProgressBar
             progress={progressToNext}
             currentLevel={currentLevel}
-            nextLevelXP={nextLevelXP}
             currentXP={currentXP}
+            xpPerLevel={XP_PER_LEVEL}
           />
           <View style={styles.xpBreakdown}>
             <View style={styles.xpItem}>
@@ -472,10 +469,11 @@ const styles = StyleSheet.create({
     gap: baseTheme.spacing.md,
   },
   headerCard: {
-    borderRadius: baseTheme.radius.lg,
-    borderWidth: 1,
-    padding: baseTheme.spacing.md,
-    marginBottom: baseTheme.spacing.sm,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
   },
   editButton: {
     padding: baseTheme.spacing.xs,
@@ -483,10 +481,6 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     gap: baseTheme.spacing.sm,
-    marginBottom: baseTheme.spacing.sm,
-  },
-  statSpacer: {
-    width: baseTheme.spacing.sm,
   },
   progressCard: {
     marginTop: baseTheme.spacing.sm,

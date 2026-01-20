@@ -7,24 +7,26 @@ import { theme as baseTheme } from '@/services/theme/tokens';
 type Props = {
   progress: number;
   currentLevel?: number;
-  nextLevelXP?: number;
   currentXP?: number;
+  xpPerLevel?: number;
 };
 
-export function ProgressBar({ progress, currentLevel, nextLevelXP, currentXP }: Props) {
+export function ProgressBar({ progress, currentLevel, currentXP, xpPerLevel }: Props) {
   const { theme } = useAppTheme();
   const pct = Math.max(0, Math.min(1, progress));
-  const xpToNext = nextLevelXP && currentXP ? nextLevelXP - currentXP : null;
-  const xpInLevel = currentXP && nextLevelXP ? currentXP % 100 : null;
+  const safeXpPerLevel = Number.isFinite(xpPerLevel) && (xpPerLevel as number) > 0 ? (xpPerLevel as number) : 100;
+  const safeCurrentXp = Number.isFinite(currentXP) ? (currentXP as number) : null;
+  const xpInLevel =
+    safeCurrentXp === null ? null : ((safeCurrentXp % safeXpPerLevel) + safeXpPerLevel) % safeXpPerLevel;
 
   return (
     <View>
       {currentLevel !== undefined && (
         <View style={styles.levelInfo}>
           <Text style={[styles.levelText, { color: theme.colors.text }]}>Level {currentLevel}</Text>
-          {xpToNext !== null && xpInLevel !== null && (
+          {xpInLevel !== null && (
             <Text style={[styles.xpText, { color: theme.colors.mutedText }]}>
-              {xpInLevel} / {xpToNext} XP
+              {xpInLevel} / {safeXpPerLevel} XP
             </Text>
           )}
         </View>

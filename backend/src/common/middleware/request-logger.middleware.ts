@@ -11,7 +11,8 @@ export class RequestLoggerMiddleware implements NestMiddleware {
     const startTime = Date.now();
 
     // Generate correlation ID if not present
-    const correlationId = req.headers['x-correlation-id'] as string || 
+    const correlationId =
+      (req.headers['x-correlation-id'] as string) ||
       `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     req.headers['x-correlation-id'] = correlationId;
     res.setHeader('X-Correlation-ID', correlationId);
@@ -25,7 +26,7 @@ export class RequestLoggerMiddleware implements NestMiddleware {
     res.on('finish', () => {
       const duration = Date.now() - startTime;
       const { statusCode } = res;
-      
+
       if (statusCode >= 400) {
         this.logger.warn(
           `[${correlationId}] ${method} ${originalUrl} ${statusCode} - ${duration}ms`,

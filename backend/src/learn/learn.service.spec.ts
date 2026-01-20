@@ -246,7 +246,12 @@ describe('LearnService', () => {
         },
       ] as any);
 
-      const result = await service.getSuggestions(userId, undefined, undefined, limit);
+      const result = await service.getSuggestions(
+        userId,
+        undefined,
+        undefined,
+        limit,
+      );
 
       expect(result.lessons).toBeDefined();
       expect(result.modules).toBeDefined();
@@ -277,7 +282,12 @@ describe('LearnService', () => {
 
       prisma.module.findMany.mockResolvedValue([] as any);
 
-      const result = await service.getSuggestions(userId, undefined, moduleId, limit);
+      const result = await service.getSuggestions(
+        userId,
+        undefined,
+        moduleId,
+        limit,
+      );
 
       expect(prisma.lesson.findMany).toHaveBeenCalledWith(
         expect.objectContaining({

@@ -38,15 +38,15 @@ export default function GlobalError() {
         onPress={() => router.back()}
         style={[styles.button, { backgroundColor: theme.colors.primary }]}
       >
-        <Text style={styles.buttonText}>Go back</Text>
+        <Text style={[styles.buttonText, { color: theme.colors.onPrimary }]}>Go back</Text>
       </Pressable>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Go home"
         onPress={() => router.replace(routes.tabs.home)}
-        style={[styles.button, styles.secondary]}
+        style={[styles.button, { backgroundColor: theme.colors.secondary }]}
       >
-        <Text style={styles.buttonText}>Go home</Text>
+        <Text style={[styles.buttonText, { color: theme.colors.onSecondary }]}>Go home</Text>
       </Pressable>
     </View>
   );
@@ -76,11 +76,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: baseTheme.spacing.lg,
     borderRadius: baseTheme.radius.md,
   },
-  secondary: {
-    backgroundColor: baseTheme.colors.secondary,
-  },
   buttonText: {
-    color: '#fff',
     fontFamily: baseTheme.typography.semiBold,
   },
 });

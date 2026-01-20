@@ -2,6 +2,8 @@ import { apiClient } from './client';
 import type { DeliveryMethod } from '@/features/session/delivery-methods';
 
 export interface QuestionAttemptDto {
+  // Delivery method used for this attempt (used for scoring/personalisation)
+  deliveryMethod?: DeliveryMethod | string;
   score: number;
   timeToComplete?: number;
   percentageAccuracy?: number;
@@ -70,7 +72,13 @@ export async function startLesson(lessonId: string) {
  * Get user's lesson progress
  */
 export async function getUserLessons(): Promise<UserLessonProgress[]> {
-  return apiClient.get<UserLessonProgress[]>('/progress/lessons');
+  const tzOffsetMinutes = new Date().getTimezoneOffset();
+  const params = new URLSearchParams();
+  if (Number.isFinite(tzOffsetMinutes)) {
+    params.append('tzOffsetMinutes', String(tzOffsetMinutes));
+  }
+  const query = params.toString();
+  return apiClient.get<UserLessonProgress[]>(`/progress/lessons${query ? `?${query}` : ''}`);
 }
 
 /**
@@ -143,7 +151,13 @@ export interface ProgressSummary {
  * Returns XP, streak, completed lessons/modules, and due review count
  */
 export async function getProgressSummary(userId: string | null): Promise<ProgressSummary> {
-  return apiClient.get<ProgressSummary>('/progress/summary');
+  const tzOffsetMinutes = new Date().getTimezoneOffset();
+  const params = new URLSearchParams();
+  if (Number.isFinite(tzOffsetMinutes)) {
+    params.append('tzOffsetMinutes', String(tzOffsetMinutes));
+  }
+  const query = params.toString();
+  return apiClient.get<ProgressSummary>(`/progress/summary${query ? `?${query}` : ''}`);
 }
 
 /**

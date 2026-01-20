@@ -1,12 +1,12 @@
 /**
  * Content Delivery Service
- * 
+ *
  * This service is responsible for selecting what content to show next to the user.
  * It implements the adaptive learning selection algorithm:
  * 1. Prefer due reviews first (items with next_due <= now)
  * 2. If no due reviews, select "new" items not yet seen
  * 3. "mixed" mode = 70% review / 30% new (if both available)
- * 
+ *
  * This is a SERVICE LAYER, not middleware. It's called by LearnService
  * to determine what to show next. It does NOT handle HTTP requests directly.
  */
@@ -16,7 +16,12 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { DELIVERY_METHOD } from '@prisma/client';
 import { DeliveryMode, ItemKind } from '../types';
 import { DeliveryCandidate, DashboardPlanDto } from './types';
-import { rankCandidates, mixReviewAndNew, pickOne, selectDeliveryMethod } from './selection.policy';
+import {
+  rankCandidates,
+  mixReviewAndNew,
+  pickOne,
+  selectDeliveryMethod,
+} from './selection.policy';
 import { SessionPlanService } from './session-plan.service';
 import { SessionPlanCacheService } from './session-plan-cache.service';
 import { SessionPlanDto, SessionContext } from './session-types';
@@ -31,7 +36,6 @@ export class ContentDeliveryService {
     private masteryService: MasteryService,
   ) {}
 
-
   /**
    * Get a complete session plan for the user.
    * Checks cache first, then generates plan if cache miss.
@@ -39,7 +43,10 @@ export class ContentDeliveryService {
    * @param context Session context
    * @returns Complete session plan
    */
-  async getSessionPlan(userId: string, context: SessionContext): Promise<SessionPlanDto> {
+  async getSessionPlan(
+    userId: string,
+    context: SessionContext,
+  ): Promise<SessionPlanDto> {
     // Generate cache key from context
     const cacheKey = this.sessionPlanCache.generateKey(
       userId,
@@ -90,26 +97,30 @@ export class ContentDeliveryService {
     const allQuestions = await this.prisma.question.findMany({
       select: { id: true },
     });
-    const attemptedQuestionIds = await this.prisma.userQuestionPerformance.findMany({
-      where: { userId },
-      select: { questionId: true },
-      distinct: ['questionId'],
-    });
+    const attemptedQuestionIds =
+      await this.prisma.userQuestionPerformance.findMany({
+        where: { userId },
+        select: { questionId: true },
+        distinct: ['questionId'],
+      });
     const attemptedSet = new Set(attemptedQuestionIds.map((a) => a.questionId));
-    const newItemsCount = allQuestions.filter((q) => !attemptedSet.has(q.id)).length;
+    const newItemsCount = allQuestions.filter(
+      (q) => !attemptedSet.has(q.id),
+    ).length;
 
     // Get next review due date from questions
-    const nextQuestionReview = await this.prisma.userQuestionPerformance.findFirst({
-      where: {
-        userId,
-        nextReviewDue: {
-          gt: now,
-          not: null,
+    const nextQuestionReview =
+      await this.prisma.userQuestionPerformance.findFirst({
+        where: {
+          userId,
+          nextReviewDue: {
+            gt: now,
+            not: null,
+          },
         },
-      },
-      orderBy: { nextReviewDue: 'asc' },
-      select: { nextReviewDue: true },
-    });
+        orderBy: { nextReviewDue: 'asc' },
+        select: { nextReviewDue: true },
+      });
 
     const nextReview = nextQuestionReview?.nextReviewDue ?? undefined;
 
@@ -155,13 +166,14 @@ export class ContentDeliveryService {
     }
 
     // Get all due question performances, then dedupe to latest per question
-    const allDuePerformances = await this.prisma.userQuestionPerformance.findMany({
-      where: questionWhere,
-      orderBy: { createdAt: 'desc' },
-    });
+    const allDuePerformances =
+      await this.prisma.userQuestionPerformance.findMany({
+        where: questionWhere,
+        orderBy: { createdAt: 'desc' },
+      });
 
     // Dedupe by questionId - keep latest per question
-    const questionIdMap = new Map<string, typeof allDuePerformances[0]>();
+    const questionIdMap = new Map<string, (typeof allDuePerformances)[0]>();
     for (const perf of allDuePerformances) {
       const existing = questionIdMap.get(perf.questionId);
       if (!existing || perf.createdAt > existing.createdAt) {
@@ -177,7 +189,10 @@ export class ContentDeliveryService {
         perf.nextReviewDue || now,
       );
       if (candidate) {
-        candidate.dueScore = this.calculateDueScore(perf.nextReviewDue || now, now);
+        candidate.dueScore = this.calculateDueScore(
+          perf.nextReviewDue || now,
+          now,
+        );
         candidates.push(candidate);
       }
     }
@@ -216,11 +231,12 @@ export class ContentDeliveryService {
       },
     });
 
-    const attemptedQuestionIds = await this.prisma.userQuestionPerformance.findMany({
-      where: { userId },
-      select: { questionId: true },
-      distinct: ['questionId'],
-    });
+    const attemptedQuestionIds =
+      await this.prisma.userQuestionPerformance.findMany({
+        where: { userId },
+        select: { questionId: true },
+        distinct: ['questionId'],
+      });
     const attemptedSet = new Set(attemptedQuestionIds.map((a) => a.questionId));
 
     for (const question of allQuestions) {
@@ -303,7 +319,6 @@ export class ContentDeliveryService {
     };
   }
 
-
   /**
    * Calculate due score (higher = more overdue).
    */
@@ -337,7 +352,10 @@ export class ContentDeliveryService {
   /**
    * Build rationale string for the selected item.
    */
-  private buildRationale(candidate: DeliveryCandidate, mode: DeliveryMode): string {
+  private buildRationale(
+    candidate: DeliveryCandidate,
+    mode: DeliveryMode,
+  ): string {
     if (candidate.dueScore > 0) {
       return 'Due review found';
     }

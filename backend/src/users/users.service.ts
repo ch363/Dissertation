@@ -36,7 +36,10 @@ export class UsersService {
       });
     } catch (error: any) {
       // If unique constraint fails (race condition), fetch the existing user
-      if (error.code === 'P2002' || error.message?.includes('Unique constraint')) {
+      if (
+        error.code === 'P2002' ||
+        error.message?.includes('Unique constraint')
+      ) {
         const user = await this.prisma.user.findUnique({
           where: { id: authUid },
         });

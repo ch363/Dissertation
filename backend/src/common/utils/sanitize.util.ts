@@ -1,6 +1,6 @@
 /**
  * Input Sanitization Utilities
- * 
+ *
  * Security Best Practices (OWASP):
  * - Prevents XSS (Cross-Site Scripting) attacks
  * - Removes potentially dangerous HTML/JavaScript
@@ -11,14 +11,17 @@
 /**
  * Sanitize string input by removing HTML tags and dangerous characters
  * Prevents XSS attacks by stripping HTML/JavaScript
- * 
+ *
  * OWASP Recommendation: Defense in depth - sanitize at input, encode at output
- * 
+ *
  * @param input - String to sanitize
  * @param maxLength - Maximum allowed length (default: 10000)
  * @returns Sanitized string
  */
-export function sanitizeString(input: string | null | undefined, maxLength: number = 10000): string {
+export function sanitizeString(
+  input: string | null | undefined,
+  maxLength: number = 10000,
+): string {
   if (!input || typeof input !== 'string') {
     return '';
   }
@@ -41,7 +44,9 @@ export function sanitizeString(input: string | null | undefined, maxLength: numb
     .replace(/&#x27;/gi, "'")
     .replace(/&#x2F;/gi, '/')
     .replace(/&#(\d+);/gi, (_, num) => String.fromCharCode(parseInt(num, 10)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
+      String.fromCharCode(parseInt(hex, 16)),
+    );
 
   // Remove HTML tags (XSS prevention) - run multiple times to catch nested encoding
   for (let i = 0; i < 3; i++) {
@@ -66,7 +71,7 @@ export function sanitizeString(input: string | null | undefined, maxLength: numb
 /**
  * Sanitize URL input
  * Validates and sanitizes URLs to prevent malicious redirects
- * 
+ *
  * @param url - URL to sanitize
  * @returns Sanitized URL or empty string if invalid
  */
@@ -80,7 +85,7 @@ export function sanitizeUrl(url: string | null | undefined): string {
   // Basic URL validation
   try {
     const parsed = new URL(trimmed);
-    
+
     // Only allow http and https protocols
     if (!['http:', 'https:'].includes(parsed.protocol)) {
       return '';
@@ -97,18 +102,21 @@ export function sanitizeUrl(url: string | null | undefined): string {
 /**
  * Sanitize base64 string (for audio/image uploads)
  * Validates base64 format and removes dangerous patterns
- * 
+ *
  * @param base64 - Base64 string to sanitize
  * @param maxLength - Maximum allowed length (default: 10MB = ~13.3M chars in base64)
  * @returns Sanitized base64 string or empty string if invalid
  */
-export function sanitizeBase64(base64: string | null | undefined, maxLength: number = 13333333): string {
+export function sanitizeBase64(
+  base64: string | null | undefined,
+  maxLength: number = 13333333,
+): string {
   if (!base64 || typeof base64 !== 'string') {
     return '';
   }
 
   // Remove data URL prefix if present (e.g., "data:audio/wav;base64,")
-  let sanitized = base64.replace(/^data:[^;]+;base64,/, '');
+  const sanitized = base64.replace(/^data:[^;]+;base64,/, '');
 
   // Enforce length limit
   if (sanitized.length > maxLength) {
@@ -126,7 +134,7 @@ export function sanitizeBase64(base64: string | null | undefined, maxLength: num
 /**
  * Sanitize UUID string
  * Validates UUID format (v4)
- * 
+ *
  * @param uuid - UUID string to validate
  * @returns Valid UUID or empty string
  */
@@ -138,8 +146,9 @@ export function sanitizeUuid(uuid: string | null | undefined): string {
   const trimmed = uuid.trim();
 
   // UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
   if (!uuidRegex.test(trimmed)) {
     return '';
   }
@@ -150,7 +159,7 @@ export function sanitizeUuid(uuid: string | null | undefined): string {
 /**
  * Sanitize integer input
  * Validates and converts to integer
- * 
+ *
  * @param value - Value to sanitize
  * @param min - Minimum allowed value (optional)
  * @param max - Maximum allowed value (optional)
@@ -185,7 +194,7 @@ export function sanitizeInt(
 /**
  * Sanitize enum value
  * Validates that value is one of the allowed enum values
- * 
+ *
  * @param value - Value to validate
  * @param allowedValues - Array of allowed enum values
  * @returns Valid enum value or null
@@ -199,7 +208,7 @@ export function sanitizeEnum<T extends string>(
   }
 
   const trimmed = value.trim();
-  
+
   if (allowedValues.includes(trimmed as T)) {
     return trimmed as T;
   }

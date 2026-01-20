@@ -4,7 +4,7 @@ import { sanitizeInt } from '../../common/utils/sanitize.util';
 
 /**
  * DTO for updating delivery method preference score
- * 
+ *
  * Security: Input validation and sanitization
  * - Delta: Required, number between -100 and 100 (score adjustment)
  */

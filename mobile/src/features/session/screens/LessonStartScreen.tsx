@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useState, useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -55,12 +55,14 @@ export default function LessonStartScreen() {
     });
   };
 
+  const handleBackToLearn = () => {
+    // Hard guarantee: never trap the user on a deep learn route.
+    router.replace(routes.tabs.learn);
+  };
+
   const handleHomePress = () => {
-    // Dismiss all modals/stacks to reveal the home screen underneath
-    router.dismissAll();
-    // Navigate to home - this will slide the current screen right, revealing home underneath
-    // Using navigate instead of replace to get the stack animation
-    router.navigate(routes.tabs.home);
+    // Hard guarantee: always allow escape to home.
+    router.replace(routes.tabs.home);
   };
 
   if (loading) {
@@ -88,9 +90,18 @@ export default function LessonStartScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <Stack.Screen options={{ headerShown: false }} />
       {/* Header with home button */}
       <View style={styles.header}>
-        <View style={styles.headerSpacer} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Back to learn"
+          onPress={handleBackToLearn}
+          hitSlop={10}
+          style={styles.backButton}
+        >
+          <Ionicons name="chevron-back" size={22} color={appTheme.colors.mutedText} />
+        </Pressable>
         <Text style={styles.headerTitle}>Lesson</Text>
         <Pressable
           accessibilityRole="button"
@@ -129,8 +140,12 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     paddingHorizontal: theme.spacing.xs,
   },
-  headerSpacer: {
+  backButton: {
     width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
     flex: 1,

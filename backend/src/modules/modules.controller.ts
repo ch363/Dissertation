@@ -8,7 +8,13 @@ import {
   Delete,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+} from '@nestjs/swagger';
 import { ModulesService } from './modules.service';
 import { CreateModuleDto } from './dto/create-module.dto';
 import { UpdateModuleDto } from './dto/update-module.dto';
@@ -76,7 +82,9 @@ export class ModulesController {
   }
 
   @Get('featured')
-  @ApiOperation({ summary: 'Get featured modules (curated + algorithmic discovery)' })
+  @ApiOperation({
+    summary: 'Get featured modules (curated + algorithmic discovery)',
+  })
   @ApiResponse({ status: 200, description: 'Featured modules retrieved' })
   findFeatured() {
     return this.modulesService.findFeatured();

@@ -4,7 +4,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 
 /**
  * DTO for resetting user progress
- * 
+ *
  * Security: Input validation
  * - All fields are optional booleans with strict type checking
  * - Prevents injection via type coercion

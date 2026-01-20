@@ -19,9 +19,14 @@ export function generateTestJwt(options: TestJwtOptions): string {
     iat: Math.floor(Date.now() / 1000),
   };
 
-  const secret = options.secret || process.env.TEST_JWT_SECRET || process.env.SUPABASE_JWT_SECRET;
+  const secret =
+    options.secret ||
+    process.env.TEST_JWT_SECRET ||
+    process.env.SUPABASE_JWT_SECRET;
   if (!secret) {
-    throw new Error('JWT secret required for test token generation. Set TEST_JWT_SECRET or SUPABASE_JWT_SECRET');
+    throw new Error(
+      'JWT secret required for test token generation. Set TEST_JWT_SECRET or SUPABASE_JWT_SECRET',
+    );
   }
 
   return jwt.sign(payload, secret, {
@@ -33,7 +38,9 @@ export function generateTestJwt(options: TestJwtOptions): string {
 /**
  * Generate an expired test JWT token for testing expiration handling.
  */
-export function generateExpiredJwt(options: Omit<TestJwtOptions, 'expiresIn'>): string {
+export function generateExpiredJwt(
+  options: Omit<TestJwtOptions, 'expiresIn'>,
+): string {
   const payload: JwtPayload = {
     sub: options.userId,
     email: options.email,
@@ -41,9 +48,14 @@ export function generateExpiredJwt(options: Omit<TestJwtOptions, 'expiresIn'>): 
     exp: Math.floor(Date.now() / 1000) - 1800, // Expired 30 min ago
   };
 
-  const secret = options.secret || process.env.TEST_JWT_SECRET || process.env.SUPABASE_JWT_SECRET;
+  const secret =
+    options.secret ||
+    process.env.TEST_JWT_SECRET ||
+    process.env.SUPABASE_JWT_SECRET;
   if (!secret) {
-    throw new Error('JWT secret required for test token generation. Set TEST_JWT_SECRET or SUPABASE_JWT_SECRET');
+    throw new Error(
+      'JWT secret required for test token generation. Set TEST_JWT_SECRET or SUPABASE_JWT_SECRET',
+    );
   }
 
   return jwt.sign(payload, secret, {
@@ -55,15 +67,22 @@ export function generateExpiredJwt(options: Omit<TestJwtOptions, 'expiresIn'>): 
 /**
  * Generate a JWT token with missing 'sub' claim for testing validation.
  */
-export function generateJwtWithoutSub(options: Omit<TestJwtOptions, 'userId'>): string {
+export function generateJwtWithoutSub(
+  options: Omit<TestJwtOptions, 'userId'>,
+): string {
   const payload: any = {
     email: options.email,
     iat: Math.floor(Date.now() / 1000),
   };
 
-  const secret = options.secret || process.env.TEST_JWT_SECRET || process.env.SUPABASE_JWT_SECRET;
+  const secret =
+    options.secret ||
+    process.env.TEST_JWT_SECRET ||
+    process.env.SUPABASE_JWT_SECRET;
   if (!secret) {
-    throw new Error('JWT secret required for test token generation. Set TEST_JWT_SECRET or SUPABASE_JWT_SECRET');
+    throw new Error(
+      'JWT secret required for test token generation. Set TEST_JWT_SECRET or SUPABASE_JWT_SECRET',
+    );
   }
 
   return jwt.sign(payload, secret, {

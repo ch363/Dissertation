@@ -1,9 +1,9 @@
 /**
  * Session Plan Service
- * 
+ *
  * This service generates complete learning session plans with structured steps.
  * Supports teach-then-test, interleaving, adaptive modality, and time-based pacing.
- * 
+ *
  * This is a SERVICE LAYER, not middleware. It's called by ContentDeliveryService
  * to generate session plans. It does NOT handle HTTP requests directly.
  */
@@ -47,19 +47,22 @@ export class SessionPlanService {
 
   /**
    * Create a complete session plan for the user.
-   * 
+   *
    * This method respects previous progress by:
    * - Using context.lessonId to filter content to a specific lesson (when provided)
    * - Querying UserTeachingCompleted to get seenTeachingIds and exclude already-completed teachings
    * - Filtering teaching candidates early to avoid re-showing content the user has already learned
-   * 
+   *
    * @param userId User ID
    * @param context Session context (mode, time budget, lesson, theme)
    *   - lessonId: When provided, filters candidates to this specific lesson
    *   - seenTeachingIds: Used to exclude teachings from UserTeachingCompleted table
    * @returns Complete session plan with ordered steps
    */
-  async createPlan(userId: string, context: SessionContext): Promise<SessionPlanDto> {
+  async createPlan(
+    userId: string,
+    context: SessionContext,
+  ): Promise<SessionPlanDto> {
     const now = new Date();
     const sessionId = `session-${userId}-${Date.now()}`;
 
@@ -68,7 +71,9 @@ export class SessionPlanService {
 
     // 2. Calculate target item count from time budget
     const avgTimePerItem =
-      (userTimeAverages.avgTimePerTeachSec + userTimeAverages.avgTimePerPracticeSec) / 2;
+      (userTimeAverages.avgTimePerTeachSec +
+        userTimeAverages.avgTimePerPracticeSec) /
+      2;
     const targetItemCount = context.timeBudgetSec
       ? calculateItemCount(context.timeBudgetSec, avgTimePerItem)
       : 15; // Default: 15 items
@@ -80,7 +85,10 @@ export class SessionPlanService {
     const seenTeachingIds = await this.getSeenTeachingIds(userId);
 
     // 3.5. Get low mastery skills to prioritize 'New' teachings
-    const prioritizedSkills = await this.masteryService.getLowMasterySkills(userId, 0.5);
+    const prioritizedSkills = await this.masteryService.getLowMasterySkills(
+      userId,
+      0.5,
+    );
 
     // 4. Gather candidates
     const reviewCandidates = await this.getReviewCandidates(
@@ -103,7 +111,7 @@ export class SessionPlanService {
       // For learn mode, prioritize new items but include reviews if there aren't enough new items
       const rankedNew = rankCandidates(newCandidates, prioritizedSkills);
       const rankedReviews = rankCandidates(reviewCandidates);
-      
+
       // If we have enough new items, use only new items
       if (rankedNew.length >= targetItemCount) {
         selectedCandidates = rankedNew;
@@ -135,7 +143,9 @@ export class SessionPlanService {
     // 5. Apply teach-then-test (for new content only)
     // Get teaching candidates for the FINAL selected questions (not all newCandidates)
     // This ensures teachings match the questions that will actually be shown
-    const newQuestions = selectedCandidates.filter((c) => c.kind === 'question' && c.dueScore === 0);
+    const newQuestions = selectedCandidates.filter(
+      (c) => c.kind === 'question' && c.dueScore === 0,
+    );
     const reviews = selectedCandidates.filter((c) => c.dueScore > 0);
 
     // Create teaching candidates from the selected new questions (not all newCandidates)
@@ -160,17 +170,20 @@ export class SessionPlanService {
         newQuestions,
         seenTeachingIds, // Used to exclude teachings from UserTeachingCompleted
       );
-      
+
       // For learn mode, prioritize teach-then-test pairs
       // Group teach-then-test pairs together to preserve them during interleaving
       const teachTestPairs: DeliveryCandidate[][] = [];
       const standaloneItems: DeliveryCandidate[] = [];
-      
+
       for (let i = 0; i < teachThenTestSequence.length; i++) {
         const item = teachThenTestSequence[i];
         if (item.kind === 'teaching' && i + 1 < teachThenTestSequence.length) {
           const nextItem = teachThenTestSequence[i + 1];
-          if (nextItem.kind === 'question' && nextItem.teachingId === item.teachingId) {
+          if (
+            nextItem.kind === 'question' &&
+            nextItem.teachingId === item.teachingId
+          ) {
             // Found a teach-then-test pair
             teachTestPairs.push([item, nextItem]);
             i++; // Skip the question as it's already in the pair
@@ -179,7 +192,7 @@ export class SessionPlanService {
         }
         standaloneItems.push(item);
       }
-      
+
       // Interleave the pairs and standalone items, but keep pairs together
       // For now, just use the teach-then-test sequence directly to ensure pairs stay together
       // We'll apply light interleaving only to reviews
@@ -191,7 +204,10 @@ export class SessionPlanService {
           consecutiveErrors: 0,
         });
         // Interleave reviews with teach-then-test pairs, but keep pairs intact
-        finalCandidates = this.interleaveWithPairs(interleavedReviews, teachThenTestSequence);
+        finalCandidates = this.interleaveWithPairs(
+          interleavedReviews,
+          teachThenTestSequence,
+        );
       } else {
         finalCandidates = teachThenTestSequence;
       }
@@ -240,7 +256,11 @@ export class SessionPlanService {
         }
       } else if (candidate.kind === 'question') {
         const question = await this.getQuestionData(candidate.id);
-        if (question && candidate.deliveryMethods && candidate.deliveryMethods.length > 0) {
+        if (
+          question &&
+          candidate.deliveryMethods &&
+          candidate.deliveryMethods.length > 0
+        ) {
           // Select delivery method
           const selectedMethod = selectModality(
             candidate,
@@ -265,7 +285,11 @@ export class SessionPlanService {
               candidate.lessonId || '',
             );
 
-            const estimatedTime = estimateTime(candidate, userTimeAverages, selectedMethod);
+            const estimatedTime = estimateTime(
+              candidate,
+              userTimeAverages,
+              selectedMethod,
+            );
 
             steps.push({
               stepNumber: stepNumber++,
@@ -281,7 +305,10 @@ export class SessionPlanService {
     }
 
     // 9. Add recap step
-    const totalEstimatedTime = steps.reduce((sum, step) => sum + step.estimatedTimeSec, 0);
+    const totalEstimatedTime = steps.reduce(
+      (sum, step) => sum + step.estimatedTimeSec,
+      0,
+    );
     const potentialXp = steps.filter((s) => s.type === 'practice').length * 15; // ~15 XP per practice
 
     const recapItem: RecapStepItem = {
@@ -314,14 +341,23 @@ export class SessionPlanService {
       dueReviewsIncluded: reviewCandidates.length,
       newItemsIncluded: newCandidates.length,
       topicsCovered: Array.from(
-        new Set(finalCandidates.map((c) => c.teachingId || c.lessonId || '').filter(Boolean)),
+        new Set(
+          finalCandidates
+            .map((c) => c.teachingId || c.lessonId || '')
+            .filter(Boolean),
+        ),
       ),
       deliveryMethodsUsed: Array.from(new Set(recentMethods)),
     };
 
     return {
       id: sessionId,
-      kind: context.mode === 'review' ? 'review' : context.mode === 'learn' ? 'learn' : 'mixed',
+      kind:
+        context.mode === 'review'
+          ? 'review'
+          : context.mode === 'learn'
+            ? 'learn'
+            : 'mixed',
       lessonId: context.lessonId,
       title: this.buildTitle(context),
       steps,
@@ -384,7 +420,8 @@ export class SessionPlanService {
 
     const avgPracticeTime =
       allPracticeTimes.length > 0
-        ? allPracticeTimes.reduce((sum, t) => sum + t, 0) / allPracticeTimes.length
+        ? allPracticeTimes.reduce((sum, t) => sum + t, 0) /
+          allPracticeTimes.length
         : 60;
 
     // Use defaults if no data, otherwise merge with defaults
@@ -392,7 +429,8 @@ export class SessionPlanService {
     return {
       avgTimePerTeachSec: defaults.avgTimePerTeachSec,
       avgTimePerPracticeSec: avgPracticeTime || defaults.avgTimePerPracticeSec,
-      avgTimeByDeliveryMethod: avgByMethod.size > 0 ? avgByMethod : defaults.avgTimeByDeliveryMethod,
+      avgTimeByDeliveryMethod:
+        avgByMethod.size > 0 ? avgByMethod : defaults.avgTimeByDeliveryMethod,
       avgTimeByQuestionType: defaults.avgTimeByQuestionType,
     };
   }
@@ -466,7 +504,7 @@ export class SessionPlanService {
       throw error; // Re-throw if it's a different error
     }
 
-    const questionIdMap = new Map<string, typeof allDuePerformances[0]>();
+    const questionIdMap = new Map<string, (typeof allDuePerformances)[0]>();
     for (const perf of allDuePerformances) {
       const existing = questionIdMap.get(perf.questionId);
       if (!existing || perf.createdAt > existing.createdAt) {
@@ -504,32 +542,37 @@ export class SessionPlanService {
       if (question) {
         const availableMethods: DELIVERY_METHOD[] =
           question.variants?.map((v) => v.deliveryMethod) ?? [];
-        const recentAttempts = await this.prisma.userQuestionPerformance.findMany({
-          where: {
-            userId,
-            questionId: perf.questionId,
-          },
-          orderBy: { createdAt: 'desc' },
-          take: 5,
-        });
+        const recentAttempts =
+          await this.prisma.userQuestionPerformance.findMany({
+            where: {
+              userId,
+              questionId: perf.questionId,
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 5,
+          });
 
         const errorScore = recentAttempts.filter((a) => a.score < 80).length;
-        const lastSeen = recentAttempts[0]?.createdAt || perf.nextReviewDue || now;
+        const lastSeen =
+          recentAttempts[0]?.createdAt || perf.nextReviewDue || now;
         const timeSinceLastSeen = Date.now() - lastSeen.getTime();
         const overdueMs = now.getTime() - (perf.nextReviewDue || now).getTime();
         const dueScore = Math.max(0, overdueMs / (1000 * 60 * 60));
 
         // Calculate estimated mastery from recent performance
         const recentScores = recentAttempts.map((a) => a.score);
-        const avgScore = recentScores.length > 0
-          ? recentScores.reduce((sum, s) => sum + s, 0) / recentScores.length
-          : 50;
+        const avgScore =
+          recentScores.length > 0
+            ? recentScores.reduce((sum, s) => sum + s, 0) / recentScores.length
+            : 50;
         const estimatedMastery = avgScore / 100; // Convert 0-100 to 0-1
 
         // Extract skill tags from both question and teaching, deduplicate
         const questionTags = this.extractSkillTags(question);
         const teachingTags = this.extractSkillTags(question.teaching);
-        const skillTags = Array.from(new Set([...questionTags, ...teachingTags]));
+        const skillTags = Array.from(
+          new Set([...questionTags, ...teachingTags]),
+        );
 
         // Determine exercise type from delivery method and teaching content
         const exerciseType = this.determineExerciseType(
@@ -547,7 +590,8 @@ export class SessionPlanService {
           C1: 0.85,
           C2: 1.0,
         };
-        const baseDifficulty = knowledgeLevelDifficulty[question.teaching.knowledgeLevel] || 0.5;
+        const baseDifficulty =
+          knowledgeLevelDifficulty[question.teaching.knowledgeLevel] || 0.5;
         // Adjust based on user's mastery (lower mastery = higher effective difficulty)
         const difficulty = baseDifficulty * (1 - estimatedMastery * 0.3); // Cap adjustment at 30%
 
@@ -575,7 +619,7 @@ export class SessionPlanService {
   /**
    * Get new candidates (not yet seen).
    * Prioritizes candidates with skills that have low mastery (< 0.5).
-   * 
+   *
    * @param userId User ID
    * @param lessonId Optional lesson ID to filter candidates
    * @param prioritizedSkills Array of skill tags to prioritize (low mastery skills)
@@ -621,11 +665,12 @@ export class SessionPlanService {
       },
     });
 
-    const attemptedQuestionIds = await this.prisma.userQuestionPerformance.findMany({
-      where: { userId },
-      select: { questionId: true },
-      distinct: ['questionId'],
-    });
+    const attemptedQuestionIds =
+      await this.prisma.userQuestionPerformance.findMany({
+        where: { userId },
+        select: { questionId: true },
+        distinct: ['questionId'],
+      });
     const attemptedSet = new Set(attemptedQuestionIds.map((a) => a.questionId));
 
     for (const question of allQuestions) {
@@ -636,7 +681,9 @@ export class SessionPlanService {
         // Extract skill tags from both question and teaching, deduplicate
         const questionTags = this.extractSkillTags(question);
         const teachingTags = this.extractSkillTags(question.teaching);
-        const skillTags = Array.from(new Set([...questionTags, ...teachingTags]));
+        const skillTags = Array.from(
+          new Set([...questionTags, ...teachingTags]),
+        );
 
         const availableMethods: DELIVERY_METHOD[] =
           question.variants?.map((v) => v.deliveryMethod) ?? [];
@@ -656,7 +703,8 @@ export class SessionPlanService {
           C1: 0.85,
           C2: 1.0,
         };
-        const difficulty = knowledgeLevelDifficulty[question.teaching.knowledgeLevel] || 0.5;
+        const difficulty =
+          knowledgeLevelDifficulty[question.teaching.knowledgeLevel] || 0.5;
 
         candidates.push({
           kind: 'question',
@@ -686,9 +734,11 @@ export class SessionPlanService {
   private extractSkillTags(item: any): string[] {
     // Extract skill tags from the skillTags relation if it's loaded
     if (item.skillTags && Array.isArray(item.skillTags)) {
-      return item.skillTags.map((tag: any) => tag.name).filter((name: string) => name);
+      return item.skillTags
+        .map((tag: any) => tag.name)
+        .filter((name: string) => name);
     }
-    
+
     // If skillTags is not loaded, return empty array
     // The caller should ensure skillTags are included in Prisma queries
     return [];
@@ -702,8 +752,10 @@ export class SessionPlanService {
     teaching: any,
   ): string {
     // Check delivery methods first
-    if (deliveryMethods.includes(DELIVERY_METHOD.SPEECH_TO_TEXT) ||
-        deliveryMethods.includes(DELIVERY_METHOD.TEXT_TO_SPEECH)) {
+    if (
+      deliveryMethods.includes(DELIVERY_METHOD.SPEECH_TO_TEXT) ||
+      deliveryMethods.includes(DELIVERY_METHOD.TEXT_TO_SPEECH)
+    ) {
       return 'speaking';
     }
     if (deliveryMethods.includes(DELIVERY_METHOD.TEXT_TRANSLATION)) {
@@ -750,7 +802,9 @@ export class SessionPlanService {
     moduleId?: string,
   ): Promise<DeliveryCandidate[]> {
     const teachingIds = new Set(
-      questionCandidates.map((c) => c.teachingId).filter((id): id is string => !!id),
+      questionCandidates
+        .map((c) => c.teachingId)
+        .filter((id): id is string => !!id),
     );
 
     if (teachingIds.size === 0) {
@@ -864,17 +918,26 @@ export class SessionPlanService {
 
     // Load question-specific data from Teaching relationship
     try {
-      const questionData = await this.contentLookup.getQuestionData(question.id, lessonId, deliveryMethod);
+      const questionData = await this.contentLookup.getQuestionData(
+        question.id,
+        lessonId,
+        deliveryMethod,
+      );
       if (!questionData) {
-        console.error(`Failed to get question data for question ${question.id}. Question may be missing teaching relationship.`, {
-          questionId: question.id,
-          teachingId: question.teachingId,
-          lessonId,
-          deliveryMethod,
-        });
+        console.error(
+          `Failed to get question data for question ${question.id}. Question may be missing teaching relationship.`,
+          {
+            questionId: question.id,
+            teachingId: question.teachingId,
+            lessonId,
+            deliveryMethod,
+          },
+        );
         // For MULTIPLE_CHOICE, we cannot proceed without question data
         if (deliveryMethod === DELIVERY_METHOD.MULTIPLE_CHOICE) {
-          console.error(`MULTIPLE_CHOICE question ${question.id} cannot proceed without question data. Frontend will show placeholder options.`);
+          console.error(
+            `MULTIPLE_CHOICE question ${question.id} cannot proceed without question data. Frontend will show placeholder options.`,
+          );
         }
       } else {
         // Override prompt if available
@@ -885,7 +948,11 @@ export class SessionPlanService {
         // Populate delivery method specific fields
         if (deliveryMethod === DELIVERY_METHOD.MULTIPLE_CHOICE) {
           // Only set options if they exist and are valid
-          if (questionData.options && Array.isArray(questionData.options) && questionData.options.length > 0) {
+          if (
+            questionData.options &&
+            Array.isArray(questionData.options) &&
+            questionData.options.length > 0
+          ) {
             baseItem.options = questionData.options;
           }
           if (questionData.correctOptionId) {
@@ -894,17 +961,20 @@ export class SessionPlanService {
           if (questionData.sourceText) {
             baseItem.sourceText = questionData.sourceText; // For translation MCQ
           }
-          
+
           // Validate that we have required fields for MCQ
           if (!baseItem.options || !baseItem.correctOptionId) {
-            console.error(`MULTIPLE_CHOICE question ${question.id} missing required data:`, {
-              hasOptions: !!baseItem.options,
-              optionsLength: baseItem.options?.length,
-              hasCorrectOptionId: !!baseItem.correctOptionId,
-              questionDataKeys: Object.keys(questionData),
-              questionDataOptions: questionData.options,
-              questionDataCorrectOptionId: questionData.correctOptionId,
-            });
+            console.error(
+              `MULTIPLE_CHOICE question ${question.id} missing required data:`,
+              {
+                hasOptions: !!baseItem.options,
+                optionsLength: baseItem.options?.length,
+                hasCorrectOptionId: !!baseItem.correctOptionId,
+                questionDataKeys: Object.keys(questionData),
+                questionDataOptions: questionData.options,
+                questionDataCorrectOptionId: questionData.correctOptionId,
+              },
+            );
           }
         } else if (deliveryMethod === DELIVERY_METHOD.FILL_BLANK) {
           baseItem.text = questionData.text;
@@ -929,7 +999,10 @@ export class SessionPlanService {
         ) {
           baseItem.answer = questionData.answer;
           // For TEXT_TO_SPEECH, include translation for UI display
-          if (deliveryMethod === DELIVERY_METHOD.TEXT_TO_SPEECH && question.teaching) {
+          if (
+            deliveryMethod === DELIVERY_METHOD.TEXT_TO_SPEECH &&
+            question.teaching
+          ) {
             baseItem.translation = question.teaching.userLanguageString;
           }
         }
@@ -943,23 +1016,28 @@ export class SessionPlanService {
       }
       // For MULTIPLE_CHOICE, if options generation fails, log it specifically
       if (deliveryMethod === DELIVERY_METHOD.MULTIPLE_CHOICE) {
-        console.error(`MULTIPLE_CHOICE question ${question.id} failed to generate options. Teaching ID: ${question.teachingId}, Lesson ID: ${lessonId}`);
+        console.error(
+          `MULTIPLE_CHOICE question ${question.id} failed to generate options. Teaching ID: ${question.teachingId}, Lesson ID: ${lessonId}`,
+        );
         // For MCQ, we cannot proceed without options - this will cause the frontend to show placeholders
         // The error is logged above, and the baseItem will be returned without options
         // The frontend transformer will detect this and create fallback options
       }
     }
-    
+
     // Final validation for MULTIPLE_CHOICE - ensure we have required fields
     if (deliveryMethod === DELIVERY_METHOD.MULTIPLE_CHOICE) {
       if (!baseItem.options || !baseItem.correctOptionId) {
-        console.error(`MULTIPLE_CHOICE question ${question.id} final validation failed - missing options or correctOptionId. This will cause frontend to show placeholder options.`, {
-          hasOptions: !!baseItem.options,
-          optionsLength: baseItem.options?.length,
-          hasCorrectOptionId: !!baseItem.correctOptionId,
-          teachingId: question.teachingId,
-          lessonId,
-        });
+        console.error(
+          `MULTIPLE_CHOICE question ${question.id} final validation failed - missing options or correctOptionId. This will cause frontend to show placeholder options.`,
+          {
+            hasOptions: !!baseItem.options,
+            optionsLength: baseItem.options?.length,
+            hasCorrectOptionId: !!baseItem.correctOptionId,
+            teachingId: question.teachingId,
+            lessonId,
+          },
+        );
       }
     }
 
@@ -968,15 +1046,15 @@ export class SessionPlanService {
 
   /**
    * Get seen teaching IDs for user.
-   * 
+   *
    * Queries the UserTeachingCompleted table to get all teachings the user has already completed.
    * This is used to filter out teachings from session plans, ensuring users don't see content
    * they've already learned.
-   * 
+   *
    * Note: This returns ALL seen teachings across all lessons (not lesson-specific).
    * This is intentional - we want to prevent re-showing content the user has already learned,
    * even if it appears in a different lesson context.
-   * 
+   *
    * @param userId User ID
    * @returns Set of teaching IDs that have been completed by the user
    */
@@ -998,15 +1076,18 @@ export class SessionPlanService {
   ): DeliveryCandidate[] {
     const result: DeliveryCandidate[] = [];
     let reviewIndex = 0;
-    let teachTestIndex = 0;
-    
+    const teachTestIndex = 0;
+
     // Group teach-test sequence into pairs
     const pairs: DeliveryCandidate[][] = [];
     for (let i = 0; i < teachTestSequence.length; i++) {
       const item = teachTestSequence[i];
       if (item.kind === 'teaching' && i + 1 < teachTestSequence.length) {
         const nextItem = teachTestSequence[i + 1];
-        if (nextItem.kind === 'question' && nextItem.teachingId === item.teachingId) {
+        if (
+          nextItem.kind === 'question' &&
+          nextItem.teachingId === item.teachingId
+        ) {
           pairs.push([item, nextItem]);
           i++; // Skip next item as it's in the pair
           continue;
@@ -1015,7 +1096,7 @@ export class SessionPlanService {
       // Standalone item (shouldn't happen in learn mode, but handle it)
       pairs.push([item]);
     }
-    
+
     // Interleave: add a pair, then a review, then a pair, etc.
     let pairIndex = 0;
     while (pairIndex < pairs.length || reviewIndex < reviews.length) {
@@ -1030,7 +1111,7 @@ export class SessionPlanService {
         reviewIndex++;
       }
     }
-    
+
     return result;
   }
 
@@ -1056,7 +1137,11 @@ export class SessionPlanService {
     stepSkillTags: string[] | undefined,
     prioritizedSkills: string[] = [],
   ): string | undefined {
-    if (!stepSkillTags || stepSkillTags.length === 0 || prioritizedSkills.length === 0) {
+    if (
+      !stepSkillTags ||
+      stepSkillTags.length === 0 ||
+      prioritizedSkills.length === 0
+    ) {
       return undefined;
     }
 
@@ -1074,7 +1159,10 @@ export class SessionPlanService {
     }
 
     // Targeting low mastery skills (if skill tags are present)
-    const prioritizedTag = this.pickPrioritizedSkill(candidate.skillTags, prioritizedSkills);
+    const prioritizedTag = this.pickPrioritizedSkill(
+      candidate.skillTags,
+      prioritizedSkills,
+    );
     if (prioritizedTag) {
       return `Targets low mastery skill: ${prioritizedTag}`;
     }
@@ -1085,7 +1173,10 @@ export class SessionPlanService {
     }
 
     // Scaffolding: easy win
-    if (typeof candidate.difficulty === 'number' && candidate.difficulty <= 0.2) {
+    if (
+      typeof candidate.difficulty === 'number' &&
+      candidate.difficulty <= 0.2
+    ) {
       return 'Scaffolding: quick win';
     }
 

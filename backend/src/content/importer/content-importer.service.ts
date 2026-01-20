@@ -42,7 +42,9 @@ export class ContentImporterService {
   /**
    * Import all content from a directory
    */
-  async importContent(contentDir: string = join(process.cwd(), 'content')): Promise<ImportStats> {
+  async importContent(
+    contentDir: string = join(process.cwd(), 'content'),
+  ): Promise<ImportStats> {
     const stats: ImportStats = {
       modulesCreated: 0,
       modulesUpdated: 0,
@@ -66,7 +68,10 @@ export class ContentImporterService {
         try {
           const moduleContent = validateModuleFile(modulePath);
           const { created } = await this.importModule(moduleContent);
-          moduleMap.set(moduleContent.slug, moduleIdFromSlug(moduleContent.slug));
+          moduleMap.set(
+            moduleContent.slug,
+            moduleIdFromSlug(moduleContent.slug),
+          );
           if (created) {
             stats.modulesCreated++;
           } else {
@@ -83,11 +88,12 @@ export class ContentImporterService {
       for (const lessonPath of lessons) {
         try {
           const lessonContent = validateLessonFile(lessonPath);
-          
+
           // Determine module slug from directory structure
           // Expected: content/{lang}/{module-slug}/lessons/{lesson}.yaml
           const pathParts = lessonPath.split('/');
-          const moduleSlugIndex = pathParts.findIndex((p) => p === 'lessons') - 1;
+          const moduleSlugIndex =
+            pathParts.findIndex((p) => p === 'lessons') - 1;
           if (moduleSlugIndex < 0) {
             throw new Error('Could not determine module from lesson path');
           }
@@ -95,37 +101,39 @@ export class ContentImporterService {
 
           const moduleId = moduleMap.get(moduleSlug);
           if (!moduleId) {
-            throw new Error(`Module '${moduleSlug}' not found. Import modules first.`);
+            throw new Error(
+              `Module '${moduleSlug}' not found. Import modules first.`,
+            );
           }
 
-          const { id: lessonId, created: lessonCreated } = await this.importLesson(lessonContent, moduleId);
+          const { id: lessonId, created: lessonCreated } =
+            await this.importLesson(lessonContent, moduleId);
           if (lessonCreated) {
             stats.lessonsCreated++;
           } else {
             stats.lessonsUpdated++;
           }
-          
+
           // Import teachings
           for (const teaching of lessonContent.teachings) {
-            const { id: teachingId, created: teachingCreated } = await this.importTeaching(teaching, lessonId);
+            const { id: teachingId, created: teachingCreated } =
+              await this.importTeaching(teaching, lessonId);
             if (teachingCreated) {
               stats.teachingsCreated++;
             } else {
               stats.teachingsUpdated++;
             }
-            
+
             // Import questions for this teaching
             // With new schema: create one question per delivery method type
             const teachingQuestions = lessonContent.questions.filter(
               (q) => q.teachingSlug === teaching.slug,
             );
-            
+
             for (const question of teachingQuestions) {
               // Create one conceptual Question, then one QuestionVariant per delivery method
-              const { id: questionId, created: questionCreated } = await this.importQuestion(
-                question,
-                teachingId,
-              );
+              const { id: questionId, created: questionCreated } =
+                await this.importQuestion(question, teachingId);
               if (questionCreated) {
                 stats.questionsCreated++;
               } else {
@@ -160,7 +168,9 @@ export class ContentImporterService {
   /**
    * Import a module
    */
-  private async importModule(module: ModuleContent): Promise<{ id: string; created: boolean }> {
+  private async importModule(
+    module: ModuleContent,
+  ): Promise<{ id: string; created: boolean }> {
     const id = moduleIdFromSlug(module.slug);
 
     // Check if exists
@@ -188,7 +198,10 @@ export class ContentImporterService {
   /**
    * Import a lesson
    */
-  private async importLesson(lesson: LessonContent, moduleId: string): Promise<{ id: string; created: boolean }> {
+  private async importLesson(
+    lesson: LessonContent,
+    moduleId: string,
+  ): Promise<{ id: string; created: boolean }> {
     const id = lessonIdFromSlug(lesson.slug);
 
     const existing = await this.prisma.lesson.findUnique({ where: { id } });
@@ -329,7 +342,9 @@ export class ContentImporterService {
   /**
    * Validate content files without importing
    */
-  async validateContent(contentDir: string = join(process.cwd(), 'content')): Promise<{
+  async validateContent(
+    contentDir: string = join(process.cwd(), 'content'),
+  ): Promise<{
     valid: boolean;
     errors: ValidationError[];
   }> {

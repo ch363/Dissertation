@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, TextInput, View, Animated, ActivityIndicat
 import { Audio } from 'expo-av';
 import Constants from 'expo-constants';
 
+import { Button } from '@/components/ui/Button';
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { theme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
@@ -48,6 +49,7 @@ type Props = {
   showResult?: boolean;
   isCorrect?: boolean;
   onCheckAnswer?: (audioUri?: string) => void;
+  onContinue?: () => void;
   pronunciationResult?: PronunciationResult | null;
 };
 
@@ -58,6 +60,7 @@ export function ListeningCard({
   showResult = false,
   isCorrect,
   onCheckAnswer,
+  onContinue,
   pronunciationResult,
 }: Props) {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -221,15 +224,15 @@ export function ListeningCard({
       // This is critical to avoid the "background" error
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Create a new recording optimized for Google Cloud Speech API
-      // Use WAV format (LINEAR16) with 16kHz sample rate for best compatibility
+      // Create a new recording optimized for speech recognition.
+      // Use WAV/PCM with 16kHz sample rate for best compatibility.
       const { recording } = await Audio.Recording.createAsync(
         {
           android: {
             extension: '.wav',
             outputFormat: Audio.AndroidOutputFormat.DEFAULT, // WAV format
             audioEncoder: Audio.AndroidAudioEncoder.DEFAULT,
-            sampleRate: 16000, // Google Cloud Speech API recommended sample rate
+            sampleRate: 16000, // common speech recognition sample rate
             numberOfChannels: 1, // Mono for speech recognition
             bitRate: 128000,
           },
@@ -237,7 +240,7 @@ export function ListeningCard({
             extension: '.wav',
             outputFormat: Audio.IOSOutputFormat.LINEARPCM, // WAV/PCM format
             audioQuality: Audio.IOSAudioQuality.MIN, // Lower quality is fine for speech
-            sampleRate: 16000, // Google Cloud Speech API recommended sample rate
+            sampleRate: 16000, // common speech recognition sample rate
             numberOfChannels: 1, // Mono for speech recognition
             bitRate: 128000,
             linearPCMBitDepth: 16,
@@ -525,31 +528,21 @@ export function ListeningCard({
                     </Text>
                   </Pressable>
                 </View>
-                <Pressable
-                  style={styles.continueButton}
-                  onPress={() => {
-                    if (recordedAudioUri && onCheckAnswer) {
-                      setIsProcessing(true);
-                      onCheckAnswer(recordedAudioUri);
-                    }
-                  }}
-                >
-                  <Text style={styles.continueButtonText}>
-                    Continue
-                  </Text>
-                </Pressable>
               </>
             )}
-            {!hasRecorded && (
-              <Pressable
-                style={[styles.continueButton, styles.continueButtonDisabled]}
-                disabled={true}
-              >
-                <Text style={[styles.continueButtonText, styles.continueButtonTextDisabled]}>
-                  Record to continue
-                </Text>
-              </Pressable>
-            )}
+
+            <Button
+              title={hasRecorded ? 'Continue' : 'Record to continue'}
+              variant="secondary"
+              disabled={!hasRecorded || isProcessing}
+              onPress={() => {
+                if (!hasRecorded || isProcessing) return;
+                if (!recordedAudioUri || !onCheckAnswer) return;
+                setIsProcessing(true);
+                onCheckAnswer(recordedAudioUri);
+              }}
+              style={styles.ctaButton}
+            />
           </>
         ) : (
           // Result Screen (P23)
@@ -613,6 +606,14 @@ export function ListeningCard({
                 </View>
               </>
             )}
+
+            <Button
+              title="Continue"
+              variant="secondary"
+              disabled={!onContinue}
+              onPress={() => onContinue?.()}
+              style={styles.ctaButton}
+            />
           </>
         )}
       </View>
@@ -713,7 +714,7 @@ const styles = StyleSheet.create({
   instruction: {
     fontFamily: theme.typography.bold,
     fontSize: 14,
-    color: '#28a745',
+    color: theme.colors.secondary,
     textTransform: 'uppercase',
     letterSpacing: 1,
     alignSelf: 'flex-start',
@@ -813,24 +814,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 2,
   },
-  continueButton: {
-    backgroundColor: '#E0E0E0',
-    padding: theme.spacing.md,
-    borderRadius: 12,
-    alignItems: 'center',
+  ctaButton: {
     marginTop: theme.spacing.md,
-  },
-  continueButtonDisabled: {
-    backgroundColor: '#F5F5F5',
-    opacity: 0.6,
-  },
-  continueButtonText: {
-    color: theme.colors.text,
-    fontFamily: theme.typography.semiBold,
-    fontSize: 16,
-  },
-  continueButtonTextDisabled: {
-    color: theme.colors.mutedText,
+    borderRadius: theme.radius.lg,
   },
   audioCard: {
     alignItems: 'center',
@@ -899,7 +885,7 @@ const styles = StyleSheet.create({
   score: {
     fontFamily: theme.typography.bold,
     fontSize: 40,
-    color: '#28a745',
+    color: theme.colors.secondary,
   },
   scoreLabel: {
     fontFamily: theme.typography.regular,
@@ -938,7 +924,7 @@ const styles = StyleSheet.create({
   wordFeedback: {
     fontFamily: theme.typography.regular,
     fontSize: 14,
-    color: '#28a745',
+    color: theme.colors.success,
   },
   wordFeedbackOrange: {
     color: '#ff9800',

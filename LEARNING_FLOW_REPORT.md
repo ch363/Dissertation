@@ -391,7 +391,7 @@ Validates pronunciation from audio and returns both an overall score and word-le
   - `ProgressController` → `/progress/questions/:questionId/pronunciation`
 - Logic:
   - `ProgressService.validatePronunciation()` (`backend/src/progress/progress.service.ts`)
-- Uses Google Cloud Speech-to-Text pronunciation assessment.
+- Uses Azure Speech Pronunciation Assessment.
 
 **Dynamic effect**: speaking performance becomes first-class input to progress and scheduling.
 

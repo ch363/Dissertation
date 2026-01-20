@@ -41,4 +41,3 @@ export function correctToGrade(correct: boolean, timeMs?: number): number {
 
   return 3;
 }
-

@@ -1,6 +1,6 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { EnhancedThrottlerGuard } from './common/guards/enhanced-throttler.guard';
 import { AppController } from './app.controller';
@@ -20,6 +20,7 @@ import { EngineModule } from './engine/engine.module';
 import { SearchModule } from './search/search.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { ContentModule } from './content/content.module';
+import { SpeechModule } from './speech/speech.module';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
 import { envValidationSchema } from './config/env.validation';
 import configuration from './config/configuration';
@@ -29,11 +30,12 @@ import configuration from './config/configuration';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: process.env.NODE_ENV === 'test' ? undefined : '.env', // Skip .env file in tests
-      validationSchema: process.env.NODE_ENV === 'test' ? undefined : envValidationSchema, // Skip validation in tests
+      validationSchema:
+        process.env.NODE_ENV === 'test' ? undefined : envValidationSchema, // Skip validation in tests
       load: [configuration],
     }),
     // Rate Limiting Configuration
-    // ThrottlerGuard is applied globally via APP_GUARD below
+    // Applied globally via APP_GUARD below
     // Rate limit headers (X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset) are automatically added
     // Default: 100 requests/minute in production, 1000 requests/minute in development
     // Configure via THROTTLE_TTL and THROTTLE_LIMIT environment variables
@@ -67,6 +69,7 @@ import configuration from './config/configuration';
     SearchModule,
     OnboardingModule,
     ContentModule,
+    SpeechModule,
   ],
   controllers: [AppController],
   providers: [
@@ -86,8 +89,6 @@ import configuration from './config/configuration';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(RequestLoggerMiddleware)
-      .forRoutes('*');
+    consumer.apply(RequestLoggerMiddleware).forRoutes('*');
   }
 }

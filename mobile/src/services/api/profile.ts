@@ -133,8 +133,14 @@ export async function ensureProfileSeed(name?: string): Promise<Profile> {
 /**
  * Get user dashboard statistics
  */
-export async function getDashboard(): Promise<DashboardData> {
-  return apiClient.get<DashboardData>('/me/dashboard');
+export async function getDashboard(options?: { tzOffsetMinutes?: number }): Promise<DashboardData> {
+  const tzOffsetMinutes = options?.tzOffsetMinutes ?? new Date().getTimezoneOffset();
+  const params = new URLSearchParams();
+  if (Number.isFinite(tzOffsetMinutes)) {
+    params.append('tzOffsetMinutes', String(tzOffsetMinutes));
+  }
+  const query = params.toString();
+  return apiClient.get<DashboardData>(`/me/dashboard${query ? `?${query}` : ''}`);
 }
 
 /**

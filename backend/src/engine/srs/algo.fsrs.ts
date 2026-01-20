@@ -31,16 +31,16 @@ export interface FsrsResult {
 }
 
 export interface FsrsParameters {
-  w0: number;  // Initial stability for grade 1
-  w1: number;  // Initial stability multiplier
-  w2: number;  // Initial difficulty for grade 4
-  w3: number;  // Initial difficulty multiplier
-  w4: number;  // Difficulty adjustment factor
-  w5: number;  // Mean reversion factor
-  w6: number;  // Stability increase factor (success)
-  w7: number;  // Difficulty exponent (success)
-  w8: number;  // Stability exponent (success)
-  w9: number;  // Retrievability factor (success)
+  w0: number; // Initial stability for grade 1
+  w1: number; // Initial stability multiplier
+  w2: number; // Initial difficulty for grade 4
+  w3: number; // Initial difficulty multiplier
+  w4: number; // Difficulty adjustment factor
+  w5: number; // Mean reversion factor
+  w6: number; // Stability increase factor (success)
+  w7: number; // Difficulty exponent (success)
+  w8: number; // Stability exponent (success)
+  w9: number; // Retrievability factor (success)
   w10: number; // Stability base (failure)
   w11: number; // Difficulty exponent (failure)
   w12: number; // Stability exponent (failure)
@@ -77,7 +77,7 @@ export const DEFAULT_FSRS_PARAMETERS: FsrsParameters = {
 /**
  * Calculate initial stability after first review
  * S₀(G) = w₀ · (w₁ · (G - 1) + 1)
- * 
+ *
  * @param grade Review grade (0-5)
  * @param params FSRS parameters
  * @returns Initial stability
@@ -98,7 +98,7 @@ export function calculateInitialStability(
 /**
  * Calculate initial difficulty after first review
  * D₀(G) = w₂ · (w₃ · (G - 4) + 1)
- * 
+ *
  * @param grade Review grade (0-5)
  * @param params FSRS parameters
  * @returns Initial difficulty
@@ -119,7 +119,7 @@ export function calculateInitialDifficulty(
 /**
  * Calculate retrievability (probability of recall)
  * R = exp(-t/S)
- * 
+ *
  * @param elapsedDays Days elapsed since last review
  * @param stability Current stability
  * @returns Retrievability (0-1)
@@ -136,7 +136,7 @@ export function calculateRetrievability(
 /**
  * Update difficulty after a review
  * D' = w₅ · D₀(3) + (1 - w₅) · (D + w₄ · (G - 3))
- * 
+ *
  * @param currentDifficulty Current difficulty
  * @param grade Review grade (0-5)
  * @param params FSRS parameters
@@ -150,7 +150,8 @@ export function updateDifficulty(
   const clampedGrade = Math.max(0, Math.min(5, Math.round(grade)));
   const d0 = calculateInitialDifficulty(3, params); // D₀(3) - mean difficulty
   const meanReversion = params.w5 * d0;
-  const adjustment = (1 - params.w5) * (currentDifficulty + params.w4 * (clampedGrade - 3));
+  const adjustment =
+    (1 - params.w5) * (currentDifficulty + params.w4 * (clampedGrade - 3));
   const newDifficulty = meanReversion + adjustment;
   // Clamp difficulty to valid range (0.1 to 10.0) to prevent invalid calculations
   return Math.max(0.1, Math.min(10.0, newDifficulty));
@@ -159,7 +160,7 @@ export function updateDifficulty(
 /**
  * Update stability after a successful review
  * S'ₛ = S · (1 + e^w₆ · (D')^w₇ · S^w₈ · (e^((1-R)·w₉) - 1))
- * 
+ *
  * @param currentStability Current stability
  * @param updatedDifficulty Updated difficulty
  * @param retrievability Current retrievability
@@ -187,15 +188,15 @@ export function updateStabilitySuccess(
   const dPowW7 = Math.pow(updatedDifficulty, params.w7);
   const sPowW8 = Math.pow(currentStability, params.w8);
   const expTerm = Math.exp((1 - retrievability) * params.w9) - 1;
-  
+
   const multiplier = 1 + expW6 * dPowW7 * sPowW8 * expTerm;
   const newStability = currentStability * multiplier;
-  
+
   // Ensure stability is valid and within reasonable bounds
   if (!isFinite(newStability) || newStability <= 0) {
     return Math.max(0.1, currentStability * 1.1); // Fallback: small increase
   }
-  
+
   // Clamp to reasonable maximum (365 days)
   return Math.min(365, Math.max(0.1, newStability));
 }
@@ -203,7 +204,7 @@ export function updateStabilitySuccess(
 /**
  * Update stability after a failed review
  * S'ₓ = w₁₀ · (D')^w₁₁ · S^w₁₂ · (e^((1-R)·w₁₃) - 1)
- * 
+ *
  * @param currentStability Current stability
  * @param updatedDifficulty Updated difficulty
  * @param retrievability Current retrievability
@@ -230,14 +231,14 @@ export function updateStabilityFailure(
   const dPowW11 = Math.pow(updatedDifficulty, params.w11);
   const sPowW12 = Math.pow(currentStability, params.w12);
   const expTerm = Math.exp((1 - retrievability) * params.w13) - 1;
-  
+
   const newStability = params.w10 * dPowW11 * sPowW12 * expTerm;
-  
+
   // Ensure stability is valid and within reasonable bounds
   if (!isFinite(newStability) || newStability <= 0) {
     return 0.1; // Fallback: minimum stability
   }
-  
+
   // Clamp to reasonable maximum (365 days)
   return Math.min(365, Math.max(0.1, newStability));
 }
@@ -245,8 +246,10 @@ export function updateStabilityFailure(
 /**
  * Calculate next review interval for target retention
  * R = 0.9 = exp(-interval/S)
- * interval = -S · ln(0.9) ≈ S · 0.1054
- * 
+ * intervalDays = -S · ln(R)
+ *
+ * Note: this returns a fractional number of days (supports intra-day scheduling).
+ *
  * @param stability Current stability
  * @param targetRetention Target retention rate (default 0.9)
  * @returns Interval in days
@@ -259,14 +262,18 @@ export function calculateNextInterval(
   if (targetRetention <= 0 || targetRetention >= 1) {
     throw new Error('Target retention must be between 0 and 1');
   }
-  // interval = -S · ln(R)
-  const interval = -stability * Math.log(targetRetention);
-  return Math.max(1, Math.round(interval));
+  // intervalDays = -S · ln(R)
+  const intervalDays = -stability * Math.log(targetRetention);
+  // Guardrail: avoid pathological 0/near-0 intervals causing immediate loops.
+  // 5 minutes in days.
+  const minIntervalDays = 5 / (24 * 60);
+  if (!isFinite(intervalDays) || intervalDays <= 0) return 1;
+  return Math.max(minIntervalDays, intervalDays);
 }
 
 /**
  * Calculate FSRS state after a review
- * 
+ *
  * @param currentState Current FSRS state
  * @param grade Review grade (0-5)
  * @param now Current date/time
@@ -281,11 +288,11 @@ export function calculateFsrs(
 ): FsrsResult {
   const clampedGrade = Math.max(0, Math.min(5, Math.round(grade)));
   const isFirstReview = !currentState || currentState.repetitions === 0;
-  
+
   let stability: number;
   let difficulty: number;
   let repetitions: number;
-  
+
   if (isFirstReview) {
     // First review: initialize stability and difficulty
     stability = calculateInitialStability(clampedGrade, params);
@@ -299,20 +306,30 @@ export function calculateFsrs(
     if (!isFinite(currentState.difficulty) || currentState.difficulty <= 0) {
       currentState.difficulty = 5.0;
     }
-    if (!(currentState.lastReview instanceof Date) || isNaN(currentState.lastReview.getTime())) {
+    if (
+      !(currentState.lastReview instanceof Date) ||
+      isNaN(currentState.lastReview.getTime())
+    ) {
       currentState.lastReview = now;
     }
 
     // Calculate elapsed time
     const elapsedMs = now.getTime() - currentState.lastReview.getTime();
     const elapsedDays = Math.max(0, elapsedMs / (1000 * 60 * 60 * 24));
-    
+
     // Calculate retrievability
-    const retrievability = calculateRetrievability(elapsedDays, currentState.stability);
-    
+    const retrievability = calculateRetrievability(
+      elapsedDays,
+      currentState.stability,
+    );
+
     // Update difficulty
-    difficulty = updateDifficulty(currentState.difficulty, clampedGrade, params);
-    
+    difficulty = updateDifficulty(
+      currentState.difficulty,
+      clampedGrade,
+      params,
+    );
+
     // Update stability based on success/failure
     // Grade >= 3 is considered success
     if (clampedGrade >= 3) {
@@ -332,11 +349,11 @@ export function calculateFsrs(
       );
       repetitions = 0; // Reset on failure
     }
-    
+
     // Ensure minimum stability
     stability = Math.max(0.1, stability);
   }
-  
+
   // Validate all calculated values
   if (!isFinite(stability) || stability <= 0) {
     stability = 0.1;
@@ -347,28 +364,26 @@ export function calculateFsrs(
   if (!isFinite(repetitions) || repetitions < 0) {
     repetitions = 0;
   }
-  
+
   // Calculate next interval with target retention R=0.9
   const intervalDays = calculateNextInterval(stability, 0.9);
-  
+
   // Validate interval
   if (!isFinite(intervalDays) || intervalDays <= 0) {
-    const fallbackInterval = 1;
-    const nextDue = new Date(now);
-    nextDue.setDate(nextDue.getDate() + fallbackInterval);
+    const fallbackIntervalDays = 1;
+    const nextDue = new Date(now.getTime() + fallbackIntervalDays * 24 * 60 * 60 * 1000);
     return {
       stability,
       difficulty,
       repetitions,
       nextDue,
-      intervalDays: fallbackInterval,
+      intervalDays: fallbackIntervalDays,
     };
   }
-  
+
   // Calculate next due date
-  const nextDue = new Date(now);
-  nextDue.setDate(nextDue.getDate() + intervalDays);
-  
+  const nextDue = new Date(now.getTime() + intervalDays * 24 * 60 * 60 * 1000);
+
   // Validate next due date
   if (isNaN(nextDue.getTime())) {
     const fallbackDate = new Date(now);
@@ -381,7 +396,7 @@ export function calculateFsrs(
       intervalDays: 1,
     };
   }
-  
+
   return {
     stability,
     difficulty,
@@ -394,11 +409,15 @@ export function calculateFsrs(
 /**
  * Convert attempt features to FSRS grade
  * Reuses existing quality conversion functions
- * 
+ *
  * @param result Attempt result
  * @returns Grade (0-5)
  */
-export function attemptToGrade(result: { correct: boolean; timeMs: number; score?: number }): number {
+export function attemptToGrade(result: {
+  correct: boolean;
+  timeMs: number;
+  score?: number;
+}): number {
   if (result.score !== undefined) {
     return scoreToGrade(result.score);
   }

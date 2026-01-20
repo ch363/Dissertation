@@ -6,7 +6,15 @@ import { OptionsGeneratorService } from './options-generator.service';
 
 @Module({
   imports: [PrismaModule],
-  providers: [ContentImporterService, ContentLookupService, OptionsGeneratorService],
-  exports: [ContentImporterService, ContentLookupService, OptionsGeneratorService],
+  providers: [
+    ContentImporterService,
+    ContentLookupService,
+    OptionsGeneratorService,
+  ],
+  exports: [
+    ContentImporterService,
+    ContentLookupService,
+    OptionsGeneratorService,
+  ],
 })
 export class ContentModule {}

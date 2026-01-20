@@ -138,17 +138,19 @@ describe('SessionPlanService', () => {
         correctOptionId: 'opt1',
       });
 
-      prisma.userQuestionPerformance.findMany.mockImplementation(async (args: any) => {
-        // getUserAverageTimes
-        if (args?.select?.timeToComplete !== undefined) return [];
-        // attempted questions (distinct)
-        if (args?.distinct?.includes('questionId')) return [];
-        // due reviews
-        if (args?.where?.nextReviewDue?.lte) return [];
-        // recent attempts for review candidates
-        if (args?.take === 5) return [];
-        return [];
-      });
+      prisma.userQuestionPerformance.findMany.mockImplementation(
+        async (args: any) => {
+          // getUserAverageTimes
+          if (args?.select?.timeToComplete !== undefined) return [];
+          // attempted questions (distinct)
+          if (args?.distinct?.includes('questionId')) return [];
+          // due reviews
+          if (args?.where?.nextReviewDue?.lte) return [];
+          // recent attempts for review candidates
+          if (args?.take === 5) return [];
+          return [];
+        },
+      );
 
       const plan = await service.createPlan(userId, context);
 
@@ -178,8 +180,12 @@ describe('SessionPlanService', () => {
       }
 
       // With low mastery skills mocked, rationale should be stable.
-      expect(teachSteps[0].rationale).toContain('Targets low mastery skill: greetings');
-      expect(practiceSteps[0].rationale).toContain('Targets low mastery skill: greetings');
+      expect(teachSteps[0].rationale).toContain(
+        'Targets low mastery skill: greetings',
+      );
+      expect(practiceSteps[0].rationale).toContain(
+        'Targets low mastery skill: greetings',
+      );
 
       // Metadata should be populated
       expect(plan.metadata.totalSteps).toBe(plan.steps.length);
@@ -245,17 +251,20 @@ describe('SessionPlanService', () => {
         correctOptionId: 'opt1',
       });
 
-      prisma.userQuestionPerformance.findMany.mockImplementation(async (args: any) => {
-        // getUserAverageTimes
-        if (args?.select?.timeToComplete !== undefined) return [];
-        // attempted questions (distinct)
-        if (args?.distinct?.includes('questionId')) return [{ questionId: 'question-1' }];
-        // recent attempts for difficulty/mastery
-        if (args?.take === 5) return [];
-        // due reviews
-        if (args?.where?.nextReviewDue?.lte) return duePerformances as any;
-        return [];
-      });
+      prisma.userQuestionPerformance.findMany.mockImplementation(
+        async (args: any) => {
+          // getUserAverageTimes
+          if (args?.select?.timeToComplete !== undefined) return [];
+          // attempted questions (distinct)
+          if (args?.distinct?.includes('questionId'))
+            return [{ questionId: 'question-1' }];
+          // recent attempts for difficulty/mastery
+          if (args?.take === 5) return [];
+          // due reviews
+          if (args?.where?.nextReviewDue?.lte) return duePerformances as any;
+          return [];
+        },
+      );
 
       const plan = await service.createPlan(userId, context);
 
@@ -369,43 +378,48 @@ describe('SessionPlanService', () => {
       prisma.userTeachingCompleted.findMany.mockResolvedValue([]);
       prisma.userDeliveryMethodScore.findMany.mockResolvedValue([]);
 
-      contentLookup.getQuestionData.mockImplementation(async (questionId: string) => {
-        if (questionId === 'question-1') {
-          return {
-            prompt: 'Select the correct answer',
-            sourceText: 'Hello',
-            options: [
-              { id: 'opt1', label: 'Ciao' },
-              { id: 'opt2', label: 'Arrivederci' },
-            ],
-            correctOptionId: 'opt1',
-          };
-        }
-        if (questionId === 'question-2') {
-          return {
-            prompt: 'Select the correct answer',
-            sourceText: 'Thank you',
-            options: [
-              { id: 'opt1', label: 'Grazie' },
-              { id: 'opt2', label: 'Prego' },
-            ],
-            correctOptionId: 'opt1',
-          };
-        }
-        return null;
-      });
+      contentLookup.getQuestionData.mockImplementation(
+        async (questionId: string) => {
+          if (questionId === 'question-1') {
+            return {
+              prompt: 'Select the correct answer',
+              sourceText: 'Hello',
+              options: [
+                { id: 'opt1', label: 'Ciao' },
+                { id: 'opt2', label: 'Arrivederci' },
+              ],
+              correctOptionId: 'opt1',
+            };
+          }
+          if (questionId === 'question-2') {
+            return {
+              prompt: 'Select the correct answer',
+              sourceText: 'Thank you',
+              options: [
+                { id: 'opt1', label: 'Grazie' },
+                { id: 'opt2', label: 'Prego' },
+              ],
+              correctOptionId: 'opt1',
+            };
+          }
+          return null;
+        },
+      );
 
-      prisma.userQuestionPerformance.findMany.mockImplementation(async (args: any) => {
-        // getUserAverageTimes
-        if (args?.select?.timeToComplete !== undefined) return [];
-        // attempted questions (distinct)
-        if (args?.distinct?.includes('questionId')) return [{ questionId: 'question-1' }];
-        // recent attempts for difficulty/mastery
-        if (args?.take === 5) return [];
-        // due reviews
-        if (args?.where?.nextReviewDue?.lte) return duePerformances as any;
-        return [];
-      });
+      prisma.userQuestionPerformance.findMany.mockImplementation(
+        async (args: any) => {
+          // getUserAverageTimes
+          if (args?.select?.timeToComplete !== undefined) return [];
+          // attempted questions (distinct)
+          if (args?.distinct?.includes('questionId'))
+            return [{ questionId: 'question-1' }];
+          // recent attempts for difficulty/mastery
+          if (args?.take === 5) return [];
+          // due reviews
+          if (args?.where?.nextReviewDue?.lte) return duePerformances as any;
+          return [];
+        },
+      );
 
       const plan = await service.createPlan(userId, context);
 
@@ -423,7 +437,11 @@ describe('SessionPlanService', () => {
       }
 
       expect(plan.steps.some((s) => s.rationale === 'Due review')).toBe(true);
-      expect(plan.steps.some((s) => s.rationale?.includes('Targets low mastery skill: greetings'))).toBe(true);
+      expect(
+        plan.steps.some((s) =>
+          s.rationale?.includes('Targets low mastery skill: greetings'),
+        ),
+      ).toBe(true);
     });
 
     it('should handle empty candidates gracefully', async () => {
@@ -436,17 +454,19 @@ describe('SessionPlanService', () => {
       masteryService.getLowMasterySkills.mockResolvedValue([]);
 
       // Mock: No content available
-      prisma.userQuestionPerformance.findMany.mockImplementation(async (args: any) => {
-        // getUserAverageTimes
-        if (args?.select?.timeToComplete !== undefined) return [];
-        // attempted questions (distinct)
-        if (args?.distinct?.includes('questionId')) return [];
-        // due reviews
-        if (args?.where?.nextReviewDue?.lte) return [];
-        // recent attempts for review candidates
-        if (args?.take === 5) return [];
-        return [];
-      });
+      prisma.userQuestionPerformance.findMany.mockImplementation(
+        async (args: any) => {
+          // getUserAverageTimes
+          if (args?.select?.timeToComplete !== undefined) return [];
+          // attempted questions (distinct)
+          if (args?.distinct?.includes('questionId')) return [];
+          // due reviews
+          if (args?.where?.nextReviewDue?.lte) return [];
+          // recent attempts for review candidates
+          if (args?.take === 5) return [];
+          return [];
+        },
+      );
       prisma.question.findMany.mockResolvedValue([]);
       prisma.userTeachingCompleted.findMany.mockResolvedValue([]);
       prisma.userDeliveryMethodScore.findMany.mockResolvedValue([]);

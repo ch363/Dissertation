@@ -5,12 +5,45 @@ import {
   Poppins_700Bold,
 } from '@expo-google-fonts/poppins';
 import { Stack } from 'expo-router';
-import { LogBox } from 'react-native';
+import { FlatList, LogBox, Platform, ScrollView, SectionList } from 'react-native';
 import Toast from 'react-native-toast-message';
 
 import { AppProviders } from '@/services/app/AppProviders';
 import { RouteGuard } from '@/services/navigation/RouteGuard';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
+
+/**
+ * Disable iOS "rubber-band" bounce and Android overscroll glow globally.
+ * This prevents any screen from being pulled down to reveal blank space at the top.
+ */
+function applyGlobalScrollDefaults() {
+  // iOS: `bounces` controls the pull-to-reveal gap.
+  // Android: `overScrollMode="never"` removes glow/overscroll.
+  const sharedDefaults = {
+    bounces: false,
+    alwaysBounceVertical: false,
+    overScrollMode: 'never',
+  } as const;
+
+  // Use `any` to avoid version-specific defaultProps typing differences.
+  const apply = (Component: any) => {
+    Component.defaultProps = {
+      ...(Component.defaultProps ?? {}),
+      ...sharedDefaults,
+    };
+  };
+
+  apply(ScrollView);
+  apply(FlatList);
+  apply(SectionList);
+
+  // Extra hardening for Android: some components read this prop only at runtime.
+  if (Platform.OS === 'android') {
+    // no-op; kept to make intent explicit and allow future Android-only additions.
+  }
+}
+
+applyGlobalScrollDefaults();
 
 // Surface unhandled JS errors to Metro so we can see the stack in logs.
 const globalAny = global as typeof globalThis & { ErrorUtils?: any };

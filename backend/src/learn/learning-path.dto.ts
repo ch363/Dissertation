@@ -8,7 +8,10 @@ export type LearningPathCardStatus = 'active' | 'locked';
  * Matches `mobile/src/features/learn/mock.ts`'s `LearningPathCard` shape.
  */
 export class LearningPathCardDto {
-  @ApiProperty({ description: 'Module ID', example: '8b3c1e5b-6cf5-4a6a-8fe0-1c5b23a0f9f1' })
+  @ApiProperty({
+    description: 'Module ID',
+    example: '8b3c1e5b-6cf5-4a6a-8fe0-1c5b23a0f9f1',
+  })
   @IsString()
   id: string;
 
@@ -24,29 +27,45 @@ export class LearningPathCardDto {
   @IsString()
   flag: string;
 
-  @ApiProperty({ description: 'Short subtitle / description', example: 'Greetings & Essentials' })
+  @ApiProperty({
+    description: 'Short subtitle / description',
+    example: 'Greetings & Essentials',
+  })
   @IsString()
   subtitle: string;
 
-  @ApiPropertyOptional({ description: 'Completed lesson count', example: 2, minimum: 0 })
+  @ApiPropertyOptional({
+    description: 'Completed lesson count',
+    example: 2,
+    minimum: 0,
+  })
   @IsOptional()
   @IsInt()
   @Min(0)
   completed?: number;
 
-  @ApiPropertyOptional({ description: 'Total lessons in module', example: 8, minimum: 0 })
+  @ApiPropertyOptional({
+    description: 'Total lessons in module',
+    example: 8,
+    minimum: 0,
+  })
   @IsOptional()
   @IsInt()
   @Min(0)
   total?: number;
 
-  @ApiProperty({ description: 'Card status (locked is reserved for future locking rules)', example: 'active' })
+  @ApiProperty({
+    description: 'Card status (locked is reserved for future locking rules)',
+    example: 'active',
+  })
   @IsIn(['active', 'locked'])
   status: LearningPathCardStatus;
 
-  @ApiPropertyOptional({ description: 'CTA label (placeholder)', example: 'Continue' })
+  @ApiPropertyOptional({
+    description: 'CTA label (placeholder)',
+    example: 'Continue',
+  })
   @IsOptional()
   @IsString()
   cta?: string;
 }
-

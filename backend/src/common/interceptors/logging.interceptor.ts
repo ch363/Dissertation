@@ -22,9 +22,7 @@ export class LoggingInterceptor implements NestInterceptor {
     const startTime = Date.now();
 
     // Log request
-    this.logger.log(
-      `${method} ${url} - ${ip} - ${userAgent}`,
-    );
+    this.logger.log(`${method} ${url} - ${ip} - ${userAgent}`);
 
     // Log request body (excluding sensitive data)
     if (Object.keys(body || {}).length > 0) {
@@ -37,15 +35,13 @@ export class LoggingInterceptor implements NestInterceptor {
         next: (data) => {
           const duration = Date.now() - startTime;
           const statusCode = response.statusCode;
-          
-          this.logger.log(
-            `${method} ${url} ${statusCode} - ${duration}ms`,
-          );
+
+          this.logger.log(`${method} ${url} ${statusCode} - ${duration}ms`);
         },
         error: (error) => {
           const duration = Date.now() - startTime;
           const statusCode = error.status || 500;
-          
+
           this.logger.error(
             `${method} ${url} ${statusCode} - ${duration}ms - ${error.message}`,
           );
@@ -59,7 +55,13 @@ export class LoggingInterceptor implements NestInterceptor {
       return body;
     }
 
-    const sensitiveFields = ['password', 'token', 'secret', 'key', 'authorization'];
+    const sensitiveFields = [
+      'password',
+      'token',
+      'secret',
+      'key',
+      'authorization',
+    ];
     const sanitized = { ...body };
 
     for (const field of sensitiveFields) {

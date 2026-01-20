@@ -9,7 +9,7 @@ import { Card } from '@/components/profile/Card';
 import { Button } from '@/components/ui/Button';
 import { getDueReviewsLatest, type DueReviewLatest } from '@/services/api/progress';
 import { makeSessionId } from '@/features/session/sessionBuilder';
-import { routeBuilders } from '@/services/navigation/routes';
+import { routeBuilders, routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
@@ -117,6 +117,7 @@ export default function ProfileReviewsScreen() {
       pathname: routeBuilders.sessionDetail(sessionId),
       params: {
         kind: 'review',
+        returnTo: routes.tabs.profile.reviews,
         ...(opts.lessonId ? { lessonId: opts.lessonId } : {}),
         ...(opts.moduleId ? { moduleId: opts.moduleId } : {}),
       },

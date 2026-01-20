@@ -217,6 +217,27 @@ export default function CourseDetail() {
     const moduleId = module?.id;
     if (!moduleId) return null;
 
+    // Prefer continuing any in-progress lesson in this module (even if recent activity is missing/stale).
+    // This prevents “Recommended next” suggestions from pointing at a not-started lesson while the
+    // user already has unfinished progress here.
+    const inProgressInThisModule = userProgress
+      .filter((p) => p.lesson?.module?.id === moduleId)
+      .filter((p) => p.totalTeachings > 0 && p.completedTeachings > 0 && p.completedTeachings < p.totalTeachings)
+      .sort((a, b) => {
+        const ar = a.totalTeachings > 0 ? a.completedTeachings / a.totalTeachings : 0;
+        const br = b.totalTeachings > 0 ? b.completedTeachings / b.totalTeachings : 0;
+        return br - ar || b.completedTeachings - a.completedTeachings;
+      })[0];
+
+    if (inProgressInThisModule?.lesson?.id) {
+      return {
+        kind: 'continue',
+        label: 'Continue lesson',
+        lessonId: inProgressInThisModule.lesson.id,
+        helperText: `${inProgressInThisModule.completedTeachings}/${inProgressInThisModule.totalTeachings} complete`,
+      };
+    }
+
     // Continue (module-only) if user's recent lesson is in this module and incomplete
     const recentLesson = recentActivity?.recentLesson ?? null;
     const isRecentInThisModule = recentLesson?.lesson?.module?.id === moduleId;
@@ -242,7 +263,7 @@ export default function CourseDetail() {
     const startLessonId = suggestedLessonId ?? lessons[0]?.id ?? null;
     if (!startLessonId) return null;
     return { kind: 'start', label: 'Start lesson', lessonId: startLessonId };
-  }, [lessons, module?.id, recentActivity, suggestedLessonId, suggestedLessonTitle]);
+  }, [lessons, module?.id, recentActivity, suggestedLessonId, userProgress]);
 
   const recommendedLessonTitle = useMemo(() => {
     if (!suggestedLessonId) return null;

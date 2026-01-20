@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { QuestionAttemptDto } from './dto/question-attempt.dto';
 import { DeliveryMethodScoreDto } from './dto/delivery-method-score.dto';
@@ -7,7 +11,10 @@ import { ResetProgressDto } from './dto/reset-progress.dto';
 import { ValidateAnswerDto } from './dto/validate-answer.dto';
 import { ValidateAnswerResponseDto } from './dto/validate-answer-response.dto';
 import { ValidatePronunciationDto } from './dto/validate-pronunciation.dto';
-import { PronunciationResponseDto, WordAnalysisDto } from './dto/pronunciation-response.dto';
+import {
+  PronunciationResponseDto,
+  WordAnalysisDto,
+} from './dto/pronunciation-response.dto';
 import { DELIVERY_METHOD, Prisma } from '@prisma/client';
 import { SrsService } from '../engine/srs/srs.service';
 import { XpService } from '../engine/scoring/xp.service';
@@ -15,6 +22,7 @@ import { ContentLookupService } from '../content/content-lookup.service';
 import { MasteryService } from '../engine/mastery/mastery.service';
 import { SessionPlanCacheService } from '../engine/content-delivery/session-plan-cache.service';
 import { extractSkillTags } from '../engine/mastery/skill-extraction.util';
+import { PronunciationService } from '../speech/pronunciation/pronunciation.service';
 
 @Injectable()
 export class ProgressService {
@@ -25,7 +33,43 @@ export class ProgressService {
     private contentLookup: ContentLookupService,
     private masteryService: MasteryService,
     private sessionPlanCache: SessionPlanCacheService,
+    private pronunciationService: PronunciationService,
   ) {}
+
+  /**
+   * Some environments may run against a database that hasn't been migrated yet.
+   * When newer columns (e.g. nextReviewDue/lastRevisedAt) are missing, Prisma can throw
+   * errors like "The column `(not available)` does not exist in the current database."
+   * In those cases, we fall back to safe defaults rather than 500'ing core endpoints.
+   */
+  private isMissingColumnOrSchemaMismatchError(error: any): boolean {
+    const message = String(error?.message ?? '');
+    return (
+      message.includes('does not exist in the current database') ||
+      message.includes('does not exist') ||
+      message.includes('(not available)')
+    );
+  }
+
+  private getEndOfLocalDayUtc(now: Date, tzOffsetMinutes?: number): Date {
+    if (!Number.isFinite(tzOffsetMinutes)) return now;
+    if (tzOffsetMinutes! < -14 * 60 || tzOffsetMinutes! > 14 * 60) return now;
+
+    const offsetMs = tzOffsetMinutes! * 60_000;
+    const localNow = new Date(now.getTime() - offsetMs);
+    const endOfLocalDayShiftedUtc = new Date(
+      Date.UTC(
+        localNow.getUTCFullYear(),
+        localNow.getUTCMonth(),
+        localNow.getUTCDate(),
+        23,
+        59,
+        59,
+        999,
+      ),
+    );
+    return new Date(endOfLocalDayShiftedUtc.getTime() + offsetMs);
+  }
 
   async startLesson(userId: string, lessonId: string) {
     // Upsert UserLesson idempotently
@@ -56,8 +100,8 @@ export class ProgressService {
     });
   }
 
-  async getUserLessons(userId: string) {
-    return this.prisma.userLesson.findMany({
+  async getUserLessons(userId: string, tzOffsetMinutes?: number) {
+    const userLessons = await this.prisma.userLesson.findMany({
       where: { userId },
       include: {
         lesson: {
@@ -75,6 +119,127 @@ export class ProgressService {
         },
       },
       orderBy: { updatedAt: 'desc' },
+    });
+
+    if (userLessons.length === 0) return [];
+
+    const lessonIds = userLessons.map((ul) => ul.lessonId);
+
+    // Load teachings for these lessons (and questions for due review aggregation).
+    // Note: We intentionally compute counts from source-of-truth tables so the UI
+    // doesn't get stuck on stale denormalized counters (e.g. completedTeachings).
+    const teachings = await this.prisma.teaching.findMany({
+      where: {
+        lessonId: { in: lessonIds },
+      },
+      select: {
+        id: true,
+        lessonId: true,
+        questions: {
+          select: { id: true },
+        },
+      },
+    });
+
+    const teachingsByLessonId = new Map<
+      string,
+      Array<{ id: string; lessonId: string; questions: Array<{ id: string }> }>
+    >();
+    const teachingIdToLessonId = new Map<string, string>();
+    const questionToLessonId = new Map<string, string>();
+
+    for (const teaching of teachings) {
+      teachingIdToLessonId.set(teaching.id, teaching.lessonId);
+      const existing = teachingsByLessonId.get(teaching.lessonId) || [];
+      existing.push(teaching);
+      teachingsByLessonId.set(teaching.lessonId, existing);
+      for (const q of teaching.questions) {
+        questionToLessonId.set(q.id, teaching.lessonId);
+      }
+    }
+
+    // Compute completed teachings per lesson from UserTeachingCompleted (source of truth).
+    const teachingIds = teachings.map((t) => t.id);
+    const completedRows =
+      teachingIds.length > 0
+        ? await this.prisma.userTeachingCompleted.findMany({
+            where: {
+              userId,
+              teachingId: { in: teachingIds },
+            },
+            select: { teachingId: true },
+          })
+        : [];
+
+    const completedTeachingsByLessonId = new Map<string, Set<string>>();
+    for (const row of completedRows) {
+      const lessonId = teachingIdToLessonId.get(row.teachingId);
+      if (!lessonId) continue;
+      const set =
+        completedTeachingsByLessonId.get(lessonId) || new Set<string>();
+      set.add(row.teachingId);
+      completedTeachingsByLessonId.set(lessonId, set);
+    }
+
+    // Compute due review counts per lesson (deduped by questionId).
+    const now = new Date();
+    const dueCutoff = this.getEndOfLocalDayUtc(now, tzOffsetMinutes);
+    const questionIds = teachings.flatMap((t) => t.questions.map((q) => q.id));
+    let dueReviews: Array<{ questionId: string; createdAt: Date }> = [];
+    if (questionIds.length > 0) {
+      try {
+        dueReviews = await this.prisma.userQuestionPerformance.findMany({
+          where: {
+            userId,
+            questionId: { in: questionIds },
+            nextReviewDue: {
+              lte: dueCutoff,
+              not: null,
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          select: { questionId: true, createdAt: true },
+        });
+      } catch (error: any) {
+        if (!this.isMissingColumnOrSchemaMismatchError(error)) {
+          throw error;
+        }
+        // DB hasn't been migrated yet; due review calculation is unavailable.
+        dueReviews = [];
+      }
+    }
+
+    const latestDueByQuestionId = new Map<string, Date>();
+    for (const review of dueReviews) {
+      const existing = latestDueByQuestionId.get(review.questionId);
+      if (!existing || review.createdAt > existing) {
+        latestDueByQuestionId.set(review.questionId, review.createdAt);
+      }
+    }
+
+    const dueCountByLessonId = new Map<string, number>();
+    latestDueByQuestionId.forEach((_createdAt, questionId) => {
+      const lessonId = questionToLessonId.get(questionId);
+      if (!lessonId) return;
+      dueCountByLessonId.set(
+        lessonId,
+        (dueCountByLessonId.get(lessonId) || 0) + 1,
+      );
+    });
+
+    return userLessons.map((ul) => {
+      const teachingsInLesson = teachingsByLessonId.get(ul.lessonId) || [];
+      const totalTeachings = teachingsInLesson.length;
+      const completedTeachings =
+        completedTeachingsByLessonId.get(ul.lessonId)?.size ?? 0;
+      const dueReviewCount = dueCountByLessonId.get(ul.lessonId) || 0;
+
+      return {
+        lesson: ul.lesson,
+        completedTeachings,
+        totalTeachings,
+        dueReviewCount,
+      };
     });
   }
 
@@ -159,7 +324,11 @@ export class ProgressService {
     });
   }
 
-  async recordQuestionAttempt(userId: string, questionId: string, attemptDto: QuestionAttemptDto) {
+  async recordQuestionAttempt(
+    userId: string,
+    questionId: string,
+    attemptDto: QuestionAttemptDto,
+  ) {
     // Verify question exists and load teaching with lesson for skill extraction
     const question = await this.prisma.question.findUnique({
       where: { id: questionId },
@@ -372,7 +541,7 @@ export class ProgressService {
     });
 
     // Dedup by questionId - keep only the most recent per question
-    const questionIdMap = new Map<string, typeof allDueReviews[0]>();
+    const questionIdMap = new Map<string, (typeof allDueReviews)[0]>();
     allDueReviews.forEach((review) => {
       const existing = questionIdMap.get(review.questionId);
       if (!existing || review.createdAt > existing.createdAt) {
@@ -383,7 +552,11 @@ export class ProgressService {
     return Array.from(questionIdMap.values());
   }
 
-  async updateDeliveryMethodScore(userId: string, method: DELIVERY_METHOD, scoreDto: DeliveryMethodScoreDto) {
+  async updateDeliveryMethodScore(
+    userId: string,
+    method: DELIVERY_METHOD,
+    scoreDto: DeliveryMethodScoreDto,
+  ) {
     // Upsert with score clamped to 0..1
     const existing = await this.prisma.userDeliveryMethodScore.findUnique({
       where: {
@@ -415,7 +588,10 @@ export class ProgressService {
     });
   }
 
-  async recordKnowledgeLevelProgress(userId: string, progressDto: KnowledgeLevelProgressDto) {
+  async recordKnowledgeLevelProgress(
+    userId: string,
+    progressDto: KnowledgeLevelProgressDto,
+  ) {
     // Transaction: insert progress row and increment User.knowledgePoints
     return this.prisma.$transaction(async (tx) => {
       // Insert progress row (append-only)
@@ -471,7 +647,8 @@ export class ProgressService {
       return {
         message: 'All progress reset successfully',
         resetXp: options?.includeXp || false,
-        resetDeliveryMethodScores: options?.includeDeliveryMethodScores || false,
+        resetDeliveryMethodScores:
+          options?.includeDeliveryMethodScores || false,
       };
     });
   }
@@ -494,7 +671,9 @@ export class ProgressService {
     }
 
     // Get all question IDs in this lesson
-    const questionIds = lesson.teachings.flatMap((t) => t.questions.map((q) => q.id));
+    const questionIds = lesson.teachings.flatMap((t) =>
+      t.questions.map((q) => q.id),
+    );
     const teachingIds = lesson.teachings.map((t) => t.id);
 
     // Transaction to reset lesson-specific progress
@@ -587,7 +766,8 @@ export class ProgressService {
     }, new Date(0));
 
     // Calculate hours since last activity
-    const hoursSinceLastActivity = (now.getTime() - mostRecentActivity.getTime()) / (1000 * 60 * 60);
+    const hoursSinceLastActivity =
+      (now.getTime() - mostRecentActivity.getTime()) / (1000 * 60 * 60);
 
     // If more than 48 hours since last activity, streak is broken
     if (hoursSinceLastActivity > 48) {
@@ -601,7 +781,13 @@ export class ProgressService {
       if (activityDate) {
         const date = new Date(activityDate);
         // Normalize to start of day in UTC
-        const dayKey = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+        const dayKey = new Date(
+          Date.UTC(
+            date.getUTCFullYear(),
+            date.getUTCMonth(),
+            date.getUTCDate(),
+          ),
+        )
           .toISOString()
           .split('T')[0];
         activeDays.add(dayKey);
@@ -624,13 +810,15 @@ export class ProgressService {
     // Start counting from the most recent activity day
     const mostRecentDay = sortedDays[0];
     let streak = 1; // Count the most recent day
-    let expectedDate = new Date(mostRecentDay);
+    const expectedDate = new Date(mostRecentDay);
     expectedDate.setUTCDate(expectedDate.getUTCDate() - 1); // Move to previous day
 
     // Count consecutive days working backwards
     for (let i = 1; i < sortedDays.length; i++) {
       const activeDay = sortedDays[i];
-      const daysDiff = Math.floor((expectedDate.getTime() - activeDay.getTime()) / (1000 * 60 * 60 * 24));
+      const daysDiff = Math.floor(
+        (expectedDate.getTime() - activeDay.getTime()) / (1000 * 60 * 60 * 24),
+      );
 
       if (daysDiff === 0) {
         // This is the expected consecutive day
@@ -646,7 +834,7 @@ export class ProgressService {
     return streak;
   }
 
-  async getProgressSummary(userId: string) {
+  async getProgressSummary(userId: string, tzOffsetMinutes?: number) {
     const now = new Date();
 
     // Get XP total from user.knowledgePoints (updated by XpService)
@@ -657,19 +845,33 @@ export class ProgressService {
 
     const xp = user?.knowledgePoints || 0;
 
-    // Count deduped due reviews (latest per question where nextReviewDue <= now)
-    const dueReviews = await this.prisma.userQuestionPerformance.findMany({
-      where: {
-        userId,
-        nextReviewDue: {
-          lte: now,
-          not: null,
+    const dueCutoff = this.getEndOfLocalDayUtc(now, tzOffsetMinutes);
+
+    // Count deduped due reviews (latest per question where nextReviewDue <= end-of-day local)
+    let dueReviews: Array<{ questionId: string; createdAt: Date }> = [];
+    try {
+      dueReviews = await this.prisma.userQuestionPerformance.findMany({
+        where: {
+          userId,
+          nextReviewDue: {
+            lte: dueCutoff,
+            not: null,
+          },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+        orderBy: {
+          createdAt: 'desc',
+        },
+        select: {
+          questionId: true,
+          createdAt: true,
+        },
+      });
+    } catch (error: any) {
+      if (!this.isMissingColumnOrSchemaMismatchError(error)) {
+        throw error;
+      }
+      dueReviews = [];
+    }
 
     // Dedup by questionId - keep only the latest per question
     const questionIdSet = new Set<string>();
@@ -702,7 +904,9 @@ export class ProgressService {
 
     // Count lessons where completedTeachings equals total teachings
     const completedLessons = userLessons.filter(
-      (ul) => ul.completedTeachings >= ul.lesson.teachings.length && ul.lesson.teachings.length > 0,
+      (ul) =>
+        ul.completedTeachings >= ul.lesson.teachings.length &&
+        ul.lesson.teachings.length > 0,
     ).length;
 
     const totalLessons = await this.prisma.lesson.count();
@@ -730,7 +934,10 @@ export class ProgressService {
       const allLessonsCompleted = moduleLessons.every((lesson) => {
         const userLesson = userLessons.find((ul) => ul.lessonId === lesson.id);
         if (!userLesson) return false;
-        return userLesson.completedTeachings >= lesson.teachings.length && lesson.teachings.length > 0;
+        return (
+          userLesson.completedTeachings >= lesson.teachings.length &&
+          lesson.teachings.length > 0
+        );
       });
 
       if (allLessonsCompleted) {
@@ -756,8 +963,11 @@ export class ProgressService {
 
   async markModuleCompleted(userId: string, moduleIdOrSlug: string) {
     // Find module by ID or slug (title)
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(moduleIdOrSlug);
-    
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        moduleIdOrSlug,
+      );
+
     let module;
     if (isUuid) {
       module = await this.prisma.module.findUnique({
@@ -777,9 +987,11 @@ export class ProgressService {
       const normalizedTitle = moduleIdOrSlug
         .trim()
         .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .map(
+          (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+        )
         .join(' ');
-      
+
       module = await this.prisma.module.findFirst({
         where: {
           title: {
@@ -800,16 +1012,22 @@ export class ProgressService {
     }
 
     if (!module) {
-      throw new NotFoundException(`Module with ID or slug "${moduleIdOrSlug}" not found`);
+      throw new NotFoundException(
+        `Module with ID or slug "${moduleIdOrSlug}" not found`,
+      );
     }
 
     // Mark all lessons in the module as completed
     // For each lesson, mark all teachings as completed
-    const results: Array<{ lessonId: string; lessonTitle: string; completedTeachings: number }> = [];
-    
+    const results: Array<{
+      lessonId: string;
+      lessonTitle: string;
+      completedTeachings: number;
+    }> = [];
+
     for (const lesson of module.lessons) {
       const totalTeachings = lesson.teachings.length;
-      
+
       // Upsert UserLesson with completedTeachings = totalTeachings
       const userLesson = await this.prisma.userLesson.upsert({
         where: {
@@ -942,7 +1160,11 @@ export class ProgressService {
     const teaching = question.teaching;
 
     // Get question data using Teaching relationship
-    const questionData = await this.contentLookup.getQuestionData(questionId, lessonId, dto.deliveryMethod);
+    const questionData = await this.contentLookup.getQuestionData(
+      questionId,
+      lessonId,
+      dto.deliveryMethod,
+    );
 
     if (!questionData) {
       throw new NotFoundException(
@@ -971,7 +1193,8 @@ export class ProgressService {
       // Translation/Flashcard: validate against variant answer (preferred), fallback to teaching.userLanguageString.
       const normalizedUserAnswer = dto.answer.toLowerCase().trim();
       const correctAnswerSource: string =
-        (typeof variantData?.answer === 'string' && variantData.answer.trim().length > 0)
+        typeof variantData?.answer === 'string' &&
+        variantData.answer.trim().length > 0
           ? variantData.answer
           : teaching.userLanguageString;
 
@@ -980,8 +1203,10 @@ export class ProgressService {
         .split('/')
         .map((ans) => ans.trim())
         .filter((ans) => ans.length > 0);
-      
-      isCorrect = correctAnswers.some((correctAns) => correctAns === normalizedUserAnswer);
+
+      isCorrect = correctAnswers.some(
+        (correctAns) => correctAns === normalizedUserAnswer,
+      );
       score = isCorrect ? 100 : 0;
 
       if (!isCorrect && questionData.hint) {
@@ -991,17 +1216,22 @@ export class ProgressService {
       // Fill blank: compare against learningLanguageString
       const normalizedUserAnswer = dto.answer.toLowerCase().trim();
       const correctAnswer = (
-        (typeof variantData?.answer === 'string' && variantData.answer.trim().length > 0)
+        typeof variantData?.answer === 'string' &&
+        variantData.answer.trim().length > 0
           ? variantData.answer
           : teaching.learningLanguageString
-      ).toLowerCase().trim();
-      
+      )
+        .toLowerCase()
+        .trim();
+
       const correctAnswers = correctAnswer
         .split('/')
         .map((ans) => ans.trim())
         .filter((ans) => ans.length > 0);
-      
-      isCorrect = correctAnswers.some((correctAns) => correctAns === normalizedUserAnswer);
+
+      isCorrect = correctAnswers.some(
+        (correctAns) => correctAns === normalizedUserAnswer,
+      );
       score = isCorrect ? 100 : 0;
 
       if (!isCorrect && questionData.hint) {
@@ -1014,17 +1244,22 @@ export class ProgressService {
       // Listening: compare against learningLanguageString
       const normalizedUserAnswer = dto.answer.toLowerCase().trim();
       const correctAnswer = (
-        (typeof variantData?.answer === 'string' && variantData.answer.trim().length > 0)
+        typeof variantData?.answer === 'string' &&
+        variantData.answer.trim().length > 0
           ? variantData.answer
           : teaching.learningLanguageString
-      ).toLowerCase().trim();
-      
+      )
+        .toLowerCase()
+        .trim();
+
       const correctAnswers = correctAnswer
         .split('/')
         .map((ans) => ans.trim())
         .filter((ans) => ans.length > 0);
-      
-      isCorrect = correctAnswers.some((correctAns) => correctAns === normalizedUserAnswer);
+
+      isCorrect = correctAnswers.some(
+        (correctAns) => correctAns === normalizedUserAnswer,
+      );
       score = isCorrect ? 100 : 0;
     } else {
       throw new BadRequestException(
@@ -1083,139 +1318,61 @@ export class ProgressService {
       variant.data &&
       typeof variant.data === 'object' &&
       !Array.isArray(variant.data) &&
-      typeof (variant.data as Prisma.JsonObject)['answer'] === 'string'
-        ? ((variant.data as Prisma.JsonObject)['answer'] as string).trim()
+      typeof variant.data['answer'] === 'string'
+        ? variant.data['answer'].trim()
         : '';
 
-    const expectedText = variantAnswer.length > 0 ? variantAnswer : question.teaching.learningLanguageString;
+    const expectedText =
+      variantAnswer.length > 0
+        ? variantAnswer
+        : question.teaching.learningLanguageString;
 
-    try {
-      // Import Google Cloud Speech client
-      const { SpeechClient } = require('@google-cloud/speech');
-      const client = new SpeechClient();
-
-      // Convert base64 to buffer
-      const audioBytes = Buffer.from(dto.audioBase64, 'base64');
-
-      // Configure request for Italian language with pronunciation assessment
-      // Handle different audio formats correctly for Google Cloud Speech API
-      // Note: M4A files contain AAC audio, which Google Cloud Speech doesn't directly support
-      // We'll use MP3 encoding as a workaround, or better: record in a supported format
-      let encoding: string;
-      let sampleRateHertz: number;
-      
-      if (dto.audioFormat === 'wav') {
-        encoding = 'LINEAR16';
-        sampleRateHertz = 16000;
-      } else if (dto.audioFormat === 'flac') {
-        encoding = 'FLAC';
-        sampleRateHertz = 16000;
-      } else if (dto.audioFormat === 'm4a') {
-        // M4A contains AAC audio - Google Cloud Speech API doesn't support AAC directly
-        // Try using MP3 encoding as workaround (M4A container with AAC is similar)
-        // Better solution: record in WAV or FLAC format
-        encoding = 'MP3';
-        sampleRateHertz = 44100; // Match the recording sample rate from mobile app
-      } else if (dto.audioFormat === 'mp3') {
-        encoding = 'MP3';
-        sampleRateHertz = 44100;
-      } else if (dto.audioFormat === 'ogg') {
-        encoding = 'OGG_OPUS';
-        sampleRateHertz = 48000; // OGG Opus typically uses 48kHz
-      } else {
-        // Default to FLAC for unknown formats
-        encoding = 'FLAC';
-        sampleRateHertz = 16000;
-      }
-
-      const request = {
-        audio: {
-          content: audioBytes,
-        },
-        config: {
-          encoding: encoding as any,
-          sampleRateHertz: sampleRateHertz,
-          languageCode: 'it-IT',
-          enableAutomaticPunctuation: true,
-          enablePronunciationAssessment: true,
-          pronunciationAssessmentConfig: {
-            referenceText: expectedText,
-            granularity: 'WORD',
-            scoreType: 'OVERALL',
-          },
-        },
-      };
-
-      // Call Google Cloud Speech-to-Text API
-      const [response] = await client.recognize(request);
-
-      if (!response.results || response.results.length === 0) {
-        throw new BadRequestException('No speech detected in audio');
-      }
-
-      const result = response.results[0];
-      const transcription = result.alternatives[0]?.transcript || '';
-      const pronunciationAssessment = result.alternatives[0]?.pronunciationAssessment;
-
-      if (!pronunciationAssessment) {
-        throw new BadRequestException('Pronunciation assessment not available');
-      }
-
-      // Calculate overall score (0-100)
-      const overallScore = Math.round(pronunciationAssessment.pronunciationScore || 0);
-
-      // Process word-level analysis
-      const words: WordAnalysisDto[] = [];
-      if (pronunciationAssessment.words && result.alternatives[0]?.words) {
-        for (let i = 0; i < pronunciationAssessment.words.length; i++) {
-          const wordAssessment = pronunciationAssessment.words[i];
-          const wordInfo = result.alternatives[0].words[i];
-          
-          if (wordAssessment && wordInfo) {
-            const wordScore = Math.round(wordAssessment.pronunciationScore || 0);
-            words.push({
-              word: wordInfo.word,
-              score: wordScore,
-              feedback: wordScore >= 85 ? 'perfect' : 'could_improve',
-            });
-          }
-        }
-      }
-
-      // If no word-level data, create from overall score
-      if (words.length === 0 && expectedText) {
-        const expectedWords = expectedText.split(/\s+/);
-        const avgWordScore = overallScore;
-        expectedWords.forEach((word) => {
-          words.push({
-            word: word.trim(),
-            score: avgWordScore,
-            feedback: avgWordScore >= 85 ? 'perfect' : 'could_improve',
-          });
-        });
-      }
-
-      const isCorrect = overallScore >= 80; // Threshold for "correct"
-
-      return {
-        overallScore,
-        transcription,
-        words,
-        isCorrect,
-        score: overallScore,
-      };
-    } catch (error) {
-      console.error('Error validating pronunciation:', error);
-      
-      // Fallback: simple transcription comparison if Google Cloud fails
-      // This is a basic fallback - in production, you'd want better error handling
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-
+    // For now, we only support speech-optimized uploads for pronunciation assessment.
+    // The backend accepts either WAV (RIFF/WAVE PCM) OR raw 16kHz mono PCM bytes (some clients omit the WAV container).
+    if (dto.audioFormat !== 'wav') {
       throw new BadRequestException(
-        `Failed to validate pronunciation: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'Only "wav" audioFormat is supported for pronunciation assessment',
       );
     }
+
+    // Run Azure Pronunciation Assessment (production implementation).
+    const assessment = await this.pronunciationService.assess({
+      audioBase64: dto.audioBase64,
+      referenceText: expectedText,
+      locale: 'it-IT',
+    });
+
+    const overallScore = Math.round(assessment.scores.pronunciation);
+
+    const words: WordAnalysisDto[] =
+      assessment.words.length > 0
+        ? assessment.words.map((w) => {
+            const wordScore = Math.round(w.accuracy);
+            return {
+              word: w.word,
+              score: wordScore,
+              feedback: wordScore >= 85 ? 'perfect' : 'could_improve',
+            };
+          })
+        : expectedText
+            .split(/\s+/)
+            .map((w) => w.trim())
+            .filter((w) => w.length > 0)
+            .map((word) => ({
+              word,
+              score: overallScore,
+              feedback: overallScore >= 85 ? 'perfect' : 'could_improve',
+            }));
+
+    const transcription = assessment.recognizedText || '';
+    const isCorrect = overallScore >= 80;
+
+    return {
+      overallScore,
+      transcription,
+      words,
+      isCorrect,
+      score: overallScore,
+    };
   }
 }

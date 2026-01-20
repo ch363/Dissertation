@@ -4,13 +4,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ScrollView } from '@/components/ui';
 
 import type { DiscoverItem } from '@/features/learn/types';
-import type { RoutePath } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
 type Props = {
   items: DiscoverItem[];
-  onPressItem: (route: RoutePath) => void;
+  onPressItem: (item: DiscoverItem) => void;
 };
 
 export function DiscoverCarousel({ items, onPressItem }: Props) {
@@ -33,7 +32,7 @@ export function DiscoverCarousel({ items, onPressItem }: Props) {
             key={item.id}
             accessibilityRole="button"
             accessibilityLabel={`${item.ctaLabel ?? 'Open'}: ${item.title}`}
-            onPress={() => onPressItem(item.route)}
+            onPress={() => onPressItem(item)}
             style={({ pressed }) => [
               styles.card,
               {

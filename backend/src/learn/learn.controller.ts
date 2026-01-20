@@ -1,9 +1,22 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { LearnService } from './learn.service';
 import { SupabaseJwtGuard } from '../common/guards/supabase-jwt.guard';
 import { User } from '../common/decorators/user.decorator';
-import { IsUUID, IsOptional, IsInt, Min, IsEnum, IsString } from 'class-validator';
+import {
+  IsUUID,
+  IsOptional,
+  IsInt,
+  Min,
+  IsEnum,
+  IsString,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 import { SessionPlanDto } from '../engine/content-delivery/session-types';
 import { LearningPathCardDto } from './learning-path.dto';
@@ -64,26 +77,44 @@ export class LearnController {
   constructor(private readonly learnService: LearnService) {}
 
   @Get('learning-path')
-  @ApiOperation({ summary: 'Get Learning Hub learning path cards with user progress' })
-  @ApiResponse({ status: 200, description: 'Learning path retrieved', type: [LearningPathCardDto] })
-  async getLearningPath(@User() userId: string): Promise<LearningPathCardDto[]> {
+  @ApiOperation({
+    summary: 'Get Learning Hub learning path cards with user progress',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Learning path retrieved',
+    type: [LearningPathCardDto],
+  })
+  async getLearningPath(
+    @User() userId: string,
+  ): Promise<LearningPathCardDto[]> {
     return this.learnService.getLearningPath(userId);
   }
 
   @Get('review-summary')
   @ApiOperation({ summary: 'Get Learning Hub review summary' })
-  @ApiResponse({ status: 200, description: 'Review summary retrieved', type: ReviewSummaryDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Review summary retrieved',
+    type: ReviewSummaryDto,
+  })
   async getReviewSummary(@User() userId: string): Promise<ReviewSummaryDto> {
     return this.learnService.getReviewSummary(userId);
   }
 
   @Get('next')
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get next item in lesson (reviews → new → done)',
     deprecated: true,
-    description: 'Deprecated: Use GET /learn/session-plan instead to get a complete session plan'
+    description:
+      'Deprecated: Use GET /learn/session-plan instead to get a complete session plan',
   })
-  @ApiQuery({ name: 'lessonId', type: 'string', format: 'uuid', required: true })
+  @ApiQuery({
+    name: 'lessonId',
+    type: 'string',
+    format: 'uuid',
+    required: true,
+  })
   @ApiResponse({ status: 200, description: 'Next item retrieved' })
   async getNext(@User() userId: string, @Query() query: LearnNextQueryDto) {
     return this.learnService.getNext(userId, query.lessonId);
@@ -91,8 +122,18 @@ export class LearnController {
 
   @Get('suggestions')
   @ApiOperation({ summary: 'Get lesson/module suggestions' })
-  @ApiQuery({ name: 'currentLessonId', type: 'string', format: 'uuid', required: false })
-  @ApiQuery({ name: 'moduleId', type: 'string', format: 'uuid', required: false })
+  @ApiQuery({
+    name: 'currentLessonId',
+    type: 'string',
+    format: 'uuid',
+    required: false,
+  })
+  @ApiQuery({
+    name: 'moduleId',
+    type: 'string',
+    format: 'uuid',
+    required: false,
+  })
   @ApiQuery({ name: 'limit', type: 'number', required: false, default: 3 })
   @ApiResponse({ status: 200, description: 'Suggestions retrieved' })
   async getSuggestions(
@@ -109,12 +150,30 @@ export class LearnController {
 
   @Get('session-plan')
   @ApiOperation({ summary: 'Get complete learning session plan' })
-  @ApiQuery({ name: 'mode', enum: ['learn', 'review', 'mixed'], required: false })
+  @ApiQuery({
+    name: 'mode',
+    enum: ['learn', 'review', 'mixed'],
+    required: false,
+  })
   @ApiQuery({ name: 'timeBudgetSec', type: 'number', required: false })
-  @ApiQuery({ name: 'lessonId', type: 'string', format: 'uuid', required: false })
-  @ApiQuery({ name: 'moduleId', type: 'string', format: 'uuid', required: false })
+  @ApiQuery({
+    name: 'lessonId',
+    type: 'string',
+    format: 'uuid',
+    required: false,
+  })
+  @ApiQuery({
+    name: 'moduleId',
+    type: 'string',
+    format: 'uuid',
+    required: false,
+  })
   @ApiQuery({ name: 'theme', type: 'string', required: false })
-  @ApiResponse({ status: 200, description: 'Session plan retrieved', type: Object })
+  @ApiResponse({
+    status: 200,
+    description: 'Session plan retrieved',
+    type: Object,
+  })
   async getSessionPlan(
     @User() userId: string,
     @Query() query: SessionPlanQueryDto,

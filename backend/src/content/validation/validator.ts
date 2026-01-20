@@ -61,7 +61,9 @@ export function parseYamlFile<T>(filePath: string, schema: z.ZodSchema<T>): T {
         errors,
       );
     }
-    throw new Error(`Failed to parse ${filePath}: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `Failed to parse ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }
 
@@ -71,7 +73,8 @@ export function parseYamlFile<T>(filePath: string, schema: z.ZodSchema<T>): T {
 function formatValidationErrors(errors: ValidationError[]): string {
   return errors
     .map((err) => {
-      const path = err.path && err.path.length > 0 ? ` at ${err.path.join('.')}` : '';
+      const path =
+        err.path && err.path.length > 0 ? ` at ${err.path.join('.')}` : '';
       const line = err.line ? ` (line ${err.line})` : '';
       return `  - ${err.message}${path}${line}`;
     })
@@ -127,13 +130,18 @@ export function findContentFiles(contentDir: string): {
           walkDir(fullPath, join(relativePath, entry));
         } else if (entry === 'module.yaml') {
           modules.push(fullPath);
-        } else if (entry.endsWith('.yaml') && relativePath.includes('lessons')) {
+        } else if (
+          entry.endsWith('.yaml') &&
+          relativePath.includes('lessons')
+        ) {
           lessons.push(fullPath);
         }
       }
     } catch (error) {
       // Skip directories that can't be read
-      console.warn(`Warning: Could not read directory ${dir}: ${error instanceof Error ? error.message : String(error)}`);
+      console.warn(
+        `Warning: Could not read directory ${dir}: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 

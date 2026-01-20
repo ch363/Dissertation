@@ -3,7 +3,7 @@ import { INestApplication, Logger } from '@nestjs/common';
 
 /**
  * Setup Swagger API documentation
- * 
+ *
  * Security considerations:
  * - In production, Swagger is disabled by default (enable via ENABLE_SWAGGER=true)
  * - This prevents API schema exposure to attackers
@@ -16,7 +16,9 @@ export function setupSwagger(app: INestApplication) {
 
   // Security: Disable Swagger in production unless explicitly enabled
   if (isProduction && !enableSwagger) {
-    logger.log('Swagger documentation disabled in production (set ENABLE_SWAGGER=true to enable)');
+    logger.log(
+      'Swagger documentation disabled in production (set ENABLE_SWAGGER=true to enable)',
+    );
     return;
   }
 

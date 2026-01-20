@@ -15,7 +15,9 @@ export default function LearnLayout() {
         animationDuration: 600, // Increased from default ~350ms to 600ms
       }}
     >
-      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="index" options={{ headerShown: false, title: 'Learn' }} />
+      <Stack.Screen name="list" options={{ title: 'Lessons', headerBackTitle: 'Learn' }} />
+      <Stack.Screen name="review" options={{ title: 'Review', headerBackTitle: 'Learn' }} />
     </Stack>
   );
 }

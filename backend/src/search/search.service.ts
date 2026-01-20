@@ -32,10 +32,7 @@ export class SearchService {
       results.modules = await this.prisma.module.findMany({
         where: {
           ...(searchText && {
-            OR: [
-              { title: searchText },
-              { description: searchText },
-            ],
+            OR: [{ title: searchText }, { description: searchText }],
           }),
         },
         take: limit,
@@ -49,10 +46,7 @@ export class SearchService {
       results.lessons = await this.prisma.lesson.findMany({
         where: {
           ...(searchText && {
-            OR: [
-              { title: searchText },
-              { description: searchText },
-            ],
+            OR: [{ title: searchText }, { description: searchText }],
           }),
         },
         include: {

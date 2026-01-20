@@ -54,10 +54,11 @@ type Props = {
   lessonId?: string;
   planMode?: 'learn' | 'review' | 'mixed';
   timeBudgetSec?: number | null;
+  returnTo?: string;
   onComplete: (attempts: AttemptLog[]) => void;
 };
 
-export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeBudgetSec, onComplete }: Props) {
+export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeBudgetSec, returnTo, onComplete }: Props) {
   const [index, setIndex] = useState(0);
   const [attempts, setAttempts] = useState<AttemptLog[]>([]);
   const [selectedOptionId, setSelectedOptionId] = useState<string | undefined>(undefined);
@@ -75,6 +76,10 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
 
   const currentCard = plan.cards[index];
   const total = useMemo(() => plan.cards.length, [plan.cards]);
+  const isSpeakListening =
+    currentCard?.kind === CardKind.Listening &&
+    'mode' in currentCard &&
+    currentCard.mode === 'speak';
   const currentRationale = currentCard?.rationale?.trim();
   const hasRationale = !!currentRationale;
 
@@ -122,7 +127,9 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
             ? flashcardRating !== undefined // Flashcard: need rating
             : showResult && userAnswer.trim().length > 0 // Type translation: Must check answer first
           : currentCard.kind === CardKind.Listening
-            ? showResult && userAnswer.trim().length > 0 // Must check answer first
+            ? isSpeakListening
+              ? showResult // Speech practice: proceed after attempt (result may be unavailable on error)
+              : showResult && userAnswer.trim().length > 0 // Type listening: must check answer first
             : true);
 
   const handleSelectOption = async (optionId: string) => {
@@ -144,7 +151,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
         }
         
         // Pass optionId directly to avoid state timing issues
-        await handleCheckAnswer(optionId, undefined, false);
+        await handleCheckAnswer(optionId);
       }
       // For regular MCQ, wait for "Check Answer" button
     }
@@ -188,8 +195,13 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           return;
         }
 
-        const audioFormat = audioRecordingUri.endsWith('.m4a') ? 'm4a' : 
-                          audioRecordingUri.endsWith('.flac') ? 'flac' : 'wav';
+        // IMPORTANT: use the local `audioUri` (state updates are async)
+        const normalizedUri = audioUri.toLowerCase();
+        const audioFormat = normalizedUri.endsWith('.m4a')
+          ? 'm4a'
+          : normalizedUri.endsWith('.flac')
+            ? 'flac'
+            : 'wav';
         
         console.log('✅ Audio file loaded:', { 
           format: audioFormat, 
@@ -204,6 +216,8 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           transcription: pronunciationResponse.transcription
         });
         setPronunciationResult(pronunciationResponse);
+        // Populate `userAnswer` so the app has a consistent "answer" string for attempts/analytics.
+        setUserAnswer(pronunciationResponse.transcription ?? '');
         setIsCorrect(pronunciationResponse.isCorrect);
         setShowResult(true);
 
@@ -227,7 +241,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
               timeToComplete,
               percentageAccuracy: pronunciationResponse.overallScore,
               attempts: attemptNumber,
-            });
+            } as any);
             awardedXp = attemptResponse.awardedXp;
             invalidateLessonPlanCache();
 
@@ -304,7 +318,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
             timeToComplete,
             percentageAccuracy: validationResult.isCorrect ? 100 : 0,
             attempts: attemptNumber,
-          });
+          } as any);
           awardedXp = attemptResponse.awardedXp;
           invalidateLessonPlanCache();
 
@@ -378,7 +392,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
                 timeToComplete,
                 percentageAccuracy: validationResult.isCorrect ? 100 : 0,
                 attempts: attemptNumber,
-              });
+              } as any);
               awardedXp = attemptResponse.awardedXp;
               invalidateLessonPlanCache();
               
@@ -462,7 +476,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
             timeToComplete,
             percentageAccuracy: score,
             attempts: 1,
-          });
+          } as any);
           awardedXp = attemptResponse.awardedXp;
           invalidateLessonPlanCache();
 
@@ -558,6 +572,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           lessonId,
           planMode: planMode ?? '',
           timeBudgetSec: timeBudgetSec ? String(timeBudgetSec) : '',
+          ...(returnTo ? { returnTo } : {}),
           totalXp: totalXp.toString(),
           teachingsMastered: teachingsMastered.toString(),
         },
@@ -648,6 +663,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           showResult={showResult}
           isCorrect={isCorrect}
           onCheckAnswer={handleCheckAnswerWrapper}
+          onContinue={isSpeakListening ? handleNext : undefined}
           onRating={(rating) => {
             console.log('SessionRunner: Rating received:', rating);
             setFlashcardRating(rating);
@@ -658,21 +674,23 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
         />
       </ScrollView>
 
-      <View style={styles.footer}>
-        <Pressable
-          style={[styles.primaryButton, !canProceed && styles.primaryButtonDisabled]}
-          onPress={handleNext}
-          disabled={!canProceed}
-        >
-          <Text style={styles.primaryButtonLabel}>
-            {currentCard.kind === CardKind.Teach && !isLast
-              ? 'Start Practice'
-              : isLast
-                ? 'Finish'
-                : 'Next'}
-          </Text>
-        </Pressable>
-      </View>
+      {!isSpeakListening ? (
+        <View style={styles.footer}>
+          <Pressable
+            style={[styles.primaryButton, !canProceed && styles.primaryButtonDisabled]}
+            onPress={handleNext}
+            disabled={!canProceed}
+          >
+            <Text style={styles.primaryButtonLabel}>
+              {currentCard.kind === CardKind.Teach && !isLast
+                ? 'Start Practice'
+                : isLast
+                  ? 'Finish'
+                  : 'Next'}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
     </View>
   );
 }
