@@ -17,17 +17,13 @@ export async function resolvePostAuthDestination(userId: string): Promise<string
     const onboardingDone = await hasOnboarding(userId);
     console.log('resolvePostAuthDestination:', { userId, onboardingDone });
     
-    // First-time users (no onboarding) should go to home (app/index)
-    // Users who started but didn't complete onboarding should continue onboarding
     // Users who completed onboarding should go to home
     if (onboardingDone) {
       return routes.tabs.home;
     }
     
-    // For first-time users, go to home (app/index) - they can start onboarding from there
-    // Only route to onboarding if they explicitly need to complete it
-    // For now, let's route first-time users to home as requested
-    return routes.tabs.home;
+    // Users who haven't completed onboarding should be routed to onboarding
+    return routes.onboarding.welcome;
   } catch (err) {
     // If there's an error, default to home page (not onboarding)
     // This ensures first-time users see the home page
