@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CARD_BORDER, OUTER_CARD_RADIUS, softShadow } from './homeStyles';
 
@@ -40,19 +40,19 @@ export function WelcomeContinueCard({
       <View style={styles.headerRow}>
         <Text
           style={[styles.title, { color: theme.colors.text }]}
-          numberOfLines={1}
+          accessibilityRole="header"
+          numberOfLines={2}
           ellipsizeMode="tail"
         >
           {greeting}
         </Text>
-        <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" />
       </View>
 
       {showStreak || showMinutesToday ? (
         <View style={styles.metaRow}>
           {showStreak ? (
             <View style={styles.flamePill}>
-              <Ionicons name="flame" size={20} color="#D44F00" />
+              <Ionicons name="flame" size={20} color="#D44F00" accessible={false} importantForAccessibility="no" />
             </View>
           ) : null}
           <View style={styles.metaTextWrap}>
@@ -80,14 +80,14 @@ export function WelcomeContinueCard({
           ]}
         >
             <View style={styles.messageIcon}>
-              <Ionicons name="sparkles" size={20} color="#1B6ED4" />
+              <Ionicons name="sparkles" size={20} color="#1B6ED4" accessible={false} importantForAccessibility="no" />
             </View>
             <Text style={[styles.messageText, { color: '#0D1B2A' }]}>{message}</Text>
         </Pressable>
       ) : (
         <View style={styles.messageCard}>
           <View style={styles.messageIcon}>
-            <Ionicons name="sparkles" size={20} color="#1B6ED4" />
+            <Ionicons name="sparkles" size={20} color="#1B6ED4" accessible={false} importantForAccessibility="no" />
           </View>
           <Text style={[styles.messageText, { color: '#0D1B2A' }]}>{message}</Text>
         </View>
@@ -120,10 +120,6 @@ const styles = StyleSheet.create({
     fontFamily: baseTheme.typography.bold,
     fontSize: 22,
     flex: 1,
-  },
-  logo: {
-    width: 48,
-    height: 48,
   },
   flamePill: {
     flexDirection: 'row',

@@ -85,11 +85,13 @@ export default function SessionLessonPickerScreen() {
             style={styles.backBtn}
             hitSlop={12}
           >
-            <Ionicons name="chevron-back" size={22} color={theme.colors.mutedText} />
+            <Ionicons name="chevron-back" size={22} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
           </Pressable>
         )}
 
-        <Text style={[styles.title, { color: theme.colors.text }]}>Choose a lesson</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]} accessibilityRole="header">
+          Choose a lesson
+        </Text>
 
         <View
           style={[
@@ -97,7 +99,7 @@ export default function SessionLessonPickerScreen() {
             { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
           ]}
         >
-          <Ionicons name="search" size={18} color={theme.colors.mutedText} />
+          <Ionicons name="search" size={18} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
           <TextInput
             value={query}
             onChangeText={setQuery}
@@ -106,6 +108,9 @@ export default function SessionLessonPickerScreen() {
             style={[styles.searchInput, { color: theme.colors.text }]}
             autoCapitalize="none"
             autoCorrect={false}
+            accessibilityLabel="Search lessons"
+            accessibilityHint="Filters the lesson list as you type"
+            returnKeyType="search"
           />
         </View>
 
@@ -126,7 +131,7 @@ export default function SessionLessonPickerScreen() {
           ]}
         >
           <Text style={[styles.clearText, { color: theme.colors.error }]}>Clear lesson filter</Text>
-          <Ionicons name="trash-outline" size={18} color={theme.colors.error} />
+          <Ionicons name="trash-outline" size={18} color={theme.colors.error} accessible={false} importantForAccessibility="no" />
         </Pressable>
 
         {loading ? (
@@ -136,7 +141,9 @@ export default function SessionLessonPickerScreen() {
           </View>
         ) : error ? (
           <View style={styles.stateRow}>
-            <Text style={[styles.stateText, { color: theme.colors.error }]}>{error}</Text>
+            <Text style={[styles.stateText, { color: theme.colors.error }]} accessibilityRole="alert">
+              {error}
+            </Text>
           </View>
         ) : (
           <FlatList
@@ -168,7 +175,7 @@ export default function SessionLessonPickerScreen() {
                     </Text>
                   ) : null}
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
+                <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
               </Pressable>
             )}
           />

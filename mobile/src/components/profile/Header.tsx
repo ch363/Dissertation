@@ -14,20 +14,30 @@ type Props = {
 
 export function ProfileHeader({ title, subtitle, avatarUrl, onAvatarPress, right }: Props) {
   const { theme } = useAppTheme();
+  const avatar = avatarUrl ? (
+    <Image source={{ uri: avatarUrl }} style={styles.avatar} accessible={false} />
+  ) : (
+    <View style={[styles.avatar, { backgroundColor: theme.colors.border }]} />
+  );
+
   return (
     <View style={styles.row}>
-      <Pressable
-        onPress={onAvatarPress}
-        hitSlop={8}
-        style={styles.avatarWrap}
-        accessibilityRole="button"
-      >
-        {avatarUrl ? (
-          <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-        ) : (
-          <View style={[styles.avatar, { backgroundColor: theme.colors.border }]} />
-        )}
-      </Pressable>
+      {onAvatarPress ? (
+        <Pressable
+          onPress={onAvatarPress}
+          hitSlop={8}
+          style={styles.avatarWrap}
+          accessibilityRole="button"
+          accessibilityLabel="Profile photo"
+          accessibilityHint="Double tap to change your profile photo"
+        >
+          {avatar}
+        </Pressable>
+      ) : (
+        <View style={styles.avatarWrap} accessible={false}>
+          {avatar}
+        </View>
+      )}
       <View style={{ flex: 1 }}>
         <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={1} ellipsizeMode="tail">
           {title}

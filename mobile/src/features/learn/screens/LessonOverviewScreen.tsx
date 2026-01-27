@@ -92,7 +92,9 @@ export default function LessonOverviewScreen() {
       {/* Header with home button */}
       <View style={styles.header}>
         <View style={styles.headerSpacer} />
-        <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Lesson</Text>
+        <Text style={[styles.headerTitle, { color: theme.colors.text }]} accessibilityRole="header">
+          Lesson
+        </Text>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Home"
@@ -100,7 +102,7 @@ export default function LessonOverviewScreen() {
           hitSlop={10}
           style={styles.homeButton}
         >
-          <Ionicons name="home" size={22} color={theme.colors.mutedText} />
+          <Ionicons name="home" size={22} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
         </Pressable>
       </View>
       
@@ -141,6 +143,9 @@ export default function LessonOverviewScreen() {
 
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel={locked ? 'Start lesson, locked' : 'Start lesson'}
+          accessibilityHint={locked ? 'Complete the previous lesson to unlock' : 'Starts this lesson'}
+          accessibilityState={{ disabled: locked }}
           onPress={locked ? undefined : handleStart}
           style={[
             styles.startButton,

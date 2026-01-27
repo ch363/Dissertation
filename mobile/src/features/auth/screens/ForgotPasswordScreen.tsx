@@ -1,9 +1,11 @@
 import { Link } from 'expo-router';
-import { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, ActivityIndicator } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TextInput } from 'react-native';
 
+import { Button } from '@/components/ui';
 import { sendPasswordReset } from '@/services/api/auth';
 import { theme } from '@/services/theme/tokens';
+import { announce } from '@/utils/a11y';
 
 const emailRegex = /\S+@\S+\.\S+/;
 const RESET_REDIRECT = 'fluentia://update-password';
@@ -14,6 +16,9 @@ export default function ForgotPassword() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const trimmedEmail = email.trim();
+  const emailError =
+    trimmedEmail.length > 0 && !emailRegex.test(trimmedEmail) ? 'Enter a valid email address.' : null;
   const canSubmit = emailRegex.test(email.trim()) && !loading;
 
   const handleReset = async () => {
@@ -31,13 +36,19 @@ export default function ForgotPassword() {
     }
   };
 
+  useEffect(() => {
+    if (error) announce(error);
+    else if (message) announce(message);
+  }, [error, message]);
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Forgot password</Text>
+      <Text style={styles.title} accessibilityRole="header">Forgot password</Text>
       <Text style={styles.subtitle}>
         Enter your email to receive a reset link. It will open the app to update your password.
       </Text>
 
+      <Text style={styles.inputLabel}>Email</Text>
       <TextInput
         style={styles.input}
         value={email}
@@ -46,22 +57,38 @@ export default function ForgotPassword() {
         keyboardType="email-address"
         autoCapitalize="none"
         placeholderTextColor={theme.colors.mutedText}
+        accessibilityLabel="Email"
+        accessibilityHint="Enter the email address for your account"
+        accessibilityState={{ invalid: !!emailError }}
+        autoComplete="email"
+        textContentType="username"
+        returnKeyType="done"
+        onSubmitEditing={handleReset}
       />
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      {message ? <Text style={styles.success}>{message}</Text> : null}
+      {emailError ? (
+        <Text style={styles.error} accessibilityRole="alert">
+          {emailError}
+        </Text>
+      ) : null}
+      {error ? (
+        <Text style={styles.error} accessibilityRole="alert">
+          {error}
+        </Text>
+      ) : null}
+      {message ? (
+        <Text style={styles.success} accessibilityRole="alert">
+          {message}
+        </Text>
+      ) : null}
 
-      <Pressable
-        style={[styles.button, canSubmit ? styles.primary : styles.disabled]}
+      <Button
+        title="Send reset email"
         onPress={handleReset}
         disabled={!canSubmit}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Send reset email</Text>
-        )}
-      </Pressable>
+        loading={loading}
+        accessibilityHint="Sends a password reset link to your email"
+      />
 
       <Link href="/sign-in" style={styles.link}>
         Back to sign in
@@ -87,6 +114,11 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
     color: theme.colors.mutedText,
   },
+  inputLabel: {
+    color: theme.colors.text,
+    fontFamily: theme.typography.semiBold,
+    marginBottom: theme.spacing.xs,
+  },
   input: {
     backgroundColor: theme.colors.card,
     borderRadius: theme.radius.md,
@@ -97,20 +129,8 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     marginBottom: theme.spacing.md,
   },
-  button: {
-    paddingVertical: 14,
-    borderRadius: theme.radius.md,
-    alignItems: 'center',
-    marginTop: theme.spacing.sm,
-  },
-  primary: { backgroundColor: theme.colors.primary },
-  disabled: { backgroundColor: theme.colors.border },
-  buttonText: {
-    color: '#fff',
-    fontFamily: theme.typography.semiBold,
-  },
   link: {
-    color: theme.colors.secondary,
+    color: theme.colors.link,
     fontFamily: theme.typography.semiBold,
     marginTop: theme.spacing.lg,
   },
@@ -119,7 +139,7 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
   },
   success: {
-    color: theme.colors.secondary,
+    color: theme.colors.success,
     marginTop: theme.spacing.xs,
   },
 });

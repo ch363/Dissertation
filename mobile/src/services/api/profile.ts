@@ -127,7 +127,43 @@ export async function upsertMyProfile(data: { name?: string; avatarUrl?: string 
  * Ensure profile exists (provisioning)
  */
 export async function ensureProfileSeed(name?: string): Promise<Profile> {
-  return apiClient.post<Profile>('/me/profile/ensure', name ? { name } : undefined);
+  const cleanProvided = name?.trim();
+
+  // If no name was provided, try to derive it from Supabase auth metadata.
+  // This avoids relying on backend service-role access to Supabase Admin APIs.
+  let derivedName: string | undefined;
+  if (!cleanProvided) {
+    try {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.auth.getUser();
+      if (!error && data?.user) {
+        const meta = (data.user.user_metadata ?? {}) as any;
+        const metaName =
+          (typeof meta?.name === 'string' && meta.name) ||
+          (typeof meta?.full_name === 'string' && meta.full_name) ||
+          (typeof meta?.display_name === 'string' && meta.display_name) ||
+          undefined;
+
+        const cleanedMeta = metaName?.trim();
+        if (cleanedMeta) {
+          derivedName = cleanedMeta;
+        } else if (data.user.email) {
+          const emailName = data.user.email.split('@')[0]?.trim();
+          if (emailName) {
+            derivedName = emailName.charAt(0).toUpperCase() + emailName.slice(1);
+          }
+        }
+      }
+    } catch {
+      // best-effort: fall back to ensuring profile without a name
+    }
+  }
+
+  const finalName = cleanProvided || derivedName;
+  return apiClient.post<Profile>(
+    '/me/profile/ensure',
+    finalName ? { name: finalName } : undefined,
+  );
 }
 
 /**

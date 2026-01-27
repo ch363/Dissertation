@@ -11,6 +11,7 @@ import Toast from 'react-native-toast-message';
 import { AppProviders } from '@/services/app/AppProviders';
 import { RouteGuard } from '@/services/navigation/RouteGuard';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 /**
  * Disable iOS "rubber-band" bounce and Android overscroll glow globally.
@@ -82,6 +83,7 @@ export default function RootLayout() {
 
 function ThemedStack() {
   const { theme } = useAppTheme();
+  const reduceMotion = useReducedMotion();
   return (
     <Stack
       screenOptions={{
@@ -89,8 +91,9 @@ function ThemedStack() {
         headerTintColor: theme.colors.text,
         contentStyle: { backgroundColor: theme.colors.background },
         headerShown: false,
-        // Slow down the slide animation for smoother transitions
-        animationDuration: 600, // Increased from default ~350ms to 600ms
+        // Respect the user's Reduce Motion preference.
+        animation: reduceMotion ? 'none' : 'default',
+        animationDuration: reduceMotion ? 0 : 600, // keep slower transitions only when motion is allowed
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />

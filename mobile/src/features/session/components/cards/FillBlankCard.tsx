@@ -6,6 +6,7 @@ import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { theme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
 import { FillBlankCard as FillBlankCardType } from '@/types/session';
+import { announce } from '@/utils/a11y';
 
 type Props = {
   card: FillBlankCardType;
@@ -52,6 +53,12 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
 
     speakSelectedWord();
   }, [selectedAnswer, showResult]);
+
+  useEffect(() => {
+    if (!showResult) return;
+    if (isCorrect === true) announce('Correct.');
+    else if (isCorrect === false) announce('Incorrect.');
+  }, [showResult, isCorrect]);
 
   const handlePlayAudio = async () => {
     if (!card.text) {
@@ -107,11 +114,20 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
       <View style={styles.questionCard}>
         {/* Audio button - always show if text is available */}
         {(card.audioUrl || card.text) && (
-          <Pressable style={styles.audioButton} onPress={handlePlayAudio}>
+          <Pressable
+            style={styles.audioButton}
+            onPress={handlePlayAudio}
+            accessibilityRole="button"
+            accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
+            accessibilityHint="Plays the sentence audio"
+            accessibilityState={{ selected: isPlaying, busy: isPlaying }}
+          >
             <Ionicons
               name={isPlaying ? 'pause' : 'volume-high'}
               size={20}
               color="#4A90E2"
+              accessible={false}
+              importantForAccessibility="no"
             />
             <Text style={styles.audioLabel}>Listen and complete</Text>
           </Pressable>
@@ -189,6 +205,12 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
                     }
                   }}
                   disabled={isDisabled}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Answer option: ${opt.label}`}
+                  accessibilityState={{
+                    selected: isSelected,
+                    disabled: isDisabled,
+                  }}
                 >
                   <Text 
                     style={[
@@ -203,10 +225,24 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
                   </Text>
                   {/* Show checkmark/X icon for correct/incorrect */}
                   {isCorrectOption && (
-                    <Ionicons name="checkmark-circle" size={20} color="#28a745" style={styles.optionIcon} />
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={20}
+                      color="#28a745"
+                      style={styles.optionIcon}
+                      accessible={false}
+                      importantForAccessibility="no"
+                    />
                   )}
                   {isIncorrectOption && (
-                    <Ionicons name="close-circle" size={20} color="#dc3545" style={styles.optionIcon} />
+                    <Ionicons
+                      name="close-circle"
+                      size={20}
+                      color="#dc3545"
+                      style={styles.optionIcon}
+                      accessible={false}
+                      importantForAccessibility="no"
+                    />
                   )}
                 </Pressable>
               );

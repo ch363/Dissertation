@@ -62,6 +62,11 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
               canPreventDefault: true,
             });
             if (event.defaultPrevented) return;
+            // If the tab is already focused and its nested navigator is already at its root,
+            // do nothing (avoids a redundant navigation animation / screen re-mount).
+            const nestedStateIndex = (route as any)?.state?.index;
+            const isAtTabRoot = nestedStateIndex === undefined || nestedStateIndex === 0;
+            if (isFocused && isAtTabRoot) return;
             // Always jump to the tab's root route so deep stacks can't "trap" users.
             // Also supports "tap tab again to pop-to-top".
             router.replace(targetPath);

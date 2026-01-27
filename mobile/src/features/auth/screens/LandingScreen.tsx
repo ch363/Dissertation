@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { View, Text, StyleSheet, Image, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Button } from '@/components/ui';
 import { hasOnboarding } from '@/services/api/onboarding';
 import { useAuth } from '@/services/auth/AuthProvider';
 import { routes } from '@/services/navigation/routes';
@@ -33,17 +34,13 @@ export default function LandingScreen() {
             <ActivityIndicator color={theme.colors.primary} />
           </View>
         )}
-        <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" />
-        <Text style={styles.title}>Fluentia</Text>
+        <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" accessible={false} />
+        <Text style={styles.title} accessibilityRole="header">Fluentia</Text>
         <Text style={styles.subtitle}>Personalised learning, one step at a time.</Text>
 
         <View style={styles.buttons}>
-          <Pressable style={[styles.button, styles.primary]} onPress={goSignUp}>
-            <Text style={styles.buttonText}>Get Started</Text>
-          </Pressable>
-          <Pressable style={[styles.button, styles.secondary]} onPress={goSignIn}>
-            <Text style={styles.buttonText}>Log In</Text>
-          </Pressable>
+          <Button title="Get Started" onPress={goSignUp} accessibilityHint="Creates a new account" />
+          <Button title="Log In" onPress={goSignIn} variant="secondary" accessibilityHint="Signs in to your account" />
         </View>
         <StatusBar style="auto" />
       </View>
@@ -90,22 +87,5 @@ const styles = StyleSheet.create({
     width: '100%',
     marginTop: theme.spacing.md,
     gap: theme.spacing.md,
-  },
-  button: {
-    width: '100%',
-    paddingVertical: 14,
-    borderRadius: theme.radius.md,
-    alignItems: 'center',
-  },
-  primary: {
-    backgroundColor: theme.colors.primary,
-  },
-  secondary: {
-    backgroundColor: theme.colors.secondary,
-  },
-  buttonText: {
-    color: '#fff',
-    fontFamily: theme.typography.semiBold,
-    fontSize: 16,
   },
 });

@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState, useEffect } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { IconButton } from '@/components/ui/IconButton';
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { theme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
@@ -93,13 +94,20 @@ export function TranslateCard({
             <View style={styles.flashcardFront}>
               <View style={styles.flashcardContent}>
                 <Text style={styles.flashcardWord}>{card.source}</Text>
-                <Pressable style={styles.flashcardAudio} onPress={handlePlaySourceAudio}>
+                <IconButton
+                  accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
+                  accessibilityHint="Plays the word audio"
+                  onPress={handlePlaySourceAudio}
+                  style={styles.flashcardAudio}
+                >
                   <Ionicons
                     name={isPlaying ? 'pause' : 'volume-high'}
                     size={32}
                     color={theme.colors.primary}
+                    accessible={false}
+                    importantForAccessibility="no"
                   />
-                </Pressable>
+                </IconButton>
                 {card.grammar && (
                   <Text style={styles.flashcardGrammar}>{card.grammar}</Text>
                 )}
@@ -107,8 +115,14 @@ export function TranslateCard({
             </View>
             
             {/* Flip Button on Front */}
-            <Pressable style={styles.flipButton} onPress={handleFlip}>
-              <Ionicons name="swap-horizontal" size={20} color="#fff" />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Flip card"
+              accessibilityHint="Shows the answer side of the flashcard"
+              style={styles.flipButton}
+              onPress={handleFlip}
+            >
+              <Ionicons name="swap-horizontal" size={20} color="#fff" accessible={false} importantForAccessibility="no" />
               <Text style={styles.flipButtonText}>Flip to see answer</Text>
             </Pressable>
           </>
@@ -124,13 +138,20 @@ export function TranslateCard({
               >
                 <View style={styles.flashcardAnswerHeader}>
                   <Text style={styles.flashcardAnswerText}>{card.expected}</Text>
-                  <Pressable style={styles.flashcardAnswerAudio} onPress={handlePlaySourceAudio}>
+                  <IconButton
+                    accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
+                    accessibilityHint="Plays the answer audio"
+                    onPress={handlePlaySourceAudio}
+                    style={styles.flashcardAnswerAudio}
+                  >
                     <Ionicons
                       name={isPlaying ? 'pause' : 'volume-high'}
                       size={24}
                       color="#fff"
+                      accessible={false}
+                      importantForAccessibility="no"
                     />
-                  </Pressable>
+                  </IconButton>
                 </View>
                 <Text style={styles.flashcardOriginalWord}>{card.source}</Text>
                 {card.example && (
@@ -143,8 +164,14 @@ export function TranslateCard({
             </View>
 
             {/* Flip Button on Back */}
-            <Pressable style={styles.flipButton} onPress={handleFlip}>
-              <Ionicons name="swap-horizontal" size={20} color="#fff" />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Flip card"
+              accessibilityHint="Shows the question side of the flashcard"
+              style={styles.flipButton}
+              onPress={handleFlip}
+            >
+              <Ionicons name="swap-horizontal" size={20} color="#fff" accessible={false} importantForAccessibility="no" />
               <Text style={styles.flipButtonText}>Flip to see question</Text>
             </Pressable>
 
@@ -153,6 +180,9 @@ export function TranslateCard({
               <Text style={styles.ratingTitle}>How well did you know this?</Text>
               <View style={styles.ratingButtons}>
                 <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Rate hard"
+                  accessibilityState={{ selected: selectedRating === 0 }}
                   style={[
                     styles.ratingButton,
                     styles.ratingButtonHard,
@@ -163,10 +193,13 @@ export function TranslateCard({
                     onRating?.(0);
                   }}
                 >
-                  <Ionicons name="thumbs-down" size={24} color="#dc3545" />
+                  <Ionicons name="thumbs-down" size={24} color="#dc3545" accessible={false} importantForAccessibility="no" />
                   <Text style={[styles.ratingButtonText, styles.ratingButtonTextHard]}>Hard</Text>
                 </Pressable>
                 <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Rate good"
+                  accessibilityState={{ selected: selectedRating === 2.5 }}
                   style={[
                     styles.ratingButton,
                     styles.ratingButtonGood,
@@ -177,10 +210,13 @@ export function TranslateCard({
                     onRating?.(2.5);
                   }}
                 >
-                  <Ionicons name="remove" size={24} color="#ffc107" />
+                  <Ionicons name="remove" size={24} color="#ffc107" accessible={false} importantForAccessibility="no" />
                   <Text style={[styles.ratingButtonText, styles.ratingButtonTextGood]}>Good</Text>
                 </Pressable>
                 <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Rate easy"
+                  accessibilityState={{ selected: selectedRating === 5 }}
                   style={[
                     styles.ratingButton,
                     styles.ratingButtonEasy,
@@ -191,7 +227,7 @@ export function TranslateCard({
                     onRating?.(5);
                   }}
                 >
-                  <Ionicons name="thumbs-up" size={24} color="#28a745" />
+                  <Ionicons name="thumbs-up" size={24} color="#28a745" accessible={false} importantForAccessibility="no" />
                   <Text style={[styles.ratingButtonText, styles.ratingButtonTextEasy]}>Easy</Text>
                 </Pressable>
               </View>
@@ -213,23 +249,32 @@ export function TranslateCard({
       <View style={styles.sourceCard}>
         <View style={styles.sourceTextContainer}>
           <Text style={styles.sourceText}>{card.source}</Text>
-          <Pressable style={styles.sourceSpeakerButton} onPress={handlePlaySourceAudio}>
+          <IconButton
+            accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
+            accessibilityHint="Plays the phrase audio"
+            onPress={handlePlaySourceAudio}
+            style={styles.sourceSpeakerButton}
+          >
             <Ionicons
               name={isPlaying ? 'pause' : 'volume-high'}
               size={18}
               color={theme.colors.primary}
+              accessible={false}
+              importantForAccessibility="no"
             />
-          </Pressable>
+          </IconButton>
         </View>
       </View>
 
       {/* Hint Button */}
       {card.hint && (
         <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={showHintState ? 'Hide hint' : 'Show hint'}
           style={styles.hintButton}
           onPress={() => setShowHintState(!showHintState)}
         >
-          <Ionicons name="bulb" size={20} color={theme.colors.primary} />
+          <Ionicons name="bulb" size={20} color={theme.colors.primary} accessible={false} importantForAccessibility="no" />
           <Text style={styles.hintButtonText}>
             {showHintState ? 'Hide hint' : 'Show hint'}
           </Text>
@@ -255,6 +300,7 @@ export function TranslateCard({
           autoFocus
           multiline
           editable={!showResult}
+          accessibilityLabel="Your translation"
         />
       </View>
 
@@ -269,7 +315,12 @@ export function TranslateCard({
 
       {/* Check Answer Button */}
       {!showResult && userAnswer.trim().length > 0 && (
-        <Pressable style={styles.checkButton} onPress={onCheckAnswer}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Check answer"
+          style={styles.checkButton}
+          onPress={onCheckAnswer}
+        >
           <Text style={styles.checkButtonText}>Check Answer</Text>
         </Pressable>
       )}
@@ -282,6 +333,8 @@ export function TranslateCard({
               name={isCorrect ? 'checkmark-circle' : 'close-circle'}
               size={48}
               color={isCorrect ? '#28a745' : '#dc3545'}
+              accessible={false}
+              importantForAccessibility="no"
             />
             <Text style={styles.resultTitle}>
               {isCorrect ? 'CORRECT!' : 'INCORRECT'}

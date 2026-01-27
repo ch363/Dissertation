@@ -173,7 +173,7 @@ export default function CourseDetail() {
             hitSlop={12}
             style={styles.homeButton}
           >
-            <Ionicons name="home" size={22} color={appTheme.colors.mutedText} />
+            <Ionicons name="home" size={22} color={appTheme.colors.mutedText} accessible={false} importantForAccessibility="no" />
           </Pressable>
         ),
       });
@@ -325,7 +325,7 @@ export default function CourseDetail() {
   if (error || !module) {
     return (
       <View style={[styles.container, { backgroundColor: appTheme.colors.background }]}>
-        <Text style={[styles.errorText, { color: appTheme.colors.error }]}>
+        <Text style={[styles.errorText, { color: appTheme.colors.error }]} accessibilityRole="alert">
           {error || 'Course not found'}
         </Text>
       </View>
@@ -341,9 +341,11 @@ export default function CourseDetail() {
       {/* Header Section */}
       <View style={styles.headerSection}>
         <View style={[styles.iconContainer, { backgroundColor: appTheme.colors.primary + '15' }]}>
-          <Ionicons name="book" size={48} color={appTheme.colors.primary} />
+          <Ionicons name="book" size={48} color={appTheme.colors.primary} accessible={false} importantForAccessibility="no" />
         </View>
-        <Text style={[styles.title, { color: appTheme.colors.text }]}>{displayTitle}</Text>
+        <Text style={[styles.title, { color: appTheme.colors.text }]} accessibilityRole="header">
+          {displayTitle}
+        </Text>
         <Text style={[styles.subtitle, { color: appTheme.colors.mutedText }]}>
           {displayDescription}
         </Text>
@@ -353,14 +355,14 @@ export default function CourseDetail() {
       {lessons.length > 0 && (
         <View style={[styles.statsCard, { backgroundColor: appTheme.colors.card }]}>
           <View style={styles.statItem}>
-            <Ionicons name="list" size={20} color={appTheme.colors.primary} />
+            <Ionicons name="list" size={20} color={appTheme.colors.primary} accessible={false} importantForAccessibility="no" />
             <Text style={[styles.statText, { color: appTheme.colors.text }]}>
               {lessons.length} {lessons.length === 1 ? 'lesson' : 'lessons'}
             </Text>
           </View>
           <View style={[styles.statDivider, { backgroundColor: appTheme.colors.border }]} />
           <View style={styles.statItem}>
-            <Ionicons name="time-outline" size={20} color={appTheme.colors.primary} />
+            <Ionicons name="time-outline" size={20} color={appTheme.colors.primary} accessible={false} importantForAccessibility="no" />
             <Text style={[styles.statText, { color: appTheme.colors.text }]}>
               ~{Math.ceil(totalItems * 1.5)} min
             </Text>
@@ -405,6 +407,8 @@ export default function CourseDetail() {
               size={18}
               color={appTheme.colors.onPrimary}
               style={styles.primaryCtaIcon}
+              accessible={false}
+              importantForAccessibility="no"
             />
           </Pressable>
           {primaryAction.kind === 'start' && recommendedLessonTitle ? (
@@ -414,8 +418,9 @@ export default function CourseDetail() {
                 { backgroundColor: appTheme.colors.primary + '10', borderColor: appTheme.colors.primary + '2A' },
               ]}
               accessibilityLabel={`Recommended next: ${recommendedLessonTitle}`}
+              accessible
             >
-              <Ionicons name="sparkles" size={14} color={appTheme.colors.primary} />
+              <Ionicons name="sparkles" size={14} color={appTheme.colors.primary} accessible={false} importantForAccessibility="no" />
               <Text style={[styles.recommendationLabel, { color: appTheme.colors.primary }]}>Recommended next</Text>
               <Text style={[styles.recommendationTitle, { color: appTheme.colors.text }]} numberOfLines={1}>
                 {recommendedLessonTitle}
@@ -459,6 +464,9 @@ export default function CourseDetail() {
               return (
               <Pressable
                 key={lesson.id}
+                accessibilityRole="button"
+                accessibilityLabel={`Open lesson ${lesson.title}`}
+                accessibilityHint="Starts a session for this lesson"
                 style={[styles.lessonCard, { backgroundColor: appTheme.colors.card, borderColor: appTheme.colors.border }]}
                 onPress={handleLessonPress}
                 onPressIn={handleLessonPressIn}
@@ -470,6 +478,7 @@ export default function CourseDetail() {
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={[styles.lessonNumber, { borderColor: appTheme.colors.primary + '33' }]}
+                      accessible={false}
                     >
                       <Text style={[styles.lessonNumberText, { color: appTheme.colors.primary }]}>
                         {index + 1}
@@ -493,7 +502,7 @@ export default function CourseDetail() {
                     </View>
                   </View>
                   <View style={styles.lessonCardRight}>
-                    <Ionicons name="chevron-forward" size={20} color={appTheme.colors.mutedText} />
+                    <Ionicons name="chevron-forward" size={20} color={appTheme.colors.mutedText} accessible={false} importantForAccessibility="no" />
                   </View>
                 </View>
               </Pressable>

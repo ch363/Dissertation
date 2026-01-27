@@ -254,7 +254,7 @@ export default function HomeScreen() {
             style={styles.footerLinkRow}
           >
             <Text style={[styles.footerLinkText, { color: theme.colors.primary }]}>Browse learning paths</Text>
-            <Ionicons name="arrow-forward" size={16} color={theme.colors.primary} />
+            <Ionicons name="arrow-forward" size={16} color={theme.colors.primary} accessible={false} importantForAccessibility="no" />
           </Pressable>
         </View>
       </ScrollView>

@@ -35,6 +35,8 @@ export function TabBarButton({ label, iconName, isFocused, onPress, onLongPress 
           size={26}
           color={isFocused ? activeColor : inactiveColor}
           style={styles.icon}
+          accessible={false}
+          importantForAccessibility="no"
         />
         <Text
           style={[
@@ -70,5 +72,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 12,
+    flexShrink: 1,
+    textAlign: 'center',
   },
 });

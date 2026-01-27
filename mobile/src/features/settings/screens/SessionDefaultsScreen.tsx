@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { IconButton } from '@/components/ui';
 import { routes } from '@/services/navigation/routes';
 import {
   useAppTheme,
@@ -144,18 +145,24 @@ export default function SessionDefaultsScreen() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         {showBack && (
-          <Pressable
-            accessibilityRole="button"
+          <IconButton
             accessibilityLabel="Back to Settings"
             onPress={handleBack}
             style={styles.backBtn}
-            hitSlop={12}
           >
-            <Ionicons name="chevron-back" size={22} color={theme.colors.mutedText} />
-          </Pressable>
+            <Ionicons
+              name="chevron-back"
+              size={22}
+              color={theme.colors.mutedText}
+              accessible={false}
+              importantForAccessibility="no"
+            />
+          </IconButton>
         )}
 
-        <Text style={[styles.title, { color: theme.colors.text }]}>Session defaults</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]} accessibilityRole="header">
+          Session defaults
+        </Text>
 
         <View
           style={[
@@ -164,14 +171,20 @@ export default function SessionDefaultsScreen() {
           ]}
         >
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Mode</Text>
-          <View style={[styles.segmented, { borderColor: theme.colors.border }]}>
+          <View
+            accessibilityRole="radiogroup"
+            accessibilityLabel="Session mode"
+            style={[styles.segmented, { borderColor: theme.colors.border }]}
+          >
             {MODE_OPTIONS.map((opt) => {
               const selected = opt.value === mode;
               return (
                 <Pressable
                   key={opt.value}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Set mode to ${opt.label}`}
+                  accessibilityRole="radio"
+                  accessibilityLabel={opt.label}
+                  accessibilityHint="Sets the default session mode"
+                  accessibilityState={{ selected }}
                   onPress={() => setAndPersistMode(opt.value)}
                   style={[
                     styles.segment,
@@ -184,7 +197,7 @@ export default function SessionDefaultsScreen() {
                   <Text
                     style={[
                       styles.segmentLabel,
-                      { color: selected ? '#fff' : theme.colors.text },
+                      { color: selected ? theme.colors.onPrimary : theme.colors.text },
                     ]}
                   >
                     {opt.label}
@@ -229,6 +242,9 @@ export default function SessionDefaultsScreen() {
                 minimumTrackTintColor={theme.colors.primary}
                 maximumTrackTintColor={theme.colors.border}
                 thumbTintColor={theme.colors.primary}
+                accessibilityLabel="Time budget"
+                accessibilityHint="Adjusts the session time limit"
+                accessibilityValue={{ text: formatBudget(timeBudgetSecState ?? timeBudgetSec ?? null) }}
               />
               <Pressable
                 accessibilityRole="button"
@@ -237,7 +253,13 @@ export default function SessionDefaultsScreen() {
                 style={[styles.actionRow, { borderColor: theme.colors.border }]}
               >
                 <Text style={[styles.actionText, { color: theme.colors.text }]}>No limit</Text>
-                <Ionicons name="close-circle-outline" size={18} color={theme.colors.mutedText} />
+                <Ionicons
+                  name="close-circle-outline"
+                  size={18}
+                  color={theme.colors.mutedText}
+                  accessible={false}
+                  importantForAccessibility="no"
+                />
               </Pressable>
               <Text style={[styles.helper, { color: theme.colors.mutedText }]}>
                 The planner will try to fit the session into this time.
@@ -252,7 +274,13 @@ export default function SessionDefaultsScreen() {
                 style={[styles.actionRow, { borderColor: theme.colors.border }]}
               >
                 <Text style={[styles.actionText, { color: theme.colors.text }]}>Set a limit</Text>
-                <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={theme.colors.mutedText}
+                  accessible={false}
+                  importantForAccessibility="no"
+                />
               </Pressable>
               <Text style={[styles.helper, { color: theme.colors.mutedText }]}>
                 Optional pacing — leave off for open-ended sessions.
@@ -283,7 +311,13 @@ export default function SessionDefaultsScreen() {
                 Used when generating session plans (especially Learn).
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={theme.colors.mutedText}
+              accessible={false}
+              importantForAccessibility="no"
+            />
           </Pressable>
 
           {lessonId ? (
@@ -294,7 +328,13 @@ export default function SessionDefaultsScreen() {
               style={[styles.actionRow, { borderColor: theme.colors.border }]}
             >
               <Text style={[styles.actionText, { color: theme.colors.error }]}>Clear lesson filter</Text>
-              <Ionicons name="trash-outline" size={18} color={theme.colors.error} />
+              <Ionicons
+                name="trash-outline"
+                size={18}
+                color={theme.colors.error}
+                accessible={false}
+                importantForAccessibility="no"
+              />
             </Pressable>
           ) : (
             <Text style={[styles.helper, { color: theme.colors.mutedText }]}>

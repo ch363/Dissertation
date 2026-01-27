@@ -37,6 +37,11 @@ describe('theme colors meet WCAG AA contrast', () => {
     expect(contrastRatio(lightTheme.colors.onPrimary, lightTheme.colors.primary)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(lightTheme.colors.onSecondary, lightTheme.colors.secondary)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(lightTheme.colors.link, lightTheme.colors.background)).toBeGreaterThanOrEqual(4.5);
+    // Status colors are used for text (e.g., errors, confirmations)
+    expect(contrastRatio(lightTheme.colors.error, lightTheme.colors.background)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(lightTheme.colors.error, lightTheme.colors.card)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(lightTheme.colors.success, lightTheme.colors.background)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(lightTheme.colors.success, lightTheme.colors.card)).toBeGreaterThanOrEqual(4.5);
   });
 
   it('meets AA for core text + button combinations (dark)', () => {
@@ -47,6 +52,10 @@ describe('theme colors meet WCAG AA contrast', () => {
     expect(contrastRatio(darkTheme.colors.onPrimary, darkTheme.colors.primary)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(darkTheme.colors.onSecondary, darkTheme.colors.secondary)).toBeGreaterThanOrEqual(4.5);
     expect(contrastRatio(darkTheme.colors.link, darkTheme.colors.background)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(darkTheme.colors.error, darkTheme.colors.background)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(darkTheme.colors.error, darkTheme.colors.card)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(darkTheme.colors.success, darkTheme.colors.background)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(darkTheme.colors.success, darkTheme.colors.card)).toBeGreaterThanOrEqual(4.5);
   });
 });
 

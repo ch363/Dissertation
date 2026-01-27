@@ -5,11 +5,14 @@ import { Audio } from 'expo-av';
 import Constants from 'expo-constants';
 
 import { Button } from '@/components/ui/Button';
+import { IconButton } from '@/components/ui/IconButton';
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { theme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
 import { ListeningCard as ListeningCardType, PronunciationResult } from '@/types/session';
 import * as SpeechRecognition from '@/services/speech-recognition';
+import { announce } from '@/utils/a11y';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 // Lazy load FileSystem to avoid native module errors
 // This is completely optional - if FileSystem isn't available, we just skip file size checking
@@ -76,6 +79,7 @@ export function ListeningCard({
   const mode = card.mode || 'type'; // 'type' or 'speak'
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
   const recordingRef = useRef<Audio.Recording | null>(null);
+  const reduceMotion = useReducedMotion();
   
   // Check if running on iOS Simulator
   const isIOSSimulator = Platform.OS === 'ios' && 
@@ -84,6 +88,10 @@ export function ListeningCard({
 
   // Animation for recording button
   useEffect(() => {
+    if (reduceMotion) {
+      pulseAnim.setValue(1);
+      return;
+    }
     if (isRecording) {
       Animated.loop(
         Animated.sequence([
@@ -102,7 +110,11 @@ export function ListeningCard({
     } else {
       pulseAnim.setValue(1);
     }
-  }, [isRecording, pulseAnim]);
+  }, [isRecording, pulseAnim, reduceMotion]);
+
+  useEffect(() => {
+    if (recordingError) announce(recordingError);
+  }, [recordingError]);
 
   const handlePlayAudio = async () => {
     // Prevent multiple rapid calls
@@ -134,6 +146,7 @@ export function ListeningCard({
       setTimeout(() => setIsPlaying(false), estimatedDuration);
     } catch (error) {
       console.error('Failed to play audio:', error);
+      announce('Failed to play audio.');
       setIsPlaying(false);
     }
   };
@@ -148,6 +161,7 @@ export function ListeningCard({
       await SafeSpeech.speak(word, { language: 'it-IT', rate });
     } catch (error) {
       console.error('Failed to play word audio:', error);
+      announce('Failed to play word audio.');
     }
   };
 
@@ -260,6 +274,7 @@ export function ListeningCard({
       setIsRecording(true);
       setHasRecorded(false);
       setRecordedAudioUri(null);
+      announce('Recording started');
       console.log('✅ Recording started successfully');
     } catch (error: any) {
       console.error('Failed to start recording:', error);
@@ -350,6 +365,7 @@ export function ListeningCard({
       setIsRecording(false);
       setRecordingError(null); // Clear any previous errors on success
       recordingRef.current = null;
+      announce('Recording stopped');
     } catch (error: any) {
       console.error('Failed to stop recording:', error);
       setRecordingError(error?.message || 'Failed to stop recording.');
@@ -377,6 +393,7 @@ export function ListeningCard({
     try {
       setIsPlayingRecording(true);
       setRecordingError(null);
+      announce('Playing your recording');
       
       // Unload any existing sound
       if (playbackSoundRef.current) {
@@ -411,6 +428,7 @@ export function ListeningCard({
         // Handle success status
         if (status.didJustFinish) {
           console.log('✅ Playback finished');
+          announce('Playback finished');
           setIsPlayingRecording(false);
           sound.unloadAsync().catch(console.error);
           playbackSoundRef.current = null;
@@ -448,13 +466,18 @@ export function ListeningCard({
           <>
             <View style={styles.phraseCard}>
               <View style={styles.phraseRow}>
-                <Pressable style={styles.audioButton} onPress={handlePlayAudio}>
+                <IconButton
+                  accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
+                  accessibilityHint="Plays the phrase audio"
+                  onPress={handlePlayAudio}
+                  style={styles.audioButton}
+                >
                   <Ionicons
                     name={isPlaying ? 'pause' : 'volume-high'}
                     size={24}
                     color="#fff"
                   />
-                </Pressable>
+                </IconButton>
                 <View style={styles.phraseTextContainer}>
                   <Text style={styles.phraseText}>{card.expected}</Text>
                   <Text style={styles.phraseTranslation}>
@@ -467,6 +490,10 @@ export function ListeningCard({
             <View style={styles.recordingSection}>
               <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
                 <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={isRecording ? 'Stop recording' : 'Start recording'}
+                  accessibilityHint="Records your pronunciation"
+                  accessibilityState={{ selected: isRecording, disabled: isProcessing, busy: isProcessing }}
                   style={[styles.recordButton, isRecording && styles.recordButtonActive]}
                   onPress={handleRecordButtonPress}
                   disabled={isProcessing}
@@ -474,7 +501,7 @@ export function ListeningCard({
                   {isProcessing ? (
                     <ActivityIndicator size="large" color="#fff" />
                   ) : (
-                    <Ionicons name="mic" size={48} color="#fff" />
+                    <Ionicons name="mic" size={48} color="#fff" accessible={false} importantForAccessibility="no" />
                   )}
                 </Pressable>
               </Animated.View>
@@ -495,7 +522,9 @@ export function ListeningCard({
                 </View>
               )}
               {recordingError && (
-                <Text style={styles.errorText}>{recordingError}</Text>
+                <Text style={styles.errorText} accessibilityRole="alert">
+                  {recordingError}
+                </Text>
               )}
               {recordingDuration !== null && (
                 <Text style={styles.durationText}>
@@ -517,11 +546,17 @@ export function ListeningCard({
                     style={styles.playbackButton}
                     onPress={handlePlayRecording}
                     disabled={isPlayingRecording}
+                    accessibilityRole="button"
+                    accessibilityLabel={isPlayingRecording ? 'Playing recording' : 'Play recording'}
+                    accessibilityHint="Plays back what you recorded"
+                    accessibilityState={{ disabled: isPlayingRecording, busy: isPlayingRecording }}
                   >
                     <Ionicons
                       name={isPlayingRecording ? 'pause' : 'play'}
                       size={24}
                       color="#fff"
+                      accessible={false}
+                      importantForAccessibility="no"
                     />
                     <Text style={styles.playbackButtonText}>
                       {isPlayingRecording ? 'Playing...' : 'Play Recording'}
@@ -549,13 +584,18 @@ export function ListeningCard({
           <>
             <View style={styles.phraseCard}>
               <View style={styles.phraseRow}>
-                <Pressable style={styles.audioButton} onPress={handlePlayAudio}>
+                <IconButton
+                  accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
+                  accessibilityHint="Plays the phrase audio"
+                  onPress={handlePlayAudio}
+                  style={styles.audioButton}
+                >
                   <Ionicons
                     name={isPlaying ? 'pause' : 'volume-high'}
                     size={24}
                     color="#fff"
                   />
-                </Pressable>
+                </IconButton>
                 <View style={styles.phraseTextContainer}>
                   <Text style={styles.phraseText}>{card.expected}</Text>
                   <Text style={styles.phraseTranslation}>
@@ -582,6 +622,8 @@ export function ListeningCard({
                           name={word.feedback === 'perfect' ? 'checkmark-circle' : 'alert-circle'}
                           size={20}
                           color={word.feedback === 'perfect' ? '#28a745' : '#ff9800'}
+                          accessible={false}
+                          importantForAccessibility="no"
                         />
                         <Text style={styles.wordText}>{word.word}</Text>
                         <Text
@@ -593,12 +635,14 @@ export function ListeningCard({
                           {word.feedback === 'perfect' ? 'Perfect' : 'Could improve'}
                         </Text>
                         {word.feedback === 'could_improve' && (
-                          <Pressable
+                          <IconButton
+                            accessibilityLabel={`Play audio for ${word.word}`}
+                            accessibilityHint="Plays this word"
                             onPress={() => handlePlayWordAudio(word.word)}
                             style={styles.wordAudioButton}
                           >
                             <Ionicons name="volume-high" size={16} color={theme.colors.primary} />
-                          </Pressable>
+                          </IconButton>
                         )}
                       </View>
                     ))}
@@ -629,13 +673,18 @@ export function ListeningCard({
         // Input Screen
         <>
           <View style={styles.audioCard}>
-            <Pressable style={styles.audioButtonLarge} onPress={handlePlayAudio}>
+            <IconButton
+              accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
+              accessibilityHint="Plays the phrase audio"
+              onPress={handlePlayAudio}
+              style={styles.audioButtonLarge}
+            >
               <Ionicons
                 name={isPlaying ? 'pause' : 'volume-high'}
                 size={40}
                 color="#fff"
               />
-            </Pressable>
+            </IconButton>
           </View>
 
           <View style={styles.inputCard}>
@@ -647,10 +696,16 @@ export function ListeningCard({
               placeholder="Type here..."
               autoFocus
               editable={!showResult}
+              accessibilityLabel="Your answer"
             />
           </View>
           {!showResult && userAnswer.trim().length > 0 && (
-            <Pressable style={styles.checkButton} onPress={() => onCheckAnswer?.()}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Check answer"
+              onPress={() => onCheckAnswer?.()}
+              style={styles.checkButton}
+            >
               <Text style={styles.checkButtonText}>Check Answer</Text>
             </Pressable>
           )}
@@ -714,7 +769,7 @@ const styles = StyleSheet.create({
   instruction: {
     fontFamily: theme.typography.bold,
     fontSize: 14,
-    color: theme.colors.secondary,
+    color: theme.colors.link,
     textTransform: 'uppercase',
     letterSpacing: 1,
     alignSelf: 'flex-start',

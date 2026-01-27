@@ -217,32 +217,26 @@ export class PronunciationService {
   ): SpeechSDK.AudioConfig {
     // Prefer WAV input when present; otherwise fall back to raw PCM stream.
     if (container === 'wav') {
+      // The Speech SDK's WAV parser is brittle with some chunk layouts.
+      // We parse WAV ourselves (tolerates chunk re-ordering) and stream raw PCM.
       try {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-        return SpeechSDK.AudioConfig.fromWavFileInput(audioBytes as any);
-      } catch (e) {
-        this.logger.warn(
-          `WAV parsing failed in Speech SDK (will try raw PCM fallback): ${(e as any)?.message ?? e}`,
+        const parsed = parseWavPcm(audioBytes);
+        const streamFormat = SpeechSDK.AudioStreamFormat.getWaveFormatPCM(
+          parsed.sampleRateHz,
+          parsed.bitsPerSample,
+          parsed.channels,
         );
-        // Try parsing WAV ourselves (tolerates chunk re-ordering) and push PCM.
-        try {
-          const parsed = parseWavPcm(audioBytes);
-          const streamFormat = SpeechSDK.AudioStreamFormat.getWaveFormatPCM(
-            parsed.sampleRateHz,
-            parsed.bitsPerSample,
-            parsed.channels,
-          );
-          const pushStream =
-            SpeechSDK.AudioInputStream.createPushStream(streamFormat);
-          const arrayBuffer = Uint8Array.from(parsed.pcmData).buffer;
-          pushStream.write(arrayBuffer);
-          pushStream.close();
-          return SpeechSDK.AudioConfig.fromStreamInput(pushStream);
-        } catch (wavParseErr) {
-          throw new BadRequestException(
-            `Invalid WAV payload: ${(wavParseErr as any)?.message ?? 'could not parse WAV'}`
-          );
-        }
+        const pushStream = SpeechSDK.AudioInputStream.createPushStream(
+          streamFormat,
+        );
+        const arrayBuffer = Uint8Array.from(parsed.pcmData).buffer;
+        pushStream.write(arrayBuffer);
+        pushStream.close();
+        return SpeechSDK.AudioConfig.fromStreamInput(pushStream);
+      } catch (wavParseErr) {
+        throw new BadRequestException(
+          `Invalid WAV payload: ${(wavParseErr as any)?.message ?? 'could not parse WAV'}`,
+        );
       }
     }
 

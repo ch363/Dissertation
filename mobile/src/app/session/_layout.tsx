@@ -1,9 +1,11 @@
 import { Stack } from 'expo-router';
 
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 
 export default function SessionLayout() {
   const { theme } = useAppTheme();
+  const reduceMotion = useReducedMotion();
 
   return (
     <Stack
@@ -11,8 +13,9 @@ export default function SessionLayout() {
         headerStyle: { backgroundColor: theme.colors.background },
         headerTintColor: theme.colors.text,
         contentStyle: { backgroundColor: theme.colors.background },
-        // Slow down the slide animation to reveal home/learn page beneath
-        animationDuration: 600, // Increased from default ~350ms to 600ms
+        // Respect the user's Reduce Motion preference.
+        animation: reduceMotion ? 'none' : 'default',
+        animationDuration: reduceMotion ? 0 : 600,
       }}
     />
   );

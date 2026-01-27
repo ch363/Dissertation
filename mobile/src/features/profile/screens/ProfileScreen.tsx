@@ -7,6 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { ScrollView } from '@/components/ui';
 import { SurfaceCard } from '@/components/ui/SurfaceCard';
+import { IconButton } from '@/components/ui/IconButton';
 
 import { getMyProfile, upsertMyProfile, getDashboard, getRecentActivity, type DashboardData, type RecentActivity, refreshSignedAvatarUrlFromUrl as refreshAvatarUrl, uploadAvatar } from '@/services/api/profile';
 import { getProgressSummary, type ProgressSummary } from '@/services/api/progress';
@@ -246,9 +247,14 @@ export default function Profile() {
             subtitle={progress ? `Level ${currentLevel} • ${currentXP} XP` : 'Loading…'}
             avatarUrl={avatarUrl}
             right={
-              <Pressable style={styles.editButton} onPress={handleEditPress} accessibilityRole="button">
+              <IconButton
+                accessibilityLabel="Edit profile"
+                accessibilityHint="Opens profile editing"
+                onPress={handleEditPress}
+                style={styles.editButton}
+              >
                 <Ionicons name="create-outline" size={20} color={theme.colors.primary} />
-              </Pressable>
+              </IconButton>
             }
           />
         </SurfaceCard>
@@ -257,7 +263,7 @@ export default function Profile() {
         {dashboard && (
           <View style={styles.statsRow}>
             <Link href="/profile/reviews" asChild>
-              <Pressable accessibilityRole="button">
+              <Pressable accessibilityRole="button" accessibilityLabel={`Due reviews: ${dashboard.dueReviewCount}`}>
                 <StatCard
                   label="Due Reviews"
                   value={dashboard.dueReviewCount}
@@ -298,12 +304,12 @@ export default function Profile() {
           />
           <View style={styles.xpBreakdown}>
             <View style={styles.xpItem}>
-              <Ionicons name="trophy-outline" size={16} color={theme.colors.primary} />
+              <Ionicons name="trophy-outline" size={16} color={theme.colors.primary} accessible={false} importantForAccessibility="no" />
               <Text style={[styles.xpLabel, { color: theme.colors.mutedText }]}>Total XP: {currentXP}</Text>
             </View>
             {dashboard && dashboard.dueReviewCount > 0 && (
               <View style={styles.xpItem}>
-                <Ionicons name="time-outline" size={16} color={theme.colors.error} />
+                <Ionicons name="time-outline" size={16} color={theme.colors.error} accessible={false} importantForAccessibility="no" />
                 <Text style={[styles.xpLabel, { color: theme.colors.mutedText }]}>
                   {dashboard.dueReviewCount} reviews due
                 </Text>
@@ -341,38 +347,38 @@ export default function Profile() {
             <Link href="/profile/skills" asChild>
               <Pressable accessibilityRole="button" style={styles.accountItem}>
                 <View style={styles.accountItemLeft}>
-                  <Ionicons name="school-outline" size={20} color={theme.colors.primary} />
+                  <Ionicons name="school-outline" size={20} color={theme.colors.primary} accessible={false} importantForAccessibility="no" />
                   <Text style={[styles.accountLabel, { color: theme.colors.text }]}>Skills</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
+                <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
               </Pressable>
             </Link>
             <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
             <Link href="/profile/reviews" asChild>
               <Pressable accessibilityRole="button" style={styles.accountItem}>
                 <View style={styles.accountItemLeft}>
-                  <Ionicons name="time-outline" size={20} color={theme.colors.primary} />
+                  <Ionicons name="time-outline" size={20} color={theme.colors.primary} accessible={false} importantForAccessibility="no" />
                   <Text style={[styles.accountLabel, { color: theme.colors.text }]}>Reviews</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
+                <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
               </Pressable>
             </Link>
             <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
             <Pressable accessibilityRole="button" style={styles.accountItem} onPress={handleEditPress}>
               <View style={styles.accountItemLeft}>
-                <Ionicons name="person-outline" size={20} color={theme.colors.primary} />
+                <Ionicons name="person-outline" size={20} color={theme.colors.primary} accessible={false} importantForAccessibility="no" />
                 <Text style={[styles.accountLabel, { color: theme.colors.text }]}>Edit Profile</Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
+              <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
             </Pressable>
             <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
             <Link href="/profile/progress" asChild>
               <Pressable accessibilityRole="button" style={styles.accountItem}>
                 <View style={styles.accountItemLeft}>
-                  <Ionicons name="stats-chart-outline" size={20} color={theme.colors.primary} />
+                  <Ionicons name="stats-chart-outline" size={20} color={theme.colors.primary} accessible={false} importantForAccessibility="no" />
                   <Text style={[styles.accountLabel, { color: theme.colors.text }]}>Progress</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
+                <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
               </Pressable>
             </Link>
           </SurfaceCard>
@@ -388,11 +394,11 @@ export default function Profile() {
       >
         <SafeAreaView style={[styles.modalContainer, { backgroundColor: theme.colors.background }]}>
           <View style={[styles.modalHeader, { borderBottomColor: theme.colors.border }]}>
-            <Pressable onPress={handleCancel} disabled={saving} style={styles.modalCancelButton}>
+            <Pressable accessibilityRole="button" onPress={handleCancel} disabled={saving} style={styles.modalCancelButton}>
               <Text style={[styles.modalCancelText, { color: theme.colors.text }]}>Cancel</Text>
             </Pressable>
             <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Edit Profile</Text>
-            <Pressable onPress={handleSave} disabled={saving} style={styles.modalSaveButton}>
+            <Pressable accessibilityRole="button" onPress={handleSave} disabled={saving} style={styles.modalSaveButton}>
               {saving ? (
                 <ActivityIndicator size="small" color={theme.colors.primary} />
               ) : (
@@ -404,12 +410,18 @@ export default function Profile() {
           <ScrollView contentContainerStyle={styles.modalContent}>
             {/* Avatar Section */}
             <View style={styles.avatarSection}>
-              <Pressable onPress={handlePickImage} style={styles.avatarEditContainer}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Change profile photo"
+                accessibilityHint="Opens your photo library"
+                onPress={handlePickImage}
+                style={styles.avatarEditContainer}
+              >
                 {editAvatarUrl ? (
-                  <Image source={{ uri: editAvatarUrl }} style={styles.editAvatar} />
+                  <Image source={{ uri: editAvatarUrl }} style={styles.editAvatar} accessible={false} />
                 ) : (
                   <View style={[styles.editAvatar, styles.editAvatarPlaceholder, { backgroundColor: theme.colors.border }]}>
-                    <Ionicons name="person" size={40} color={theme.colors.mutedText} />
+                    <Ionicons name="person" size={40} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
                   </View>
                 )}
                 <View
@@ -417,12 +429,19 @@ export default function Profile() {
                     styles.avatarEditBadge,
                     { backgroundColor: theme.colors.primary, borderColor: theme.colors.background },
                   ]}
+                  accessible={false}
+                  importantForAccessibility="no"
                 >
-                  <Ionicons name="camera" size={20} color="#fff" />
+                  <Ionicons name="camera" size={20} color="#fff" accessible={false} importantForAccessibility="no" />
                 </View>
               </Pressable>
               {editAvatarUrl && (
-                <Pressable onPress={handleRemoveAvatar} style={styles.removeAvatarButton}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Remove profile photo"
+                  onPress={handleRemoveAvatar}
+                  style={styles.removeAvatarButton}
+                >
                   <Text style={[styles.removeAvatarText, { color: theme.colors.error }]}>Remove Photo</Text>
                 </Pressable>
               )}
@@ -446,6 +465,7 @@ export default function Profile() {
                 placeholderTextColor={theme.colors.mutedText}
                 autoFocus
                 maxLength={50}
+                accessibilityLabel="Name"
               />
             </View>
           </ScrollView>

@@ -56,6 +56,8 @@ export function PickPathList({ items, onPressItem, headerLabel }: Props) {
                       name={disabled ? 'lock-closed' : 'star'}
                       size={18}
                       color={disabled ? theme.colors.mutedText : '#1B6ED4'}
+                      accessible={false}
+                      importantForAccessibility="no"
                     />
                   </View>
                   <View style={{ flex: 1 }}>
@@ -71,9 +73,21 @@ export function PickPathList({ items, onPressItem, headerLabel }: Props) {
                   </View>
                 </View>
                 {item.completed ? (
-                  <Ionicons name="checkmark-circle" size={20} color={theme.colors.primary} />
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={20}
+                    color={theme.colors.primary}
+                    accessible={false}
+                    importantForAccessibility="no"
+                  />
                 ) : (
-                  <Ionicons name="chevron-forward" size={20} color={theme.colors.mutedText} />
+                  <Ionicons
+                    name="chevron-forward"
+                    size={20}
+                    color={theme.colors.mutedText}
+                    accessible={false}
+                    importantForAccessibility="no"
+                  />
                 )}
               </Pressable>
               {idx < items.length - 1 ? <View style={styles.divider} /> : null}

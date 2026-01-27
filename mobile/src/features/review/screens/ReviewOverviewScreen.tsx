@@ -70,7 +70,9 @@ export default function ReviewOverviewScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.headerCard}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>Review</Text>
+          <Text style={[styles.title, { color: theme.colors.text }]} accessibilityRole="header">
+            Review
+          </Text>
           {loading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator color={theme.colors.primary} size="small" />

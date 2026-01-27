@@ -3,7 +3,7 @@ module.exports = {
   preset: 'jest-expo',
   testEnvironment: 'node',
   moduleNameMapper: {
-    '^@/api/(.*)$': '<rootDir>/src/app/api/$1',
+    '^@/api/(.*)$': '<rootDir>/src/services/api/$1',
     '^@/app/(.*)$': '<rootDir>/src/app/$1',
     '^@/screens/(.*)$': '<rootDir>/src/screens/$1',
     '^@/components/(.*)$': '<rootDir>/src/components/$1',

@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
-import { View, Text, StyleSheet, Switch, Pressable } from 'react-native';
+import { Alert, View, Text, StyleSheet, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ScrollView, SurfaceCard } from '@/components/ui';
+import { ListDivider, ListRow, ScrollView, SurfaceCard } from '@/components/ui';
 import { signOut } from '@/services/api/auth';
 import { routes } from '@/services/navigation/routes';
 import {
@@ -29,10 +29,6 @@ function Section({ title, color, children }: SectionProps) {
       {children}
     </View>
   );
-}
-
-function RowDivider({ color }: { color: string }) {
-  return <View style={[styles.divider, { backgroundColor: color }]} />;
 }
 
 export default function SettingsScreen() {
@@ -60,80 +56,91 @@ export default function SettingsScreen() {
 
         <Section title="APPEARANCE" color={theme.colors.mutedText}>
           <SurfaceCard style={styles.card}>
-            <View style={styles.row}>
-              <Text style={[styles.rowTitle, { color: theme.colors.text }]}>Dark Mode</Text>
-              <Switch
-                value={isDark}
-                onValueChange={(v) => setMode(v ? 'dark' : 'light')}
-                trackColor={{ true: theme.colors.primary }}
-              />
-            </View>
+            <ListRow
+              title="Dark Mode"
+              right={
+                <Switch
+                  accessibilityRole="switch"
+                  accessibilityLabel="Dark Mode"
+                  accessibilityState={{ checked: isDark }}
+                  value={isDark}
+                  onValueChange={(v) => setMode(v ? 'dark' : 'light')}
+                  trackColor={{ true: theme.colors.primary }}
+                />
+              }
+              // The switch is the primary control; keep row non-pressable to avoid double activation.
+              onPress={undefined}
+              style={styles.row}
+            />
           </SurfaceCard>
         </Section>
 
         <Section title="LEARNING" color={theme.colors.mutedText}>
           <SurfaceCard style={styles.card}>
-            <Pressable
-              accessibilityRole="button"
+            <ListRow
+              title="Speech"
               accessibilityLabel="Open Speech Settings"
+              accessibilityHint="Configure text to speech and speed"
               onPress={() => router.push(routes.tabs.settings.speech)}
+              right={<Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />}
               style={styles.row}
-            >
-              <Text style={[styles.rowTitle, { color: theme.colors.text }]}>Speech</Text>
-              <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
-            </Pressable>
+            />
 
-            <RowDivider color={theme.colors.border} />
+            <ListDivider insetLeft={baseTheme.spacing.md} />
 
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Open Session Defaults"
+            <ListRow
+              title="Session defaults"
+              subtitle="Preferred session length and exercise types"
+              accessibilityLabel="Open Session defaults"
               onPress={() => router.push(routes.tabs.settings.session)}
+              right={<Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />}
               style={styles.row}
-            >
-              <View style={styles.rowLeft}>
-                <Text style={[styles.rowTitle, { color: theme.colors.text }]}>Session defaults</Text>
-                <Text style={[styles.rowSubtitle, { color: theme.colors.mutedText }]}>
-                  Preferred session length and exercise types
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
-            </Pressable>
+            />
 
-            <RowDivider color={theme.colors.border} />
+            <ListDivider insetLeft={baseTheme.spacing.md} />
 
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
-                <Text style={[styles.rowTitle, { color: theme.colors.text }]}>Adaptivity</Text>
-                <Text style={[styles.rowSubtitle, { color: theme.colors.mutedText }]}>
-                  Adjusts difficulty and review timing based on your performance
-                </Text>
-              </View>
-              <Switch
-                value={adaptivity}
-                onValueChange={async (v) => {
-                  setAdaptivity(v);
-                  await setAdaptivityEnabled(v);
-                }}
-                trackColor={{ true: theme.colors.primary }}
-              />
-            </View>
+            <ListRow
+              title="Adaptivity"
+              subtitle="Adjusts difficulty and review timing based on your performance"
+              right={
+                <Switch
+                  accessibilityRole="switch"
+                  accessibilityLabel="Adaptivity"
+                  accessibilityState={{ checked: adaptivity }}
+                  value={adaptivity}
+                  onValueChange={async (v) => {
+                    setAdaptivity(v);
+                    await setAdaptivityEnabled(v);
+                  }}
+                  trackColor={{ true: theme.colors.primary }}
+                />
+              }
+              onPress={undefined}
+              style={styles.row}
+            />
           </SurfaceCard>
         </Section>
 
         <Section title="NOTIFICATIONS" color={theme.colors.mutedText}>
           <SurfaceCard style={styles.card}>
-            <View style={styles.row}>
-              <Text style={[styles.rowTitle, { color: theme.colors.text }]}>Notifications</Text>
-              <Switch
-                value={notifications}
-                onValueChange={async (v) => {
-                  setNotifications(v);
-                  await setNotificationsEnabled(v);
-                }}
-                trackColor={{ true: theme.colors.primary }}
-              />
-            </View>
+            <ListRow
+              title="Notifications"
+              right={
+                <Switch
+                  accessibilityRole="switch"
+                  accessibilityLabel="Notifications"
+                  accessibilityState={{ checked: notifications }}
+                  value={notifications}
+                  onValueChange={async (v) => {
+                    setNotifications(v);
+                    await setNotificationsEnabled(v);
+                  }}
+                  trackColor={{ true: theme.colors.primary }}
+                />
+              }
+              onPress={undefined}
+              style={styles.row}
+            />
           </SurfaceCard>
         </Section>
 
@@ -145,18 +152,27 @@ export default function SettingsScreen() {
               { backgroundColor: theme.colors.background, borderColor: theme.colors.border },
             ]}
           >
-            <Pressable
-              accessibilityRole="button"
+            <ListRow
+              title="Sign out"
+              variant="destructive"
               accessibilityLabel="Sign out"
-              onPress={async () => {
-                await signOut();
-                router.replace('/sign-in');
+              accessibilityHint="Signs you out of your account"
+              onPress={() => {
+                Alert.alert('Sign out?', 'You will need to sign in again to continue.', [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Sign out',
+                    style: 'destructive',
+                    onPress: async () => {
+                      await signOut();
+                      router.replace(routes.auth.signIn);
+                    },
+                  },
+                ]);
               }}
+              right={<Ionicons name="exit-outline" size={18} color={theme.colors.error} />}
               style={styles.row}
-            >
-              <Text style={[styles.rowTitle, { color: theme.colors.error }]}>Sign out</Text>
-              <Ionicons name="exit-outline" size={18} color={theme.colors.error} />
-            </Pressable>
+            />
           </SurfaceCard>
         </Section>
       </ScrollView>
@@ -195,30 +211,6 @@ const styles = StyleSheet.create({
   accountCard: {
     borderRadius: baseTheme.radius.lg,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: baseTheme.spacing.md,
-    paddingHorizontal: baseTheme.spacing.md,
-    minHeight: 52,
-  },
-  rowLeft: {
-    flex: 1,
-    paddingRight: baseTheme.spacing.md,
-    gap: 2,
-  },
-  rowTitle: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 16,
-  },
-  rowSubtitle: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    marginLeft: baseTheme.spacing.md,
-  },
+  // Shared list primitives handle layout; keep this for any card-specific tweaks.
+  row: {},
 });

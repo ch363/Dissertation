@@ -162,6 +162,8 @@ export default function LearnScreen() {
         <View style={{ height: baseTheme.spacing.xl }} />
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel="Browse all lessons"
+          accessibilityHint="Opens the full lesson list"
           onPress={() => router.push('/(tabs)/learn/list')}
           style={({ pressed }) => [
             styles.listCta,

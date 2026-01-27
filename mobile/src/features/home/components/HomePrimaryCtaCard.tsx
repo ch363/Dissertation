@@ -86,7 +86,13 @@ export function HomePrimaryCtaCard({ action, onPress, onPressMore }: Props) {
               },
             ]}
           >
-            <Ionicons name={icon} size={20} color={theme.colors.primary} />
+            <Ionicons
+              name={icon}
+              size={20}
+              color={theme.colors.primary}
+              accessible={false}
+              importantForAccessibility="no"
+            />
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text
@@ -102,12 +108,24 @@ export function HomePrimaryCtaCard({ action, onPress, onPressMore }: Props) {
               {action.subtitle}
             </Text>
           </View>
-          <Ionicons name="arrow-forward" size={18} color={theme.colors.mutedText} />
+          <Ionicons
+            name="arrow-forward"
+            size={18}
+            color={theme.colors.mutedText}
+            accessible={false}
+            importantForAccessibility="no"
+          />
         </View>
 
         {action.detailLine ? (
           <View style={styles.detailRow}>
-            <Ionicons name="time-outline" size={14} color={theme.colors.mutedText} />
+            <Ionicons
+              name="time-outline"
+              size={14}
+              color={theme.colors.mutedText}
+              accessible={false}
+              importantForAccessibility="no"
+            />
             <Text style={[styles.detailText, { color: theme.colors.mutedText }]} numberOfLines={1}>
               {action.detailLine}
             </Text>

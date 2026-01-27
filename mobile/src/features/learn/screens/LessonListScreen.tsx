@@ -156,6 +156,9 @@ export default function LessonListScreen() {
     return (
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={`${item.title}${status === 'completed' ? ', completed' : status === 'in_progress' ? ', in progress' : ''}`}
+        accessibilityHint="Opens lesson details"
+        accessibilityState={{ disabled: locked }}
         onPress={() => {
           if (locked) return;
           router.push(`/(tabs)/learn/${item.id}`);
@@ -177,16 +180,16 @@ export default function LessonListScreen() {
             {item.title}
           </Text>
           {locked ? (
-            <Ionicons name="lock-closed" size={16} color={theme.colors.mutedText} />
+            <Ionicons name="lock-closed" size={16} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
           ) : (
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.mutedText} />
+            <Ionicons name="chevron-forward" size={16} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
           )}
         </View>
 
         <View style={styles.progressRow} accessibilityLabel="Lesson progress">
           <LessonMicroProgress completed={completed} total={total} />
           {isCompleted ? (
-            <Ionicons name="checkmark-circle" size={16} color={theme.colors.secondary} />
+            <Ionicons name="checkmark-circle" size={16} color={theme.colors.secondary} accessible={false} importantForAccessibility="no" />
           ) : null}
         </View>
 
@@ -232,7 +235,7 @@ export default function LessonListScreen() {
             },
           ]}
         >
-          <Ionicons name="search" size={16} color={theme.colors.mutedText} />
+          <Ionicons name="search" size={16} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -243,6 +246,7 @@ export default function LessonListScreen() {
             autoCapitalize="none"
             returnKeyType="search"
             clearButtonMode="never"
+            accessibilityLabel="Search lessons"
           />
           {searchQuery.trim().length > 0 ? (
             <Pressable
@@ -252,7 +256,7 @@ export default function LessonListScreen() {
               hitSlop={10}
               style={styles.iconButton}
             >
-              <Ionicons name="close-circle" size={18} color={theme.colors.mutedText} />
+              <Ionicons name="close-circle" size={18} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
             </Pressable>
           ) : null}
         </View>
@@ -277,11 +281,13 @@ export default function LessonListScreen() {
               name="funnel-outline"
               size={16}
               color={hasActiveFilter ? theme.colors.primary : theme.colors.mutedText}
+              accessible={false}
+              importantForAccessibility="no"
             />
             <Text style={[styles.filterLabel, { color: theme.colors.text }]} numberOfLines={1}>
               {filterLabel}
             </Text>
-            <Ionicons name="chevron-down" size={14} color={theme.colors.mutedText} />
+            <Ionicons name="chevron-down" size={14} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
           </Pressable>
 
           <Text style={[styles.countText, { color: theme.colors.mutedText }]} numberOfLines={1}>
@@ -327,7 +333,12 @@ export default function LessonListScreen() {
         animationType="fade"
         onRequestClose={() => setFilterOpen(false)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setFilterOpen(false)}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Close filter menu"
+          style={styles.modalOverlay}
+          onPress={() => setFilterOpen(false)}
+        >
           <Pressable
             accessibilityRole="menu"
             onPress={() => {}}
@@ -346,6 +357,8 @@ export default function LessonListScreen() {
                 <Pressable
                   key={opt.value}
                   accessibilityRole="button"
+                  accessibilityLabel={`Filter: ${opt.label}`}
+                  accessibilityState={{ selected }}
                   onPress={() => {
                     setFilter(opt.value);
                     setFilterOpen(false);
@@ -363,7 +376,7 @@ export default function LessonListScreen() {
                 >
                   <Text style={[styles.modalOptionText, { color: theme.colors.text }]}>{opt.label}</Text>
                   {selected ? (
-                    <Ionicons name="checkmark" size={18} color={theme.colors.primary} />
+                    <Ionicons name="checkmark" size={18} color={theme.colors.primary} accessible={false} importantForAccessibility="no" />
                   ) : null}
                 </Pressable>
               );

@@ -20,10 +20,16 @@ export function HomeHeader({ onPressSettings }: Props) {
         hitSlop={12}
         style={[styles.settingsButton]}
       >
-        <Ionicons name="settings-outline" size={28} color={theme.colors.text} />
+        <Ionicons
+          name="settings-outline"
+          size={28}
+          color={theme.colors.text}
+          accessible={false}
+          importantForAccessibility="no"
+        />
       </Pressable>
 
-      <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" />
+      <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" accessible={false} />
     </View>
   );
 }

@@ -1,12 +1,13 @@
 import { Link, router } from 'expo-router';
-import { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ScrollView } from '@/components/ui';
+import { Button, ScrollView } from '@/components/ui';
 
 import { resolvePostAuthDestination, signUpWithEmail } from '@/services/api/auth';
 import { theme } from '@/services/theme/tokens';
+import { announce } from '@/utils/a11y';
 
 const emailRegex = /\S+@\S+\.\S+/;
 const MIN_PASSWORD = 8;
@@ -19,9 +20,20 @@ export default function SignUp() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+  const confirmRef = useRef<TextInput>(null);
+
   const trimmedEmail = email.trim();
   const trimmedName = name.trim();
   const passwordsMatch = password === confirmPassword;
+  const emailError =
+    trimmedEmail.length > 0 && !emailRegex.test(trimmedEmail) ? 'Enter a valid email address.' : null;
+  const passwordError =
+    password.length > 0 && password.length < MIN_PASSWORD
+      ? `Password must be at least ${MIN_PASSWORD} characters.`
+      : null;
+  const confirmError = !passwordsMatch && confirmPassword.length > 0 ? 'Passwords do not match.' : null;
   const canSubmit =
     emailRegex.test(trimmedEmail) && password.length >= MIN_PASSWORD && passwordsMatch && !loading;
 
@@ -72,6 +84,10 @@ export default function SignUp() {
     }
   };
 
+  useEffect(() => {
+    if (error) announce(error);
+  }, [error]);
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView
@@ -85,17 +101,26 @@ export default function SignUp() {
             <View style={styles.stepDot} />
           </View>
           <Text style={styles.labelSmall}>Step 1 of 3</Text>
-          <Text style={styles.title}>Create your account</Text>
+          <Text style={styles.title} accessibilityRole="header">Create your account</Text>
 
+          <Text style={styles.inputLabel}>Name</Text>
           <TextInput
             style={styles.input}
             value={name}
             onChangeText={setName}
             placeholder="Your name"
             placeholderTextColor={theme.colors.mutedText}
+            accessibilityLabel="Name"
+            accessibilityHint="Enter your name"
+            autoComplete="name"
+            textContentType="name"
+            returnKeyType="next"
+            onSubmitEditing={() => emailRef.current?.focus()}
           />
 
+          <Text style={styles.inputLabel}>Email</Text>
           <TextInput
+            ref={emailRef}
             style={styles.input}
             value={email}
             onChangeText={setEmail}
@@ -103,40 +128,79 @@ export default function SignUp() {
             keyboardType="email-address"
             autoCapitalize="none"
             placeholderTextColor={theme.colors.mutedText}
+            accessibilityLabel="Email"
+            accessibilityHint="Enter your email address"
+            accessibilityState={{ invalid: !!emailError }}
+            autoComplete="email"
+            textContentType="username"
+            returnKeyType="next"
+            onSubmitEditing={() => passwordRef.current?.focus()}
           />
+          {emailError ? (
+            <Text style={styles.error} accessibilityRole="alert">
+              {emailError}
+            </Text>
+          ) : null}
 
+          <Text style={styles.inputLabel}>Password</Text>
           <TextInput
+            ref={passwordRef}
             style={styles.input}
             value={password}
             onChangeText={setPassword}
             placeholder={`Min. ${MIN_PASSWORD} characters`}
             secureTextEntry
             placeholderTextColor={theme.colors.mutedText}
+            accessibilityLabel="Password"
+            accessibilityHint="Create a password"
+            accessibilityState={{ invalid: !!passwordError }}
+            autoComplete="new-password"
+            textContentType="newPassword"
+            returnKeyType="next"
+            onSubmitEditing={() => confirmRef.current?.focus()}
           />
+          {passwordError ? (
+            <Text style={styles.error} accessibilityRole="alert">
+              {passwordError}
+            </Text>
+          ) : null}
 
+          <Text style={styles.inputLabel}>Confirm password</Text>
           <TextInput
+            ref={confirmRef}
             style={styles.input}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             placeholder="Confirm password"
             secureTextEntry
             placeholderTextColor={theme.colors.mutedText}
+            accessibilityLabel="Confirm password"
+            accessibilityHint="Re-enter your password to confirm"
+            accessibilityState={{ invalid: !!confirmError }}
+            autoComplete="new-password"
+            textContentType="newPassword"
+            returnKeyType="done"
+            onSubmitEditing={handleSignUp}
           />
 
-          {!passwordsMatch && confirmPassword.length > 0 ? (
-            <Text style={styles.error}>Passwords do not match.</Text>
+          {confirmError ? (
+            <Text style={styles.error} accessibilityRole="alert">
+              {confirmError}
+            </Text>
           ) : null}
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? (
+            <Text style={styles.error} accessibilityRole="alert">
+              {error}
+            </Text>
+          ) : null}
 
-          <Pressable
-            style={[styles.button, canSubmit ? styles.primary : styles.disabled]}
+          <Button
+            title={loading ? 'Creating account…' : 'Create Account'}
             onPress={handleSignUp}
             disabled={!canSubmit}
-          >
-            <Text style={styles.buttonText}>
-              {loading ? 'Creating account…' : 'Create Account'}
-            </Text>
-          </Pressable>
+            loading={loading}
+            accessibilityHint="Creates your account"
+          />
 
           <Link href="/sign-in" style={styles.link}>
             Already have an account? Sign in
@@ -193,6 +257,11 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
     textAlign: 'center',
   },
+  inputLabel: {
+    color: theme.colors.text,
+    fontFamily: theme.typography.semiBold,
+    marginBottom: theme.spacing.xs,
+  },
   input: {
     backgroundColor: theme.colors.card,
     borderRadius: theme.radius.md,
@@ -203,20 +272,8 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     marginBottom: theme.spacing.md,
   },
-  button: {
-    paddingVertical: 14,
-    borderRadius: theme.radius.md,
-    alignItems: 'center',
-    marginTop: theme.spacing.sm,
-  },
-  primary: { backgroundColor: theme.colors.primary },
-  disabled: { backgroundColor: theme.colors.border },
-  buttonText: {
-    color: '#fff',
-    fontFamily: theme.typography.semiBold,
-  },
   link: {
-    color: theme.colors.secondary,
+    color: theme.colors.link,
     fontFamily: theme.typography.semiBold,
     marginTop: theme.spacing.lg,
     textAlign: 'center',

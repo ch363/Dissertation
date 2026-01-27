@@ -13,6 +13,7 @@ type Props = {
   loading?: boolean;
   style?: ViewStyle;
   accessibilityLabel?: string;
+  accessibilityHint?: string;
 };
 
 export function Button({
@@ -23,8 +24,10 @@ export function Button({
   loading = false,
   style,
   accessibilityLabel,
+  accessibilityHint,
 }: Props) {
   const { theme } = useAppTheme();
+  const isDisabled = disabled || loading;
 
   const background =
     variant === 'ghost'
@@ -33,7 +36,7 @@ export function Button({
         ? theme.colors.secondary
         : theme.colors.primary;
 
-  const textColor = disabled
+  const textColor = isDisabled
     ? theme.colors.mutedText
     : variant === 'ghost'
       ? theme.colors.text
@@ -46,12 +49,14 @@ export function Button({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? title}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
       onPress={onPress}
-      disabled={disabled || loading}
+      disabled={isDisabled}
       style={[
         styles.button,
         {
-          backgroundColor: disabled ? theme.colors.border : background,
+          backgroundColor: isDisabled ? theme.colors.border : background,
           borderColor,
         },
         style,
@@ -77,5 +82,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontWeight: '600',
+    textAlign: 'center',
+    flexShrink: 1,
   },
 });

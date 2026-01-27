@@ -20,7 +20,9 @@ export function LearningPathCarousel({ items, onPressItem }: Props) {
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Learning Path</Text>
-        <Text style={[styles.chevron, { color: theme.colors.mutedText }]}>{'>>'}</Text>
+        <Text style={[styles.chevron, { color: theme.colors.mutedText }]} accessible={false}>
+          {'>>'}
+        </Text>
       </View>
       <ScrollView
         horizontal
@@ -52,7 +54,7 @@ export function LearningPathCarousel({ items, onPressItem }: Props) {
                   {item.title}
                 </Text>
                 {isLocked ? (
-                  <Ionicons name="lock-closed" size={16} color={theme.colors.mutedText} />
+                  <Ionicons name="lock-closed" size={16} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
                 ) : null}
               </View>
               <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>
@@ -92,7 +94,7 @@ export function LearningPathCarousel({ items, onPressItem }: Props) {
                 </Pressable>
               ) : (
                 <View style={styles.lockRow}>
-                  <Ionicons name="lock-closed" size={16} color={theme.colors.mutedText} />
+                  <Ionicons name="lock-closed" size={16} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
                   <Text style={[styles.lockText, { color: theme.colors.mutedText }]}>
                     Locked
                   </Text>

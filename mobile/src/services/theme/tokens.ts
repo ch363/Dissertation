@@ -52,8 +52,9 @@ export const lightTheme: Theme = {
     // Use primary for link text to meet contrast on light backgrounds
     link: '#1A6FD6',
     background: '#F4F8FF',
-    success: '#34C759',
-    error: '#FF3B30',
+    // Darker success/error hues to meet WCAG AA when used as text on light surfaces.
+    success: '#2E7D32',
+    error: '#D32F2F',
     text: '#0D1B2A',
     mutedText: '#5B6C84',
     card: '#FFFFFF',

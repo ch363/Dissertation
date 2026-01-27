@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { IconButton } from '@/components/ui';
 import { routes } from '@/services/navigation/routes';
 import {
   useAppTheme,
@@ -46,17 +47,24 @@ export default function SpeechSettings() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         {showBack && (
-          <Pressable
-            accessibilityRole="button"
+          <IconButton
             accessibilityLabel="Back to Settings"
             onPress={handleBack}
             style={styles.backBtn}
           >
-            <Ionicons name="chevron-back" size={22} color={theme.colors.mutedText} />
-          </Pressable>
+            <Ionicons
+              name="chevron-back"
+              size={22}
+              color={theme.colors.mutedText}
+              accessible={false}
+              importantForAccessibility="no"
+            />
+          </IconButton>
         )}
 
-        <Text style={[styles.title, { color: theme.colors.text }]}>Speech</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]} accessibilityRole="header">
+          Speech
+        </Text>
 
         <View
           style={[
@@ -69,17 +77,26 @@ export default function SpeechSettings() {
             <Pressable
               accessibilityRole="switch"
               accessibilityLabel="Enable speech"
+              accessibilityState={{ checked: enabled }}
+              accessibilityHint="Toggles text to speech playback"
               onPress={async () => {
                 const next = !enabled;
                 setEnabled(next);
                 await setTtsEnabled(next);
               }}
+              hitSlop={10}
               style={[
                 styles.toggle,
                 { backgroundColor: enabled ? theme.colors.primary : theme.colors.border },
               ]}
             >
-              <View style={[styles.knob, { left: enabled ? 22 : 2 }]} />
+              <View
+                style={[
+                  styles.knob,
+                  { left: enabled ? 22 : 2, backgroundColor: theme.colors.card },
+                ]}
+                accessible={false}
+              />
             </Pressable>
           </View>
           <View style={{ height: baseTheme.spacing.md }} />
@@ -96,6 +113,9 @@ export default function SpeechSettings() {
             minimumTrackTintColor={theme.colors.primary}
             maximumTrackTintColor={theme.colors.border}
             thumbTintColor={theme.colors.primary}
+            accessibilityLabel="Speech speed"
+            accessibilityHint="Adjusts the text to speech playback speed"
+            accessibilityValue={{ text: `${Math.round(rate * 100)} percent` }}
           />
           <Text style={[styles.helper, { color: theme.colors.mutedText }]}>
             Slower can improve clarity for new words.
@@ -156,7 +176,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#fff',
+    // backgroundColor is set from theme at render time
     position: 'absolute',
   },
 });

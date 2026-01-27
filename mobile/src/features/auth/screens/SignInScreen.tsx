@@ -1,18 +1,17 @@
 import * as Linking from 'expo-linking';
 import { Link, router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TextInput,
-  Pressable,
   ActivityIndicator,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ScrollView } from '@/components/ui';
+import { Button, ScrollView } from '@/components/ui';
 
 import {
   resolvePostAuthDestination,
@@ -21,6 +20,7 @@ import {
   signInWithEmailPassword,
 } from '@/services/api/auth';
 import { theme } from '@/services/theme/tokens';
+import { announce } from '@/utils/a11y';
 
 const emailRegex = /\S+@\S+\.\S+/;
 
@@ -49,9 +49,15 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [processingEmailCallback, setProcessingEmailCallback] = useState(false);
 
+  const passwordRef = useRef<TextInput>(null);
+
   const url = Linking.useURL();
 
   const trimmedEmail = email.trim();
+  const emailError =
+    trimmedEmail.length > 0 && !emailRegex.test(trimmedEmail) ? 'Enter a valid email address.' : null;
+  const passwordError =
+    password.length > 0 && password.length < 6 ? 'Password must be at least 6 characters.' : null;
   const canSubmit = emailRegex.test(trimmedEmail) && password.length >= 6 && !loading;
 
   // Handle email confirmation callback
@@ -130,6 +136,10 @@ export default function SignIn() {
     }
   }, [url, handleEmailConfirmation]);
 
+  useEffect(() => {
+    if (error) announce(error);
+  }, [error]);
+
   const handleSignIn = async () => {
     if (!canSubmit) return;
     try {
@@ -169,8 +179,15 @@ export default function SignIn() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.card}>
-          <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" />
-          <Text style={styles.title}>Welcome back</Text>
+          <Image
+            source={require('@/assets/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+            accessible={false}
+          />
+          <Text style={styles.title} accessibilityRole="header">
+            Welcome back
+          </Text>
           <Text style={styles.subtitle}>Choose how you’d like to continue</Text>
 
           <View style={styles.dividerRow}>
@@ -179,6 +196,7 @@ export default function SignIn() {
             <View style={styles.divider} />
           </View>
 
+          <Text style={styles.inputLabel}>Email</Text>
           <TextInput
             value={email}
             onChangeText={setEmail}
@@ -187,33 +205,59 @@ export default function SignIn() {
             keyboardType="email-address"
             style={styles.input}
             placeholderTextColor={theme.colors.mutedText}
+            accessibilityLabel="Email"
+            accessibilityHint="Enter your email address"
+            accessibilityState={{ invalid: !!emailError }}
+            autoComplete="email"
+            textContentType="username"
+            returnKeyType="next"
+            onSubmitEditing={() => passwordRef.current?.focus()}
           />
+          {emailError ? (
+            <Text style={styles.error} accessibilityRole="alert">
+              {emailError}
+            </Text>
+          ) : null}
+          <Text style={styles.inputLabel}>Password</Text>
           <TextInput
+            ref={passwordRef}
             value={password}
             onChangeText={setPassword}
             placeholder="Password"
             secureTextEntry
             style={styles.input}
             placeholderTextColor={theme.colors.mutedText}
+            accessibilityLabel="Password"
+            accessibilityHint="Enter your password"
+            accessibilityState={{ invalid: !!passwordError }}
+            autoComplete="password"
+            textContentType="password"
+            returnKeyType="done"
+            onSubmitEditing={handleSignIn}
           />
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {passwordError ? (
+            <Text style={styles.error} accessibilityRole="alert">
+              {passwordError}
+            </Text>
+          ) : null}
+          {error ? (
+            <Text style={styles.error} accessibilityRole="alert">
+              {error}
+            </Text>
+          ) : null}
 
-          <Pressable
-            style={[styles.button, canSubmit ? styles.primary : styles.disabled]}
+          <Button
+            title={loading ? 'Signing in…' : 'Sign in with Email'}
             onPress={handleSignIn}
             disabled={!canSubmit}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Sign in with Email</Text>
-            )}
-          </Pressable>
+            loading={loading}
+            accessibilityHint="Signs you in with your email and password"
+          />
 
-          <Pressable onPress={() => router.push('/sign-up')}>
-            <Text style={styles.link}>New here? Create account</Text>
-          </Pressable>
+          <Link href="/sign-up" style={styles.link}>
+            New here? Create account
+          </Link>
           <Link href="/forgot-password" style={styles.link}>
             Forgot password?
           </Link>
@@ -273,6 +317,11 @@ const styles = StyleSheet.create({
     color: theme.colors.mutedText,
     fontFamily: theme.typography.semiBold,
   },
+  inputLabel: {
+    color: theme.colors.text,
+    fontFamily: theme.typography.semiBold,
+    marginBottom: theme.spacing.xs,
+  },
   input: {
     backgroundColor: theme.colors.card,
     borderRadius: theme.radius.md,
@@ -283,25 +332,13 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     marginBottom: theme.spacing.md,
   },
-  button: {
-    paddingVertical: 14,
-    borderRadius: theme.radius.md,
-    alignItems: 'center',
-    marginTop: theme.spacing.sm,
-  },
-  primary: { backgroundColor: theme.colors.primary },
-  disabled: { backgroundColor: theme.colors.border },
-  buttonText: {
-    color: '#fff',
-    fontFamily: theme.typography.semiBold,
-  },
   error: {
     color: theme.colors.error,
     marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.xs,
   },
   link: {
-    color: theme.colors.secondary,
+    color: theme.colors.link,
     fontFamily: theme.typography.semiBold,
     textAlign: 'center',
     marginTop: theme.spacing.md,

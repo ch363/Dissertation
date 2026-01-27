@@ -28,6 +28,9 @@ export function PracticeToolsGrid({ tools }: Props) {
             <Pressable
               key={tool.id}
               accessibilityRole="button"
+              accessibilityLabel={tool.title}
+              accessibilityHint={isLocked ? 'Locked' : 'Opens this practice tool'}
+              accessibilityState={{ disabled: isLocked }}
               onPress={() => {
                 if (isLocked) return;
                 router.push(tool.route as any);
@@ -47,7 +50,7 @@ export function PracticeToolsGrid({ tools }: Props) {
                   <Text style={styles.cardTitle}>{tool.title}</Text>
                   {isLocked ? (
                     <View style={styles.lockBadge}>
-                      <Ionicons name="lock-closed" size={14} color="#8A6B00" />
+                      <Ionicons name="lock-closed" size={14} color="#8A6B00" accessible={false} importantForAccessibility="no" />
                       <Text style={styles.lockBadgeText}>Locked</Text>
                     </View>
                   ) : null}

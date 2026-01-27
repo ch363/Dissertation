@@ -1,16 +1,5 @@
 import { signInWithEmailPassword, signUpWithEmail } from '@/services/api/auth';
 
-jest.mock('@/services/api/auth', () => {
-  const actual = jest.requireActual('@/services/api/auth');
-  return {
-    ...actual,
-    signInWithEmailPassword: jest.fn(),
-    sendPasswordReset: jest.fn(),
-    signOut: jest.fn(),
-    updatePassword: jest.fn(),
-  };
-});
-
 jest.mock('@/services/supabase/client', () => ({
   getSupabaseClient: jest.fn(),
 }));

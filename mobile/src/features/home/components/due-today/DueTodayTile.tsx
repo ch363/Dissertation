@@ -41,20 +41,32 @@ export function DueTodayTile({ item, onPress }: Props) {
     >
       <View style={styles.topRow}>
         <View style={styles.iconCircle}>
-          <Ionicons name={item.icon} size={20} color="#1B6ED4" />
+          <Ionicons name={item.icon} size={20} color="#1B6ED4" accessible={false} importantForAccessibility="no" />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: theme.colors.text }]}>{item.title}</Text>
           <Text style={[styles.subtitle, { color: '#5F6F86' }]}>{item.lessons}</Text>
         </View>
         {item.completed ? (
-          <Ionicons name="checkmark-circle" size={20} color={theme.colors.primary} />
+          <Ionicons
+            name="checkmark-circle"
+            size={20}
+            color={theme.colors.primary}
+            accessible={false}
+            importantForAccessibility="no"
+          />
         ) : (
-          <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} />
+          <Ionicons
+            name="chevron-forward"
+            size={18}
+            color={theme.colors.mutedText}
+            accessible={false}
+            importantForAccessibility="no"
+          />
         )}
       </View>
       <View style={styles.etaRow}>
-        <Ionicons name="time-outline" size={14} color={theme.colors.mutedText} />
+        <Ionicons name="time-outline" size={14} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
         <Text style={[styles.etaText, { color: theme.colors.mutedText }]}>{item.eta}</Text>
       </View>
     </Pressable>

@@ -5,6 +5,7 @@ import { getSupabaseClient } from '@/services/supabase/client';
 import { getSupabaseRedirectUrl } from '@/services/env/supabaseConfig';
 import { apiClient } from './client';
 import { routes } from '@/services/navigation/routes';
+import { ensureProfileSeed } from './profile';
 
 type SignUpResult = { user: User | null; session: Session | null };
 
@@ -136,8 +137,8 @@ export async function setSessionFromEmailLink(
  */
 export async function resolvePostAuthDestination(userId: string): Promise<string> {
   try {
-    // Ensure profile exists via backend
-    await apiClient.post('/me/profile/ensure');
+    // Ensure profile exists (and sync name from auth metadata if possible)
+    await ensureProfileSeed();
     
     // Check if user has completed onboarding via backend
     const hasOnboarding = await apiClient.get<{ hasOnboarding: boolean }>('/onboarding/has');
@@ -164,8 +165,8 @@ export async function resolvePostAuthDestination(userId: string): Promise<string
  */
 export async function resolvePostLoginDestination(_userId: string): Promise<string> {
   try {
-    // Ensure profile exists via backend
-    await apiClient.post('/me/profile/ensure');
+    // Ensure profile exists (and sync name from auth metadata if possible)
+    await ensureProfileSeed();
     // Login always goes to home - existing users should not see onboarding again
     return routes.tabs.home;
   } catch (err) {

@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { theme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
 import { MultipleChoiceCard as MultipleChoiceCardType } from '@/types/session';
+import { announce } from '@/utils/a11y';
 
 type Props = {
   card: MultipleChoiceCardType;
@@ -25,6 +26,12 @@ export function MultipleChoiceCard({
   onCheckAnswer,
 }: Props) {
   const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    if (!showResult) return;
+    if (isCorrect === true) announce('Correct.');
+    else if (isCorrect === false) announce('Incorrect.');
+  }, [showResult, isCorrect]);
 
   function isItalianText(text: string) {
     // Heuristic: check for Italian-specific characters or a few high-frequency words.
@@ -99,11 +106,20 @@ export function MultipleChoiceCard({
       {/* Source Text Card (for translation MCQ) */}
       {card.sourceText && (
         <View style={styles.sourceCard}>
-          <Pressable style={styles.audioButton} onPress={handlePlayAudio}>
+          <Pressable
+            style={styles.audioButton}
+            onPress={handlePlayAudio}
+            accessibilityRole="button"
+            accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
+            accessibilityHint="Plays the sentence audio"
+            accessibilityState={{ selected: isPlaying, busy: isPlaying }}
+          >
             <Ionicons
               name={isPlaying ? 'pause' : 'volume-high'}
               size={20}
               color="#fff"
+              accessible={false}
+              importantForAccessibility="no"
             />
           </Pressable>
           <Text style={styles.sourceText}>{card.sourceText}</Text>
@@ -132,6 +148,12 @@ export function MultipleChoiceCard({
           return (
             <Pressable
               key={opt.id}
+              accessibilityRole="button"
+              accessibilityLabel={`Answer option: ${opt.label}`}
+              accessibilityState={{
+                selected: isSelected,
+                disabled: showResult,
+              }}
               onPress={() => {
                 if (showResult) return; // Disable selection after checking
                 // Speak learning-language (Italian) options on tap; keep English MC options silent.
@@ -147,9 +169,21 @@ export function MultipleChoiceCard({
             >
               <Text style={styles.optionLabel}>{opt.label}</Text>
               {showAsCorrect ? (
-                <Ionicons name="checkmark-circle" size={24} color="#28a745" />
+                <Ionicons
+                  name="checkmark-circle"
+                  size={24}
+                  color="#28a745"
+                  accessible={false}
+                  importantForAccessibility="no"
+                />
               ) : showAsIncorrectSelected ? (
-                <Ionicons name="close-circle" size={24} color="#dc3545" />
+                <Ionicons
+                  name="close-circle"
+                  size={24}
+                  color="#dc3545"
+                  accessible={false}
+                  importantForAccessibility="no"
+                />
               ) : null}
             </Pressable>
           );
@@ -159,15 +193,27 @@ export function MultipleChoiceCard({
 
       {/* Feedback Banner (after checking, if correct) - appears right after options */}
       {showResult && isCorrect && (
-        <View style={styles.feedbackBanner}>
-          <Ionicons name="checkmark-circle" size={20} color="#fff" />
+        <View style={styles.feedbackBanner} accessibilityRole="alert">
+          <Ionicons
+            name="checkmark-circle"
+            size={20}
+            color="#fff"
+            accessible={false}
+            importantForAccessibility="no"
+          />
           <Text style={styles.feedbackText}>Excellent! That's correct!</Text>
         </View>
       )}
 
       {/* Check Answer Button (only for non-translation MCQ) */}
       {!showResult && selectedOptionId !== undefined && !isTranslation && (
-        <Pressable style={styles.checkButton} onPress={onCheckAnswer}>
+        <Pressable
+          style={styles.checkButton}
+          onPress={onCheckAnswer}
+          accessibilityRole="button"
+          accessibilityLabel="Check answer"
+          accessibilityHint="Checks whether your selected option is correct"
+        >
           <Text style={styles.checkButtonText}>Check Answer</Text>
         </Pressable>
       )}

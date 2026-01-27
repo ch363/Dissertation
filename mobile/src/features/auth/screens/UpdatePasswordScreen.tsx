@@ -1,8 +1,9 @@
 import * as Linking from 'expo-linking';
 import { Link, router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, ActivityIndicator } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, StyleSheet, TextInput, ActivityIndicator } from 'react-native';
 
+import { Button } from '@/components/ui';
 import {
   getCurrentUser,
   resolvePostAuthDestination,
@@ -10,6 +11,7 @@ import {
   updatePassword,
 } from '@/services/api/auth';
 import { theme } from '@/services/theme/tokens';
+import { announce } from '@/utils/a11y';
 
 type TokenResult = { accessToken: string; refreshToken: string };
 
@@ -36,6 +38,8 @@ export default function UpdatePassword() {
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
   const [processing, setProcessing] = useState(true);
+
+  const confirmRef = useRef<TextInput>(null);
 
   const url = Linking.useURL();
 
@@ -79,6 +83,8 @@ export default function UpdatePassword() {
   }, [url, ensureSessionFromUrl]);
 
   const passwordsMatch = newPassword === confirmPassword;
+  const passwordError = newPassword.length > 0 && newPassword.length < 6 ? 'Password must be at least 6 characters.' : null;
+  const confirmError = !passwordsMatch && confirmPassword.length > 0 ? 'Passwords do not match.' : null;
   const canSubmit = sessionReady && passwordsMatch && newPassword.length >= 6 && !loading;
 
   const handleUpdate = async () => {
@@ -107,15 +113,20 @@ export default function UpdatePassword() {
     return error || 'Open the password reset link from your email to continue.';
   }, [processing, sessionReady, error]);
 
+  useEffect(() => {
+    if (error) announce(error);
+  }, [error]);
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Set a new password</Text>
+      <Text style={styles.title} accessibilityRole="header">Set a new password</Text>
       {statusText ? <Text style={styles.subtitle}>{statusText}</Text> : null}
 
       {processing ? (
         <ActivityIndicator color={theme.colors.primary} style={{ marginTop: theme.spacing.md }} />
       ) : (
         <>
+          <Text style={styles.inputLabel}>New password</Text>
           <TextInput
             style={styles.input}
             value={newPassword}
@@ -123,31 +134,54 @@ export default function UpdatePassword() {
             placeholder="New password (min 6 chars)"
             secureTextEntry
             placeholderTextColor={theme.colors.mutedText}
+            accessibilityLabel="New password"
+            accessibilityHint="Create a new password"
+            accessibilityState={{ invalid: !!passwordError }}
+            autoComplete="new-password"
+            textContentType="newPassword"
+            returnKeyType="next"
+            onSubmitEditing={() => confirmRef.current?.focus()}
           />
+          {passwordError ? (
+            <Text style={styles.error} accessibilityRole="alert">
+              {passwordError}
+            </Text>
+          ) : null}
+          <Text style={styles.inputLabel}>Confirm new password</Text>
           <TextInput
+            ref={confirmRef}
             style={styles.input}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             placeholder="Confirm new password"
             secureTextEntry
             placeholderTextColor={theme.colors.mutedText}
+            accessibilityLabel="Confirm new password"
+            accessibilityHint="Re-enter your new password to confirm"
+            accessibilityState={{ invalid: !!confirmError }}
+            autoComplete="new-password"
+            textContentType="newPassword"
+            returnKeyType="done"
+            onSubmitEditing={handleUpdate}
           />
-          {!passwordsMatch && confirmPassword.length > 0 ? (
-            <Text style={styles.error}>Passwords do not match.</Text>
+          {confirmError ? (
+            <Text style={styles.error} accessibilityRole="alert">
+              {confirmError}
+            </Text>
           ) : null}
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {error ? (
+            <Text style={styles.error} accessibilityRole="alert">
+              {error}
+            </Text>
+          ) : null}
 
-          <Pressable
-            style={[styles.button, canSubmit ? styles.primary : styles.disabled]}
+          <Button
+            title="Update password"
             onPress={handleUpdate}
             disabled={!canSubmit}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Update password</Text>
-            )}
-          </Pressable>
+            loading={loading}
+            accessibilityHint="Updates your password"
+          />
         </>
       )}
 
@@ -175,6 +209,11 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
     color: theme.colors.mutedText,
   },
+  inputLabel: {
+    color: theme.colors.text,
+    fontFamily: theme.typography.semiBold,
+    marginBottom: theme.spacing.xs,
+  },
   input: {
     backgroundColor: theme.colors.card,
     borderRadius: theme.radius.md,
@@ -185,20 +224,8 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     marginBottom: theme.spacing.md,
   },
-  button: {
-    paddingVertical: 14,
-    borderRadius: theme.radius.md,
-    alignItems: 'center',
-    marginTop: theme.spacing.sm,
-  },
-  primary: { backgroundColor: theme.colors.primary },
-  disabled: { backgroundColor: theme.colors.border },
-  buttonText: {
-    color: '#fff',
-    fontFamily: theme.typography.semiBold,
-  },
   link: {
-    color: theme.colors.secondary,
+    color: theme.colors.link,
     fontFamily: theme.typography.semiBold,
     marginTop: theme.spacing.lg,
   },

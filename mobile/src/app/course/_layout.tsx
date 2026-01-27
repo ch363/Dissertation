@@ -2,11 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import { Pressable, StyleSheet } from 'react-native';
 
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { theme } from '@/services/theme/tokens';
 import { routes } from '@/services/navigation/routes';
 
 export default function CourseLayout() {
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
 
   const handleBack = () => {
     router.back();
@@ -26,8 +28,9 @@ export default function CourseLayout() {
         headerStyle: { backgroundColor: theme.colors.background },
         headerTintColor: theme.colors.text,
         contentStyle: { backgroundColor: theme.colors.background },
-        // Slow down the slide animation
-        animationDuration: 600, // Increased from default ~350ms to 600ms
+        // Respect the user's Reduce Motion preference.
+        animation: reduceMotion ? 'none' : 'default',
+        animationDuration: reduceMotion ? 0 : 600,
         headerLeft: () => (
           <Pressable
             accessibilityRole="button"

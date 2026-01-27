@@ -1,10 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { Button } from '@/components/ui';
 import { resendConfirmationEmail } from '@/services/api/auth';
 import { theme } from '@/services/theme/tokens';
+import { announce } from '@/utils/a11y';
 
 export default function VerifyEmail() {
   const params = useLocalSearchParams<{ email?: string }>();
@@ -29,38 +31,47 @@ export default function VerifyEmail() {
     }
   };
 
+  useEffect(() => {
+    if (resendError) announce(resendError);
+    else if (resendMessage) announce(resendMessage);
+  }, [resendError, resendMessage]);
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        <Text style={styles.title}>Check your email</Text>
+        <Text style={styles.title} accessibilityRole="header">Check your email</Text>
         <Text style={styles.subtitle}>
           We sent a confirmation link to {email || 'your email address'}. Tap the link to activate
           your account, then log in.
         </Text>
 
-        {resendMessage && <Text style={styles.successMessage}>{resendMessage}</Text>}
-        {resendError && <Text style={styles.errorMessage}>{resendError}</Text>}
-
-        {email && (
-          <Pressable
-            style={[styles.button, styles.secondary, resending && styles.disabled]}
-            onPress={handleResend}
-            disabled={resending}
-          >
-            {resending ? (
-              <ActivityIndicator color={theme.colors.primary} />
-            ) : (
-              <Text style={[styles.buttonText, styles.secondaryText]}>Resend Email</Text>
-            )}
-          </Pressable>
+        {resendMessage && (
+          <Text style={styles.successMessage} accessibilityRole="alert">
+            {resendMessage}
+          </Text>
+        )}
+        {resendError && (
+          <Text style={styles.errorMessage} accessibilityRole="alert">
+            {resendError}
+          </Text>
         )}
 
-        <Pressable
-          style={[styles.button, styles.primary]}
+        {email && (
+          <Button
+            title="Resend Email"
+            onPress={handleResend}
+            loading={resending}
+            variant="ghost"
+            accessibilityHint="Resends the confirmation email"
+            style={styles.secondaryButton}
+          />
+        )}
+
+        <Button
+          title="Back to Log In"
           onPress={() => router.replace('/sign-in')}
-        >
-          <Text style={styles.buttonText}>Back to Log In</Text>
-        </Pressable>
+          accessibilityHint="Returns to the sign in screen"
+        />
       </View>
     </SafeAreaView>
   );
@@ -86,30 +97,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: theme.spacing.xl,
   },
-  button: {
-    paddingVertical: 14,
-    borderRadius: theme.radius.md,
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  primary: { backgroundColor: theme.colors.primary },
-  secondary: {
+  secondaryButton: {
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: theme.colors.primary,
+    marginBottom: theme.spacing.md,
   },
   disabled: {
     opacity: 0.5,
   },
-  buttonText: {
-    color: '#fff',
-    fontFamily: theme.typography.semiBold,
-  },
-  secondaryText: {
-    color: theme.colors.primary,
-  },
   successMessage: {
-    color: '#28a745',
+    color: theme.colors.success,
     textAlign: 'center',
     marginBottom: theme.spacing.md,
     fontFamily: theme.typography.regular,
