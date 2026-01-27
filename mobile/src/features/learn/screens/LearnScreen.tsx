@@ -10,6 +10,7 @@ import { LearnHeader } from '@/components/learn/LearnHeader';
 import { LearningPathCarousel } from '@/components/learn/LearningPathCarousel';
 import { ReviewSection } from '@/components/learn/ReviewSection';
 import { getSuggestions } from '@/services/api/learn';
+import { getCachedLearnScreenData, preloadLearnScreenData } from '@/services/api/learn-screen-cache';
 import { getDashboard } from '@/services/api/profile';
 import { getLessons, getModules } from '@/services/api/modules';
 import { getUserLessons } from '@/services/api/progress';
@@ -29,15 +30,31 @@ export default function LearnScreen() {
   const [loading, setLoading] = useState(true);
 
   const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [modules, lessons, userProgress, dashboard, suggestions] = await Promise.all([
+    // Check for cached data first - if available, use it immediately without showing loading
+    const cached = getCachedLearnScreenData();
+    let modules, lessons, userProgress, dashboard, suggestions;
+
+    if (cached) {
+      // Use cached data for instant load - don't show loading spinner
+      modules = cached.modules;
+      lessons = cached.lessons;
+      userProgress = cached.userProgress;
+      dashboard = cached.dashboard;
+      suggestions = cached.suggestions;
+      console.log('Using cached Learn screen data for instant load');
+    } else {
+      // No cache available, show loading and fetch fresh data
+      setLoading(true);
+      [modules, lessons, userProgress, dashboard, suggestions] = await Promise.all([
         getModules().catch(() => []),
         getLessons().catch(() => []),
         getUserLessons().catch(() => []),
         getDashboard().catch(() => ({ streak: 0, dueReviewCount: 0, activeLessonCount: 0, xpTotal: 0 })),
         getSuggestions({ limit: 8 }).catch(() => ({ lessons: [], modules: [] })),
       ]);
+    }
+
+    try {
 
       setDueReviewCount(dashboard.dueReviewCount || 0);
       setLearningPathItems(
@@ -97,13 +114,20 @@ export default function LearnScreen() {
       });
 
       setDiscoverItems(discoverCards);
+      setLoading(false);
+
+      // If we used cached data, refresh in the background for next time
+      if (cached) {
+        preloadLearnScreenData().catch(() => {
+          // Silently fail - background refresh is best effort
+        });
+      }
     } catch (error) {
       console.error('Error loading learn screen data:', error);
       // Gracefully handle errors - don't block UI
-    } finally {
       setLoading(false);
     }
-  }, []);
+  }, [theme.colors.primary, theme.colors.secondary]);
 
   useEffect(() => {
     loadData();

@@ -10,6 +10,7 @@ import { SurfaceCard } from '@/components/ui/SurfaceCard';
 import { IconButton } from '@/components/ui/IconButton';
 
 import { getMyProfile, upsertMyProfile, getDashboard, getRecentActivity, type DashboardData, type RecentActivity, refreshSignedAvatarUrlFromUrl as refreshAvatarUrl, uploadAvatar } from '@/services/api/profile';
+import { getCachedProfileScreenData, preloadProfileScreenData } from '@/services/api/profile-screen-cache';
 import { getProgressSummary, type ProgressSummary } from '@/services/api/progress';
 import { getAllMastery, type SkillMastery } from '@/services/api/mastery';
 import { getAvatarUri } from '@/services/cache/avatar-cache';
@@ -39,8 +40,22 @@ export default function Profile() {
   const [profileId, setProfileId] = useState<string | null>(null);
 
   const loadData = async () => {
-    try {
-      const [profile, dashboardData, recentData, masteryData] = await Promise.all([
+    // Check for cached data first - if available, use it immediately without showing loading
+    const cached = getCachedProfileScreenData();
+    let profile, dashboardData, recentData, masteryData, progressData;
+
+    if (cached) {
+      // Use cached data for instant load - don't show loading spinner
+      profile = cached.profile;
+      dashboardData = cached.dashboard;
+      recentData = cached.recentActivity;
+      masteryData = cached.mastery;
+      progressData = cached.progress;
+      console.log('Using cached Profile screen data for instant load');
+    } else {
+      // No cache available, show loading and fetch fresh data
+      setLoading(true);
+      [profile, dashboardData, recentData, masteryData] = await Promise.all([
         getMyProfile(),
         getDashboard(),
         getRecentActivity(),
@@ -50,6 +65,10 @@ export default function Profile() {
         }),
       ]);
 
+      progressData = await getProgressSummary(profile?.id || null);
+    }
+
+    try {
       if (profile) {
         // Backend now computes displayName - use it directly
         setDisplayName(profile.displayName || profile.name || 'User');
@@ -74,14 +93,21 @@ export default function Profile() {
         setDisplayName('User');
       }
 
-      const progressData = await getProgressSummary(profile?.id || null);
       setProgress(progressData);
       setDashboard(dashboardData);
       setRecentActivity(recentData);
       setMastery(masteryData);
+      setLoading(false);
+      setRefreshing(false);
+
+      // If we used cached data, refresh in the background for next time
+      if (cached && profile?.id) {
+        preloadProfileScreenData(profile.id).catch(() => {
+          // Silently fail - background refresh is best effort
+        });
+      }
     } catch (error) {
       console.error('Error loading profile data:', error);
-    } finally {
       setLoading(false);
       setRefreshing(false);
     }

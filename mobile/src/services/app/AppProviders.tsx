@@ -4,7 +4,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { OnboardingProvider } from '@/features/onboarding/providers/OnboardingProvider';
 import { SupabaseConfigGate } from '@/services/api/SupabaseConfigGate';
 import { clearSessionPlanCache } from '@/services/api/session-plan-cache';
-import { AuthProvider } from '@/services/auth/AuthProvider';
+import { preloadLearnScreenData } from '@/services/api/learn-screen-cache';
+import { preloadProfileScreenData } from '@/services/api/profile-screen-cache';
+import { AuthProvider, useAuth } from '@/services/auth/AuthProvider';
 import { RouteGuard } from '@/services/navigation/RouteGuard';
 import { ThemeProvider } from '@/services/theme/ThemeProvider';
 import { preloadSpeech, warmupTts } from '@/services/tts';
@@ -13,7 +15,9 @@ type Props = {
   children: React.ReactNode;
 };
 
-export function AppProviders({ children }: Props) {
+function PreloadManager({ children }: Props) {
+  const { user, loading: authLoading, profile } = useAuth();
+
   // Clear session plan cache on app startup to ensure fresh data
   useEffect(() => {
     clearSessionPlanCache();
@@ -44,15 +48,41 @@ export function AppProviders({ children }: Props) {
     initializeTts();
   }, []);
 
+  // Preload all tab screen data when user is authenticated
+  // This happens immediately in the background so tabs load instantly
+  // We preload as soon as user is authenticated, even if profile isn't loaded yet
+  useEffect(() => {
+    if (!authLoading && user) {
+      // Start preloading immediately - no delay needed
+      // Preload both Learn and Profile screens in parallel
+      Promise.all([
+        preloadLearnScreenData().catch((error) => {
+          console.warn('Failed to preload Learn screen data (non-critical):', error);
+        }),
+        preloadProfileScreenData(profile?.id || null).catch((error) => {
+          console.warn('Failed to preload Profile screen data (non-critical):', error);
+        }),
+      ]).then(() => {
+        console.log('All tab screens preloaded successfully');
+      });
+    }
+  }, [user, authLoading, profile?.id]);
+
+  return <>{children}</>;
+}
+
+export function AppProviders({ children }: Props) {
   return (
     <ThemeProvider>
       <SupabaseConfigGate>
         <AuthProvider>
-          <OnboardingProvider>
-            <RouteGuard>
-              <SafeAreaProvider>{children}</SafeAreaProvider>
-            </RouteGuard>
-          </OnboardingProvider>
+          <PreloadManager>
+            <OnboardingProvider>
+              <RouteGuard>
+                <SafeAreaProvider>{children}</SafeAreaProvider>
+              </RouteGuard>
+            </OnboardingProvider>
+          </PreloadManager>
         </AuthProvider>
       </SupabaseConfigGate>
     </ThemeProvider>
