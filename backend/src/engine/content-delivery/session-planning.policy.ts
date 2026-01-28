@@ -66,6 +66,10 @@ export function interleaveItems<T>(
 
 /**
  * Select adaptive modality (delivery method) for an item.
+ * Favors methods that the user performs best on (higher scores).
+ * Uses weighted selection to strongly favor best-performing methods while
+ * still allowing occasional variety for exploration.
+ * 
  * @param item The item to select modality for
  * @param availableMethods Available delivery methods for the item
  * @param userPreferences Map of delivery method to preference score (0-1)
@@ -85,24 +89,60 @@ export function selectModality(
     return undefined;
   }
 
-  // Score each available method
-  const scores = availableMethods.map((method) => {
-    let score = userPreferences.get(method) || 0.5; // Default preference
+  // If only one method available, return it
+  if (availableMethods.length === 1) {
+    return availableMethods[0];
+  }
 
-    // Penalize recent repetition if avoidRepetition is true
-    if (context?.avoidRepetition && context.recentMethods) {
-      const recentCount = context.recentMethods.filter(
-        (m) => m === method,
-      ).length;
-      score *= Math.pow(0.8, recentCount); // Exponential decay for repetition
-    }
-
-    return { method, score };
+  // Score each available method based on user performance
+  const methodScores = availableMethods.map((method) => {
+    // Get user's performance score for this method (0-1 scale)
+    // Higher scores mean the user performs better on this method
+    const performanceScore = userPreferences.get(method) || 0.5; // Default to neutral
+    
+    return { method, score: performanceScore };
   });
 
-  // Sort by score (highest first) and return top method
-  scores.sort((a, b) => b.score - a.score);
-  return scores[0].method;
+  // Find the best-performing method
+  const bestMethod = methodScores.reduce((best, current) => 
+    current.score > best.score ? current : best
+  );
+
+  // Use weighted random selection that strongly favors higher scores
+  // This allows best methods to be selected most of the time, but still
+  // gives other methods a chance (about 15-20% of the time for exploration)
+  
+  // Calculate weights using exponential scaling to strongly favor higher scores
+  // Score^4 makes the difference between 0.9 and 0.5 much more pronounced
+  const weights = methodScores.map(({ method, score }) => ({
+    method,
+    weight: Math.pow(Math.max(0.1, score), 4), // Use score^4, minimum 0.1^4 to avoid zero weights
+  }));
+
+  // Calculate total weight for normalization
+  const totalWeight = weights.reduce((sum, w) => sum + w.weight, 0);
+
+  // Use weighted random selection: 85% of the time pick from weighted distribution,
+  // 15% of the time pick randomly for exploration
+  const useWeightedSelection = Math.random() < 0.85;
+
+  if (useWeightedSelection) {
+    // Weighted random selection
+    let random = Math.random() * totalWeight;
+    for (const { method, weight } of weights) {
+      random -= weight;
+      if (random <= 0) {
+        return method;
+      }
+    }
+    // Fallback (shouldn't happen, but just in case)
+    return bestMethod.method;
+  } else {
+    // 15% exploration: randomly select from available methods
+    // This ensures other methods still get a chance even if they have lower scores
+    const randomIndex = Math.floor(Math.random() * availableMethods.length);
+    return availableMethods[randomIndex];
+  }
 }
 
 /**

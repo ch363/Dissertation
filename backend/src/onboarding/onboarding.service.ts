@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SaveOnboardingDto, OnboardingResponseDto } from './dto/onboarding.dto';
+import { DELIVERY_METHOD } from '@prisma/client';
+import { OnboardingPreferencesService } from './onboarding-preferences.service';
 
 // Business logic constants (moved from frontend)
 const DIFFICULTY_WEIGHTS: Record<string, number> = {
@@ -116,7 +118,10 @@ function buildOnboardingSubmission(
 
 @Injectable()
 export class OnboardingService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private preferencesService: OnboardingPreferencesService,
+  ) {}
 
   async saveOnboarding(
     userId: string,
@@ -141,12 +146,59 @@ export class OnboardingService {
       },
     });
 
+    // Initialize delivery method scores from onboarding preferences
+    // Only initialize if user doesn't have existing scores (to preserve performance data)
+    await this.initializeDeliveryMethodScores(userId);
+
     return {
       userId: onboarding.userId,
       answers: onboarding.answers as Record<string, any>,
       createdAt: onboarding.createdAt,
       updatedAt: onboarding.updatedAt,
     };
+  }
+
+  /**
+   * Initialize delivery method scores from onboarding preferences.
+   * Only creates scores for methods that don't already exist (preserves performance data).
+   */
+  private async initializeDeliveryMethodScores(userId: string): Promise<void> {
+    try {
+      const initialScores =
+        await this.preferencesService.getInitialDeliveryMethodScores(userId);
+
+      // Get existing scores to avoid overwriting performance data
+      const existingScores = await this.prisma.userDeliveryMethodScore.findMany({
+        where: { userId },
+        select: { deliveryMethod: true },
+      });
+
+      const existingMethods = new Set(
+        existingScores.map((s) => s.deliveryMethod),
+      );
+
+      // Create scores only for methods that don't exist yet
+      const scoresToCreate = Array.from(initialScores.entries())
+        .filter(([method]) => !existingMethods.has(method))
+        .map(([deliveryMethod, score]) => ({
+          userId,
+          deliveryMethod,
+          score,
+        }));
+
+      if (scoresToCreate.length > 0) {
+        await this.prisma.userDeliveryMethodScore.createMany({
+          data: scoresToCreate,
+          skipDuplicates: true,
+        });
+      }
+    } catch (error) {
+      // Log error but don't fail onboarding save
+      console.error(
+        `Failed to initialize delivery method scores for user ${userId}:`,
+        error,
+      );
+    }
   }
 
   async getOnboarding(userId: string): Promise<OnboardingResponseDto | null> {

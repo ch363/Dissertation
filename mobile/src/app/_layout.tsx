@@ -13,10 +13,7 @@ import { RouteGuard } from '@/services/navigation/RouteGuard';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 
-/**
- * Disable iOS "rubber-band" bounce and Android overscroll glow globally.
- * This prevents any screen from being pulled down to reveal blank space at the top.
- */
+// Disable iOS "rubber-band" bounce and Android overscroll glow globally.
 function applyGlobalScrollDefaults() {
   // iOS: `bounces` controls the pull-to-reveal gap.
   // Android: `overScrollMode="never"` removes glow/overscroll.

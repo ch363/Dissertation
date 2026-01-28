@@ -4,9 +4,10 @@ import { ProgressService } from './progress.service';
 import { EngineModule } from '../engine/engine.module';
 import { ContentModule } from '../content/content.module';
 import { SpeechModule } from '../speech/speech.module';
+import { OnboardingModule } from '../onboarding/onboarding.module';
 
 @Module({
-  imports: [EngineModule, ContentModule, SpeechModule],
+  imports: [EngineModule, ContentModule, SpeechModule, OnboardingModule],
   controllers: [ProgressController],
   providers: [ProgressService],
   exports: [ProgressService],

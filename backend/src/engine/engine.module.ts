@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
 import { ContentModule } from '../content/content.module';
+import { OnboardingModule } from '../onboarding/onboarding.module';
 import { ContentDeliveryService } from './content-delivery/content-delivery.service';
 import { SessionPlanService } from './content-delivery/session-plan.service';
 import { SessionPlanCacheService } from './content-delivery/session-plan-cache.service';
@@ -22,7 +23,7 @@ import { MasteryService } from './mastery/mastery.service';
  * (LearnService, ProgressService) to handle adaptive learning logic.
  */
 @Module({
-  imports: [PrismaModule, ContentModule],
+  imports: [PrismaModule, ContentModule, OnboardingModule],
   providers: [
     ContentDeliveryService,
     SessionPlanService,

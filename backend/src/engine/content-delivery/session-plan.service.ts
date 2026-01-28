@@ -36,6 +36,7 @@ import {
 } from './session-planning.policy';
 import { rankCandidates, composeWithInterleaving } from './selection.policy';
 import { MasteryService } from '../mastery/mastery.service';
+import { OnboardingPreferencesService } from '../../onboarding/onboarding-preferences.service';
 
 @Injectable()
 export class SessionPlanService {
@@ -43,6 +44,7 @@ export class SessionPlanService {
     private prisma: PrismaService,
     private contentLookup: ContentLookupService,
     private masteryService: MasteryService,
+    private onboardingPreferences: OnboardingPreferencesService,
   ) {}
 
   /**
@@ -66,6 +68,17 @@ export class SessionPlanService {
     const now = new Date();
     const sessionId = `session-${userId}-${Date.now()}`;
 
+    // 0. Get onboarding preferences for personalization
+    const onboardingPrefs =
+      await this.onboardingPreferences.getOnboardingPreferences(userId);
+    const challengeWeight = onboardingPrefs.challengeWeight;
+
+    // Use onboarding sessionMinutes as default time budget if not provided
+    let effectiveTimeBudgetSec = context.timeBudgetSec;
+    if (!effectiveTimeBudgetSec && onboardingPrefs.sessionMinutes) {
+      effectiveTimeBudgetSec = onboardingPrefs.sessionMinutes * 60;
+    }
+
     // 1. Get user's time averages for adaptive estimation
     const userTimeAverages = await this.getUserAverageTimes(userId);
 
@@ -74,8 +87,8 @@ export class SessionPlanService {
       (userTimeAverages.avgTimePerTeachSec +
         userTimeAverages.avgTimePerPracticeSec) /
       2;
-    const targetItemCount = context.timeBudgetSec
-      ? calculateItemCount(context.timeBudgetSec, avgTimePerItem)
+    const targetItemCount = effectiveTimeBudgetSec
+      ? calculateItemCount(effectiveTimeBudgetSec, avgTimePerItem)
       : 15; // Default: 15 items
 
     // 3. Get seen teaching IDs to filter out already-completed teachings
@@ -109,8 +122,16 @@ export class SessionPlanService {
       selectedCandidates = reviewCandidates;
     } else if (context.mode === 'learn') {
       // For learn mode, prioritize new items but include reviews if there aren't enough new items
-      const rankedNew = rankCandidates(newCandidates, prioritizedSkills);
-      const rankedReviews = rankCandidates(reviewCandidates);
+      const rankedNew = rankCandidates(
+        newCandidates,
+        prioritizedSkills,
+        challengeWeight,
+      );
+      const rankedReviews = rankCandidates(
+        reviewCandidates,
+        [],
+        challengeWeight,
+      );
 
       // If we have enough new items, use only new items
       if (rankedNew.length >= targetItemCount) {
@@ -126,8 +147,16 @@ export class SessionPlanService {
       }
     } else {
       // mixed: combine reviews and new
-      const rankedReviews = rankCandidates(reviewCandidates);
-      const rankedNew = rankCandidates(newCandidates, prioritizedSkills);
+      const rankedReviews = rankCandidates(
+        reviewCandidates,
+        [],
+        challengeWeight,
+      );
+      const rankedNew = rankCandidates(
+        newCandidates,
+        prioritizedSkills,
+        challengeWeight,
+      );
       // Mix 70% reviews, 30% new
       const reviewCount = Math.floor(targetItemCount * 0.7);
       const newCount = targetItemCount - reviewCount;
@@ -1117,20 +1146,30 @@ export class SessionPlanService {
 
   /**
    * Get delivery method scores for user.
+   * Merges stored performance scores with onboarding-based defaults.
    */
   private async getDeliveryMethodScores(
     userId: string,
   ): Promise<Map<DELIVERY_METHOD, number>> {
-    const scores = await this.prisma.userDeliveryMethodScore.findMany({
+    // Get stored performance scores
+    const storedScores = await this.prisma.userDeliveryMethodScore.findMany({
       where: { userId },
     });
 
     const map = new Map<DELIVERY_METHOD, number>();
-    scores.forEach((s) => {
-      map.set(s.deliveryMethod, s.score);
-    });
 
-    return map;
+    // If user has stored scores, use them (they reflect actual performance)
+    if (storedScores.length > 0) {
+      storedScores.forEach((s) => {
+        map.set(s.deliveryMethod, s.score);
+      });
+      return map;
+    }
+
+    // If no stored scores, use onboarding-based defaults
+    const onboardingScores =
+      await this.onboardingPreferences.getInitialDeliveryMethodScores(userId);
+    return onboardingScores;
   }
 
   private pickPrioritizedSkill(

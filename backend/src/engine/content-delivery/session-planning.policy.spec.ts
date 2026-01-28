@@ -122,10 +122,10 @@ describe('Session Planning Policy', () => {
       expect(availableMethods).toContain(result);
     });
 
-    it('should penalize recent repetition', () => {
+    it('should favor best-performing methods even when used recently', () => {
       const preferences = new Map([
-        [DELIVERY_METHOD.FLASHCARD, 0.9],
-        [DELIVERY_METHOD.MULTIPLE_CHOICE, 0.8],
+        [DELIVERY_METHOD.FLASHCARD, 0.9], // User performs best on flashcards
+        [DELIVERY_METHOD.MULTIPLE_CHOICE, 0.5], // Lower performance
       ]);
 
       const candidate: DeliveryCandidate = {
@@ -141,30 +141,26 @@ describe('Session Planning Policy', () => {
         ],
       };
 
-      // First selection
-      const result1 = selectModality(
-        candidate,
-        candidate.deliveryMethods!,
-        preferences,
-        {
-          recentMethods: [],
-          avoidRepetition: true,
-        },
-      );
+      // Run multiple selections to verify best method is favored
+      const selections: DELIVERY_METHOD[] = [];
+      for (let i = 0; i < 20; i++) {
+        const result = selectModality(
+          candidate,
+          candidate.deliveryMethods!,
+          preferences,
+          {
+            recentMethods: selections.slice(-5), // Track recent methods
+            avoidRepetition: true, // This flag is now ignored - we favor performance
+          },
+        );
+        selections.push(result!);
+      }
 
-      // Second selection with repetition
-      const result2 = selectModality(
-        candidate,
-        candidate.deliveryMethods!,
-        preferences,
-        {
-          recentMethods: [result1!],
-          avoidRepetition: true,
-        },
-      );
-
-      // Should prefer different method on second call
-      expect(result2).not.toBe(result1);
+      // FLASHCARD should be selected most of the time (at least 70% due to weighted selection)
+      const flashcardCount = selections.filter(
+        (m) => m === DELIVERY_METHOD.FLASHCARD,
+      ).length;
+      expect(flashcardCount).toBeGreaterThan(14); // At least 15 out of 20 (75%)
     });
 
     it('should return undefined for empty available methods', () => {

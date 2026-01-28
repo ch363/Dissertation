@@ -13,6 +13,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { OnboardingPreferencesService } from '../../onboarding/onboarding-preferences.service';
 
 export interface BktParameters {
   prior: number; // P(L0)
@@ -39,7 +40,10 @@ export class MasteryService {
     slip: 0.1, // 10% chance of making a mistake when known
   };
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private onboardingPreferences: OnboardingPreferencesService,
+  ) {}
 
   /**
    * Update mastery probability for a skill using BKT algorithm.
@@ -186,6 +190,7 @@ export class MasteryService {
 
   /**
    * Initialize mastery record with default BKT parameters.
+   * Uses onboarding-based parameters if available and no custom parameters provided.
    *
    * @param userId User ID
    * @param skillTag Skill tag identifier
@@ -197,8 +202,18 @@ export class MasteryService {
     skillTag: string,
     parameters?: Partial<BktParameters>,
   ): Promise<SkillMastery> {
+    // Use custom parameters if provided, otherwise try onboarding-based, otherwise defaults
+    let baseParams = this.DEFAULT_PARAMETERS;
+    if (!parameters) {
+      const onboardingParams =
+        await this.onboardingPreferences.getInitialBktParameters(userId);
+      if (onboardingParams) {
+        baseParams = onboardingParams;
+      }
+    }
+
     const params = {
-      ...this.DEFAULT_PARAMETERS,
+      ...baseParams,
       ...parameters,
     };
 

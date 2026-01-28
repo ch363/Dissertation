@@ -23,6 +23,7 @@ import { MasteryService } from '../engine/mastery/mastery.service';
 import { SessionPlanCacheService } from '../engine/content-delivery/session-plan-cache.service';
 import { extractSkillTags } from '../engine/mastery/skill-extraction.util';
 import { PronunciationService } from '../speech/pronunciation/pronunciation.service';
+import { OnboardingPreferencesService } from '../onboarding/onboarding-preferences.service';
 
 @Injectable()
 export class ProgressService {
@@ -34,6 +35,7 @@ export class ProgressService {
     private masteryService: MasteryService,
     private sessionPlanCache: SessionPlanCacheService,
     private pronunciationService: PronunciationService,
+    private onboardingPreferences: OnboardingPreferencesService,
   ) {}
 
   /**
@@ -1172,6 +1174,11 @@ export class ProgressService {
       );
     }
 
+    // Get feedback depth preference from onboarding
+    const onboardingPrefs =
+      await this.onboardingPreferences.getOnboardingPreferences(userId);
+    const feedbackDepth = onboardingPrefs.feedbackDepth ?? 0.6; // Default to direct if not specified
+
     // Validate based on delivery method
     let isCorrect = false;
     let score = 0;
@@ -1209,9 +1216,13 @@ export class ProgressService {
       );
       score = isCorrect ? 100 : 0;
 
-      if (!isCorrect && questionData.hint) {
-        feedback = questionData.hint;
-      }
+      // Apply feedback depth preference
+      feedback = this.buildFeedback(
+        isCorrect,
+        questionData.hint,
+        teaching,
+        feedbackDepth,
+      );
     } else if (dto.deliveryMethod === DELIVERY_METHOD.FILL_BLANK) {
       // Fill blank: compare against learningLanguageString
       const normalizedUserAnswer = dto.answer.toLowerCase().trim();
@@ -1234,9 +1245,13 @@ export class ProgressService {
       );
       score = isCorrect ? 100 : 0;
 
-      if (!isCorrect && questionData.hint) {
-        feedback = questionData.hint;
-      }
+      // Apply feedback depth preference
+      feedback = this.buildFeedback(
+        isCorrect,
+        questionData.hint,
+        teaching,
+        feedbackDepth,
+      );
     } else if (
       dto.deliveryMethod === DELIVERY_METHOD.SPEECH_TO_TEXT ||
       dto.deliveryMethod === DELIVERY_METHOD.TEXT_TO_SPEECH
@@ -1261,6 +1276,14 @@ export class ProgressService {
         (correctAns) => correctAns === normalizedUserAnswer,
       );
       score = isCorrect ? 100 : 0;
+
+      // Apply feedback depth preference
+      feedback = this.buildFeedback(
+        isCorrect,
+        questionData.hint,
+        teaching,
+        feedbackDepth,
+      );
     } else {
       throw new BadRequestException(
         `Unsupported delivery method for validation: ${dto.deliveryMethod}`,
@@ -1272,6 +1295,64 @@ export class ProgressService {
       score,
       feedback,
     };
+  }
+
+  /**
+   * Build feedback message based on feedback depth preference.
+   * @param isCorrect Whether the answer was correct
+   * @param hint Optional hint from question data
+   * @param teaching Teaching data for additional context
+   * @param feedbackDepth Feedback depth preference (0.3 = gentle, 0.6 = direct, 0.9 = detailed)
+   */
+  private buildFeedback(
+    isCorrect: boolean,
+    hint: string | undefined,
+    teaching: any,
+    feedbackDepth: number,
+  ): string | undefined {
+    // Gentle (0.3): Minimal feedback, just correct/incorrect
+    if (feedbackDepth < 0.45) {
+      return undefined; // No feedback for gentle preference
+    }
+
+    // Direct (0.6): Moderate feedback with brief explanations
+    if (feedbackDepth < 0.75) {
+      if (!isCorrect && hint) {
+        return hint;
+      }
+      return undefined;
+    }
+
+    // Detailed (0.9): Comprehensive feedback with tips and examples
+    if (!isCorrect) {
+      let detailedFeedback = '';
+      if (hint) {
+        detailedFeedback = hint;
+      }
+      if (teaching.tip) {
+        if (detailedFeedback) {
+          detailedFeedback += ` ${teaching.tip}`;
+        } else {
+          detailedFeedback = teaching.tip;
+        }
+      }
+      if (teaching.userLanguageString && teaching.learningLanguageString) {
+        const translationNote = `Remember: "${teaching.learningLanguageString}" means "${teaching.userLanguageString}"`;
+        if (detailedFeedback) {
+          detailedFeedback += ` ${translationNote}`;
+        } else {
+          detailedFeedback = translationNote;
+        }
+      }
+      return detailedFeedback || undefined;
+    }
+
+    // For correct answers, provide encouragement in detailed mode
+    if (isCorrect && feedbackDepth >= 0.75) {
+      return 'Excellent!';
+    }
+
+    return undefined;
   }
 
   async validatePronunciation(

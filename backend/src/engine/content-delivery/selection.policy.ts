@@ -12,15 +12,21 @@ import { DELIVERY_METHOD } from '@prisma/client';
  *
  * @param candidates Array of delivery candidates
  * @param prioritizedSkills Optional array of skill tags to prioritize (low mastery skills)
+ * @param challengeWeight Optional challenge weight from onboarding (0-1). Used to adjust difficulty preference.
  */
 export function rankCandidates(
   candidates: DeliveryCandidate[],
   prioritizedSkills: string[] = [],
+  challengeWeight: number = 0.5,
 ): DeliveryCandidate[] {
   return candidates
     .map((candidate) => ({
       ...candidate,
-      priorityScore: calculatePriorityScore(candidate, prioritizedSkills),
+      priorityScore: calculatePriorityScore(
+        candidate,
+        prioritizedSkills,
+        challengeWeight,
+      ),
     }))
     .sort((a, b) => b.priorityScore - a.priorityScore);
 }
@@ -32,13 +38,16 @@ export function rankCandidates(
  * - Recent errors (more errors = higher priority)
  * - Time since last seen (longer = higher priority for reviews)
  * - Prioritized skills (low mastery skills get bonus priority for 'New' items)
+ * - Challenge weight (from onboarding) adjusts difficulty preference
  *
  * @param candidate Delivery candidate
  * @param prioritizedSkills Array of skill tags to prioritize (low mastery skills)
+ * @param challengeWeight Challenge weight from onboarding (0-1). Adjusts difficulty preference.
  */
 function calculatePriorityScore(
   candidate: DeliveryCandidate,
   prioritizedSkills: string[] = [],
+  challengeWeight: number = 0.5,
 ): number {
   // Due items get highest priority
   if (candidate.dueScore > 0) {
@@ -58,6 +67,22 @@ function calculatePriorityScore(
   if (hasPrioritizedSkill) {
     basePriority += 500; // Significant boost to prioritize these items
   }
+
+  // Apply challenge weight to adjust difficulty preference
+  // challengeWeight: 0.25 (easy) -> boost easier items, 0.85 (hard) -> boost harder items
+  const difficulty = candidate.difficulty ?? 0.5;
+  if (challengeWeight < 0.4) {
+    // Prefer easy: boost items with difficulty < 0.4
+    if (difficulty < 0.4) {
+      basePriority += 100;
+    }
+  } else if (challengeWeight > 0.7) {
+    // Prefer hard: boost items with difficulty > 0.6
+    if (difficulty > 0.6) {
+      basePriority += 100;
+    }
+  }
+  // Balanced (0.4-0.7): no adjustment
 
   return basePriority;
 }

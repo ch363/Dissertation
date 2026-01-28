@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getOnboarding } from '../api/onboarding';
 
 const KEYS = {
   ttsEnabled: '@prefs/ttsEnabled',
@@ -111,7 +112,18 @@ export async function setSessionDefaultMode(mode: SessionDefaultMode): Promise<v
 export async function getSessionDefaultTimeBudgetSec(): Promise<number | null> {
   try {
     const raw = await AsyncStorage.getItem(KEYS.sessionTimeBudgetSec);
-    if (raw === null || raw === '') return null;
+    if (raw === null || raw === '') {
+      // If no saved preference, initialize from onboarding (all users must have onboarding)
+      const onboarding = await getOnboarding();
+      if (onboarding?.answers?.signals?.sessionMinutes) {
+        const sessionMinutes = onboarding.answers.signals.sessionMinutes;
+        const timeBudgetSec = sessionMinutes * 60;
+        // Save it for future use
+        await setSessionDefaultTimeBudgetSec(timeBudgetSec);
+        return timeBudgetSec;
+      }
+      return null;
+    }
     const n = Number(raw);
     if (!Number.isFinite(n)) return null;
     if (n < MIN_TIME_BUDGET_SEC) return MIN_TIME_BUDGET_SEC;
