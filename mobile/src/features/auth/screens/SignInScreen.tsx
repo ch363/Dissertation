@@ -19,6 +19,7 @@ import {
   setSessionFromEmailLink,
   signInWithEmailPassword,
 } from '@/services/api/auth';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme } from '@/services/theme/tokens';
 import { announce } from '@/utils/a11y';
 
@@ -169,38 +170,38 @@ export default function SignIn() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: appTheme.colors.background }]}>
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[styles.container, { backgroundColor: appTheme.colors.background }]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: appTheme.colors.card, borderColor: appTheme.colors.border }]}>
           <Image
             source={require('@/assets/logo.png')}
             style={styles.logo}
             resizeMode="contain"
             accessible={false}
           />
-          <Text style={styles.title} accessibilityRole="header">
+          <Text style={[styles.title, { color: appTheme.colors.text }]} accessibilityRole="header">
             Welcome back
           </Text>
-          <Text style={styles.subtitle}>Choose how you’d like to continue</Text>
+          <Text style={[styles.subtitle, { color: appTheme.colors.mutedText }]}>Choose how you’d like to continue</Text>
 
           <View style={styles.dividerRow}>
-            <View style={styles.divider} />
-            <Text style={styles.dividerText}>Email</Text>
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: appTheme.colors.border }]} />
+            <Text style={[styles.dividerText, { color: appTheme.colors.mutedText }]}>Email</Text>
+            <View style={[styles.divider, { backgroundColor: appTheme.colors.border }]} />
           </View>
 
-          <Text style={styles.inputLabel}>Email</Text>
+          <Text style={[styles.inputLabel, { color: appTheme.colors.text }]}>Email</Text>
           <TextInput
             value={email}
             onChangeText={setEmail}
             placeholder="you@example.com"
             autoCapitalize="none"
             keyboardType="email-address"
-            style={styles.input}
-            placeholderTextColor={theme.colors.mutedText}
+            style={[styles.input, { backgroundColor: appTheme.colors.card, borderColor: appTheme.colors.border, color: appTheme.colors.text }]}
+            placeholderTextColor={appTheme.colors.mutedText}
             accessibilityLabel="Email"
             accessibilityHint="Enter your email address"
             accessibilityState={{ invalid: !!emailError }}
@@ -210,19 +211,19 @@ export default function SignIn() {
             onSubmitEditing={() => passwordRef.current?.focus()}
           />
           {emailError ? (
-            <Text style={styles.error} accessibilityRole="alert">
+            <Text style={[styles.error, { color: appTheme.colors.error }]} accessibilityRole="alert">
               {emailError}
             </Text>
           ) : null}
-          <Text style={styles.inputLabel}>Password</Text>
+          <Text style={[styles.inputLabel, { color: appTheme.colors.text }]}>Password</Text>
           <TextInput
             ref={passwordRef}
             value={password}
             onChangeText={setPassword}
             placeholder="Password"
             secureTextEntry
-            style={styles.input}
-            placeholderTextColor={theme.colors.mutedText}
+            style={[styles.input, { backgroundColor: appTheme.colors.card, borderColor: appTheme.colors.border, color: appTheme.colors.text }]}
+            placeholderTextColor={appTheme.colors.mutedText}
             accessibilityLabel="Password"
             accessibilityHint="Enter your password"
             accessibilityState={{ invalid: !!passwordError }}
@@ -233,12 +234,12 @@ export default function SignIn() {
           />
 
           {passwordError ? (
-            <Text style={styles.error} accessibilityRole="alert">
+            <Text style={[styles.error, { color: appTheme.colors.error }]} accessibilityRole="alert">
               {passwordError}
             </Text>
           ) : null}
           {error ? (
-            <Text style={styles.error} accessibilityRole="alert">
+            <Text style={[styles.error, { color: appTheme.colors.error }]} accessibilityRole="alert">
               {error}
             </Text>
           ) : null}
@@ -251,10 +252,10 @@ export default function SignIn() {
             accessibilityHint="Signs you in with your email and password"
           />
 
-          <Link href="/sign-up" style={styles.link}>
+          <Link href="/sign-up" style={[styles.link, { color: appTheme.colors.link }]}>
             New here? Create account
           </Link>
-          <Link href="/forgot-password" style={styles.link}>
+          <Link href="/forgot-password" style={[styles.link, { color: appTheme.colors.link }]}>
             Forgot password?
           </Link>
         </View>
@@ -264,22 +265,21 @@ export default function SignIn() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F5F7FB' },
+  safe: { flex: 1 },
   container: {
     flexGrow: 1,
     padding: theme.spacing.lg,
-    backgroundColor: '#F5F7FB',
     justifyContent: 'center',
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
+    borderRadius: 14,
+    borderWidth: 1,
     padding: theme.spacing.lg,
     shadowColor: '#000',
     shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   logo: {
     width: 64,
@@ -290,12 +290,10 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: theme.typography.bold,
     fontSize: 22,
-    color: theme.colors.text,
     textAlign: 'center',
   },
   subtitle: {
     textAlign: 'center',
-    color: theme.colors.mutedText,
     marginBottom: theme.spacing.lg,
   },
   dividerRow: {
@@ -307,34 +305,26 @@ const styles = StyleSheet.create({
   divider: {
     flex: 1,
     height: 1,
-    backgroundColor: theme.colors.border,
   },
   dividerText: {
-    color: theme.colors.mutedText,
     fontFamily: theme.typography.semiBold,
   },
   inputLabel: {
-    color: theme.colors.text,
     fontFamily: theme.typography.semiBold,
     marginBottom: theme.spacing.xs,
   },
   input: {
-    backgroundColor: theme.colors.card,
     borderRadius: theme.radius.md,
     borderWidth: 1,
-    borderColor: theme.colors.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: theme.colors.text,
     marginBottom: theme.spacing.md,
   },
   error: {
-    color: theme.colors.error,
     marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.xs,
   },
   link: {
-    color: theme.colors.link,
     fontFamily: theme.typography.semiBold,
     textAlign: 'center',
     marginTop: theme.spacing.md,

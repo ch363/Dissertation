@@ -6,6 +6,7 @@ import type { AccessibilityRole } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScrollView } from '@/components/ui';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme } from '@/services/theme/tokens';
 
 type OptionItem = {
@@ -36,10 +37,11 @@ export function QuestionScreen({
   children: React.ReactNode;
   footer?: React.ReactNode;
 }) {
+  const { theme: appTheme } = useAppTheme();
   const insets = useSafeAreaInsets();
   const contentPaddingBottom = (footer ? theme.spacing.xl * 2.2 : theme.spacing.lg) + insets.bottom;
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: appTheme.colors.background }]}>
       <ScrollView
         contentContainerStyle={[styles.screenContent, { paddingBottom: contentPaddingBottom }]}
         keyboardShouldPersistTaps="handled"
@@ -49,8 +51,8 @@ export function QuestionScreen({
       </ScrollView>
       {footer ? (
         <View style={styles.stickyWrap}>
-          <View style={styles.fade} pointerEvents="none" />
-          <View style={[styles.stickyInner, { paddingBottom: theme.spacing.md + insets.bottom }]}>
+          <View style={[styles.fade, { backgroundColor: appTheme.colors.background }]} pointerEvents="none" />
+          <View style={[styles.stickyInner, { paddingBottom: theme.spacing.md + insets.bottom, backgroundColor: appTheme.colors.background }]}>
             {footer}
           </View>
         </View>
@@ -85,10 +87,17 @@ export function Option({
   icon?: keyof typeof Ionicons.glyphMap | string;
   multiple?: boolean; // for accessibility role
 }) {
+  const { theme: appTheme } = useAppTheme();
+  const isDark = appTheme.colors.background === '#0E141B';
+  const selectedBg = isDark ? 'rgba(98, 160, 255, 0.2)' : '#E9F3FF';
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.option, selected && styles.optionSelected]}
+      style={[
+        styles.option,
+        { backgroundColor: appTheme.colors.card, borderColor: appTheme.colors.border },
+        selected && { ...styles.optionSelected, borderColor: appTheme.colors.primary, backgroundColor: selectedBg, shadowColor: appTheme.colors.primary },
+      ]}
       accessibilityRole={(multiple ? 'checkbox' : 'radio') as AccessibilityRole}
       accessibilityState={{ checked: !!selected }}
       accessibilityLabel={label}
@@ -100,13 +109,13 @@ export function Option({
             <Ionicons
               name={icon as keyof typeof Ionicons.glyphMap}
               size={22}
-              color={theme.colors.text}
+              color={appTheme.colors.text}
               style={styles.optionIcon}
             />
           ) : null}
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.optionText, selected && styles.optionTextSelected]}>{label}</Text>
+          <Text style={[styles.optionText, { color: appTheme.colors.text }, selected && styles.optionTextSelected]}>{label}</Text>
         </View>
       </View>
     </Pressable>
@@ -141,9 +150,10 @@ export function PrimaryButton({
 }
 
 export function SecondaryButton({ title, onPress }: { title: string; onPress: () => void }) {
+  const { theme: appTheme } = useAppTheme();
   return (
-    <Pressable onPress={onPress} style={styles.secondaryBtn} accessibilityRole="button" hitSlop={8}>
-      <Text style={styles.secondaryBtnText}>{title}</Text>
+    <Pressable onPress={onPress} style={[styles.secondaryBtn, { borderColor: appTheme.colors.border }]} accessibilityRole="button" hitSlop={8}>
+      <Text style={[styles.secondaryBtnText, { color: appTheme.colors.text }]}>{title}</Text>
     </Pressable>
   );
 }
@@ -161,28 +171,29 @@ export function QuestionTitle({ children }: { children: React.ReactNode }) {
 }
 
 export function WhyWeAskLink() {
+  const { theme: appTheme } = useAppTheme();
   const [open, setOpen] = React.useState(false);
   return (
     <View style={{ marginBottom: 8 }}>
       <Pressable accessibilityRole="link" onPress={() => setOpen(true)} hitSlop={8}>
-        <Text style={styles.whyLink}>Why we ask?</Text>
+        <Text style={[styles.whyLink, { color: appTheme.colors.primary }]}>Why we ask?</Text>
       </Pressable>
       <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
         <View style={styles.sheetBackdrop}>
           <Pressable style={{ flex: 1 }} onPress={() => setOpen(false)} />
-          <View style={styles.sheet} accessibilityRole={'dialog' as AccessibilityRole}>
+          <View style={[styles.sheet, { backgroundColor: appTheme.colors.background }]} accessibilityRole={'dialog' as AccessibilityRole}>
             <View
               style={{
                 height: 4,
                 width: 40,
-                backgroundColor: '#ddd',
+                backgroundColor: appTheme.colors.border,
                 borderRadius: 2,
                 alignSelf: 'center',
                 marginBottom: 12,
               }}
             />
-            <Text style={styles.sheetTitle}>Why we ask</Text>
-            <Text style={styles.sheetBody}>
+            <Text style={[styles.sheetTitle, { color: appTheme.colors.text }]}>Why we ask</Text>
+            <Text style={[styles.sheetBody, { color: appTheme.colors.text }]}>
               We use your answers to tailor lessons and practice. You can change any of these later
               in Settings.
             </Text>
@@ -296,10 +307,7 @@ export function computeNextSelection(
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
+  screen: { flex: 1 },
   screenContent: {
     padding: theme.spacing.lg,
     paddingBottom: theme.spacing.lg,
@@ -308,7 +316,6 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   stepperText: {
-    color: theme.colors.text,
     opacity: 0.7,
     marginBottom: theme.spacing.xs,
     fontSize: 14,
@@ -317,29 +324,24 @@ const styles = StyleSheet.create({
   questionTitle: {
     fontFamily: theme.typography.semiBold,
     fontSize: 22,
-    color: theme.colors.text,
     marginBottom: theme.spacing.lg,
   },
   barWrap: {
     height: 8,
     borderRadius: 8,
-    backgroundColor: theme.colors.border,
     overflow: 'hidden',
     flexDirection: 'row',
   },
   barFill: {
     height: '100%',
-    backgroundColor: theme.colors.primary,
   },
   option: {
-    paddingVertical: 12, // slightly reduced vertical padding
+    paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.card || '#fff',
     borderWidth: 1,
-    borderColor: theme.colors.border,
     marginBottom: theme.spacing.sm,
-    minHeight: 56, // >= 48x48 target
+    minHeight: 56,
     shadowColor: '#000',
     shadowOpacity: 0.06,
     shadowRadius: 6,
@@ -347,9 +349,6 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   optionSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: '#E9F3FF',
-    shadowColor: theme.colors.primary,
     shadowOpacity: 0.18,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 0 },
@@ -360,7 +359,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   optionIconCol: {
-    width: 28, // fixed width so icons line up
+    width: 28,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
@@ -369,7 +368,6 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   optionText: {
-    color: theme.colors.text,
     fontFamily: theme.typography.regular,
     fontSize: 16,
     includeFontPadding: false,
@@ -381,14 +379,12 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.sm,
     paddingVertical: 14,
     textAlign: 'center',
-    backgroundColor: theme.colors.primary,
     borderRadius: theme.radius.md,
     alignItems: 'center',
-    minHeight: 48, // touch target
+    minHeight: 48,
     justifyContent: 'center',
   },
   primaryBtnText: {
-    color: '#fff',
     fontFamily: theme.typography.semiBold,
     fontSize: 16,
   },
@@ -402,13 +398,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderRadius: theme.radius.md,
     borderWidth: 1,
-    borderColor: theme.colors.border,
     alignItems: 'center',
     minHeight: 48,
     justifyContent: 'center',
   },
   secondaryBtnText: {
-    color: theme.colors.text,
     fontFamily: theme.typography.regular,
     fontSize: 16,
   },
@@ -424,7 +418,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: 80,
-    backgroundColor: theme.colors.background || '#fff',
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 10,
@@ -433,10 +426,8 @@ const styles = StyleSheet.create({
   stickyInner: {
     padding: theme.spacing.lg,
     paddingTop: theme.spacing.md,
-    backgroundColor: theme.colors.background,
   },
   whyLink: {
-    color: theme.colors.primary,
     fontFamily: theme.typography.regular,
     fontSize: 14,
   },
@@ -446,7 +437,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: theme.colors.background,
     padding: theme.spacing.lg,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
@@ -454,13 +444,11 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontFamily: theme.typography.semiBold,
     fontSize: 18,
-    color: theme.colors.text,
     marginBottom: 8,
   },
   sheetBody: {
     fontFamily: theme.typography.regular,
     fontSize: 15,
-    color: theme.colors.text,
     opacity: 0.9,
     marginBottom: theme.spacing.md,
   },

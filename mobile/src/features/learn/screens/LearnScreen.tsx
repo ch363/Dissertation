@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +31,7 @@ export default function LearnScreen() {
   const [learningPathItems, setLearningPathItems] = useState<LearningPathItem[]>([]);
   const [dueReviewCount, setDueReviewCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
+  const hasLoadedOnceRef = useRef(false);
 
   const loadData = useCallback(async () => {
     // Check for cached data first - if available, use it immediately without showing loading
@@ -128,17 +129,22 @@ export default function LearnScreen() {
       console.error('Error loading learn screen data:', error);
       // Gracefully handle errors - don't block UI
       setLoading(false);
+    } finally {
+      hasLoadedOnceRef.current = true;
     }
   }, [theme.colors.primary, theme.colors.secondary]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  // Refresh data when screen comes into focus
+  // Load on focus only when we have no data yet or cache is expired (avoids slow refetch every tab switch)
   useFocusEffect(
     useCallback(() => {
-      loadData();
+      const cached = getCachedLearnScreenData();
+      const needLoad = !hasLoadedOnceRef.current || !cached;
+      if (needLoad) {
+        loadData();
+      } else if (cached) {
+        // Optional: refresh in background without blocking
+        preloadLearnScreenData().catch(() => {});
+      }
     }, [loadData])
   );
 
@@ -147,14 +153,14 @@ export default function LearnScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['left', 'right']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         style={{ backgroundColor: theme.colors.background }}
       >
         <LearnHeader />
-        <View style={[styles.sectionBlock, { backgroundColor: theme.colors.card + '18' }]}>
+        <View style={[styles.sectionBlock, styles.firstSection, { backgroundColor: theme.colors.card + '18' }]}>
           <LearningPathCarousel
             items={learningPathItems}
             onPressItem={(route: string) => router.push(route)}
@@ -261,6 +267,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     overflow: 'hidden',
+  },
+  firstSection: {
+    marginTop: 4,
   },
   allModulesSection: {
     marginTop: 8,

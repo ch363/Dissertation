@@ -186,6 +186,7 @@ export default function HomeScreen() {
           styles.topBackdrop,
           {
             backgroundColor: theme.colors.background,
+            borderBottomColor: theme.colors.border,
           },
         ]}
         pointerEvents="none"
@@ -202,6 +203,12 @@ export default function HomeScreen() {
       >
         <View style={styles.headerRow}>
           <View style={styles.sectionTop}>
+            <Text
+              style={[styles.headerOverline, { color: theme.colors.mutedText }]}
+              numberOfLines={1}
+            >
+              Dashboard
+            </Text>
             <Text style={[styles.greetingTitle, { color: theme.colors.text }]} numberOfLines={2}>
               {displayName ? `Welcome back, ${displayName}` : 'Welcome back'}
             </Text>
@@ -209,7 +216,9 @@ export default function HomeScreen() {
               Continue your learning journey
             </Text>
           </View>
-          <HelpButton />
+          <View style={styles.helpButtonWrap}>
+            <HelpButton variant="elevated" />
+          </View>
         </View>
 
         {streakDays > 0 ? (
@@ -260,38 +269,53 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 320,
-    borderBottomLeftRadius: 48,
-    borderBottomRightRadius: 48,
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 0,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    borderBottomWidth: 1,
+    shadowColor: '#0D1B2A',
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 28,
+    paddingTop: 36,
     gap: 0,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 24,
   },
   sectionTop: {
     flex: 1,
     marginTop: 0,
     paddingBottom: 0,
-    gap: 4,
+    gap: 6,
+  },
+  headerOverline: {
+    fontFamily: baseTheme.typography.medium,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
   },
   greetingTitle: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 28,
-    letterSpacing: -0.5,
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 24,
+    letterSpacing: -0.3,
+    lineHeight: 30,
   },
   greetingSubtitle: {
     fontFamily: baseTheme.typography.regular,
-    fontSize: 15,
+    fontSize: 14,
+    letterSpacing: 0.2,
+    lineHeight: 20,
+  },
+  helpButtonWrap: {
+    marginLeft: 8,
+    marginTop: 2,
   },
   sectionTight: {
     marginTop: 0,

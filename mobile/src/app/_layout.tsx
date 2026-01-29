@@ -90,7 +90,7 @@ function ThemedStack() {
         headerShown: false,
         // Respect the user's Reduce Motion preference.
         animation: reduceMotion ? 'none' : 'default',
-        animationDuration: reduceMotion ? 0 : 600, // keep slower transitions only when motion is allowed
+        animationDuration: reduceMotion ? 0 : 300, // snappier transitions
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />

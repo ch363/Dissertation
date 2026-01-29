@@ -15,7 +15,7 @@ export default function SessionLayout() {
         contentStyle: { backgroundColor: theme.colors.background },
         // Respect the user's Reduce Motion preference.
         animation: reduceMotion ? 'none' : 'default',
-        animationDuration: reduceMotion ? 0 : 600,
+        animationDuration: reduceMotion ? 0 : 300,
       }}
     />
   );

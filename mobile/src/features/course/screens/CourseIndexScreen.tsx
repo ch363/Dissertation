@@ -1,8 +1,11 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { LoadingScreen } from '@/components/ui';
+import { IconButton, LoadingScreen } from '@/components/ui';
+import { getCachedModules } from '@/services/api/learn-screen-cache';
 import { getModules, type Module } from '@/services/api/modules';
 import { theme } from '@/services/theme/tokens';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
@@ -30,11 +33,24 @@ export default function CourseIndex() {
   const [error, setError] = useState<string | null>(null);
 
   const groups = useMemo(() => groupModulesByCategory(modules), [modules]);
+  const handleBack = useCallback(() => {
+    router.back();
+  }, []);
 
   useEffect(() => {
     const loadModules = async () => {
-      setLoading(true);
       setError(null);
+      const cached = getCachedModules();
+      if (cached) {
+        setModules(cached);
+        setLoading(false);
+        // Refresh in background for next time
+        getModules()
+          .then(setModules)
+          .catch(() => {});
+        return;
+      }
+      setLoading(true);
       try {
         const modulesData = await getModules();
         setModules(modulesData);
@@ -67,13 +83,23 @@ export default function CourseIndex() {
   }
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: appTheme.colors.background }]}
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text style={[styles.title, { color: appTheme.colors.text }]}>Courses</Text>
-
+    <SafeAreaView style={[styles.container, { backgroundColor: appTheme.colors.background }]} edges={['top']}>
+      <View style={[styles.header, { borderBottomColor: appTheme.colors.border }]}>
+        <IconButton
+          accessibilityLabel="Back"
+          onPress={handleBack}
+          style={styles.backBtn}
+        >
+          <Ionicons name="chevron-back" size={22} color={appTheme.colors.text} />
+        </IconButton>
+        <Text style={[styles.screenTitle, { color: appTheme.colors.text }]}>Courses</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
       {modules.length === 0 ? (
         <Text style={[styles.emptyText, { color: appTheme.colors.mutedText }]}>
           No courses available
@@ -117,7 +143,8 @@ export default function CourseIndex() {
           </View>
         ))
       )}
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -125,14 +152,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  backBtn: { marginRight: 8 },
+  screenTitle: {
+    fontFamily: theme.typography.semiBold,
+    fontSize: 18,
+  },
+  headerSpacer: { width: 36, height: 36 },
+  scroll: { flex: 1 },
   scrollContent: {
     padding: theme.spacing.lg,
     paddingBottom: theme.spacing.xl * 2,
-  },
-  title: {
-    fontFamily: theme.typography.bold,
-    fontSize: 24,
-    marginBottom: theme.spacing.lg,
   },
   errorText: {
     fontFamily: theme.typography.regular,

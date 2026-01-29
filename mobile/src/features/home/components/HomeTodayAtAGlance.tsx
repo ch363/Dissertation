@@ -96,7 +96,7 @@ export function HomeTodayAtAGlance({ dueReviewCount, minutesToday }: Props) {
               />
             </LinearGradient>
             <View style={styles.rowContent}>
-              <Text style={[styles.rowLabel, { color: theme.colors.mutedText }]}>Time studied</Text>
+              <Text style={[styles.rowLabel, { color: theme.colors.mutedText }]}> Time studied today</Text>
               <Text style={[styles.rowValue, { color: theme.colors.text }]}>
                 {minutesToday} {minutesToday === 1 ? 'minute' : 'minutes'}
               </Text>

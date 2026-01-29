@@ -5,10 +5,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui';
 import { resendConfirmationEmail } from '@/services/api/auth';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme } from '@/services/theme/tokens';
 import { announce } from '@/utils/a11y';
 
 export default function VerifyEmail() {
+  const { theme: appTheme } = useAppTheme();
   const params = useLocalSearchParams<{ email?: string }>();
   const email = typeof params.email === 'string' ? params.email : '';
   const [resending, setResending] = useState(false);
@@ -37,21 +39,21 @@ export default function VerifyEmail() {
   }, [resendError, resendMessage]);
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
-        <Text style={styles.title} accessibilityRole="header">Check your email</Text>
-        <Text style={styles.subtitle}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: appTheme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: appTheme.colors.background }]}>
+        <Text style={[styles.title, { color: appTheme.colors.text }]} accessibilityRole="header">Check your email</Text>
+        <Text style={[styles.subtitle, { color: appTheme.colors.mutedText }]}>
           We sent a confirmation link to {email || 'your email address'}. Tap the link to activate
           your account, then log in.
         </Text>
 
         {resendMessage && (
-          <Text style={styles.successMessage} accessibilityRole="alert">
+          <Text style={[styles.successMessage, { color: appTheme.colors.success }]} accessibilityRole="alert">
             {resendMessage}
           </Text>
         )}
         {resendError && (
-          <Text style={styles.errorMessage} accessibilityRole="alert">
+          <Text style={[styles.errorMessage, { color: appTheme.colors.error }]} accessibilityRole="alert">
             {resendError}
           </Text>
         )}
@@ -63,7 +65,7 @@ export default function VerifyEmail() {
             loading={resending}
             variant="ghost"
             accessibilityHint="Resends the confirmation email"
-            style={styles.secondaryButton}
+            style={[styles.secondaryButton, { borderColor: appTheme.colors.primary }]}
           />
         )}
 
@@ -78,42 +80,36 @@ export default function VerifyEmail() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F5F7FB' },
+  safe: { flex: 1 },
   container: {
     flex: 1,
     padding: theme.spacing.lg,
     justifyContent: 'center',
-    backgroundColor: '#F5F7FB',
   },
   title: {
     fontFamily: theme.typography.bold,
     fontSize: 24,
-    color: theme.colors.text,
     marginBottom: theme.spacing.md,
     textAlign: 'center',
   },
   subtitle: {
-    color: theme.colors.mutedText,
     textAlign: 'center',
     marginBottom: theme.spacing.xl,
   },
   secondaryButton: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: theme.colors.primary,
     marginBottom: theme.spacing.md,
   },
   disabled: {
     opacity: 0.5,
   },
   successMessage: {
-    color: theme.colors.success,
     textAlign: 'center',
     marginBottom: theme.spacing.md,
     fontFamily: theme.typography.regular,
   },
   errorMessage: {
-    color: theme.colors.error,
     textAlign: 'center',
     marginBottom: theme.spacing.md,
     fontFamily: theme.typography.regular,

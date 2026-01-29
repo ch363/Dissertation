@@ -69,6 +69,14 @@ export function getCachedLearnScreenData(): LearnScreenCacheData | null {
 }
 
 /**
+ * Get cached modules only (e.g. for course list) if learn-screen cache is valid
+ */
+export function getCachedModules(): LearnScreenCacheData['modules'] | null {
+  const cached = getCachedLearnScreenData();
+  return cached ? cached.modules : null;
+}
+
+/**
  * Clear the Learn screen cache
  */
 export function clearLearnScreenCache(): void {

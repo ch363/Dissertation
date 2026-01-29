@@ -34,7 +34,15 @@ function safeText(s?: string | null) {
 const DUE_ITEM_CARD_PALETTE = {
   bg: '#EFF6FF',
   border: 'rgba(38,79,212,0.25)',
+  accent: '#2563EB',
 } as const;
+
+/** Palette variants for cycling due-item card colors. */
+const DUE_ITEM_CARD_COLORS = [
+  { bg: '#EFF6FF', border: 'rgba(38,79,212,0.25)', accent: '#2563EB' },
+  { bg: '#F0FDF4', border: 'rgba(22,163,74,0.25)', accent: '#16A34A' },
+  { bg: '#FEF3C7', border: 'rgba(217,119,6,0.25)', accent: '#D97706' },
+] as const;
 
 export default function ReviewOverviewScreen() {
   const { theme } = useAppTheme();

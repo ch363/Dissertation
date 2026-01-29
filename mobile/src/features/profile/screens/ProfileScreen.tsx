@@ -1,7 +1,7 @@
-import { Link, useLocalSearchParams } from 'expo-router';
+import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { View, Text, Pressable, RefreshControl, ActivityIndicator, Modal, TextInput, Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, Pressable, RefreshControl, Image } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -11,11 +11,15 @@ import { HelpButton } from '@/components/navigation/HelpButton';
 import { SKILL_CONFIG, DEFAULT_SKILL_CONFIG } from '@/features/profile/profileConstants';
 import { useProfileData } from '@/features/profile/hooks/useProfileData';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { theme as baseTheme } from '@/services/theme/tokens';
 import { ProfileScreenSkeleton } from '@/features/profile/components/ProfileScreenSkeleton';
 import { profileScreenStyles as styles } from './profileScreenStyles';
 
+const TAB_BAR_HEIGHT = 84;
+
 export default function Profile() {
   const { theme } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ edit?: string }>();
   const hasOpenedEditFromParams = useRef(false);
   const {
@@ -27,18 +31,7 @@ export default function Profile() {
     mastery,
     loading,
     refreshing,
-    isEditing,
-    editName,
-    setEditName,
-    editAvatarUrl,
-    saving,
     onRefresh,
-    handleEditPress,
-    openEditModal,
-    handleCancel,
-    handleSave,
-    handlePickImage,
-    handleRemoveAvatar,
     XP_PER_LEVEL,
     currentXP,
     currentLevel,
@@ -47,7 +40,8 @@ export default function Profile() {
     activityItems,
   } = useProfileData();
 
-  // When navigated from Settings with ?edit=1, open Edit Profile modal once data is loaded
+  const router = useRouter();
+  // When navigated from Settings with ?edit=1, go to Edit Profile screen once data is loaded
   useEffect(() => {
     if (!params.edit) {
       hasOpenedEditFromParams.current = false;
@@ -56,8 +50,8 @@ export default function Profile() {
     if (loading) return;
     if (hasOpenedEditFromParams.current) return;
     hasOpenedEditFromParams.current = true;
-    openEditModal();
-  }, [params.edit, loading, openEditModal]);
+    router.push(routes.tabs.profile.edit);
+  }, [params.edit, loading, router]);
 
   if (loading) {
     return <ProfileScreenSkeleton />;
@@ -66,7 +60,10 @@ export default function Profile() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: baseTheme.spacing.xl + insets.bottom + TAB_BAR_HEIGHT },
+        ]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
       >
         {/* Sleek Profile Header with Gradient */}
@@ -114,7 +111,7 @@ export default function Profile() {
             <View style={styles.headerRight}>
               <HelpButton iconColor="#FFFFFF" />
               <Pressable
-                onPress={handleEditPress}
+                onPress={() => router.push(routes.tabs.profile.edit)}
                 style={styles.editButton}
                 accessibilityLabel="Edit profile"
                 accessibilityRole="button"
@@ -147,10 +144,9 @@ export default function Profile() {
           </View>
         </LinearGradient>
 
-        {/* Stats Cards Grid */}
+        {/* Stats Cards Grid — premium stat cards */}
         {dashboard && (
           <View style={styles.statsSection}>
-            {/* Primary Stats - 3 columns */}
             <View style={styles.statsRowPrimary}>
               <Link href={routes.tabs.review} asChild style={styles.statCardWrapper}>
                 <Pressable
@@ -159,7 +155,7 @@ export default function Profile() {
                   style={styles.statCard}
                 >
                   <View style={[styles.statIconContainer, styles.statIconRed]}>
-                    <Ionicons name="time-outline" size={20} color="#DC2626" />
+                    <Ionicons name="time-outline" size={22} color="#DC2626" />
                   </View>
                   <Text style={styles.statValue}>{dashboard.dueReviewCount}</Text>
                   <Text style={styles.statLabel}>Due Reviews</Text>
@@ -171,7 +167,7 @@ export default function Profile() {
 
               <View style={[styles.statCardWrapper, styles.statCard]}>
                 <View style={[styles.statIconContainer, styles.statIconPurple]}>
-                  <Ionicons name="time" size={20} color="#9333EA" />
+                  <Ionicons name="time" size={22} color="#9333EA" />
                 </View>
                 <Text style={styles.statValue}>{dashboard.studyTimeMinutes ?? 0}m</Text>
                 <Text style={styles.statLabel}>Study Time</Text>
@@ -179,7 +175,7 @@ export default function Profile() {
 
               <View style={[styles.statCardWrapper, styles.statCard]}>
                 <View style={[styles.statIconContainer, styles.statIconOrange]}>
-                  <Ionicons name="flame" size={20} color="#EA580C" />
+                  <Ionicons name="flame" size={22} color="#EA580C" />
                 </View>
                 <Text style={styles.statValue}>{dashboard.streak || 0}</Text>
                 <Text style={styles.statLabel}>Day Streak</Text>
@@ -338,19 +334,28 @@ export default function Profile() {
           </View>
         </View>
 
-        {/* Settings — accessible from Profile */}
-        <View style={styles.settingsSection}>
+        {/* Settings — primary utility, prominent card */}
+        <View style={[styles.settingsSection, { borderColor: theme.colors.primary + '30', backgroundColor: theme.colors.card }]}>
+          <Text style={[styles.settingsSectionTitle, { color: theme.colors.text }]}>Preferences & account</Text>
           <Link href={routes.tabs.settings.root} asChild>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Open settings"
               style={styles.settingsRow}
             >
-              <View style={[styles.settingsRowIcon, { backgroundColor: theme.colors.card }]}>
-                <Ionicons name="settings-outline" size={22} color={theme.colors.primary} />
+              <LinearGradient
+                colors={[theme.colors.primary, theme.colors.primary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.settingsRowIconGradient}
+              >
+                <Ionicons name="settings-outline" size={26} color="#FFFFFF" />
+              </LinearGradient>
+              <View style={styles.settingsRowContent}>
+                <Text style={[styles.settingsRowLabel, { color: theme.colors.text }]}>Settings</Text>
+                <Text style={[styles.settingsRowSubtitle, { color: theme.colors.mutedText }]}>Speech, session defaults, sign out</Text>
               </View>
-              <Text style={[styles.settingsRowLabel, { color: theme.colors.text }]}>Settings</Text>
-              <Ionicons name="chevron-forward" size={20} color={theme.colors.mutedText} />
+              <Ionicons name="chevron-forward" size={22} color={theme.colors.primary} />
             </Pressable>
           </Link>
         </View>
@@ -420,93 +425,6 @@ export default function Profile() {
         )}
 
       </ScrollView>
-
-      {/* Edit Profile Modal */}
-      <Modal
-        visible={isEditing}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={handleCancel}
-      >
-        <SafeAreaView style={[styles.modalContainer, { backgroundColor: theme.colors.background }]}>
-          <View style={[styles.modalHeader, { borderBottomColor: theme.colors.border }]}>
-            <Pressable accessibilityRole="button" onPress={handleCancel} disabled={saving} style={styles.modalCancelButton}>
-              <Text style={[styles.modalCancelText, { color: theme.colors.text }]}>Cancel</Text>
-            </Pressable>
-            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>Edit Profile</Text>
-            <Pressable accessibilityRole="button" onPress={handleSave} disabled={saving} style={styles.modalSaveButton}>
-              {saving ? (
-                <ActivityIndicator size="small" color={theme.colors.primary} />
-              ) : (
-                <Text style={[styles.modalSaveText, { color: theme.colors.primary }]}>Done</Text>
-              )}
-            </Pressable>
-          </View>
-
-          <ScrollView contentContainerStyle={styles.modalContent}>
-            {/* Avatar Section */}
-            <View style={styles.avatarSection}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Change profile photo"
-                accessibilityHint="Opens your photo library"
-                onPress={handlePickImage}
-                style={styles.avatarEditContainer}
-              >
-                {editAvatarUrl ? (
-                  <Image source={{ uri: editAvatarUrl }} style={styles.editAvatar} accessible={false} />
-                ) : (
-                  <View style={[styles.editAvatar, styles.editAvatarPlaceholder, { backgroundColor: theme.colors.border }]}>
-                    <Ionicons name="person" size={40} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
-                  </View>
-                )}
-                <View
-                  style={[
-                    styles.avatarEditBadge,
-                    { backgroundColor: theme.colors.primary, borderColor: theme.colors.background },
-                  ]}
-                  accessible={false}
-                  importantForAccessibility="no"
-                >
-                  <Ionicons name="camera" size={20} color="#fff" accessible={false} importantForAccessibility="no" />
-                </View>
-              </Pressable>
-              {editAvatarUrl && (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Remove profile photo"
-                  onPress={handleRemoveAvatar}
-                  style={styles.removeAvatarButton}
-                >
-                  <Text style={[styles.removeAvatarText, { color: theme.colors.error }]}>Remove Photo</Text>
-                </Pressable>
-              )}
-            </View>
-
-            {/* Name Input */}
-            <View style={styles.inputSection}>
-              <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Name</Text>
-              <TextInput
-                style={[
-                  styles.textInput,
-                  {
-                    backgroundColor: theme.colors.card,
-                    borderColor: theme.colors.border,
-                    color: theme.colors.text,
-                  },
-                ]}
-                value={editName}
-                onChangeText={setEditName}
-                placeholder="Enter your name"
-                placeholderTextColor={theme.colors.mutedText}
-                autoFocus
-                maxLength={50}
-                accessibilityLabel="Name"
-              />
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
     </SafeAreaView>
   );
 }

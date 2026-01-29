@@ -8,9 +8,11 @@ import { Button, LoadingScreen } from '@/components/ui';
 import { hasOnboarding } from '@/services/api/onboarding';
 import { useAuth } from '@/services/auth/AuthProvider';
 import { routes } from '@/services/navigation/routes';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme } from '@/services/theme/tokens';
 
 export default function LandingScreen() {
+  const { theme: appTheme } = useAppTheme();
   const { session, loading } = useAuth();
 
   useEffect(() => {
@@ -36,11 +38,11 @@ export default function LandingScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <View style={styles.container}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: appTheme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: appTheme.colors.background }]}>
         <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" accessible={false} />
-        <Text style={styles.title} accessibilityRole="header">Fluentia</Text>
-        <Text style={styles.subtitle}>Personalised learning, one step at a time.</Text>
+        <Text style={[styles.title, { color: appTheme.colors.text }]} accessibilityRole="header">Fluentia</Text>
+        <Text style={[styles.subtitle, { color: appTheme.colors.mutedText }]}>Personalised learning, one step at a time.</Text>
 
         <View style={styles.buttons}>
           <Button title="Get Started" onPress={goSignUp} accessibilityHint="Creates a new account" />
@@ -53,16 +55,12 @@ export default function LandingScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: '#F5F7FB',
-  },
+  safe: { flex: 1 },
   container: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: theme.spacing.lg,
-    backgroundColor: '#F5F7FB',
   },
   logo: {
     width: 140,
@@ -72,14 +70,12 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: theme.typography.bold,
     fontSize: 32,
-    color: theme.colors.text,
     marginTop: theme.spacing.sm,
   },
   subtitle: {
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.xl,
     fontFamily: theme.typography.regular,
-    color: theme.colors.mutedText,
     textAlign: 'center',
   },
   buttons: {

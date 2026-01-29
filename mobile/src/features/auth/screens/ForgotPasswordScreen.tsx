@@ -1,9 +1,11 @@
 import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TextInput } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui';
 import { sendPasswordReset } from '@/services/api/auth';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme } from '@/services/theme/tokens';
 import { announce } from '@/utils/a11y';
 
@@ -11,6 +13,7 @@ const emailRegex = /\S+@\S+\.\S+/;
 const RESET_REDIRECT = 'fluentia://update-password';
 
 export default function ForgotPassword() {
+  const { theme: appTheme } = useAppTheme();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -42,21 +45,22 @@ export default function ForgotPassword() {
   }, [error, message]);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title} accessibilityRole="header">Forgot password</Text>
-      <Text style={styles.subtitle}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: appTheme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: appTheme.colors.background }]}>
+      <Text style={[styles.title, { color: appTheme.colors.text }]} accessibilityRole="header">Forgot password</Text>
+      <Text style={[styles.subtitle, { color: appTheme.colors.mutedText }]}>
         Enter your email to receive a reset link. It will open the app to update your password.
       </Text>
 
-      <Text style={styles.inputLabel}>Email</Text>
+      <Text style={[styles.inputLabel, { color: appTheme.colors.text }]}>Email</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { backgroundColor: appTheme.colors.card, borderColor: appTheme.colors.border, color: appTheme.colors.text }]}
         value={email}
         onChangeText={setEmail}
         placeholder="you@example.com"
         keyboardType="email-address"
         autoCapitalize="none"
-        placeholderTextColor={theme.colors.mutedText}
+        placeholderTextColor={appTheme.colors.mutedText}
         accessibilityLabel="Email"
         accessibilityHint="Enter the email address for your account"
         accessibilityState={{ invalid: !!emailError }}
@@ -90,56 +94,48 @@ export default function ForgotPassword() {
         accessibilityHint="Sends a password reset link to your email"
       />
 
-      <Link href="/sign-in" style={styles.link}>
+      <Link href="/sign-in" style={[styles.link, { color: appTheme.colors.link }]}>
         Back to sign in
       </Link>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: { flex: 1 },
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
     padding: theme.spacing.lg,
     justifyContent: 'center',
   },
   title: {
     fontFamily: theme.typography.bold,
     fontSize: 24,
-    color: theme.colors.text,
   },
   subtitle: {
     marginTop: theme.spacing.xs,
     marginBottom: theme.spacing.lg,
-    color: theme.colors.mutedText,
   },
   inputLabel: {
-    color: theme.colors.text,
     fontFamily: theme.typography.semiBold,
     marginBottom: theme.spacing.xs,
   },
   input: {
-    backgroundColor: theme.colors.card,
     borderRadius: theme.radius.md,
     borderWidth: 1,
-    borderColor: theme.colors.border,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    color: theme.colors.text,
     marginBottom: theme.spacing.md,
   },
   link: {
-    color: theme.colors.link,
     fontFamily: theme.typography.semiBold,
     marginTop: theme.spacing.lg,
   },
   error: {
-    color: theme.colors.error,
     marginTop: theme.spacing.xs,
   },
   success: {
-    color: theme.colors.success,
     marginTop: theme.spacing.xs,
   },
 });

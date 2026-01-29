@@ -91,18 +91,6 @@ export function useProfileData() {
       if (profile) {
         setDisplayName(profile.displayName || profile.name || 'User');
         setProfileId(profile.id);
-        if (profile?.avatarUrl) {
-          try {
-            const fresh = await refreshAvatarUrl(profile.avatarUrl);
-            const avatarUri = await getAvatarUri(profile.id, fresh);
-            setAvatarUrl(avatarUri);
-          } catch {
-            const avatarUri = await getAvatarUri(profile.id, profile.avatarUrl);
-            setAvatarUrl(avatarUri);
-          }
-        } else {
-          setAvatarUrl(null);
-        }
       } else {
         setDisplayName('User');
       }
@@ -112,6 +100,19 @@ export function useProfileData() {
       setMastery(masteryData);
       setLoading(false);
       setRefreshing(false);
+      // Paint immediately; resolve avatar in background so cached loads feel instant
+      const profileForAvatar = profile;
+      if (profileForAvatar?.avatarUrl) {
+        const avatarUrlToUse = profileForAvatar.avatarUrl;
+        const profileIdForAvatar = profileForAvatar.id;
+        Promise.resolve()
+          .then(() => refreshAvatarUrl(avatarUrlToUse))
+          .then((fresh) => getAvatarUri(profileIdForAvatar, fresh))
+          .then(setAvatarUrl)
+          .catch(() => getAvatarUri(profileIdForAvatar, avatarUrlToUse).then(setAvatarUrl));
+      } else {
+        setAvatarUrl(null);
+      }
       if (cached && profile?.id) {
         preloadProfileScreenData(profile.id).catch(() => {});
       }
