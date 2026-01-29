@@ -1,9 +1,11 @@
 import { Tabs, router } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TabBarButton } from '@/components/navigation/TabBarButton';
+import { hasOnboarding } from '@/services/api/onboarding';
+import { useAuth } from '@/services/auth/AuthProvider';
 import { routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -11,13 +13,13 @@ import { theme as baseTheme } from '@/services/theme/tokens';
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const allowed = new Set(['home/index', 'learn', 'learn/index', 'settings', 'profile']);
+  const allowed = new Set(['home/index', 'learn', 'learn/index', 'profile']);
   const visibleRoutes = state.routes.filter((route: any) => allowed.has(route.name));
   const focusedKey = state.routes?.[state.index]?.key;
+  const currentRouteName = state.routes?.[state.index]?.name ?? '';
 
   const targetPathForRouteName = (routeName: string) => {
     if (routeName.includes('learn')) return routes.tabs.learn;
-    if (routeName.includes('settings')) return routes.tabs.settings.root;
     if (routeName.includes('profile')) return routes.tabs.profile.root;
     return routes.tabs.home;
   };
@@ -25,7 +27,6 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
   const iconNameForRoute = (route: any) => {
     const rn: string = String(route.name ?? '');
     if (rn.includes('learn')) return 'book';
-    if (rn.includes('settings')) return 'cog';
     if (rn.includes('profile')) return 'person';
     return 'home';
   };
@@ -35,10 +36,9 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
       style={[
         styles.tabBarWrapper,
         {
-          backgroundColor: theme.colors.background,
-          shadowColor: theme.colors.text,
-          paddingTop: baseTheme.spacing.xs,
-          paddingBottom: insets.bottom + baseTheme.spacing.xs, // paint safe area
+          backgroundColor: '#FFFFFF',
+          shadowColor: '#000000',
+          paddingBottom: insets.bottom, // paint safe area with white
         },
       ]}
     >
@@ -46,13 +46,13 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         style={[
           styles.tabBar,
           {
-            backgroundColor: theme.colors.card,
-            borderColor: theme.colors.border,
+            backgroundColor: '#FFFFFF',
           },
         ]}
       >
         {visibleRoutes.map((route: any, idx: number) => {
-          const isFocused = route.key === focusedKey;
+          const isFocused =
+            route.key === focusedKey || (currentRouteName === 'settings' && route.name === 'profile');
           const onPress = () => {
             const routeName = String(route.name ?? '');
             const targetPath = targetPathForRouteName(routeName);
@@ -91,6 +91,23 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 
 export default function TabsLayout() {
   const { theme } = useAppTheme();
+  const { session } = useAuth();
+  const checkedRef = useRef(false);
+
+  useEffect(() => {
+    if (!session?.user?.id || checkedRef.current) return;
+    let cancelled = false;
+    checkedRef.current = true;
+    hasOnboarding(session.user.id).then((done) => {
+      if (!cancelled && !done) router.replace(routes.onboarding.welcome);
+    }).finally(() => {
+      if (cancelled) checkedRef.current = false;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id]);
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Tabs
@@ -107,7 +124,7 @@ export default function TabsLayout() {
         <Tabs.Screen name="home/index" options={{ title: 'Home' }} />
         <Tabs.Screen name="learn" options={{ title: 'Learn' }} />
         <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
-        <Tabs.Screen name="settings" options={{ title: 'Settings' }} />
+        <Tabs.Screen name="settings" options={{ title: 'Settings', href: null }} />
       </Tabs>
     </View>
   );
@@ -120,20 +137,22 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     justifyContent: 'flex-end',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     zIndex: 2,
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: -2 },
-    elevation: 6,
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 8,
   },
   tabBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: baseTheme.spacing.sm,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    paddingHorizontal: baseTheme.spacing.md,
+    paddingTop: baseTheme.spacing.md,
+    paddingBottom: baseTheme.spacing.sm,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
 });

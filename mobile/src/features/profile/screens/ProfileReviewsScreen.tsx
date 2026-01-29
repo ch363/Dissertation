@@ -1,10 +1,12 @@
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { LoadingRow } from '@/components/ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScrollView } from '@/components/ui';
+import { ScreenHeader } from '@/components/navigation';
 import { Card } from '@/components/profile/Card';
 import { Button } from '@/components/ui/Button';
 import { getDueReviewsLatest, type DueReviewLatest } from '@/services/api/progress';
@@ -128,17 +130,16 @@ export default function ProfileReviewsScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+      <ScreenHeader
+        title="Reviews"
+        subtitle={loading ? 'Loading due items…' : `${totalDue} due ${totalDue === 1 ? 'item' : 'items'}`}
+        icon="refresh"
+        label="Practice"
+      />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.title, { color: theme.colors.text }]}>Reviews</Text>
-        <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
-          {loading ? 'Loading due items…' : `${totalDue} due ${totalDue === 1 ? 'item' : 'items'}`}
-        </Text>
 
         {loading ? (
-          <View style={styles.loadingRow}>
-            <ActivityIndicator color={theme.colors.primary} />
-            <Text style={[styles.loadingText, { color: theme.colors.mutedText }]}>Loading…</Text>
-          </View>
+          <LoadingRow label="Loading due items…" />
         ) : error ? (
           <Card>
             <View style={styles.errorRow}>
@@ -246,16 +247,6 @@ const styles = StyleSheet.create({
     fontFamily: baseTheme.typography.regular,
     fontSize: 14,
     marginTop: -baseTheme.spacing.sm,
-  },
-  loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: baseTheme.spacing.sm,
-    paddingVertical: baseTheme.spacing.md,
-  },
-  loadingText: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 14,
   },
   modules: {
     gap: baseTheme.spacing.lg,

@@ -36,14 +36,24 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    const timeoutMs = 30000;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     const config: RequestInit = {
       ...options,
       headers,
+      signal: options.signal ?? controller.signal,
     };
 
     try {
-      const response = await fetch(url, config);
-      
+      let response: Response;
+      try {
+        response = await fetch(url, config);
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
       // Handle non-JSON responses
       const contentType = response.headers.get('content-type');
       const isJson = contentType?.includes('application/json');
@@ -116,12 +126,33 @@ class ApiClient {
       }
 
       return data as T;
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof ApiClientError) {
         throw error;
       }
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new ApiClientError(
+          `Request timed out after ${timeoutMs / 1000}s. Check that the backend is running and reachable.`,
+        );
+      }
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === 'string'
+            ? error
+            : 'Network request failed';
+      const isNetworkError =
+        !message.includes('HTTP') &&
+        (message.includes('fetch') ||
+          message.includes('network') ||
+          message.includes('Failed to fetch') ||
+          message.includes('Network request failed') ||
+          message.includes('connection') ||
+          message.includes('timeout'));
       throw new ApiClientError(
-        error instanceof Error ? error.message : 'Network request failed',
+        isNetworkError
+          ? `${message}. Check that the backend is running and reachable (e.g. EXPO_PUBLIC_API_URL).`
+          : message,
       );
     }
   }

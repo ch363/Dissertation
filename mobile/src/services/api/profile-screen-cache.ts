@@ -36,7 +36,16 @@ export async function preloadProfileScreenData(profileId: string | null): Promis
   try {
     const [profile, dashboard, recentActivity, mastery] = await Promise.all([
       getMyProfile().catch(() => null),
-      getDashboard().catch(() => ({ streak: 0, dueReviewCount: 0, activeLessonCount: 0, xpTotal: 0 })),
+      getDashboard().catch(() => ({
+        streak: 0,
+        dueReviewCount: 0,
+        activeLessonCount: 0,
+        xpTotal: 0,
+        weeklyXP: 0,
+        weeklyXPChange: 0,
+        accuracyPercentage: 0,
+        studyTimeMinutes: 0,
+      })),
       getRecentActivity().catch(() => null),
       getAllMastery().catch(() => []),
     ]);
@@ -59,8 +68,6 @@ export async function preloadProfileScreenData(profileId: string | null): Promis
       mastery,
       timestamp: Date.now(),
     });
-
-    console.log('Profile screen data preloaded successfully');
   } catch (error) {
     console.warn('Failed to preload Profile screen data (non-critical):', error);
     // Silently fail - preloading is best effort

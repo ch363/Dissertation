@@ -38,6 +38,10 @@ export interface DashboardData {
   activeLessonCount: number;
   xpTotal: number;
   streak: number | null;
+  weeklyXP: number;
+  weeklyXPChange: number;
+  accuracyPercentage: number;
+  studyTimeMinutes: number;
 }
 
 export interface StatsData {

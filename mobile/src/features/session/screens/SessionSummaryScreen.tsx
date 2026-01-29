@@ -1,9 +1,10 @@
 import { router, useLocalSearchParams, Stack } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
+import { LoadingRow } from '@/components/ui';
 import { routeBuilders, routes } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 import { CardKind, SessionPlan } from '@/types/session';
@@ -228,12 +229,7 @@ export default function SessionSummaryScreen() {
               </View>
               
               {loadingTeachings ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="small" color={theme.colors.primary} />
-                  <Text style={[styles.loadingText, { color: theme.colors.mutedText }]}>
-                    Loading content...
-                  </Text>
-                </View>
+                <LoadingRow label="Loading content…" />
               ) : (
                 <View style={styles.contentGrid}>
                   {teachings.map((teaching, index) => (
@@ -329,17 +325,6 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.semiBold,
     fontSize: 16,
     color: theme.colors.text,
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.sm,
-    padding: theme.spacing.md,
-  },
-  loadingText: {
-    fontFamily: theme.typography.regular,
-    fontSize: 13,
   },
   contentGrid: {
     gap: theme.spacing.xs,

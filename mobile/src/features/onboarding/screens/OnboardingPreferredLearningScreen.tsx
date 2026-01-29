@@ -7,10 +7,10 @@ export default function PreferredLearning() {
   const { answers, setAnswerAndSave } = useOnboarding();
 
   const options = [
-    { key: 'visual', icon: '👀', label: 'Seeing pictures, diagrams, or written text' },
-    { key: 'auditory', icon: '👂', label: 'Hearing sounds or spoken words' },
-    { key: 'writing', icon: '✍️', label: 'Writing/typing out answers' },
-    { key: 'acting', icon: '🎭', label: 'Acting it out / speaking it aloud' },
+    { key: 'visual', icon: 'eye-outline', label: 'Seeing pictures, diagrams, or written text' },
+    { key: 'auditory', icon: 'volume-high-outline', label: 'Hearing sounds or spoken words' },
+    { key: 'writing', icon: 'create-outline', label: 'Writing/typing out answers' },
+    { key: 'acting', icon: 'mic-outline', label: 'Acting it out / speaking it aloud' },
   ];
 
   return (

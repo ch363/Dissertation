@@ -25,34 +25,11 @@ export default function CourseLayout() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: theme.colors.background },
-        headerTintColor: theme.colors.text,
+        headerShown: false,
         contentStyle: { backgroundColor: theme.colors.background },
         // Respect the user's Reduce Motion preference.
         animation: reduceMotion ? 'none' : 'default',
         animationDuration: reduceMotion ? 0 : 600,
-        headerLeft: () => (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-            hitSlop={12}
-            onPress={handleBack}
-            style={styles.backBtn}
-          >
-            <Ionicons name="chevron-back" size={22} color={theme.colors.mutedText} />
-          </Pressable>
-        ),
-        headerRight: () => (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Home"
-            hitSlop={12}
-            onPress={handleHomePress}
-            style={styles.homeBtn}
-          >
-            <Ionicons name="home" size={22} color={theme.colors.mutedText} />
-          </Pressable>
-        ),
       }}
     />
   );

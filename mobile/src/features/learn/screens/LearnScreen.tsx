@@ -1,12 +1,15 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { ScrollView } from '@/components/ui';
 
 import { DiscoverCarousel } from '@/components/learn/DiscoverCarousel';
 import { LearnHeader } from '@/components/learn/LearnHeader';
+import { LearnScreenSkeleton } from '@/features/learn/components/LearnScreenSkeleton';
 import { LearningPathCarousel } from '@/components/learn/LearningPathCarousel';
 import { ReviewSection } from '@/components/learn/ReviewSection';
 import { getSuggestions } from '@/services/api/learn';
@@ -22,7 +25,7 @@ import { theme as baseTheme } from '@/services/theme/tokens';
 import { makeSessionId } from '@/features/session/sessionBuilder';
 
 export default function LearnScreen() {
-  const { theme, isDark } = useAppTheme();
+  const { theme } = useAppTheme();
   const router = useRouter();
   const [discoverItems, setDiscoverItems] = useState<DiscoverItem[]>([]);
   const [learningPathItems, setLearningPathItems] = useState<LearningPathItem[]>([]);
@@ -41,7 +44,6 @@ export default function LearnScreen() {
       userProgress = cached.userProgress;
       dashboard = cached.dashboard;
       suggestions = cached.suggestions;
-      console.log('Using cached Learn screen data for instant load');
     } else {
       // No cache available, show loading and fetch fresh data
       setLoading(true);
@@ -141,70 +143,107 @@ export default function LearnScreen() {
   );
 
   if (loading) {
-    return (
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={[styles.loadingText, { color: theme.colors.mutedText }]}>Loading…</Text>
-        </View>
-      </SafeAreaView>
-    );
+    return <LearnScreenSkeleton />;
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['left', 'right']}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: baseTheme.spacing.xl }}
+        contentContainerStyle={styles.scrollContent}
+        style={{ backgroundColor: theme.colors.background }}
       >
         <LearnHeader />
-        <LearningPathCarousel
-          items={learningPathItems}
-          onPressItem={(route) => router.push(route)}
-        />
-        <ReviewSection
-          dueCount={dueReviewCount}
-          onStart={() => router.push(routes.tabs.review)}
-        />
-        {discoverItems.length > 0 && (
-          <DiscoverCarousel
-            items={discoverItems}
-            onPressItem={(item) => {
-              if (item.kind === 'lesson') {
-                const sessionId = makeSessionId('learn');
-                router.push({
-                  pathname: routeBuilders.sessionDetail(sessionId),
-                  params: { lessonId: item.id, kind: 'learn' },
-                });
-                return;
-              }
-
-              router.push(item.route);
-            }}
+        <View style={[styles.sectionBlock, { backgroundColor: theme.colors.card + '18' }]}>
+          <LearningPathCarousel
+            items={learningPathItems}
+            onPressItem={(route: string) => router.push(route)}
           />
-        )}
-        <View style={{ height: baseTheme.spacing.xl }} />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Browse all lessons"
-          accessibilityHint="Opens the full lesson list"
-          onPress={() => router.push('/(tabs)/learn/list')}
-          style={({ pressed }) => [
-            styles.listCta,
-            {
-              borderColor: theme.colors.border,
-              backgroundColor: pressed ? (isDark ? theme.colors.border : `${theme.colors.primary}0A`) : theme.colors.card,
-            },
-          ]}
-        >
-          <View style={styles.listCtaHeader}>
-            <Text style={[styles.listTitle, { color: theme.colors.text }]}>Browse all lessons</Text>
-            <Text style={[styles.listLink, { color: theme.colors.primary }]}>View</Text>
+        </View>
+        <View style={[styles.sectionBlock, { backgroundColor: theme.colors.card + '18' }]}>
+          <ReviewSection
+            dueCount={dueReviewCount}
+            onStart={() => router.push({ pathname: routes.tabs.review, params: { from: 'learn' } })}
+          />
+        </View>
+        {discoverItems.length > 0 && (
+          <View style={[styles.sectionBlock, { backgroundColor: theme.colors.card + '18' }]}>
+            <DiscoverCarousel
+              items={discoverItems}
+              onPressItem={(item) => {
+                if (item.kind === 'lesson') {
+                  const sessionId = makeSessionId('learn');
+                  router.push({
+                    pathname: routeBuilders.sessionDetail(sessionId),
+                    params: { lessonId: item.id, kind: 'learn' },
+                  });
+                  return;
+                }
+
+                router.push(item.route);
+              }}
+            />
           </View>
-          <Text style={[styles.listSubtitle, { color: theme.colors.mutedText }]}>
-            Jump into A1 lessons and overviews
+        )}
+
+        {/* All Modules Section */}
+        <View style={[styles.sectionBlock, styles.allModulesSection, { backgroundColor: theme.colors.card + '18' }]}>
+          <View style={styles.allModulesHeader}>
+            <View style={styles.allModulesHeaderLeft}>
+              <Text style={[styles.allModulesTitle, { color: theme.colors.text }]}>
+                All Modules
+              </Text>
+              <View style={styles.allModulesBadge}>
+                <Text style={styles.allModulesBadgeText}>Catalog</Text>
+              </View>
+            </View>
+            <Pressable
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="View all modules"
+              onPress={() => router.push(routes.course.list)}
+              style={styles.allModulesViewAll}
+            >
+              <Text style={[styles.allModulesViewAllText, { color: theme.colors.primary }]}>
+                View
+              </Text>
+            </Pressable>
+          </View>
+          <Text style={[styles.allModulesSubtitle, { color: theme.colors.mutedText }]}>
+            Explore every course and find your next lesson
           </Text>
-        </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Browse all modules"
+            onPress={() => router.push(routes.course.list)}
+            style={({ pressed }) => [
+              styles.allModulesCard,
+              { opacity: pressed ? 0.95 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] },
+            ]}
+          >
+            <LinearGradient
+              colors={[theme.colors.primary, theme.colors.primary]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.allModulesGradient}
+            >
+              <View style={styles.allModulesCardContent}>
+                <View style={[styles.allModulesIconWrap, { backgroundColor: theme.colors.ctaCardAccent }]}>
+                  <Ionicons name="library-outline" size={28} color="#FFFFFF" />
+                </View>
+                <View style={styles.allModulesCardText}>
+                  <Text style={styles.allModulesCardTitle}>Browse full catalog</Text>
+                  <Text style={styles.allModulesCardSubtitle}>
+                    All courses in one place — start any module
+                  </Text>
+                </View>
+                <View style={[styles.allModulesArrowWrap, { backgroundColor: theme.colors.ctaCardAccent }]}>
+                  <Ionicons name="arrow-forward" size={22} color="#FFFFFF" />
+                </View>
+              </View>
+            </LinearGradient>
+          </Pressable>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -214,43 +253,104 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: baseTheme.spacing.md,
+  scrollContent: {
+    paddingBottom: 120,
   },
-  loadingText: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 14,
+  sectionBlock: {
+    marginTop: 8,
+    paddingVertical: 8,
+    borderRadius: 20,
+    overflow: 'hidden',
   },
-  listCta: {
-    marginTop: baseTheme.spacing.lg,
-    marginHorizontal: baseTheme.spacing.lg,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: baseTheme.spacing.md,
-    gap: baseTheme.spacing.xs,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
+  allModulesSection: {
+    marginTop: 8,
+    paddingHorizontal: 20,
+    gap: 12,
   },
-  listCtaHeader: {
+  allModulesHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  listTitle: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 16,
+  allModulesHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  listLink: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 14,
+  allModulesTitle: {
+    fontFamily: baseTheme.typography.bold,
+    fontSize: 20,
+    letterSpacing: -0.3,
   },
-  listSubtitle: {
+  allModulesBadge: {
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  allModulesBadgeText: {
+    fontSize: 12,
+    fontFamily: baseTheme.typography.bold,
+    color: '#264FD4',
+  },
+  allModulesViewAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  allModulesViewAllText: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 15,
+  },
+  allModulesSubtitle: {
     fontFamily: baseTheme.typography.regular,
-    fontSize: 13,
+    fontSize: 15,
+    marginBottom: 4,
+  },
+  allModulesCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#264FD4',
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+  },
+  allModulesGradient: {
+    padding: 24,
+  },
+  allModulesCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  allModulesIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  allModulesCardText: {
+    flex: 1,
+    gap: 4,
+  },
+  allModulesCardTitle: {
+    fontFamily: baseTheme.typography.bold,
+    fontSize: 18,
+    letterSpacing: -0.2,
+    color: '#FFFFFF',
+  },
+  allModulesCardSubtitle: {
+    fontFamily: baseTheme.typography.regular,
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+  allModulesArrowWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

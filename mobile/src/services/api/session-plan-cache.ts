@@ -68,8 +68,14 @@ export async function preloadSessionPlan(lessonId: string): Promise<void> {
         });
       }
     }
-  } catch (error) {
-    console.error('Failed to preload session plan:', error);
+  } catch (error: any) {
+    const msg = error?.message ?? String(error);
+    const isTimeout = typeof msg === 'string' && msg.toLowerCase().includes('timeout');
+    console.warn(
+      isTimeout
+        ? `Preload session plan timed out (best-effort, will load on demand).`
+        : `Preload session plan failed (best-effort): ${msg}`,
+    );
     // Don't throw - preloading is best effort
   }
 }

@@ -150,12 +150,12 @@ export async function resolvePostAuthDestination(userId: string): Promise<string
       return routes.tabs.home;
     }
     
-    // For first-time users, go to home (app/index) - they can start onboarding from there
-    return routes.tabs.home;
+    // Users who haven't completed onboarding must go to onboarding
+    return routes.onboarding.welcome;
   } catch (err) {
-    // If there's an error, default to home page
+    // On error, send to onboarding so user can complete setup
     console.error('resolvePostAuthDestination: Error', err);
-    return routes.tabs.home;
+    return routes.onboarding.welcome;
   }
 }
 

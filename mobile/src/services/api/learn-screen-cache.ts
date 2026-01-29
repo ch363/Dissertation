@@ -51,8 +51,6 @@ export async function preloadLearnScreenData(): Promise<void> {
       suggestions,
       timestamp: Date.now(),
     });
-
-    console.log('Learn screen data preloaded successfully');
   } catch (error) {
     console.warn('Failed to preload Learn screen data (non-critical):', error);
     // Silently fail - preloading is best effort

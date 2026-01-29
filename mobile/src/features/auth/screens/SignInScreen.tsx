@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button, ScrollView } from '@/components/ui';
+import { Button, LoadingScreen, ScrollView } from '@/components/ui';
 
 import {
   resolvePostAuthDestination,
@@ -161,14 +161,10 @@ export default function SignIn() {
   // Show loading state while processing email confirmation
   if (processingEmailCallback) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={[styles.subtitle, { marginTop: theme.spacing.md }]}>
-            Confirming your email...
-          </Text>
-        </View>
-      </SafeAreaView>
+      <LoadingScreen
+        title="Verifying your email..."
+        subtitle="Please wait while we confirm your account."
+      />
     );
   }
 

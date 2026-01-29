@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, Modal } from 'react-native';
@@ -7,7 +8,12 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ScrollView } from '@/components/ui';
 import { theme } from '@/services/theme/tokens';
 
-type OptionItem = { key: string; label: string; icon?: string };
+type OptionItem = {
+  key: string;
+  label: string;
+  /** Ionicons outline name, e.g. 'airplane-outline', 'people-outline' */
+  icon?: keyof typeof Ionicons.glyphMap | string;
+};
 type SelectedValue = string | string[] | null | undefined;
 
 export function ProgressBar({ current, total }: { current: number; total: number }) {
@@ -76,7 +82,7 @@ export function Option({
   label: string;
   selected?: boolean;
   onPress: () => void;
-  icon?: string; // optional emoji/icon
+  icon?: keyof typeof Ionicons.glyphMap | string;
   multiple?: boolean; // for accessibility role
 }) {
   return (
@@ -90,7 +96,14 @@ export function Option({
     >
       <View style={styles.optionInner}>
         <View style={styles.optionIconCol}>
-          {icon ? <Text style={styles.optionIcon}>{icon}</Text> : null}
+          {icon ? (
+            <Ionicons
+              name={icon as keyof typeof Ionicons.glyphMap}
+              size={22}
+              color={theme.colors.text}
+              style={styles.optionIcon}
+            />
+          ) : null}
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.optionText, selected && styles.optionTextSelected]}>{label}</Text>
@@ -347,12 +360,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   optionIconCol: {
-    width: 28, // fixed width so text lines up
+    width: 28, // fixed width so icons line up
     alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 8,
   },
   optionIcon: {
-    fontSize: 20, // 20–24 per spec
+    opacity: 0.9,
   },
   optionText: {
     color: theme.colors.text,

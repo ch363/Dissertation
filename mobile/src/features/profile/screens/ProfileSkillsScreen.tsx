@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { LoadingRow } from '@/components/ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScrollView } from '@/components/ui';
+import { ScreenHeader } from '@/components/navigation';
 import { Card } from '@/components/profile/Card';
 import { getAllMastery, type SkillMastery } from '@/services/api/mastery';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
@@ -53,17 +55,17 @@ export default function ProfileSkillsScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+      <ScreenHeader
+        title="Skills"
+        subtitle="Master your weakest areas"
+        icon="fitness"
+        label="Mastery"
+        accentColor="#F59E0B"
+      />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.title, { color: theme.colors.text }]}>Skills</Text>
-        <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
-          Your lowest-mastery skills (top 5)
-        </Text>
 
         {loading ? (
-          <View style={styles.loadingRow}>
-            <ActivityIndicator color={theme.colors.primary} />
-            <Text style={[styles.loadingText, { color: theme.colors.mutedText }]}>Loading…</Text>
-          </View>
+          <LoadingRow label="Loading…" />
         ) : error ? (
           <Card>
             <View style={styles.errorRow}>
@@ -120,16 +122,6 @@ const styles = StyleSheet.create({
     fontFamily: baseTheme.typography.regular,
     fontSize: 14,
     marginTop: -baseTheme.spacing.sm,
-  },
-  loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: baseTheme.spacing.sm,
-    paddingVertical: baseTheme.spacing.md,
-  },
-  loadingText: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 14,
   },
   list: {
     gap: baseTheme.spacing.md,

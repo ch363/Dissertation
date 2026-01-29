@@ -1,19 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { FlatList, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { LoadingRow } from '@/components/ui';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 import { getLessons, getLessonTeachings, type Lesson } from '@/services/api/modules';
@@ -296,10 +287,7 @@ export default function LessonListScreen() {
         </View>
       </View>
       {loading ? (
-        <View style={styles.stateRow}>
-          <ActivityIndicator color={theme.colors.primary} />
-          <Text style={[styles.stateText, { color: theme.colors.mutedText }]}>Loading…</Text>
-        </View>
+        <LoadingRow label="Loading lessons…" />
       ) : error ? (
         <View style={styles.stateRow}>
           <Text style={[styles.stateText, { color: theme.colors.error }]}>{error}</Text>

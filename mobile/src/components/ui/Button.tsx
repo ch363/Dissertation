@@ -2,6 +2,7 @@ import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
 
 import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { theme as baseTheme } from '@/services/theme/tokens';
 
 type Variant = 'primary' | 'secondary' | 'ghost';
 
@@ -73,15 +74,17 @@ export function Button({
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 44,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    minHeight: 50,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
   },
   text: {
-    fontWeight: '600',
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 17,
+    letterSpacing: -0.2,
     textAlign: 'center',
     flexShrink: 1,
   },

@@ -7,9 +7,9 @@ export default function Tone() {
   const { answers, setAnswerAndSave } = useOnboarding();
 
   const options = [
-    { key: 'friendly', icon: '😊', label: 'Friendly' },
-    { key: 'professional', icon: '💼', label: 'Professional' },
-    { key: 'playful', icon: '🎉', label: 'Playful' },
+    { key: 'friendly', icon: 'happy-outline', label: 'Friendly' },
+    { key: 'professional', icon: 'briefcase-outline', label: 'Professional' },
+    { key: 'playful', icon: 'wine-outline', label: 'Playful' },
   ];
 
   return (

@@ -25,10 +25,9 @@ export async function resolvePostAuthDestination(userId: string): Promise<string
     // Users who haven't completed onboarding should be routed to onboarding
     return routes.onboarding.welcome;
   } catch (err) {
-    // If there's an error, default to home page (not onboarding)
-    // This ensures first-time users see the home page
+    // On error, send to onboarding so user must complete setup
     console.error('resolvePostAuthDestination: Error', err);
-    return routes.tabs.home;
+    return routes.onboarding.welcome;
   }
 }
 

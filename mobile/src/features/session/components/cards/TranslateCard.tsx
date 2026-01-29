@@ -339,8 +339,15 @@ export function TranslateCard({
             <Text style={styles.resultTitle}>
               {isCorrect ? 'CORRECT!' : 'INCORRECT'}
             </Text>
-            <View style={styles.answerContainer}>
-              <Text style={styles.answerText}>{card.expected}</Text>
+            <View style={styles.answerComparison}>
+              <View style={styles.answerRow}>
+                <Text style={styles.answerLabel}>Your answer</Text>
+                <Text style={styles.answerValue}>{userAnswer.trim() || '(empty)'}</Text>
+              </View>
+              <View style={styles.answerRow}>
+                <Text style={styles.answerLabel}>Correct answer</Text>
+                <Text style={styles.answerValue}>{card.expected}</Text>
+              </View>
             </View>
           </View>
 
@@ -690,6 +697,25 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: theme.colors.text,
     textTransform: 'uppercase',
+  },
+  answerComparison: {
+    width: '100%',
+    gap: theme.spacing.md,
+  },
+  answerRow: {
+    gap: theme.spacing.xs,
+  },
+  answerLabel: {
+    fontFamily: theme.typography.semiBold,
+    fontSize: 12,
+    color: theme.colors.mutedText,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  answerValue: {
+    fontFamily: theme.typography.regular,
+    fontSize: 18,
+    color: theme.colors.text,
   },
   answerContainer: {
     flexDirection: 'row',

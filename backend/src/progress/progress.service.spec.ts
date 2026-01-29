@@ -12,6 +12,7 @@ import { ContentLookupService } from '../content/content-lookup.service';
 import { MasteryService } from '../engine/mastery/mastery.service';
 import { SessionPlanCacheService } from '../engine/content-delivery/session-plan-cache.service';
 import { PronunciationService } from '../speech/pronunciation/pronunciation.service';
+import { OnboardingPreferencesService } from '../onboarding/onboarding-preferences.service';
 
 describe('ProgressService', () => {
   let service: ProgressService;
@@ -82,6 +83,11 @@ describe('ProgressService', () => {
     assess: jest.fn(),
   };
 
+  const mockOnboardingPreferencesService = {
+    getOnboardingPreferences: jest.fn().mockResolvedValue({}),
+    getInitialDeliveryMethodScores: jest.fn().mockResolvedValue(new Map()),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -113,6 +119,10 @@ describe('ProgressService', () => {
         {
           provide: PronunciationService,
           useValue: mockPronunciationService,
+        },
+        {
+          provide: OnboardingPreferencesService,
+          useValue: mockOnboardingPreferencesService,
         },
       ],
     }).compile();

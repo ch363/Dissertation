@@ -29,6 +29,7 @@ model Module {
   title       String   @db.VarChar
   description String?  @db.VarChar
   imageUrl    String?  @map("image_url") @db.VarChar
+  category    String?  @db.VarChar
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
 

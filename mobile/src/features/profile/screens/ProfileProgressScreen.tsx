@@ -2,7 +2,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScrollView } from '@/components/ui';
-
+import { ScreenHeader } from '@/components/navigation';
 import { Card } from '@/components/profile/Card';
 import { ProgressBar } from '@/components/profile/ProgressBar';
 import { StatPill } from '@/components/profile/StatPill';
@@ -12,9 +12,15 @@ import { theme as baseTheme } from '@/services/theme/tokens';
 export default function ProfileProgress() {
   const { theme } = useAppTheme();
   return (
-    <SafeAreaView style={[styles.safeArea]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
+      <ScreenHeader
+        title="Progress"
+        subtitle="Track your learning journey"
+        icon="trending-up"
+        label="Stats"
+        accentColor="#10B981"
+      />
       <ScrollView contentContainerStyle={{ padding: baseTheme.spacing.lg }}>
-        <Text style={[styles.title, { color: theme.colors.text }]}>Your Progress</Text>
         <View style={{ flexDirection: 'row', gap: 10, marginBottom: baseTheme.spacing.lg }}>
           <StatPill label="Level" value="5" />
           <StatPill label="XP" value="320" />

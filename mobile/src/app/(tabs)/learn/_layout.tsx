@@ -1,6 +1,9 @@
-import { Stack } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { Stack, router } from 'expo-router';
+import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 
 export default function LearnLayout() {
@@ -20,7 +23,22 @@ export default function LearnLayout() {
     >
       <Stack.Screen name="index" options={{ headerShown: false, title: 'Learn' }} />
       <Stack.Screen name="list" options={{ title: 'Lessons', headerBackTitle: 'Learn' }} />
-      <Stack.Screen name="review" options={{ title: 'Review', headerBackTitle: 'Learn' }} />
+      <Stack.Screen
+        name="review"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
+
+const styles = StyleSheet.create({
+  backRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backTitle: {
+    fontSize: 17,
+  },
+});

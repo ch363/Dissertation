@@ -4,11 +4,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { HelpButton } from '@/components/navigation/HelpButton';
 import { ScrollView } from '@/components/ui';
 import { HomePrimaryCtaCard, type HomePrimaryAction } from '@/features/home/components/HomePrimaryCtaCard';
+import { HomeStreakCard } from '@/features/home/components/HomeStreakCard';
 import { HomeTodayAtAGlance } from '@/features/home/components/HomeTodayAtAGlance';
-import { WelcomeContinueCard } from '@/features/home/components/WelcomeContinueCard';
 import { HomeWhyThisNext } from '@/features/home/components/HomeWhyThisNext';
+import { formatLessonDetail } from '@/features/home/utils/formatLessonDetail';
 import { selectHomeNextAction, type HomeNextAction } from '@/features/home/utils/selectHomeNextAction';
 import { getSuggestions } from '@/services/api/learn';
 import { getDashboard, getMyProfile, getRecentActivity, getStats } from '@/services/api/profile';
@@ -79,7 +81,7 @@ export default function HomeScreen() {
     // Reset derived signals when we don't have a lesson.
     if (!lessonId) {
       setNextLessonItemCount(null);
-      setWhyThisText(nextAction?.reason ?? 'You’ll build confidence with practical phrases.');
+      setWhyThisText((nextAction && 'reason' in nextAction ? nextAction.reason : undefined) ?? 'You’ll build confidence with practical phrases.');
       return;
     }
 
@@ -95,12 +97,12 @@ export default function HomeScreen() {
 
         setNextLessonItemCount(typeof lesson?.numberOfItems === 'number' ? lesson.numberOfItems : null);
         const outcome = teachings.length > 0 ? buildLessonOutcome(teachings) : null;
-        const fallback = nextAction?.reason ?? 'You’ll build confidence with practical phrases.';
+        const fallback = (nextAction && 'reason' in nextAction ? nextAction.reason : undefined) ?? 'You’ll build confidence with practical phrases.';
         setWhyThisText(outcome ?? fallback);
       } catch {
         if (cancelled) return;
         setNextLessonItemCount(null);
-        setWhyThisText(nextAction?.reason ?? 'You’ll build confidence with practical phrases.');
+        setWhyThisText((nextAction && 'reason' in nextAction ? nextAction.reason : undefined) ?? 'You’ll build confidence with practical phrases.');
       }
     })();
 
@@ -129,37 +131,19 @@ export default function HomeScreen() {
     }
 
     if (nextAction.kind === 'continue') {
-      const detailLine =
-        typeof nextLessonItemCount === 'number'
-          ? (() => {
-              const minutes = Math.max(1, Math.ceil(nextLessonItemCount * 1.5));
-              const itemsLabel = nextLessonItemCount === 1 ? 'exercise' : 'exercises';
-              return `~${minutes} min · ${nextLessonItemCount} ${itemsLabel}`;
-            })()
-          : undefined;
-
       return {
         kind: 'continue',
         label: 'Continue Lesson',
         subtitle: nextAction.moduleTitle ?? nextAction.lessonTitle,
-        detailLine,
+        detailLine: formatLessonDetail(nextLessonItemCount),
       };
     }
-
-    const detailLine =
-      typeof nextLessonItemCount === 'number'
-        ? (() => {
-            const minutes = Math.max(1, Math.ceil(nextLessonItemCount * 1.5));
-            const itemsLabel = nextLessonItemCount === 1 ? 'exercise' : 'exercises';
-            return `~${minutes} min · ${nextLessonItemCount} ${itemsLabel}`;
-          })()
-        : undefined;
 
     return {
       kind: 'startNext',
       label: 'Start Next Lesson',
       subtitle: nextAction.moduleTitle ?? nextAction.lessonTitle ?? 'Jump into something new',
-      detailLine,
+      detailLine: formatLessonDetail(nextLessonItemCount),
     };
   }, [nextAction, nextLessonItemCount]);
 
@@ -167,7 +151,7 @@ export default function HomeScreen() {
     if (!nextAction) return;
 
     if (nextAction.kind === 'review') {
-      router.push(routes.tabs.review);
+      router.push({ pathname: routes.tabs.review, params: { from: 'home' } });
       return;
     }
 
@@ -216,26 +200,30 @@ export default function HomeScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.sectionTop}>
-          <WelcomeContinueCard
-            streakDays={streakDays}
-            minutesToday={minutesToday}
-            displayName={displayName}
-            message={nextAction?.statusMessage ?? 'Checking what’s next…'}
-            onPressMessage={handlePrimaryPress}
-          />
+        <View style={styles.headerRow}>
+          <View style={styles.sectionTop}>
+            <Text style={[styles.greetingTitle, { color: theme.colors.text }]} numberOfLines={2}>
+              {displayName ? `Welcome back, ${displayName}` : 'Welcome back'}
+            </Text>
+            <Text style={[styles.greetingSubtitle, { color: theme.colors.mutedText }]}>
+              Continue your learning journey
+            </Text>
+          </View>
+          <HelpButton />
+        </View>
+
+        {streakDays > 0 ? (
+          <View style={styles.sectionTight}>
+            <HomeStreakCard streakDays={streakDays} />
+          </View>
+        ) : null}
+
+        <View style={styles.sectionMainCta}>
+          <HomePrimaryCtaCard action={primaryAction} onPress={handlePrimaryPress} />
         </View>
 
         <View style={styles.sectionTight}>
           <HomeTodayAtAGlance dueReviewCount={dueReviewCount} minutesToday={minutesToday} />
-        </View>
-
-        <View style={styles.sectionMainCta}>
-          <HomePrimaryCtaCard
-            action={primaryAction}
-            onPress={handlePrimaryPress}
-            onPressMore={primaryAction.kind === 'review' ? () => router.navigate(routes.tabs.learn) : undefined}
-          />
         </View>
 
         <View style={styles.sectionSecondary}>
@@ -274,42 +262,63 @@ const styles = StyleSheet.create({
     height: 320,
     borderBottomLeftRadius: 48,
     borderBottomRightRadius: 48,
-    // Important: keep this layer visually neutral so the page reads as one background color.
     shadowOpacity: 0,
     shadowRadius: 0,
     shadowOffset: { width: 0, height: 0 },
     elevation: 0,
   },
   scrollContent: {
-    paddingHorizontal: baseTheme.spacing.md,
-    paddingTop: baseTheme.spacing.sm,
-    gap: baseTheme.spacing.md,
+    paddingHorizontal: 20,
+    paddingTop: 28,
+    gap: 0,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 20,
   },
   sectionTop: {
+    flex: 1,
     marginTop: 0,
+    paddingBottom: 0,
+    gap: 4,
+  },
+  greetingTitle: {
+    fontFamily: baseTheme.typography.bold,
+    fontSize: 28,
+    letterSpacing: -0.5,
+  },
+  greetingSubtitle: {
+    fontFamily: baseTheme.typography.regular,
+    fontSize: 15,
   },
   sectionTight: {
     marginTop: 0,
+    marginBottom: 20,
   },
   sectionSecondary: {
     marginTop: 0,
+    marginBottom: 20,
   },
   sectionMainCta: {
     marginTop: 0,
+    marginBottom: 28,
   },
   footerPrompt: {
-    marginTop: 0,
-    paddingHorizontal: baseTheme.spacing.xs,
+    marginTop: 20,
+    paddingHorizontal: 0,
     gap: baseTheme.spacing.xs,
   },
   footerDivider: {
     marginTop: 0,
+    marginBottom: 20,
     height: 1,
-    opacity: 0.7,
+    opacity: 0.5,
   },
   footerPromptText: {
     fontFamily: baseTheme.typography.regular,
-    fontSize: 14,
+    fontSize: 15,
   },
   footerLinkRow: {
     flexDirection: 'row',
@@ -320,6 +329,7 @@ const styles = StyleSheet.create({
   },
   footerLinkText: {
     fontFamily: baseTheme.typography.semiBold,
-    fontSize: 15,
+    fontSize: 16,
+    letterSpacing: -0.2,
   },
 });

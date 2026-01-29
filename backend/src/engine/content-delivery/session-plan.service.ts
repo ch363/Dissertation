@@ -26,17 +26,16 @@ import {
 import { DeliveryCandidate } from './types';
 import {
   calculateItemCount,
-  interleaveItems,
-  selectModality,
-  groupByTopic,
+  composeWithInterleaving,
   estimateTime,
-  planTeachThenTest,
   getDefaultTimeAverages,
-  mixByDeliveryMethod,
-} from './session-planning.policy';
-import { rankCandidates, composeWithInterleaving } from './selection.policy';
+  planTeachThenTest,
+  rankCandidates,
+  selectModality,
+} from './content-delivery.policy';
 import { MasteryService } from '../mastery/mastery.service';
 import { OnboardingPreferencesService } from '../../onboarding/onboarding-preferences.service';
+import { CandidateService } from './candidate.service';
 
 @Injectable()
 export class SessionPlanService {
@@ -45,6 +44,7 @@ export class SessionPlanService {
     private contentLookup: ContentLookupService,
     private masteryService: MasteryService,
     private onboardingPreferences: OnboardingPreferencesService,
+    private candidateService: CandidateService,
   ) {}
 
   /**
@@ -104,16 +104,20 @@ export class SessionPlanService {
     );
 
     // 4. Gather candidates
-    const reviewCandidates = await this.getReviewCandidates(
+    const reviewCandidates = await this.candidateService.getReviewCandidates(
       userId,
-      context.lessonId,
-      context.moduleId,
+      {
+        lessonId: context.lessonId,
+        moduleId: context.moduleId,
+      },
     );
-    const newCandidates = await this.getNewCandidates(
+    const newCandidates = await this.candidateService.getNewCandidates(
       userId,
-      context.lessonId,
-      context.moduleId,
-      prioritizedSkills,
+      {
+        lessonId: context.lessonId,
+        moduleId: context.moduleId,
+        prioritizedSkills,
+      },
     );
 
     // 4. Filter by mode
@@ -465,356 +469,6 @@ export class SessionPlanService {
   }
 
   /**
-   * Get review candidates (due items).
-   */
-  private async getReviewCandidates(
-    userId: string,
-    lessonId?: string,
-    moduleId?: string,
-  ): Promise<DeliveryCandidate[]> {
-    const now = new Date();
-    const candidates: DeliveryCandidate[] = [];
-
-    const questionWhere: any = {
-      userId,
-      nextReviewDue: {
-        lte: now,
-        not: null,
-      },
-    };
-
-    if (lessonId) {
-      const lessonQuestions = await this.prisma.question.findMany({
-        where: {
-          teaching: { lessonId },
-        },
-        select: { id: true },
-      });
-      const questionIds = lessonQuestions.map((q) => q.id);
-      // If no questions in lesson, return empty array early to avoid Prisma query error
-      if (questionIds.length === 0) {
-        return [];
-      }
-      questionWhere.questionId = { in: questionIds };
-    } else if (moduleId) {
-      const moduleQuestions = await this.prisma.question.findMany({
-        where: {
-          teaching: {
-            lesson: { moduleId },
-          },
-        },
-        select: { id: true },
-      });
-      const questionIds = moduleQuestions.map((q) => q.id);
-      if (questionIds.length === 0) {
-        return [];
-      }
-      questionWhere.questionId = { in: questionIds };
-    }
-
-    // Query for due review performances
-    // If column doesn't exist (migration not run), catch and return empty array
-    let allDuePerformances;
-    try {
-      allDuePerformances = await this.prisma.userQuestionPerformance.findMany({
-        where: questionWhere,
-        orderBy: { createdAt: 'desc' },
-      });
-    } catch (error: any) {
-      // If column doesn't exist or other database schema error, return empty array
-      // This handles the case where migrations haven't been run yet or database is empty
-      if (
-        error?.message?.includes('column') ||
-        error?.message?.includes('does not exist') ||
-        error?.message?.includes('not available')
-      ) {
-        return [];
-      }
-      throw error; // Re-throw if it's a different error
-    }
-
-    const questionIdMap = new Map<string, (typeof allDuePerformances)[0]>();
-    for (const perf of allDuePerformances) {
-      const existing = questionIdMap.get(perf.questionId);
-      if (!existing || perf.createdAt > existing.createdAt) {
-        questionIdMap.set(perf.questionId, perf);
-      }
-    }
-
-    for (const perf of Array.from(questionIdMap.values())) {
-      const question = await this.prisma.question.findUnique({
-        where: { id: perf.questionId },
-        include: {
-          variants: {
-            select: {
-              deliveryMethod: true,
-            },
-          },
-          skillTags: {
-            select: {
-              name: true,
-            },
-          },
-          teaching: {
-            include: {
-              lesson: true,
-              skillTags: {
-                select: {
-                  name: true,
-                },
-              },
-            },
-          },
-        },
-      });
-
-      if (question) {
-        const availableMethods: DELIVERY_METHOD[] =
-          question.variants?.map((v) => v.deliveryMethod) ?? [];
-        const recentAttempts =
-          await this.prisma.userQuestionPerformance.findMany({
-            where: {
-              userId,
-              questionId: perf.questionId,
-            },
-            orderBy: { createdAt: 'desc' },
-            take: 5,
-          });
-
-        const errorScore = recentAttempts.filter((a) => a.score < 80).length;
-        const lastSeen =
-          recentAttempts[0]?.createdAt || perf.nextReviewDue || now;
-        const timeSinceLastSeen = Date.now() - lastSeen.getTime();
-        const overdueMs = now.getTime() - (perf.nextReviewDue || now).getTime();
-        const dueScore = Math.max(0, overdueMs / (1000 * 60 * 60));
-
-        // Calculate estimated mastery from recent performance
-        const recentScores = recentAttempts.map((a) => a.score);
-        const avgScore =
-          recentScores.length > 0
-            ? recentScores.reduce((sum, s) => sum + s, 0) / recentScores.length
-            : 50;
-        const estimatedMastery = avgScore / 100; // Convert 0-100 to 0-1
-
-        // Extract skill tags from both question and teaching, deduplicate
-        const questionTags = this.extractSkillTags(question);
-        const teachingTags = this.extractSkillTags(question.teaching);
-        const skillTags = Array.from(
-          new Set([...questionTags, ...teachingTags]),
-        );
-
-        // Determine exercise type from delivery method and teaching content
-        const exerciseType = this.determineExerciseType(
-          availableMethods,
-          question.teaching,
-        );
-
-        // Estimate difficulty (0 = easy, 1 = hard)
-        // Based on knowledge level and mastery
-        const knowledgeLevelDifficulty: Record<string, number> = {
-          A1: 0.1,
-          A2: 0.3,
-          B1: 0.5,
-          B2: 0.7,
-          C1: 0.85,
-          C2: 1.0,
-        };
-        const baseDifficulty =
-          knowledgeLevelDifficulty[question.teaching.knowledgeLevel] || 0.5;
-        // Adjust based on user's mastery (lower mastery = higher effective difficulty)
-        const difficulty = baseDifficulty * (1 - estimatedMastery * 0.3); // Cap adjustment at 30%
-
-        candidates.push({
-          kind: 'question',
-          id: question.id,
-          questionId: question.id,
-          teachingId: question.teachingId,
-          lessonId: question.teaching.lessonId,
-          dueScore,
-          errorScore,
-          timeSinceLastSeen,
-          deliveryMethods: availableMethods,
-          skillTags,
-          exerciseType,
-          difficulty,
-          estimatedMastery,
-        });
-      }
-    }
-
-    return candidates;
-  }
-
-  /**
-   * Get new candidates (not yet seen).
-   * Prioritizes candidates with skills that have low mastery (< 0.5).
-   *
-   * @param userId User ID
-   * @param lessonId Optional lesson ID to filter candidates
-   * @param prioritizedSkills Array of skill tags to prioritize (low mastery skills)
-   */
-  private async getNewCandidates(
-    userId: string,
-    lessonId?: string,
-    moduleId?: string,
-    prioritizedSkills: string[] = [],
-  ): Promise<DeliveryCandidate[]> {
-    const candidates: DeliveryCandidate[] = [];
-
-    const whereClause: any = {};
-    if (lessonId) {
-      whereClause.teaching = { lessonId };
-    } else if (moduleId) {
-      whereClause.teaching = { lesson: { moduleId } };
-    }
-
-    const allQuestions = await this.prisma.question.findMany({
-      where: whereClause,
-      include: {
-        variants: {
-          select: {
-            deliveryMethod: true,
-          },
-        },
-        skillTags: {
-          select: {
-            name: true,
-          },
-        },
-        teaching: {
-          include: {
-            lesson: true,
-            skillTags: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    const attemptedQuestionIds =
-      await this.prisma.userQuestionPerformance.findMany({
-        where: { userId },
-        select: { questionId: true },
-        distinct: ['questionId'],
-      });
-    const attemptedSet = new Set(attemptedQuestionIds.map((a) => a.questionId));
-
-    for (const question of allQuestions) {
-      if (!attemptedSet.has(question.id)) {
-        // For new items, estimate mastery as 0 (not yet attempted)
-        const estimatedMastery = 0;
-
-        // Extract skill tags from both question and teaching, deduplicate
-        const questionTags = this.extractSkillTags(question);
-        const teachingTags = this.extractSkillTags(question.teaching);
-        const skillTags = Array.from(
-          new Set([...questionTags, ...teachingTags]),
-        );
-
-        const availableMethods: DELIVERY_METHOD[] =
-          question.variants?.map((v) => v.deliveryMethod) ?? [];
-
-        // Determine exercise type
-        const exerciseType = this.determineExerciseType(
-          availableMethods,
-          question.teaching,
-        );
-
-        // Estimate difficulty from knowledge level
-        const knowledgeLevelDifficulty: Record<string, number> = {
-          A1: 0.1,
-          A2: 0.3,
-          B1: 0.5,
-          B2: 0.7,
-          C1: 0.85,
-          C2: 1.0,
-        };
-        const difficulty =
-          knowledgeLevelDifficulty[question.teaching.knowledgeLevel] || 0.5;
-
-        candidates.push({
-          kind: 'question',
-          id: question.id,
-          questionId: question.id,
-          teachingId: question.teachingId,
-          lessonId: question.teaching.lessonId,
-          dueScore: 0,
-          errorScore: 0,
-          timeSinceLastSeen: Infinity,
-          deliveryMethods: availableMethods,
-          skillTags,
-          exerciseType,
-          difficulty,
-          estimatedMastery,
-        });
-      }
-    }
-
-    return candidates;
-  }
-
-  /**
-   * Extract skill tags from teaching or question content.
-   * Fetches skill tags from the database relation.
-   */
-  private extractSkillTags(item: any): string[] {
-    // Extract skill tags from the skillTags relation if it's loaded
-    if (item.skillTags && Array.isArray(item.skillTags)) {
-      return item.skillTags
-        .map((tag: any) => tag.name)
-        .filter((name: string) => name);
-    }
-
-    // If skillTags is not loaded, return empty array
-    // The caller should ensure skillTags are included in Prisma queries
-    return [];
-  }
-
-  /**
-   * Determine exercise type from delivery methods and teaching content.
-   */
-  private determineExerciseType(
-    deliveryMethods: DELIVERY_METHOD[],
-    teaching: any,
-  ): string {
-    // Check delivery methods first
-    if (
-      deliveryMethods.includes(DELIVERY_METHOD.SPEECH_TO_TEXT) ||
-      deliveryMethods.includes(DELIVERY_METHOD.TEXT_TO_SPEECH)
-    ) {
-      return 'speaking';
-    }
-    if (deliveryMethods.includes(DELIVERY_METHOD.TEXT_TRANSLATION)) {
-      return 'translation';
-    }
-    if (deliveryMethods.includes(DELIVERY_METHOD.FILL_BLANK)) {
-      return 'grammar';
-    }
-    if (deliveryMethods.includes(DELIVERY_METHOD.MULTIPLE_CHOICE)) {
-      return 'vocabulary';
-    }
-    if (deliveryMethods.includes(DELIVERY_METHOD.FLASHCARD)) {
-      return 'vocabulary';
-    }
-
-    // Fallback: infer from teaching content
-    if (teaching.tip) {
-      const tipLower = teaching.tip.toLowerCase();
-      if (tipLower.includes('grammar') || tipLower.includes('rule')) {
-        return 'grammar';
-      }
-      if (tipLower.includes('vocabulary') || tipLower.includes('word')) {
-        return 'vocabulary';
-      }
-    }
-
-    return 'practice'; // Default
-  }
-
-  /**
    * Get teaching candidates for teach-then-test.
    * Filters out teachings that have already been completed by the user.
    * @param userId User ID
@@ -867,7 +521,7 @@ export class SessionPlanService {
     return teachings
       .filter((teaching) => !seenTeachingIds.has(teaching.id))
       .map((teaching) => {
-        const skillTags = this.extractSkillTags(teaching);
+        const skillTags = this.candidateService.extractSkillTags(teaching);
         return {
           kind: 'teaching' as const,
           id: teaching.id,

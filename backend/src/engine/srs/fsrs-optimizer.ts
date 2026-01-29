@@ -32,16 +32,6 @@ export interface OptimizationResult {
 }
 
 /**
- * Extract review history from UserQuestionPerformance records
- *
- * @param records Historical performance records ordered by createdAt
- * @returns Array of review records with timing information
- */
-export function extractReviewHistory(records: ReviewRecord[]): ReviewRecord[] {
-  return records.filter((r) => r.createdAt != null);
-}
-
-/**
  * Calculate prediction error for a set of parameters
  *
  * @param records Historical review records

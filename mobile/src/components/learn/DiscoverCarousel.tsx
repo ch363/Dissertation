@@ -1,5 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { ScrollView } from '@/components/ui';
 
@@ -15,49 +17,82 @@ type Props = {
 export function DiscoverCarousel({ items, onPressItem }: Props) {
   const { theme } = useAppTheme();
 
+  if (items.length === 0) return null;
+
   return (
     <View style={styles.section}>
-      <Text style={[styles.title, { color: theme.colors.text }]}>Discover</Text>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={[styles.title, { color: theme.colors.text }]}>Discover</Text>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>New</Text>
+          </View>
+        </View>
+      </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{
-          gap: baseTheme.spacing.md,
-          paddingHorizontal: baseTheme.spacing.lg,
-          paddingVertical: baseTheme.spacing.sm,
+          gap: 16,
+          paddingHorizontal: 20,
+          paddingBottom: 8,
         }}
       >
-        {items.map((item) => (
-          <Pressable
-            key={item.id}
-            accessibilityRole="button"
-            accessibilityLabel={`${item.ctaLabel ?? 'Open'}: ${item.title}`}
-            onPress={() => onPressItem(item)}
-            style={({ pressed }) => [
-              styles.card,
-              {
-                backgroundColor: item.background,
-                borderColor: theme.colors.border,
-                shadowColor: '#0D1B2A',
-                opacity: pressed ? 0.92 : 1,
-              },
-            ]}
-          >
-            <View style={styles.art} />
-            <Text style={[styles.cardTitle, { color: theme.colors.text }]}>{item.title}</Text>
-            <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>
-              {item.subtitle}
-            </Text>
-            <View style={styles.footerRow}>
-              <View style={{ flex: 1 }} />
-              <View style={[styles.ctaPill, { borderColor: 'rgba(0,0,0,0.08)' }]}>
-                <Text style={[styles.ctaText, { color: theme.colors.primary }]}>
-                  {item.ctaLabel ?? 'Open'}
-                </Text>
-              </View>
-            </View>
-          </Pressable>
-        ))}
+        {items.map((item, index) => {
+          const gradientColors: [string, string][] = [
+            ['#A855F7', '#9333EA'],
+            [theme.colors.primary, theme.colors.primary],
+            ['#F59E0B', '#D97706'],
+            ['#EC4899', '#DB2777'],
+            ['#22C55E', '#16A34A'],
+            ['#8B5CF6', '#7C3AED'],
+          ];
+          const colors = gradientColors[index % gradientColors.length];
+          const isBlueCard = (index % 6) === 1;
+
+          return (
+            <Pressable
+              key={item.id}
+              accessibilityRole="button"
+              accessibilityLabel={`${item.ctaLabel ?? 'Open'}: ${item.title}`}
+              onPress={() => onPressItem(item)}
+              style={({ pressed }) => [
+                styles.card,
+                {
+                  opacity: pressed ? 0.95 : 1,
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                },
+              ]}
+            >
+              <LinearGradient
+                colors={colors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.cardGradient}
+              >
+                <View style={styles.cardContent}>
+                  <View style={[
+                    styles.iconContainer,
+                    isBlueCard && { backgroundColor: theme.colors.ctaCardAccent },
+                  ]}
+                  >
+                    <Ionicons name="sparkles" size={24} color="#FFFFFF" />
+                  </View>
+                  <Text style={styles.cardTitle} numberOfLines={2}>
+                    {item.title}
+                  </Text>
+                  <Text style={styles.cardSubtitle} numberOfLines={2}>
+                    {item.subtitle}
+                  </Text>
+                  <View style={styles.ctaContainer}>
+                    <Text style={styles.ctaText}>{item.ctaLabel ?? 'Explore'}</Text>
+                    <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                  </View>
+                </View>
+              </LinearGradient>
+            </Pressable>
+          );
+        })}
       </ScrollView>
     </View>
   );
@@ -65,52 +100,80 @@ export function DiscoverCarousel({ items, onPressItem }: Props) {
 
 const styles = StyleSheet.create({
   section: {
-    marginTop: baseTheme.spacing.lg,
-    gap: baseTheme.spacing.xs,
+    marginTop: 24,
+    gap: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   title: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 18,
-    paddingHorizontal: baseTheme.spacing.lg,
+    fontFamily: baseTheme.typography.bold,
+    fontSize: 20,
+    letterSpacing: -0.3,
+  },
+  badge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontFamily: baseTheme.typography.bold,
+    color: '#B45309',
   },
   card: {
-    width: 220,
-    borderRadius: 20,
-    padding: baseTheme.spacing.md,
-    borderWidth: 1,
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    gap: baseTheme.spacing.sm,
+    width: 260,
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
-  art: {
-    height: 80,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.35)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
+  cardGradient: {
+    padding: 24,
+  },
+  cardContent: {
+    gap: 12,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   cardTitle: {
     fontFamily: baseTheme.typography.bold,
-    fontSize: 16,
+    fontSize: 18,
+    letterSpacing: -0.2,
+    color: '#FFFFFF',
   },
   cardSubtitle: {
     fontFamily: baseTheme.typography.regular,
-    fontSize: 13,
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
   },
-  footerRow: {
+  ctaContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  ctaPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.65)',
-    borderWidth: 1,
+    gap: 8,
+    marginTop: 8,
   },
   ctaText: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 13,
+    fontFamily: baseTheme.typography.bold,
+    fontSize: 15,
+    color: '#FFFFFF',
   },
 });

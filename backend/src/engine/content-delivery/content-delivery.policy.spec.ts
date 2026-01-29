@@ -7,12 +7,12 @@ import {
   planTeachThenTest,
   getDefaultTimeAverages,
   mixByDeliveryMethod,
-} from './session-planning.policy';
+} from './content-delivery.policy';
 import { DELIVERY_METHOD } from '@prisma/client';
 import { DeliveryCandidate } from './types';
 import { UserTimeAverages } from './session-types';
 
-describe('Session Planning Policy', () => {
+describe('Content Delivery Policy', () => {
   describe('calculateItemCount', () => {
     it('should calculate item count from time budget', () => {
       expect(calculateItemCount(300, 60)).toBe(4); // 300s / 60s = 5, with 20% buffer = 4
@@ -84,7 +84,7 @@ describe('Session Planning Policy', () => {
       DELIVERY_METHOD.FILL_BLANK,
     ];
 
-    it('should select method with highest preference', () => {
+    it('should favor method with highest preference (weighted selection)', () => {
       const preferences = new Map([
         [DELIVERY_METHOD.FLASHCARD, 0.9],
         [DELIVERY_METHOD.MULTIPLE_CHOICE, 0.5],
@@ -101,8 +101,16 @@ describe('Session Planning Policy', () => {
         deliveryMethods: availableMethods,
       };
 
-      const result = selectModality(candidate, availableMethods, preferences);
-      expect(result).toBe(DELIVERY_METHOD.FLASHCARD);
+      const selections: (DELIVERY_METHOD | undefined)[] = [];
+      for (let i = 0; i < 30; i++) {
+        selections.push(
+          selectModality(candidate, availableMethods, preferences),
+        );
+      }
+      const flashcardCount = selections.filter(
+        (m) => m === DELIVERY_METHOD.FLASHCARD,
+      ).length;
+      expect(flashcardCount).toBeGreaterThan(15); // Best method selected most of the time
     });
 
     it('should use default preference if method not in preferences', () => {

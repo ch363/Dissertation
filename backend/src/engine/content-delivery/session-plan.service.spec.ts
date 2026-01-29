@@ -5,6 +5,9 @@ import { SessionContext } from './session-types';
 import { DELIVERY_METHOD } from '@prisma/client';
 import { ContentLookupService } from '../../content/content-lookup.service';
 import { MasteryService } from '../mastery/mastery.service';
+import { OnboardingPreferencesService } from '../../onboarding/onboarding-preferences.service';
+import { DifficultyCalculator } from './difficulty-calculator.service';
+import { CandidateService } from './candidate.service';
 
 describe('SessionPlanService', () => {
   let service: SessionPlanService;
@@ -41,6 +44,19 @@ describe('SessionPlanService', () => {
       getLowMasterySkills: jest.fn(),
     };
 
+    const mockOnboardingPreferences = {
+      getOnboardingPreferences: jest.fn().mockResolvedValue({
+        challengeWeight: 0.5,
+        sessionMinutes: null,
+        prefersGamification: null,
+        feedbackDepth: null,
+        learningStyles: [],
+        experience: null,
+        memoryHabit: null,
+      }),
+      getInitialDeliveryMethodScores: jest.fn().mockResolvedValue(new Map()),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SessionPlanService,
@@ -56,6 +72,12 @@ describe('SessionPlanService', () => {
           provide: MasteryService,
           useValue: mockMasteryService,
         },
+        {
+          provide: OnboardingPreferencesService,
+          useValue: mockOnboardingPreferences,
+        },
+        DifficultyCalculator,
+        CandidateService,
       ],
     }).compile();
 

@@ -7,6 +7,8 @@ export * from './content-delivery/content-delivery.service';
 export * from './content-delivery/types';
 export * from './content-delivery/session-plan.service';
 export * from './content-delivery/session-types';
+export { CandidateService } from './content-delivery/candidate.service';
+export type { CandidateOptions } from './content-delivery/candidate.service';
 export * from './srs/srs.service';
 export * from './srs/types';
 export * from './scoring/xp.service';

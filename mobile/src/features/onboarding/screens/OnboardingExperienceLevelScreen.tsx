@@ -10,9 +10,9 @@ export default function ExperienceLevel() {
   const selected = answers.experience ?? null;
 
   const options = [
-    { key: 'beginner', icon: '🌱', label: 'Beginner' },
-    { key: 'intermediate', icon: '🌿', label: 'Intermediate' },
-    { key: 'advanced', icon: '🌳', label: 'Advanced' },
+    { key: 'beginner', icon: 'leaf-outline', label: 'Beginner' },
+    { key: 'intermediate', icon: 'flower-outline', label: 'Intermediate' },
+    { key: 'advanced', icon: 'trending-up-outline', label: 'Advanced' },
   ];
 
   const onFinish = async () => {

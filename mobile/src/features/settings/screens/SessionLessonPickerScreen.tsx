@@ -1,17 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useNavigation } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { LoadingRow } from '@/components/ui';
 import { getLessons, type Lesson } from '@/services/api/modules';
 import { routes } from '@/services/navigation/routes';
 import { setSessionDefaultLessonId } from '@/services/preferences/settings-facade';
@@ -135,10 +128,7 @@ export default function SessionLessonPickerScreen() {
         </Pressable>
 
         {loading ? (
-          <View style={styles.stateRow}>
-            <ActivityIndicator color={theme.colors.primary} />
-            <Text style={[styles.stateText, { color: theme.colors.mutedText }]}>Loading…</Text>
-          </View>
+          <LoadingRow label="Loading lessons…" />
         ) : error ? (
           <View style={styles.stateRow}>
             <Text style={[styles.stateText, { color: theme.colors.error }]} accessibilityRole="alert">

@@ -7,9 +7,9 @@ export default function FeedbackStyle() {
   const { answers, setAnswerAndSave } = useOnboarding();
 
   const options = [
-    { key: 'gentle', icon: '🌤️', label: 'Gentle encouragement' },
-    { key: 'direct', icon: '🧭', label: 'Direct and corrective' },
-    { key: 'detailed', icon: '🔍', label: 'Detailed explanations' },
+    { key: 'gentle', icon: 'sunny-outline', label: 'Gentle encouragement' },
+    { key: 'direct', icon: 'compass-outline', label: 'Direct and corrective' },
+    { key: 'detailed', icon: 'search-outline', label: 'Detailed explanations' },
   ];
 
   return (

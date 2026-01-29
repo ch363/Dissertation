@@ -1,6 +1,7 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState, useRef } from 'react';
-import { ActivityIndicator, View, Text, Animated, Dimensions } from 'react-native';
+import { View, Text, Animated, Dimensions } from 'react-native';
+import { LoadingScreen } from '@/components/ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SessionRunner } from '@/features/session/components/SessionRunner';
@@ -212,7 +213,15 @@ export default function SessionRunnerScreen(props?: Props) {
       } catch (err: any) {
         console.error('Failed to load session plan:', err);
         if (!cancelled) {
-          setError(err?.message || 'Failed to load session');
+          const msg = err?.message ?? '';
+          const needsOnboarding =
+            typeof msg === 'string' &&
+            (msg.includes('does not have onboarding data') || msg.includes('must complete onboarding'));
+          if (needsOnboarding) {
+            router.replace('/(onboarding)/welcome');
+            return;
+          }
+          setError(msg || 'Failed to load session');
         }
       } finally {
         if (!cancelled) {
@@ -256,15 +265,16 @@ export default function SessionRunnerScreen(props?: Props) {
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Stack.Screen options={{ headerShown: false }} />
       {loading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.colors.primary} />
-        </View>
+        <LoadingScreen
+          title="Preparing your session..."
+          subtitle="Please wait while we load your exercises."
+          safeArea={false}
+        />
       ) : error || !plan ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <Text style={{ color: theme.colors.error, marginBottom: 10 }}>
             {error || 'Failed to load session'}
           </Text>
-          <ActivityIndicator color={theme.colors.error} />
         </View>
       ) : (
         <Animated.View

@@ -195,11 +195,104 @@ export class MeService {
     // Calculate streak using progress service
     const streak = await this.progressService.calculateStreak(userId);
 
+    // Calculate weekly XP (last 7 days)
+    const weekAgo = new Date(now);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    
+    const weeklyXpProgress = await this.prisma.userKnowledgeLevelProgress.aggregate({
+      where: {
+        userId,
+        createdAt: {
+          gte: weekAgo,
+        },
+      },
+      _sum: {
+        value: true,
+      },
+    });
+
+    const weeklyXP = weeklyXpProgress._sum.value || 0;
+
+    // Calculate previous week XP (8-14 days ago) for comparison
+    const twoWeeksAgo = new Date(now);
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+
+    const previousWeekXpProgress = await this.prisma.userKnowledgeLevelProgress.aggregate({
+      where: {
+        userId,
+        createdAt: {
+          gte: twoWeeksAgo,
+          lt: weekAgo,
+        },
+      },
+      _sum: {
+        value: true,
+      },
+    });
+
+    const previousWeekXP = previousWeekXpProgress._sum.value || 0;
+
+    // Calculate weekly XP change percentage
+    let weeklyXPChange = 0;
+    if (previousWeekXP > 0) {
+      weeklyXPChange = Math.round(((weeklyXP - previousWeekXP) / previousWeekXP) * 100);
+    } else if (weeklyXP > 0) {
+      weeklyXPChange = 100; // If there was no XP last week but there is this week, show 100% increase
+    }
+
+    // Calculate accuracy percentage based on grammatical correctness (last 30 days)
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const recentPerformances = await this.prisma.userQuestionPerformance.findMany({
+      where: {
+        userId,
+        createdAt: {
+          gte: thirtyDaysAgo,
+        },
+        percentageAccuracy: {
+          not: null, // Only include attempts that have grammatical accuracy scores
+        },
+      },
+      select: {
+        percentageAccuracy: true,
+      },
+    });
+
+    let accuracyPercentage = 0;
+    if (recentPerformances.length > 0) {
+      const totalAccuracy = recentPerformances.reduce((sum, perf) => sum + (perf.percentageAccuracy || 0), 0);
+      accuracyPercentage = Math.round(totalAccuracy / recentPerformances.length);
+    }
+
+    // Calculate total study time (last 30 days, in minutes)
+    const studyTimePerformances = await this.prisma.userQuestionPerformance.findMany({
+      where: {
+        userId,
+        createdAt: {
+          gte: thirtyDaysAgo,
+        },
+      },
+      select: {
+        timeToComplete: true,
+      },
+    });
+
+    const totalStudyTimeMs = studyTimePerformances.reduce((sum, perf) => {
+      return sum + (perf.timeToComplete || 0);
+    }, 0);
+
+    const studyTimeMinutes = Math.round(totalStudyTimeMs / (1000 * 60));
+
     return {
       dueReviewCount,
       activeLessonCount,
       xpTotal,
       streak,
+      weeklyXP,
+      weeklyXPChange,
+      accuracyPercentage,
+      studyTimeMinutes,
     };
   }
 
@@ -406,11 +499,53 @@ export class MeService {
       },
     });
 
-    return masteryRecords.map((record) => ({
-      skillTag: record.skillTag,
-      masteryProbability: record.masteryProbability,
-      lastUpdated: record.lastUpdated,
-    }));
+    // Get all question performances to calculate mastered/total counts per skill
+    const performances = await this.prisma.userQuestionPerformance.findMany({
+      where: { userId },
+      include: {
+        question: {
+          include: {
+            skillTags: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Group by skill tag and count mastered (score >= 0.8) vs total
+    const skillStats = new Map<string, { mastered: number; total: number }>();
+    
+    performances.forEach((perf) => {
+      perf.question.skillTags.forEach((skill) => {
+        const tag = skill.name;
+        if (!skillStats.has(tag)) {
+          skillStats.set(tag, { mastered: 0, total: 0 });
+        }
+        const stats = skillStats.get(tag)!;
+        stats.total++;
+        // Consider mastered if score >= 0.8
+        if (perf.score && perf.score >= 0.8) {
+          stats.mastered++;
+        }
+      });
+    });
+
+    // Merge mastery records with skill stats
+    return masteryRecords.map((record) => {
+      const stats = skillStats.get(record.skillTag) || { mastered: 0, total: 0 };
+      return {
+        skillType: record.skillTag,
+        skillTag: record.skillTag,
+        masteryProbability: record.masteryProbability,
+        averageMastery: record.masteryProbability,
+        masteredCount: stats.mastered,
+        totalCount: stats.total,
+        lastUpdated: record.lastUpdated,
+      };
+    });
   }
 
   async getRecent(userId: string) {

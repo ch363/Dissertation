@@ -1,7 +1,8 @@
 import { useRouter, useSegments } from 'expo-router';
 import React, { useEffect, useMemo, useRef } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
+import { LoadingScreen } from '@/components/ui';
 import { resolvePostAuthDestination } from '@/features/auth/flows/resolvePostAuthDestination';
 import { useAuth } from '@/services/auth/AuthProvider';
 import { isPublicRootSegment, routes } from '@/services/navigation/routes';
@@ -47,22 +48,20 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // For index route (app/index), redirect authenticated users to home
-      // Use requestAnimationFrame to ensure router is mounted before navigating
+      // For index route (app/index), resolve destination: home if onboarding done, else onboarding
       if (isIndexRoute) {
         redirectingRef.current = true;
-        // Use requestAnimationFrame to ensure the router is ready
         requestAnimationFrame(() => {
-          // Double RAF to ensure layout is complete
-          requestAnimationFrame(() => {
+          requestAnimationFrame(async () => {
             try {
-              router.replace(routes.tabs.home);
+              const dest = await resolvePostAuthDestination(session.user.id);
+              if (dest) router.replace(dest);
             } catch (err: any) {
-              // If navigation fails (router not ready), retry after a delay
               if (err?.message?.includes('before mounting')) {
-                setTimeout(() => {
+                setTimeout(async () => {
                   try {
-                    router.replace(routes.tabs.home);
+                    const dest = await resolvePostAuthDestination(session.user.id);
+                    if (dest) router.replace(dest);
                   } catch (retryErr) {
                     console.error('RouteGuard: Retry navigation failed', retryErr);
                     redirectingRef.current = false;
@@ -127,9 +126,11 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator color={theme.colors.primary} />
-      </View>
+      <LoadingScreen
+        title="Checking session..."
+        subtitle="Please wait while we confirm your account."
+        safeArea={true}
+      />
     );
   }
 

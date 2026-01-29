@@ -7,6 +7,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { routeBuilders } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 
+const TROPHY_ORANGE = '#E85D04';
+const TROPHY_GLOW = 'rgba(232, 93, 4, 0.25)';
+
 export default function CompletionScreen() {
   const params = useLocalSearchParams<{ 
     sessionId?: string; 
@@ -49,9 +52,16 @@ export default function CompletionScreen() {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.card}>
+          <Text style={styles.screenLabel}>Completion</Text>
           <View style={styles.header}>
-            <Ionicons name="trophy" size={64} color={theme.colors.primary} />
-            <Text style={styles.title}>Session Complete!</Text>
+            <View style={styles.trophyWrapper}>
+              <View style={styles.trophyGlow} />
+              <View style={styles.trophyCircle}>
+                <Ionicons name="trophy" size={72} color="#FFFFFF" />
+              </View>
+            </View>
+            <Text style={styles.titleLine1}>Session</Text>
+            <Text style={styles.titleLine2}>Complete!</Text>
             <Text style={styles.subtitle}>
               Great work! Here's what you accomplished:
             </Text>
@@ -108,15 +118,49 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 6 },
   },
+  screenLabel: {
+    fontFamily: theme.typography.regular,
+    fontSize: 14,
+    color: theme.colors.mutedText,
+    textAlign: 'center',
+    marginBottom: theme.spacing.sm,
+  },
   header: {
     alignItems: 'center',
     gap: theme.spacing.md,
   },
-  title: {
+  trophyWrapper: {
+    width: 140,
+    height: 140,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  trophyGlow: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 70,
+    backgroundColor: TROPHY_GLOW,
+  },
+  trophyCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: TROPHY_ORANGE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleLine1: {
     fontFamily: theme.typography.bold,
-    fontSize: 28,
+    fontSize: 26,
     color: theme.colors.text,
     textAlign: 'center',
+  },
+  titleLine2: {
+    fontFamily: theme.typography.bold,
+    fontSize: 32,
+    color: theme.colors.text,
+    textAlign: 'center',
+    marginTop: -4,
   },
   subtitle: {
     fontFamily: theme.typography.regular,

@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { LoadingScreen } from '@/components/ui';
 import {
   getSupabaseConfigStatus,
   initSupabaseClient,
@@ -45,12 +46,10 @@ export function SupabaseConfigGate({ children }: { children: React.ReactNode }) 
   const body = useMemo(() => {
     if (status.status === 'pending') {
       return (
-        <View style={styles.center}>
-          <ActivityIndicator color={theme.colors.primary} size="small" />
-          <Text style={[styles.message, { color: theme.colors.text, marginTop: theme.spacing.sm }]}>
-            Checking Supabase configuration…
-          </Text>
-        </View>
+        <LoadingScreen
+          title="Checking configuration..."
+          subtitle="Please wait while we verify your connection."
+        />
       );
     }
 

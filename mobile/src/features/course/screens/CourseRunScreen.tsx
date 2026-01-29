@@ -1,6 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
 import React, { useState, useEffect } from 'react';
-import { ActivityIndicator, View, Text } from 'react-native';
+import { View, Text } from 'react-native';
+import { LoadingScreen } from '@/components/ui';
 
 import SessionRunnerScreen from '@/features/session/screens/SessionRunnerScreen';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
@@ -50,9 +51,11 @@ export default function CourseRun() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={theme.colors.primary} />
-      </View>
+      <LoadingScreen
+        title="Loading course..."
+        subtitle="Please wait while we load your first lesson."
+        safeArea={false}
+      />
     );
   }
 

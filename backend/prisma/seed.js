@@ -115,18 +115,27 @@ async function main() {
   console.log('🌱 Starting seed (Question + QuestionVariant schema)...');
 
   // 1) Basics module + lessons (Greetings now has 3 lessons total)
+  // Cover image: student studying (Unsplash) – URL stored in DB only
+  const MODULE_IMAGES = {
+    basics:
+      'https://images.unsplash.com/photo-1596247290824-e9f12b8c574f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
+    travel:
+      'https://images.unsplash.com/photo-1619467416348-6a782839e95f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080',
+  };
   const module = await prisma.module.upsert({
     where: { id: SEED_UUIDS.module },
     update: {
       title: 'Basics',
       description: 'Essential Italian phrases and greetings for beginners',
-      imageUrl: 'https://example.com/images/italian-basics.jpg',
+      imageUrl: MODULE_IMAGES.basics,
+      category: 'Getting Started',
     },
     create: {
       id: SEED_UUIDS.module,
       title: 'Basics',
       description: 'Essential Italian phrases and greetings for beginners',
-      imageUrl: 'https://example.com/images/italian-basics.jpg',
+      imageUrl: MODULE_IMAGES.basics,
+      category: 'Getting Started',
     },
   });
   console.log('✅ Module created/updated:', module.title);
@@ -616,18 +625,21 @@ async function main() {
   console.log('✅ Questions + variants created/updated (Basics)');
 
   // 4) Travel module + 3 lessons
+  // Cover image: travel & adventure (Unsplash) – URL stored in DB only
   const travelModule = await prisma.module.upsert({
     where: { id: SEED_UUIDS.moduleTravel },
     update: {
       title: 'Travel',
       description: 'Practical phrases for getting around, hotels, and restaurants',
-      imageUrl: 'https://example.com/images/travel.jpg',
+      imageUrl: MODULE_IMAGES.travel,
+      category: 'Topics',
     },
     create: {
       id: SEED_UUIDS.moduleTravel,
       title: 'Travel',
       description: 'Practical phrases for getting around, hotels, and restaurants',
-      imageUrl: 'https://example.com/images/travel.jpg',
+      imageUrl: MODULE_IMAGES.travel,
+      category: 'Topics',
     },
   });
   console.log('✅ Module created/updated:', travelModule.title);

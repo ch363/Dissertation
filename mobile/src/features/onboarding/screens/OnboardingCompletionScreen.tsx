@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, ActivityIndicator, Alert } from 'react-native';
 
+import { LoadingScreen } from '@/components/ui';
 import { getCurrentUser } from '@/services/api/auth';
 import { saveOnboarding } from '@/services/api/onboarding';
 import { PrimaryButton } from '@/components/onboarding/_components';
@@ -84,6 +85,26 @@ export default function OnboardingCompletion() {
     // Removed validation for incomplete steps - all fields are optional, skipped steps are valid
   }, [answers, hasSaved]);
 
+  async function saveWithRetry(
+    userId: string,
+    maxAttempts = 3,
+  ): Promise<void> {
+    let lastError: Error | null = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await saveOnboarding(userId, answers);
+        return;
+      } catch (e: any) {
+        lastError = e;
+        console.warn(`OnboardingCompletion: Save attempt ${attempt}/${maxAttempts} failed`, e?.message);
+        if (attempt < maxAttempts) {
+          await new Promise((r) => setTimeout(r, 1000 * attempt));
+        }
+      }
+    }
+    throw lastError ?? new Error('Save failed after retries');
+  }
+
   async function onContinue() {
     try {
       setSaving(true);
@@ -93,52 +114,41 @@ export default function OnboardingCompletion() {
       }
 
       // All onboarding fields are optional - skipped steps are valid
-      // Save whatever answers we have (including skipped/null values)
-      await saveOnboarding(user.id, answers);
+      await saveWithRetry(user.id);
       console.log('OnboardingCompletion: Successfully saved onboarding');
-      
-      setHasSaved(true); // Mark as saved before reset to prevent useEffect redirect
+
+      setHasSaved(true);
       reset();
 
-      // Small delay to ensure backend has processed the save
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // Navigate to home with error handling
       try {
         console.log('OnboardingCompletion: Navigating to home');
         router.replace(routes.tabs.home);
       } catch (navError: any) {
         console.error('OnboardingCompletion: Navigation error', navError);
-        // Fallback: try navigating to root and let RouteGuard handle it
         router.replace('/');
       }
     } catch (e: any) {
       console.error('OnboardingCompletion: Error saving onboarding', e);
-      Alert.alert(
-        'Save failed',
-        e?.message || 'Could not save your onboarding yet. We will retry in the background.',
-        [
-          {
-            text: 'Try Again',
-            onPress: () => {
-              // Retry saving
-              onContinue();
-            },
+      const message =
+        e?.message ||
+        'Could not save. Check your connection and that the backend is running.';
+      const buttons = [
+        { text: 'Try Again', onPress: () => onContinue() },
+        {
+          text: 'Continue Anyway',
+          style: 'cancel' as const,
+          onPress: () => {
+            try {
+              router.replace(routes.tabs.home);
+            } catch {
+              router.replace('/');
+            }
           },
-          {
-            text: 'Continue Anyway',
-            style: 'cancel',
-            onPress: () => {
-              // Navigate to home even if save failed
-              try {
-                router.replace(routes.tabs.home);
-              } catch {
-                router.replace('/');
-              }
-            },
-          },
-        ],
-      );
+        },
+      ];
+      Alert.alert('Save failed', message, buttons);
     } finally {
       setSaving(false);
     }
@@ -149,9 +159,11 @@ export default function OnboardingCompletion() {
   const hasAnswers = answers && Object.keys(answers).length > 0;
   if (!hasAnswers && !hasSaved) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator color={theme.colors.primary} />
-      </View>
+      <LoadingScreen
+        title="Loading..."
+        subtitle="Please wait while we load your setup."
+        safeArea={false}
+      />
     );
   }
 

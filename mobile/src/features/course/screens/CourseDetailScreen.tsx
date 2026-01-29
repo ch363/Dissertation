@@ -1,6 +1,7 @@
-import { useLocalSearchParams, router, useNavigation } from 'expo-router';
-import { useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, ScrollView } from 'react-native';
+import { useLocalSearchParams, router } from 'expo-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, ScrollView, SafeAreaView } from 'react-native';
+import { LoadingScreen } from '@/components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -15,7 +16,7 @@ import { preloadSessionPlan } from '@/services/api/session-plan-cache';
 import { getUserLessons, type UserLessonProgress } from '@/services/api/progress';
 import { LessonMicroProgress } from '@/components/learn/LessonMicroProgress';
 import { buildLessonOutcome } from '@/features/learn/utils/lessonOutcome';
-import { BreadcrumbTitle } from '@/components/navigation';
+import { ScreenHeader } from '@/components/navigation';
 import { FirstLessonNudge, ModuleCompleteBanner, OfflineNotice } from '@/components/course';
 
 type PrimaryAction =
@@ -27,7 +28,7 @@ type PrimaryAction =
     }
   | {
       kind: 'start';
-      label: 'Start lesson';
+      label: 'Start lessons';
       lessonId: string;
       helperText?: string;
     };
@@ -46,7 +47,6 @@ export default function CourseDetail() {
   const [error, setError] = useState<string | null>(null);
   const [lessonsLoadError, setLessonsLoadError] = useState<string | null>(null);
 
-  const navigation = useNavigation();
   const outcomeRequestsRef = useRef(new Set<string>());
 
   const preloadLessonOutcomes = (lessonsData: Lesson[]) => {
@@ -111,17 +111,15 @@ export default function CourseDetail() {
           setSuggestedLessonId(first?.lesson?.id ?? null);
           setSuggestedLessonTitle(first?.lesson?.title ?? null);
           
-          // Preload all lesson session plans in the background
-          // This happens silently while user views the lesson list
-          // Stagger the requests slightly to avoid overwhelming the network
-          lessonsData.forEach((lesson, index) => {
-            // Small delay to stagger requests (50ms between each)
+          // Preload session plans for a limited set of lessons to avoid timeouts
+          // (backend can be slow under many concurrent session-plan requests)
+          const lessonsToPreload = lessonsData.slice(0, 5);
+          lessonsToPreload.forEach((lesson, index) => {
             setTimeout(() => {
-              preloadSessionPlan(lesson.id).catch((error) => {
-                // Silently fail - preloading is best effort
-                console.debug('Preload failed for lesson', lesson.id, '(non-critical):', error);
+              preloadSessionPlan(lesson.id).catch(() => {
+                // Best-effort; failure already logged in session-plan-cache
               });
-            }, index * 50);
+            }, index * 100);
           });
 
           // Best-effort: fetch lesson teachings to generate a motivating outcome line.
@@ -152,34 +150,6 @@ export default function CourseDetail() {
     loadModule();
   }, [slug]);
 
-  // Update navigation title and add home button when module is loaded
-  useLayoutEffect(() => {
-    if (module) {
-      const handleHomePress = () => {
-        // Dismiss all modals/stacks to reveal the home screen underneath
-        router.dismissAll();
-        // Navigate to home - this will slide the current screen right, revealing home underneath
-        // Using navigate instead of replace to get the stack animation
-        router.navigate(routes.tabs.home);
-      };
-
-      navigation.setOptions({
-        headerTitle: () => <BreadcrumbTitle parent="Modules" current={module.title} />,
-        headerRight: () => (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Home"
-            onPress={handleHomePress}
-            hitSlop={12}
-            style={styles.homeButton}
-          >
-            <Ionicons name="home" size={22} color={appTheme.colors.mutedText} accessible={false} importantForAccessibility="no" />
-          </Pressable>
-        ),
-      });
-    }
-  }, [module, navigation, appTheme.colors.mutedText, router]);
-
   // Use module title and description for the header
   const displayTitle = module?.title ?? '';
   const displayDescription = module?.description || 'A tailored course based on your onboarding preferences.';
@@ -200,6 +170,20 @@ export default function CourseDetail() {
       return total > 0 && completed >= total;
     });
   }, [lessons, progressByLessonId]);
+
+  const completedLessonsCount = useMemo(() => {
+    return lessons.filter((lesson) => {
+      const p = progressByLessonId.get(lesson.id);
+      const total = p?.totalTeachings ?? lesson.numberOfItems ?? 0;
+      const completed = p?.completedTeachings ?? 0;
+      return total > 0 && completed >= total;
+    }).length;
+  }, [lessons, progressByLessonId]);
+
+  const lessonsCompleteLabel =
+    lessons.length > 0
+      ? `${completedLessonsCount}/${lessons.length} ${lessons.length === 1 ? 'lesson' : 'lessons'} complete`
+      : null;
 
   const isFirstEverLesson = useMemo(() => {
     // “First-ever lesson” = no progress recorded at all, or everything is at 0.
@@ -238,15 +222,16 @@ export default function CourseDetail() {
       };
     }
 
-    // Continue (module-only) if user's recent lesson is in this module and incomplete
+    // Continue (module-only) if user's recent lesson is in this module and has partial progress (not 0, not complete)
     const recentLesson = recentActivity?.recentLesson ?? null;
     const isRecentInThisModule = recentLesson?.lesson?.module?.id === moduleId;
-    const isIncomplete =
+    const hasPartialProgress =
       typeof recentLesson?.completedTeachings === 'number' &&
       typeof recentLesson?.totalTeachings === 'number' &&
+      recentLesson.completedTeachings > 0 &&
       recentLesson.completedTeachings < recentLesson.totalTeachings;
 
-    if (isRecentInThisModule && isIncomplete && recentLesson?.lesson?.id) {
+    if (isRecentInThisModule && hasPartialProgress && recentLesson?.lesson?.id) {
       const helperText =
         typeof recentLesson.completedTeachings === 'number' && typeof recentLesson.totalTeachings === 'number'
           ? `${recentLesson.completedTeachings}/${recentLesson.totalTeachings} complete`
@@ -262,7 +247,7 @@ export default function CourseDetail() {
     // Start recommended lesson (module-scoped suggestions), else fallback to first lesson in list
     const startLessonId = suggestedLessonId ?? lessons[0]?.id ?? null;
     if (!startLessonId) return null;
-    return { kind: 'start', label: 'Start lesson', lessonId: startLessonId };
+    return { kind: 'start', label: 'Start lessons', lessonId: startLessonId };
   }, [lessons, module?.id, recentActivity, suggestedLessonId, userProgress]);
 
   const recommendedLessonTitle = useMemo(() => {
@@ -316,59 +301,78 @@ export default function CourseDetail() {
   // IMPORTANT: Hooks must run before any early returns.
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: appTheme.colors.background }]}>
-        <ActivityIndicator size="large" color={appTheme.colors.primary} />
-      </View>
+      <LoadingScreen
+        title="Loading course details..."
+        subtitle="Please wait while we load this course."
+      />
     );
   }
 
   if (error || !module) {
     return (
-      <View style={[styles.container, { backgroundColor: appTheme.colors.background }]}>
-        <Text style={[styles.errorText, { color: appTheme.colors.error }]} accessibilityRole="alert">
-          {error || 'Course not found'}
-        </Text>
-      </View>
+      <SafeAreaView style={[styles.container, { backgroundColor: appTheme.colors.background }]}>
+        <ScreenHeader
+          title="Course"
+          subtitle="Unable to load course"
+          icon="book-outline"
+          label="Learning"
+          showHome
+        />
+        <View style={styles.errorContainer}>
+          <Text style={[styles.errorText, { color: appTheme.colors.error }]} accessibilityRole="alert">
+            {error || 'Course not found'}
+          </Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView 
-      style={[styles.container, { backgroundColor: appTheme.colors.background }]}
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header Section */}
+    <SafeAreaView style={[styles.container, { backgroundColor: appTheme.colors.background }]}>
+      <ScreenHeader
+        title={module.title}
+        subtitle={`${lessonsCompleteLabel || 'Start your learning journey'}`}
+        icon="book-outline"
+        label="Modules"
+        showHome
+      />
+      <ScrollView 
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+      {/* Module overview – icon, title, info pills */}
       <View style={styles.headerSection}>
-        <View style={[styles.iconContainer, { backgroundColor: appTheme.colors.primary + '15' }]}>
-          <Ionicons name="book" size={48} color={appTheme.colors.primary} accessible={false} importantForAccessibility="no" />
+        <View style={[styles.iconContainer, { backgroundColor: appTheme.colors.primary }]}>
+          <Ionicons name="book-outline" size={48} color="#FFFFFF" accessible={false} importantForAccessibility="no" />
         </View>
         <Text style={[styles.title, { color: appTheme.colors.text }]} accessibilityRole="header">
           {displayTitle}
         </Text>
+        {lessons.length > 0 && (
+          <View style={styles.infoPillsRow}>
+            <View style={[styles.infoPill, { backgroundColor: appTheme.colors.card, borderColor: appTheme.colors.border }]}>
+              <Ionicons name="time-outline" size={18} color={appTheme.colors.text} accessible={false} importantForAccessibility="no" />
+              <Text style={[styles.infoPillText, { color: appTheme.colors.text }]}>
+                ~{Math.ceil(totalItems * 1.5)} min
+              </Text>
+            </View>
+            <View style={[styles.infoPill, { backgroundColor: appTheme.colors.card, borderColor: appTheme.colors.border }]}>
+              <Ionicons name="book-outline" size={18} color={appTheme.colors.text} accessible={false} importantForAccessibility="no" />
+              <Text style={[styles.infoPillText, { color: appTheme.colors.text }]}>
+                {totalItems} {totalItems === 1 ? 'exercise' : 'exercises'}
+              </Text>
+            </View>
+          </View>
+        )}
+      </View>
+
+      {/* Module description */}
+      {displayDescription ? (
         <Text style={[styles.subtitle, { color: appTheme.colors.mutedText }]}>
           {displayDescription}
         </Text>
-      </View>
-
-      {/* Stats Section */}
-      {lessons.length > 0 && (
-        <View style={[styles.statsCard, { backgroundColor: appTheme.colors.card }]}>
-          <View style={styles.statItem}>
-            <Ionicons name="list" size={20} color={appTheme.colors.primary} accessible={false} importantForAccessibility="no" />
-            <Text style={[styles.statText, { color: appTheme.colors.text }]}>
-              {lessons.length} {lessons.length === 1 ? 'lesson' : 'lessons'}
-            </Text>
-          </View>
-          <View style={[styles.statDivider, { backgroundColor: appTheme.colors.border }]} />
-          <View style={styles.statItem}>
-            <Ionicons name="time-outline" size={20} color={appTheme.colors.primary} accessible={false} importantForAccessibility="no" />
-            <Text style={[styles.statText, { color: appTheme.colors.text }]}>
-              ~{Math.ceil(totalItems * 1.5)} min
-            </Text>
-          </View>
-        </View>
-      )}
+      ) : null}
 
       {/* Future-proof empty states */}
       {moduleCompleted ? (
@@ -426,9 +430,10 @@ export default function CourseDetail() {
                 {recommendedLessonTitle}
               </Text>
             </View>
-          ) : primaryAction.helperText ? (
+          ) : null}
+          {lessonsCompleteLabel ? (
             <Text style={[styles.primaryCtaHelper, { color: appTheme.colors.mutedText }]}>
-              {primaryAction.helperText}
+              {lessonsCompleteLabel}
             </Text>
           ) : null}
         </View>
@@ -518,6 +523,7 @@ export default function CourseDetail() {
         </View>
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -529,27 +535,55 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  scrollContainer: {
+    flex: 1,
+  },
   scrollContent: {
     padding: theme.spacing.lg,
     paddingBottom: theme.spacing.xl,
   },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.xl,
+  },
   headerSection: {
     alignItems: 'center',
-    marginBottom: theme.spacing.xl + theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
   },
   iconContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 88,
+    height: 88,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: theme.spacing.md,
   },
   title: {
     fontFamily: theme.typography.bold,
-    fontSize: 32,
-    marginBottom: theme.spacing.sm,
+    fontSize: 28,
+    marginBottom: theme.spacing.md,
     textAlign: 'center',
+  },
+  infoPillsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+  },
+  infoPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  infoPillText: {
+    fontFamily: theme.typography.regular,
+    fontSize: 15,
   },
   subtitle: {
     fontFamily: theme.typography.regular,
@@ -557,32 +591,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     textAlign: 'center',
     paddingHorizontal: theme.spacing.md,
-  },
-  statsCard: {
-    flexDirection: 'row',
-    padding: theme.spacing.md,
-    borderRadius: theme.radius.md,
     marginBottom: theme.spacing.xl,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  statItem: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.xs,
-  },
-  statDivider: {
-    width: 1,
-    marginHorizontal: theme.spacing.md,
-  },
-  statText: {
-    fontFamily: theme.typography.semiBold,
-    fontSize: 14,
   },
   primaryActionSection: {
     width: '100%',
@@ -719,13 +728,5 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.regular,
     fontSize: 16,
     textAlign: 'center',
-  },
-  homeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: theme.spacing.sm,
   },
 });

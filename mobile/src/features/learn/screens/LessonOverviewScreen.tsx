@@ -1,11 +1,10 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { ScrollView } from '@/components/ui';
-
+import { LoadingScreen, ScrollView } from '@/components/ui';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 import { getLesson, getLessonTeachings, type Lesson, type Teaching } from '@/services/api/modules';
@@ -67,11 +66,10 @@ export default function LessonOverviewScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.stateRow}>
-          <Text style={[styles.stateText, { color: theme.colors.mutedText }]}>Loading…</Text>
-        </View>
-      </SafeAreaView>
+      <LoadingScreen
+        title="Loading lesson..."
+        subtitle="Please wait while we load this lesson."
+      />
     );
   }
 

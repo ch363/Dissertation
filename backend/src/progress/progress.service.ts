@@ -1111,6 +1111,19 @@ export class ProgressService {
     });
   }
 
+  /**
+   * Normalize a string for answer comparison: lowercase, trim, strip to plain letters and spaces
+   * so punctuation/special chars (e.g. "..." or "?") do not cause false mismatches.
+   */
+  private normalizeAnswerForComparison(s: string): string {
+    return s
+      .toLowerCase()
+      .trim()
+      .replace(/[^\p{L}\s]/gu, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   async validateAnswer(
     userId: string,
     questionId: string,
@@ -1198,7 +1211,7 @@ export class ProgressService {
       dto.deliveryMethod === DELIVERY_METHOD.FLASHCARD
     ) {
       // Translation/Flashcard: validate against variant answer (preferred), fallback to teaching.userLanguageString.
-      const normalizedUserAnswer = dto.answer.toLowerCase().trim();
+      const normalizedUserAnswer = this.normalizeAnswerForComparison(dto.answer);
       const correctAnswerSource: string =
         typeof variantData?.answer === 'string' &&
         variantData.answer.trim().length > 0
@@ -1212,7 +1225,8 @@ export class ProgressService {
         .filter((ans) => ans.length > 0);
 
       isCorrect = correctAnswers.some(
-        (correctAns) => correctAns === normalizedUserAnswer,
+        (correctAns) =>
+          this.normalizeAnswerForComparison(correctAns) === normalizedUserAnswer,
       );
       score = isCorrect ? 100 : 0;
 
@@ -1225,7 +1239,7 @@ export class ProgressService {
       );
     } else if (dto.deliveryMethod === DELIVERY_METHOD.FILL_BLANK) {
       // Fill blank: compare against learningLanguageString
-      const normalizedUserAnswer = dto.answer.toLowerCase().trim();
+      const normalizedUserAnswer = this.normalizeAnswerForComparison(dto.answer);
       const correctAnswer = (
         typeof variantData?.answer === 'string' &&
         variantData.answer.trim().length > 0
@@ -1241,7 +1255,8 @@ export class ProgressService {
         .filter((ans) => ans.length > 0);
 
       isCorrect = correctAnswers.some(
-        (correctAns) => correctAns === normalizedUserAnswer,
+        (correctAns) =>
+          this.normalizeAnswerForComparison(correctAns) === normalizedUserAnswer,
       );
       score = isCorrect ? 100 : 0;
 
@@ -1256,8 +1271,8 @@ export class ProgressService {
       dto.deliveryMethod === DELIVERY_METHOD.SPEECH_TO_TEXT ||
       dto.deliveryMethod === DELIVERY_METHOD.TEXT_TO_SPEECH
     ) {
-      // Listening: compare against learningLanguageString
-      const normalizedUserAnswer = dto.answer.toLowerCase().trim();
+      // Listening (type what you hear): compare against learningLanguageString
+      const normalizedUserAnswer = this.normalizeAnswerForComparison(dto.answer);
       const correctAnswer = (
         typeof variantData?.answer === 'string' &&
         variantData.answer.trim().length > 0
@@ -1273,7 +1288,8 @@ export class ProgressService {
         .filter((ans) => ans.length > 0);
 
       isCorrect = correctAnswers.some(
-        (correctAns) => correctAns === normalizedUserAnswer,
+        (correctAns) =>
+          this.normalizeAnswerForComparison(correctAns) === normalizedUserAnswer,
       );
       score = isCorrect ? 100 : 0;
 

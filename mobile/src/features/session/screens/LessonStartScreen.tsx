@@ -1,9 +1,10 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useState, useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
+import { LoadingScreen } from '@/components/ui';
 import { makeSessionId } from '@/features/session/sessionBuilder';
 import { routeBuilders, routes } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
@@ -67,12 +68,10 @@ export default function LessonStartScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe}>
-        <View style={styles.card}>
-          <ActivityIndicator color={appTheme.colors.primary} />
-          <Text style={styles.subtitle}>Loading lesson...</Text>
-        </View>
-      </SafeAreaView>
+      <LoadingScreen
+        title="Loading lesson..."
+        subtitle="Please wait while we load your exercises."
+      />
     );
   }
 

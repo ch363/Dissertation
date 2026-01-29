@@ -5,6 +5,7 @@ export interface Module {
   title: string;
   description?: string | null;
   imageUrl?: string | null;
+  category?: string | null;
   createdAt: string;
   updatedAt: string;
 }

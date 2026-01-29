@@ -13,6 +13,8 @@ export type LearningPathItem = {
   totalSegments: number;
   ctaLabel?: string;
   route: string;
+  imageUrl?: string;
+  category?: string;
 };
 
 function clamp(n: number, min: number, max: number) {
@@ -99,6 +101,8 @@ export function buildLearningPathItems(args: {
       totalSegments,
       ctaLabel,
       route: routeBuilders.courseDetail(mod.id),
+      imageUrl: mod.imageUrl,
+      category: mod.description,
     };
   });
 }

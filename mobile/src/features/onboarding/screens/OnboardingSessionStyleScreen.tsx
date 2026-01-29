@@ -7,9 +7,9 @@ export default function SessionStyle() {
   const { answers, setAnswerAndSave } = useOnboarding();
 
   const options = [
-    { key: 'short', icon: '⏱️', label: 'Short bursts (5–10 min)' },
-    { key: 'focused', icon: '🎯', label: 'Focused blocks (20–30 min)' },
-    { key: 'deep', icon: '🧠', label: 'Deep sessions (45+ min)' },
+    { key: 'short', icon: 'time-outline', label: 'Short bursts (5–10 min)' },
+    { key: 'focused', icon: 'flag-outline', label: 'Focused blocks (20–30 min)' },
+    { key: 'deep', icon: 'fitness-outline', label: 'Deep sessions (45+ min)' },
   ];
 
   return (

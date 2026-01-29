@@ -22,6 +22,7 @@ export const routes = {
       speech: '/(tabs)/settings/speech' as const,
       session: '/(tabs)/settings/session' as const,
       sessionLesson: '/(tabs)/settings/session-lesson' as const,
+      help: '/(tabs)/settings/help' as const,
     },
   },
   auth: {

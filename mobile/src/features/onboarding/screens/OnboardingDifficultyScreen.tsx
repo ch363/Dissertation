@@ -7,9 +7,9 @@ export default function Difficulty() {
   const { answers, setAnswerAndSave } = useOnboarding();
 
   const options = [
-    { key: 'easy', icon: '🙂', label: 'Keep it easy' },
-    { key: 'balanced', icon: '⚖️', label: 'Balanced challenge' },
-    { key: 'hard', icon: '🔥', label: 'Push me hard' },
+    { key: 'easy', icon: 'happy-outline', label: 'Keep it easy' },
+    { key: 'balanced', icon: 'scale-outline', label: 'Balanced challenge' },
+    { key: 'hard', icon: 'flame-outline', label: 'Push me hard' },
   ];
 
   return (

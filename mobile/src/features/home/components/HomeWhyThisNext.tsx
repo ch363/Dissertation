@@ -2,6 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { OUTER_CARD_RADIUS, softShadow } from './homeStyles';
+
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
@@ -19,12 +21,11 @@ export function HomeWhyThisNext({ text }: Props) {
           {
             borderColor: theme.colors.border,
             backgroundColor: theme.colors.card,
-            shadowColor: '#0D1B2A',
           },
         ]}
       >
         <View style={styles.headerRow}>
-          <Ionicons name="sparkles" size={16} color={theme.colors.primary} />
+          <Ionicons name="sparkles" size={18} color={theme.colors.primary} />
           <Text style={[styles.title, { color: theme.colors.text }]}>Focus</Text>
         </View>
         <Text style={[styles.body, { color: theme.colors.mutedText }]}>{text}</Text>
@@ -35,27 +36,25 @@ export function HomeWhyThisNext({ text }: Props) {
 
 const styles = StyleSheet.create({
   section: {
-    gap: baseTheme.spacing.xs,
+    gap: baseTheme.spacing.sm,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   title: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 16,
+    fontFamily: baseTheme.typography.bold,
+    fontSize: 17,
+    letterSpacing: -0.2,
   },
   card: {
     borderWidth: 1,
-    borderRadius: 18,
-    paddingVertical: baseTheme.spacing.md,
-    paddingHorizontal: baseTheme.spacing.md,
+    borderRadius: OUTER_CARD_RADIUS,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
     gap: baseTheme.spacing.sm,
-    shadowOpacity: 0.06,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 4,
+    ...softShadow,
   },
   body: {
     fontFamily: baseTheme.typography.regular,
