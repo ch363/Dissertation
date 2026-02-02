@@ -201,6 +201,10 @@ export function createProfileScreenStyles(theme: Theme) {
   statCardPressed: {
     opacity: 0.9,
   },
+  statCardDisabled: {
+    opacity: 0.65,
+    borderColor: c.border,
+  },
   statCardContent: {
     flex: 1,
     flexDirection: 'row',

@@ -50,10 +50,12 @@ applyGlobalScrollDefaults();
 const globalAny = global as typeof globalThis & { ErrorUtils?: any };
 const originalGlobalHandler = globalAny.ErrorUtils?.getGlobalHandler?.();
 globalAny.ErrorUtils?.setGlobalHandler?.((error: any, isFatal: boolean) => {
+  const err = error as Error & { componentStack?: string };
   logger.error('GlobalError', error, {
     isFatal,
-    message: (error as any)?.message,
-    stack: (error as any)?.stack,
+    message: err?.message,
+    stack: err?.stack,
+    componentStack: err?.componentStack,
   });
   originalGlobalHandler?.(error, isFatal);
 });

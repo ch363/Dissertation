@@ -17,8 +17,12 @@ type Props = {
   onStart?: () => void;
 };
 
+/** Slightly lighter than dark theme card so the review card stands out. */
+const DARK_REVIEW_CARD_BG = '#1E2D42';
+
 export function ReviewSection({ dueCount, estimatedReviewMinutes: fromDashboard, onStart }: Props) {
-  const { theme } = useAppTheme();
+  const { theme, isDark } = useAppTheme();
+  const cardBg = isDark ? DARK_REVIEW_CARD_BG : theme.colors.card;
   const minutes =
     fromDashboard != null && fromDashboard > 0 ? fromDashboard : estimateReviewMinutes(dueCount);
   const isQuickSession = fromDashboard == null || fromDashboard <= 0;
@@ -39,7 +43,7 @@ export function ReviewSection({ dueCount, estimatedReviewMinutes: fromDashboard,
           style={({ pressed }) => [
             styles.card,
             {
-              backgroundColor: theme.colors.card,
+              backgroundColor: cardBg,
               opacity: dueCount === 0 ? 0.6 : pressed ? 0.95 : 1,
               transform: [{ scale: pressed ? 0.98 : 1 }],
               borderColor: theme.colors.border,

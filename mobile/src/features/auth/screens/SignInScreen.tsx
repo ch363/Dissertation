@@ -20,6 +20,7 @@ import {
   signInWithEmailPassword,
 } from '@/services/api/auth';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { theme as baseTheme } from '@/services/theme/tokens';
 import { announce } from '@/utils/a11y';
 import { createLogger } from '@/services/logging';
 
@@ -261,13 +262,13 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   container: {
     flexGrow: 1,
-    padding: theme.spacing.lg,
+    padding: baseTheme.spacing.lg,
     justifyContent: 'center',
   },
   card: {
     borderRadius: 14,
     borderWidth: 1,
-    padding: theme.spacing.lg,
+    padding: baseTheme.spacing.lg,
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 6,
@@ -278,48 +279,48 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     alignSelf: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: baseTheme.spacing.md,
   },
   title: {
-    fontFamily: theme.typography.bold,
+    fontFamily: baseTheme.typography.bold,
     fontSize: 22,
     textAlign: 'center',
   },
   subtitle: {
     textAlign: 'center',
-    marginBottom: theme.spacing.lg,
+    marginBottom: baseTheme.spacing.lg,
   },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: theme.spacing.md,
+    marginBottom: baseTheme.spacing.md,
   },
   divider: {
     flex: 1,
     height: 1,
   },
   dividerText: {
-    fontFamily: theme.typography.semiBold,
+    fontFamily: baseTheme.typography.semiBold,
   },
   inputLabel: {
-    fontFamily: theme.typography.semiBold,
-    marginBottom: theme.spacing.xs,
+    fontFamily: baseTheme.typography.semiBold,
+    marginBottom: baseTheme.spacing.xs,
   },
   input: {
-    borderRadius: theme.radius.md,
+    borderRadius: baseTheme.radius.md,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    marginBottom: theme.spacing.md,
+    marginBottom: baseTheme.spacing.md,
   },
   error: {
-    marginTop: theme.spacing.xs,
-    marginBottom: theme.spacing.xs,
+    marginTop: baseTheme.spacing.xs,
+    marginBottom: baseTheme.spacing.xs,
   },
   link: {
-    fontFamily: theme.typography.semiBold,
+    fontFamily: baseTheme.typography.semiBold,
     textAlign: 'center',
-    marginTop: theme.spacing.md,
+    marginTop: baseTheme.spacing.md,
   },
 });

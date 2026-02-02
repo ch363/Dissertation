@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -31,6 +32,7 @@ import {
 } from '@/services/preferences';
 import type { SessionDefaultMode } from '@/services/preferences';
 import type { OnboardingAnswers } from '@/types/onboarding';
+import type { Profile } from '@/services/api/profile';
 import { routes } from '@/services/navigation/routes';
 import { createLogger } from '@/services/logging';
 
@@ -51,7 +53,7 @@ const LEARNING_STYLE_OPTIONS = [
 const MEMORY_OPTIONS = [
   { key: 'spaced', label: 'Spaced repetition' },
   { key: 'mnemonics', label: 'Mnemonics & stories' },
-  { key: 'immersion', label: 'Context & immersion' },
+  { key: 'immersion', label: 'Context' },
   { key: 'writing', label: 'Rewriting & notes' },
 ];
 const DIFFICULTY_OPTIONS = [
@@ -72,7 +74,7 @@ const FEEDBACK_OPTIONS = [
 const SESSION_STYLE_OPTIONS = [
   { key: 'short', label: 'Short (5–10 min)' },
   { key: 'focused', label: 'Focused (20–30 min)' },
-  { key: 'deep', label: 'Deep (45+ min)' },
+  { key: 'deep', label: 'Deep dive' },
 ];
 const TONE_OPTIONS = [
   { key: 'friendly', label: 'Friendly' },
@@ -160,6 +162,7 @@ export default function EditProfileScreen() {
   const [sessionMode, setSessionMode] = useState<SessionDefaultMode>('mixed');
   const [timeBudgetSec, setTimeBudgetSec] = useState<number | null>(null);
   const [onboarding, setOnboarding] = useState<OnboardingAnswers>({});
+  const initialRef = useRef<{ name: string; adaptivity: boolean; sessionMode: SessionDefaultMode; timeBudgetSec: number | null; onboarding: OnboardingAnswers } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -171,9 +174,11 @@ export default function EditProfileScreen() {
         getSessionDefaultMode(),
         getSessionDefaultTimeBudgetSec(),
       ]);
-      const [profileRes, onboardingRes, adaptivityVal, modeVal, budgetVal] = results.map((r) =>
-        r.status === 'fulfilled' ? r.value : null,
-      );
+      const profileRes = results[0].status === 'fulfilled' ? (results[0].value as Profile | null) : null;
+      const onboardingRes = results[1].status === 'fulfilled' ? results[1].value : null;
+      const adaptivityVal = results[2].status === 'fulfilled' ? (results[2].value as boolean) : null;
+      const modeVal = results[3].status === 'fulfilled' ? (results[3].value as SessionDefaultMode) : null;
+      const budgetVal = results[4].status === 'fulfilled' ? (results[4].value as number | null) : null;
       if (profileRes) {
         setProfileId(profileRes.id);
         setName(profileRes.displayName || profileRes.name || '');
@@ -192,13 +197,24 @@ export default function EditProfileScreen() {
           setAvatarUrl(null);
         }
       }
+      let initialOnboarding: OnboardingAnswers = {};
       if (onboardingRes?.answers) {
         const raw = getRawAnswersFromResponse(onboardingRes.answers as Record<string, unknown>);
-        if (raw) setOnboarding(normalizeAnswers(raw));
+        if (raw) {
+          initialOnboarding = normalizeAnswers(raw);
+          setOnboarding(initialOnboarding);
+        }
       }
       if (adaptivityVal != null) setAdaptivity(adaptivityVal);
       if (modeVal != null) setSessionMode(modeVal);
       if (budgetVal != null) setTimeBudgetSec(budgetVal);
+      initialRef.current = {
+        name: profileRes?.displayName || profileRes?.name || '',
+        adaptivity: adaptivityVal ?? true,
+        sessionMode: modeVal ?? 'mixed',
+        timeBudgetSec: budgetVal ?? null,
+        onboarding: initialOnboarding,
+      };
     } finally {
       setLoading(false);
     }
@@ -212,16 +228,28 @@ export default function EditProfileScreen() {
     if (!profileId) return;
     setSaving(true);
     try {
-      const profileUpdates: { name?: string; avatarUrl?: string | null } = {};
+      const profileUpdates: { name?: string; avatarUrl?: string } = {};
       profileUpdates.name = name.trim() || undefined;
-      if (serverAvatarUrl !== undefined) profileUpdates.avatarUrl = serverAvatarUrl;
+      if (serverAvatarUrl !== undefined) profileUpdates.avatarUrl = serverAvatarUrl ?? undefined;
       await upsertMyProfile(profileUpdates);
       const user = await getCurrentUser();
       if (user) await saveOnboarding(user.id, onboarding);
       await setAdaptivityEnabled(adaptivity);
       await setSessionDefaultMode(sessionMode);
       await setSessionDefaultTimeBudgetSec(timeBudgetSec);
-      router.replace(routes.tabs.profile.index);
+
+      const initial = initialRef.current;
+      const parts: string[] = [];
+      if (initial && name.trim() !== initial.name) parts.push('name');
+      if (profileUpdates.avatarUrl !== undefined) parts.push('photo');
+      if (initial && adaptivity !== initial.adaptivity) parts.push('adaptive learning');
+      if (initial && sessionMode !== initial.sessionMode) parts.push('default session mode');
+      if (initial && timeBudgetSec !== initial.timeBudgetSec) parts.push('session length');
+      if (initial && JSON.stringify(onboarding) !== JSON.stringify(initial.onboarding)) parts.push('learning preferences');
+      const summary = parts.length > 0 ? parts.join(', ') : 'Your profile has been saved.';
+      Alert.alert('Profile updated', summary, [
+        { text: 'OK', onPress: () => router.replace(routes.tabs.profile.index) },
+      ]);
     } catch (e) {
       logger.error('Failed to save profile', e);
       Alert.alert('Error', 'Failed to save. Please try again.');
@@ -269,6 +297,15 @@ export default function EditProfileScreen() {
     setOnboarding((prev) => ({ ...prev, [key]: value }));
   }, []);
 
+  const initial = initialRef.current;
+  const hasChanges =
+    !!initial &&
+    (name !== initial.name ||
+      adaptivity !== initial.adaptivity ||
+      sessionMode !== initial.sessionMode ||
+      timeBudgetSec !== initial.timeBudgetSec ||
+      JSON.stringify(onboarding) !== JSON.stringify(initial.onboarding));
+
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
@@ -281,14 +318,15 @@ export default function EditProfileScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['top']}>
-      {/* Header */}
+      {/* Header – Figma: Cancel/Done blue, title 17px semibold */}
       <View
         style={{
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
-          paddingHorizontal: baseTheme.spacing.md,
+          paddingHorizontal: baseTheme.spacing.lg,
           paddingVertical: baseTheme.spacing.md,
+          backgroundColor: theme.colors.card,
           borderBottomWidth: 1,
           borderBottomColor: theme.colors.border,
         }}
@@ -296,26 +334,40 @@ export default function EditProfileScreen() {
         <Pressable
           onPress={() => router.back()}
           disabled={saving}
-          style={{ padding: baseTheme.spacing.xs, minWidth: 64 }}
+          style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: baseTheme.spacing.sm, minWidth: 64 }}
           accessibilityRole="button"
           accessibilityLabel="Cancel"
         >
-          <Text style={{ fontSize: 16, color: theme.colors.text }}>Cancel</Text>
+          <Text style={{ fontSize: 17, fontFamily: baseTheme.typography.regular, color: theme.colors.primary }}>
+            Cancel
+          </Text>
         </Pressable>
-        <Text style={{ fontSize: 18, fontFamily: baseTheme.typography.bold, color: theme.colors.text }}>
+        <Text style={{ fontSize: 17, fontFamily: baseTheme.typography.semiBold, color: theme.colors.text }}>
           Edit Profile
         </Text>
         <Pressable
           onPress={handleSave}
-          disabled={saving}
-          style={{ padding: baseTheme.spacing.xs, minWidth: 64, alignItems: 'flex-end' }}
+          disabled={saving || !hasChanges}
+          style={{
+            minHeight: 44,
+            justifyContent: 'center',
+            paddingHorizontal: baseTheme.spacing.sm,
+            minWidth: 64,
+            alignItems: 'flex-end',
+          }}
           accessibilityRole="button"
-          accessibilityLabel="Save"
+          accessibilityLabel={hasChanges ? 'Save' : 'Save disabled'}
         >
           {saving ? (
             <ActivityIndicator size="small" color={theme.colors.primary} />
           ) : (
-            <Text style={{ fontSize: 16, fontFamily: baseTheme.typography.semiBold, color: theme.colors.primary }}>
+            <Text
+              style={{
+                fontSize: 17,
+                fontFamily: baseTheme.typography.semiBold,
+                color: hasChanges ? theme.colors.primary : theme.colors.mutedText,
+              }}
+            >
               Done
             </Text>
           )}
@@ -327,7 +379,7 @@ export default function EditProfileScreen() {
         contentContainerStyle={{ padding: baseTheme.spacing.lg, paddingBottom: 48 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Profile: avatar + name */}
+        {/* Profile photo – Figma: 128×128, gradient placeholder, camera 44×44 */}
         <View style={{ marginBottom: baseTheme.spacing.xl }}>
           <View style={{ alignItems: 'center', marginBottom: baseTheme.spacing.lg }}>
             <Pressable
@@ -339,13 +391,15 @@ export default function EditProfileScreen() {
               {avatarUrl ? (
                 <Image source={{ uri: avatarUrl }} style={avatarStyle} />
               ) : (
-                <View
-                  style={[
-                    avatarStyle,
-                    { backgroundColor: theme.colors.border, justifyContent: 'center', alignItems: 'center' },
-                  ]}
-                >
-                  <Ionicons name="person" size={48} color={theme.colors.mutedText} />
+                <View style={[avatarStyle, { overflow: 'hidden' }]}>
+                  <LinearGradient
+                    colors={['#BFDBFE', '#C4B5FD']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+                  >
+                    <Ionicons name="person" size={64} color={theme.colors.primary} />
+                  </LinearGradient>
                 </View>
               )}
               <View
@@ -353,17 +407,22 @@ export default function EditProfileScreen() {
                   position: 'absolute',
                   bottom: 0,
                   right: 0,
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
                   backgroundColor: theme.colors.primary,
                   justifyContent: 'center',
                   alignItems: 'center',
-                  borderWidth: 3,
-                  borderColor: theme.colors.background,
+                  borderWidth: 4,
+                  borderColor: theme.colors.card,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 4,
+                  elevation: 3,
                 }}
               >
-                <Ionicons name="camera" size={18} color="#fff" />
+                <Ionicons name="camera" size={22} color={theme.colors.onPrimary} />
               </View>
             </Pressable>
             {avatarUrl && (
@@ -380,6 +439,8 @@ export default function EditProfileScreen() {
                 backgroundColor: theme.colors.card,
                 borderColor: theme.colors.border,
                 color: theme.colors.text,
+                minHeight: 44,
+                borderRadius: 12,
               },
             ]}
             value={name}
@@ -390,112 +451,145 @@ export default function EditProfileScreen() {
           />
         </View>
 
-        {/* Learning preferences (dynamics) */}
-        <View style={[sectionStyle, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+        {/* Learning preferences – Figma: card, subtitle, OptionChip style */}
+        <View style={[sectionStyle, { backgroundColor: theme.colors.card }]}>
           <Text style={[sectionTitleStyle, { color: theme.colors.text }]}>Learning preferences</Text>
-          <View style={rowStyle}>
-            <Text style={[rowLabelStyle, { color: theme.colors.text }]}>Adaptive learning</Text>
+          <Text style={[sectionSubtitleStyle, { color: theme.colors.mutedText, marginBottom: baseTheme.spacing.lg }]}>
+            Customize your learning experience
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: baseTheme.spacing.md }}>
+            <View style={{ flex: 1 }}>
+              <Text style={[rowLabelStyle, { color: theme.colors.text }]}>Adaptive learning</Text>
+              <Text style={[rowHintStyle, { color: theme.colors.mutedText }]}>
+                Adjusts difficulty and review timing to your progress
+              </Text>
+            </View>
             <Switch
               value={adaptivity}
               onValueChange={setAdaptivity}
               trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
               thumbColor="#fff"
+              style={{ flexShrink: 0 }}
             />
           </View>
-          <Text style={[rowHintStyle, { color: theme.colors.mutedText }]}>
-            Adjusts difficulty and review timing to your progress
-          </Text>
-          <View style={[rowStyle, { marginTop: baseTheme.spacing.md }]}>
-            <Text style={[rowLabelStyle, { color: theme.colors.text }]}>Default session mode</Text>
+          <View style={{ marginTop: baseTheme.spacing.lg }}>
+            <Text style={[rowLabelStyle, { color: theme.colors.text, marginBottom: baseTheme.spacing.sm }]}>
+              Default session mode
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {MODE_OPTIONS.map((opt) => {
+                const selected = sessionMode === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setSessionMode(opt.value)}
+                    style={{
+                      minHeight: chipMinHeight,
+                      paddingVertical: chipPaddingV,
+                      paddingHorizontal: chipPaddingH,
+                      borderRadius: chipBorderRadius,
+                      backgroundColor: selected ? theme.colors.primary : theme.colors.background,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: chipFontSize,
+                        fontFamily: baseTheme.typography.medium,
+                        color: selected ? theme.colors.onPrimary : theme.colors.text,
+                      }}
+                    >
+                      {opt.label}
+                    </Text>
+                    {selected && (
+                      <Ionicons name="checkmark" size={16} color={theme.colors.onPrimary} />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-            {MODE_OPTIONS.map((opt) => (
+          <View style={{ marginTop: baseTheme.spacing.lg }}>
+            <Text style={[rowLabelStyle, { color: theme.colors.text, marginBottom: baseTheme.spacing.sm }]}>
+              Session length
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              {[5, 10, 15, 20, 30].map((mins) => {
+                const sec = mins * 60;
+                const selected = timeBudgetSec === sec;
+                return (
+                  <Pressable
+                    key={mins}
+                    onPress={() => setTimeBudgetSec(sec)}
+                    style={{
+                      minHeight: chipMinHeight,
+                      paddingVertical: chipPaddingV,
+                      paddingHorizontal: chipPaddingH,
+                      borderRadius: chipBorderRadius,
+                      backgroundColor: selected ? theme.colors.primary : theme.colors.background,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: chipFontSize,
+                        fontFamily: baseTheme.typography.medium,
+                        color: selected ? theme.colors.onPrimary : theme.colors.text,
+                      }}
+                    >
+                      {mins} min
+                    </Text>
+                    {selected && (
+                      <Ionicons name="checkmark" size={16} color={theme.colors.onPrimary} />
+                    )}
+                  </Pressable>
+                );
+              })}
               <Pressable
-                key={opt.value}
-                onPress={() => setSessionMode(opt.value)}
+                onPress={() => setTimeBudgetSec(null)}
                 style={{
-                  flex: 1,
-                  paddingVertical: 10,
-                  borderRadius: baseTheme.radius.sm,
-                  backgroundColor: sessionMode === opt.value ? theme.colors.primary : theme.colors.background,
+                  minHeight: chipMinHeight,
+                  paddingVertical: chipPaddingV,
+                  paddingHorizontal: chipPaddingH,
+                  borderRadius: chipBorderRadius,
+                  backgroundColor: timeBudgetSec === null ? theme.colors.primary : theme.colors.background,
+                  flexDirection: 'row',
                   alignItems: 'center',
+                  gap: 8,
                 }}
               >
                 <Text
                   style={{
-                    fontSize: 13,
+                    fontSize: chipFontSize,
                     fontFamily: baseTheme.typography.medium,
-                    color: sessionMode === opt.value ? '#fff' : theme.colors.text,
+                    color: timeBudgetSec === null ? theme.colors.onPrimary : theme.colors.text,
                   }}
                 >
-                  {opt.label}
+                  No limit
                 </Text>
+                {timeBudgetSec === null && (
+                  <Ionicons name="checkmark" size={16} color={theme.colors.onPrimary} />
+                )}
               </Pressable>
-            ))}
+            </ScrollView>
           </View>
-          <View style={[rowStyle, { marginTop: baseTheme.spacing.md }]}>
-            <Text style={[rowLabelStyle, { color: theme.colors.text }]}>Session length (minutes)</Text>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 4 }}>
-            {[5, 10, 15, 20, 30].map((mins) => {
-              const sec = mins * 60;
-              const selected = timeBudgetSec === sec;
-              return (
-                <Pressable
-                  key={mins}
-                  onPress={() => setTimeBudgetSec(sec)}
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 14,
-                    borderRadius: baseTheme.radius.sm,
-                    backgroundColor: selected ? theme.colors.primary : theme.colors.background,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontFamily: baseTheme.typography.medium,
-                      color: selected ? '#fff' : theme.colors.text,
-                    }}
-                  >
-                    {mins}
-                  </Text>
-                </Pressable>
-              );
-            })}
-            <Pressable
-              onPress={() => setTimeBudgetSec(null)}
-              style={{
-                paddingVertical: 10,
-                paddingHorizontal: 14,
-                borderRadius: baseTheme.radius.sm,
-                backgroundColor: timeBudgetSec === null ? theme.colors.primary : theme.colors.background,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontFamily: baseTheme.typography.medium,
-                  color: timeBudgetSec === null ? '#fff' : theme.colors.text,
-                }}
-              >
-                No limit
-              </Text>
-            </Pressable>
-          </ScrollView>
           <Pressable
             onPress={() => router.push(routes.tabs.settings.session)}
-            style={{ marginTop: baseTheme.spacing.md }}
+            style={{ marginTop: baseTheme.spacing.lg }}
           >
             <Text style={{ fontSize: 14, color: theme.colors.primary }}>More session options →</Text>
           </Pressable>
         </View>
 
-        {/* Onboarding answers */}
-        <View style={[sectionStyle, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, marginTop: baseTheme.spacing.lg }]}>
+        {/* Your setup – Figma: card, subtitle, OptionChip style */}
+        <View style={[sectionStyle, { backgroundColor: theme.colors.card, marginTop: baseTheme.spacing.lg }]}>
           <Text style={[sectionTitleStyle, { color: theme.colors.text }]}>Your setup</Text>
-          <Text style={[rowHintStyle, { color: theme.colors.mutedText, marginBottom: baseTheme.spacing.md }]}>
-            These shape how content and sessions are tailored for you.
+          <Text style={[sectionSubtitleStyle, { color: theme.colors.mutedText, marginBottom: baseTheme.spacing.lg }]}>
+            These shape how content and sessions are tailored for you
           </Text>
 
           <SelectRow
@@ -507,7 +601,8 @@ export default function EditProfileScreen() {
           />
           <SelectRowMulti
             theme={theme}
-            label="Learning styles (up to 2)"
+            label="Learning styles"
+            helperText={`${(onboarding.learningStyles ?? []).length} of 2 selected`}
             options={LEARNING_STYLE_OPTIONS}
             selected={onboarding.learningStyles ?? []}
             max={2}
@@ -568,28 +663,36 @@ export default function EditProfileScreen() {
   );
 }
 
-const avatarStyle = { width: 120, height: 120, borderRadius: 60 };
-const labelStyle = { fontFamily: baseTheme.typography.semiBold, fontSize: 14, marginBottom: 8 };
+const avatarSize = 128;
+const avatarStyle = { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 };
+const labelStyle = { fontFamily: baseTheme.typography.medium, fontSize: 15, marginBottom: 8 };
 const inputStyle = {
   borderWidth: 1,
-  borderRadius: baseTheme.radius.md,
-  padding: baseTheme.spacing.md,
-  fontSize: 16,
+  borderRadius: 12,
+  paddingHorizontal: baseTheme.spacing.md,
+  paddingVertical: 12,
+  fontSize: 17,
   fontFamily: baseTheme.typography.regular,
 };
 const sectionStyle = {
-  borderRadius: baseTheme.radius.lg,
-  borderWidth: 1,
+  borderRadius: 16,
   padding: baseTheme.spacing.lg,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.05,
+  shadowRadius: 2,
+  elevation: 2,
 };
-const sectionTitleStyle = {
-  fontFamily: baseTheme.typography.bold,
-  fontSize: 18,
-  marginBottom: 4,
-};
+const sectionTitleStyle = { fontFamily: baseTheme.typography.semiBold, fontSize: 17, marginBottom: 4 };
+const sectionSubtitleStyle = { fontSize: 13, marginTop: 4, lineHeight: 20 };
 const rowStyle = { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' };
 const rowLabelStyle = { fontFamily: baseTheme.typography.medium, fontSize: 15 };
-const rowHintStyle = { fontSize: 12, marginTop: 4 };
+const rowHintStyle = { fontSize: 13, marginTop: 4, lineHeight: 20 };
+const chipMinHeight = 44;
+const chipPaddingH = 20;
+const chipPaddingV = 10;
+const chipBorderRadius = 12;
+const chipFontSize = 15;
 
 function SelectRow({
   theme,
@@ -605,8 +708,8 @@ function SelectRow({
   onSelect: (key: string | null) => void;
 }) {
   return (
-    <View style={{ marginBottom: baseTheme.spacing.md }}>
-      <Text style={[rowLabelStyle, { color: theme.colors.text, marginBottom: 6 }]}>{label}</Text>
+    <View style={{ marginBottom: baseTheme.spacing.lg }}>
+      <Text style={[rowLabelStyle, { color: theme.colors.text, marginBottom: baseTheme.spacing.sm }]}>{label}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
         {options.map((opt) => {
           const isSelected = selected === opt.key;
@@ -615,23 +718,28 @@ function SelectRow({
               key={opt.key}
               onPress={() => onSelect(isSelected ? null : opt.key)}
               style={{
-                paddingVertical: 10,
-                paddingHorizontal: 14,
-                borderRadius: baseTheme.radius.sm,
+                minHeight: chipMinHeight,
+                paddingVertical: chipPaddingV,
+                paddingHorizontal: chipPaddingH,
+                borderRadius: chipBorderRadius,
                 backgroundColor: isSelected ? theme.colors.primary : theme.colors.background,
-                borderWidth: 1,
-                borderColor: isSelected ? theme.colors.primary : theme.colors.border,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
               }}
             >
               <Text
                 style={{
-                  fontSize: 13,
+                  fontSize: chipFontSize,
                   fontFamily: baseTheme.typography.medium,
                   color: isSelected ? theme.colors.onPrimary : theme.colors.text,
                 }}
               >
                 {opt.label}
               </Text>
+              {isSelected && (
+                <Ionicons name="checkmark" size={16} color={theme.colors.onPrimary} />
+              )}
             </Pressable>
           );
         })}
@@ -643,6 +751,7 @@ function SelectRow({
 function SelectRowMulti({
   theme,
   label,
+  helperText,
   options,
   selected,
   max,
@@ -650,6 +759,7 @@ function SelectRowMulti({
 }: {
   theme: ReturnType<typeof useAppTheme>['theme'];
   label: string;
+  helperText?: string;
   options: { key: string; label: string }[];
   selected: string[];
   max: number;
@@ -664,33 +774,46 @@ function SelectRowMulti({
     onSelect(next);
   };
   return (
-    <View style={{ marginBottom: baseTheme.spacing.md }}>
-      <Text style={[rowLabelStyle, { color: theme.colors.text, marginBottom: 6 }]}>{label}</Text>
+    <View style={{ marginBottom: baseTheme.spacing.lg }}>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: baseTheme.spacing.sm }}>
+        <Text style={[rowLabelStyle, { color: theme.colors.text }]}>{label}</Text>
+        {helperText != null && (
+          <Text style={[rowHintStyle, { color: theme.colors.mutedText, marginBottom: 0 }]}>{helperText}</Text>
+        )}
+      </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
         {options.map((opt) => {
           const isSelected = selected.includes(opt.key);
+          const disabled = !isSelected && selected.length >= max;
           return (
             <Pressable
               key={opt.key}
-              onPress={() => toggle(opt.key)}
+              onPress={() => !disabled && toggle(opt.key)}
+              disabled={disabled}
               style={{
-                paddingVertical: 10,
-                paddingHorizontal: 14,
-                borderRadius: baseTheme.radius.sm,
-                backgroundColor: isSelected ? theme.colors.primary : theme.colors.background,
-                borderWidth: 1,
-                borderColor: isSelected ? theme.colors.primary : theme.colors.border,
+                minHeight: chipMinHeight,
+                paddingVertical: chipPaddingV,
+                paddingHorizontal: chipPaddingH,
+                borderRadius: chipBorderRadius,
+                backgroundColor: disabled ? theme.colors.border : isSelected ? theme.colors.primary : theme.colors.background,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                opacity: disabled ? 0.7 : 1,
               }}
             >
               <Text
                 style={{
-                  fontSize: 13,
+                  fontSize: chipFontSize,
                   fontFamily: baseTheme.typography.medium,
                   color: isSelected ? theme.colors.onPrimary : theme.colors.text,
                 }}
               >
                 {opt.label}
               </Text>
+              {isSelected && (
+                <Ionicons name="checkmark" size={16} color={theme.colors.onPrimary} />
+              )}
             </Pressable>
           );
         })}

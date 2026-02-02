@@ -3,7 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
-import { theme } from '@/services/theme/tokens';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { theme as baseTheme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
 import { MultipleChoiceCard as MultipleChoiceCardType } from '@/types/session';
 import { announce } from '@/utils/a11y';
@@ -28,6 +29,8 @@ export function MultipleChoiceCard({
   isCorrect,
   onCheckAnswer,
 }: Props) {
+  const ctx = useAppTheme();
+  const theme = ctx?.theme ?? baseTheme;
   const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
@@ -100,17 +103,17 @@ export function MultipleChoiceCard({
   const isTranslation = !!card.sourceText;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { gap: theme.spacing.sm }]}>
       {/* Instruction Label */}
       {isTranslation && (
-        <Text style={styles.instruction}>TRANSLATE THIS SENTENCE</Text>
+        <Text style={[styles.instruction, { color: theme.colors.success }]}>TRANSLATE THIS SENTENCE</Text>
       )}
 
       {/* Source Text Card (for translation MCQ) */}
       {card.sourceText && (
-        <View style={styles.sourceCard}>
+        <View style={[styles.sourceCard, { backgroundColor: theme.colors.card }]}>
           <Pressable
-            style={styles.audioButton}
+            style={[styles.audioButton, { backgroundColor: theme.colors.primary }]}
             onPress={handlePlayAudio}
             accessibilityRole="button"
             accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
@@ -120,24 +123,24 @@ export function MultipleChoiceCard({
             <Ionicons
               name={isPlaying ? 'pause' : 'volume-high'}
               size={20}
-              color="#fff"
+              color={theme.colors.onPrimary}
               accessible={false}
               importantForAccessibility="no"
             />
           </Pressable>
-          <Text style={styles.sourceText}>{card.sourceText}</Text>
+          <Text style={[styles.sourceText, { color: theme.colors.text }]}>{card.sourceText}</Text>
         </View>
       )}
 
       {/* Question Prompt (for non-translation MCQ) */}
       {!isTranslation && (
-        <Text style={styles.prompt}>{card.prompt}</Text>
+        <Text style={[styles.prompt, { color: theme.colors.text }]}>{card.prompt}</Text>
       )}
 
       {/* Options */}
       {!card.options || card.options.length === 0 ? (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>No options available</Text>
+        <View style={[styles.errorContainer, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+          <Text style={[styles.errorText, { color: theme.colors.mutedText }]}>No options available</Text>
         </View>
       ) : (
         <View style={styles.optionsContainer}>
@@ -165,17 +168,18 @@ export function MultipleChoiceCard({
               }}
               style={[
                 styles.option,
-                showAsSelected && styles.optionSelected,
-                showAsCorrect && styles.optionCorrect,
-                showAsIncorrectSelected && styles.optionIncorrect,
+                { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+                showAsSelected && { borderColor: theme.colors.primary },
+                showAsCorrect && { borderColor: theme.colors.success, backgroundColor: theme.colors.success + '25' },
+                showAsIncorrectSelected && { borderColor: theme.colors.error, backgroundColor: theme.colors.error + '20' },
               ]}
             >
-              <Text style={styles.optionLabel}>{opt.label}</Text>
+              <Text style={[styles.optionLabel, { color: theme.colors.text }]}>{opt.label}</Text>
               {showAsCorrect ? (
                 <Ionicons
                   name="checkmark-circle"
                   size={24}
-                  color="#28a745"
+                  color={theme.colors.success}
                   accessible={false}
                   importantForAccessibility="no"
                 />
@@ -183,7 +187,7 @@ export function MultipleChoiceCard({
                 <Ionicons
                   name="close-circle"
                   size={24}
-                  color="#dc3545"
+                  color={theme.colors.error}
                   accessible={false}
                   importantForAccessibility="no"
                 />
@@ -196,28 +200,28 @@ export function MultipleChoiceCard({
 
       {/* Feedback Banner (after checking, if correct) - appears right after options */}
       {showResult && isCorrect && (
-        <View style={styles.feedbackBanner} accessibilityRole="alert">
+        <View style={[styles.feedbackBanner, { backgroundColor: theme.colors.success }]} accessibilityRole="alert">
           <Ionicons
             name="checkmark-circle"
             size={20}
-            color="#fff"
+            color={theme.colors.onPrimary}
             accessible={false}
             importantForAccessibility="no"
           />
-          <Text style={styles.feedbackText}>Excellent! That's correct!</Text>
+          <Text style={[styles.feedbackText, { color: theme.colors.onPrimary }]}>Excellent! That's correct!</Text>
         </View>
       )}
 
       {/* Check Answer Button (only for non-translation MCQ) */}
       {!showResult && selectedOptionId !== undefined && !isTranslation && (
         <Pressable
-          style={styles.checkButton}
+          style={[styles.checkButton, { backgroundColor: theme.colors.success }]}
           onPress={onCheckAnswer}
           accessibilityRole="button"
           accessibilityLabel="Check answer"
           accessibilityHint="Checks whether your selected option is correct"
         >
-          <Text style={styles.checkButtonText}>Check Answer</Text>
+          <Text style={[styles.checkButtonText, { color: theme.colors.onPrimary }]}>Check Answer</Text>
         </Pressable>
       )}
     </View>
@@ -226,36 +230,31 @@ export function MultipleChoiceCard({
 
 const styles = StyleSheet.create({
   container: {
-    gap: theme.spacing.sm,
+    gap: baseTheme.spacing.sm,
     flex: 1,
   },
   errorContainer: {
-    padding: theme.spacing.lg,
-    backgroundColor: '#fff3cd',
+    padding: baseTheme.spacing.lg,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#ffc107',
   },
   errorText: {
-    fontFamily: theme.typography.regular,
+    fontFamily: baseTheme.typography.regular,
     fontSize: 14,
-    color: '#856404',
     textAlign: 'center',
   },
   instruction: {
-    fontFamily: theme.typography.bold,
+    fontFamily: baseTheme.typography.bold,
     fontSize: 14,
-    color: '#28a745',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   sourceCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.md,
-    backgroundColor: '#fff',
+    gap: baseTheme.spacing.md,
     borderRadius: 16,
-    padding: theme.spacing.lg,
+    padding: baseTheme.spacing.lg,
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 10,
@@ -265,64 +264,47 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   sourceText: {
-    fontFamily: theme.typography.regular,
+    fontFamily: baseTheme.typography.regular,
     fontSize: 18,
-    color: theme.colors.text,
     flex: 1,
   },
   prompt: {
-    fontFamily: theme.typography.bold,
+    fontFamily: baseTheme.typography.bold,
     fontSize: 20,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.xs,
+    marginBottom: baseTheme.spacing.xs,
   },
   optionsContainer: {
-    gap: theme.spacing.sm,
+    gap: baseTheme.spacing.sm,
   },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: theme.spacing.md,
+    padding: baseTheme.spacing.md,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#E0E0E0',
-    backgroundColor: '#fff',
     minHeight: 56,
   },
-  optionSelected: {
-    borderColor: theme.colors.primary,
-    // Keep white background when selected (before check)
-  },
-  optionCorrect: {
-    borderColor: '#28a745',
-    backgroundColor: '#E6F7ED', // Light green background
-  },
-  optionIncorrect: {
-    borderColor: '#dc3545',
-    backgroundColor: '#FDEBEC', // Light red background
-  },
+  optionSelected: {},
+  optionCorrect: {},
+  optionIncorrect: {},
   optionLabel: {
-    fontFamily: theme.typography.regular,
+    fontFamily: baseTheme.typography.regular,
     fontSize: 18,
-    color: theme.colors.text,
     flex: 1,
   },
   checkButton: {
-    backgroundColor: '#28a745', // Green/teal color from mockup
-    padding: theme.spacing.md,
+    padding: baseTheme.spacing.md,
     borderRadius: 12,
     alignItems: 'center',
-    marginTop: theme.spacing.xs,
+    marginTop: baseTheme.spacing.xs,
   },
   checkButtonText: {
-    color: '#fff',
-    fontFamily: theme.typography.bold,
+    fontFamily: baseTheme.typography.bold,
     fontSize: 16,
     textTransform: 'uppercase',
   },
@@ -330,16 +312,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: theme.spacing.xs,
-    backgroundColor: '#28a745',
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
+    gap: baseTheme.spacing.xs,
+    paddingVertical: baseTheme.spacing.sm,
+    paddingHorizontal: baseTheme.spacing.md,
     borderRadius: 12,
-    marginTop: theme.spacing.xs,
+    marginTop: baseTheme.spacing.xs,
   },
   feedbackText: {
-    color: '#fff',
-    fontFamily: theme.typography.bold,
+    fontFamily: baseTheme.typography.bold,
     fontSize: 14,
   },
 });

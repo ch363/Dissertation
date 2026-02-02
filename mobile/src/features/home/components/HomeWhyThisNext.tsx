@@ -54,7 +54,7 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
   lessonId,
   whyAffordance,
 }: Props) {
-  const { theme } = useAppTheme();
+  const { theme, isDark } = useAppTheme();
   const useTopicAsTitle = topic.startsWith('Focus: ');
   const hasLessonData = primaryLine != null && primaryLine !== '';
   const quietLine =
@@ -122,7 +122,7 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
       <View style={styles.premiumContainer}>
         {/* Base gradient background - much lighter, brighter gradient */}
         <LinearGradient
-          colors={['#F5F7FF', '#FFFFFF', '#FBF9FF']}
+          colors={isDark ? [theme.colors.card, theme.colors.background, theme.colors.card] : ['#F5F7FF', '#FFFFFF', '#FBF9FF']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.baseGradient}
@@ -189,7 +189,7 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
             
             <View style={styles.titleWrapper}>
               <Text
-                style={[styles.premiumTitle, { color: '#111827' }]}
+                style={[styles.premiumTitle, { color: theme.colors.text }]}
                 numberOfLines={1}
                 ellipsizeMode="tail"
                 maxFontSizeMultiplier={1.3}
@@ -213,7 +213,7 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
               {hasLessonData ? (
                 <>
                   <Text
-                    style={[styles.lessonTitle, { color: '#111827' }]}
+                    style={[styles.lessonTitle, { color: theme.colors.text }]}
                     numberOfLines={1}
                     ellipsizeMode="tail"
                     maxFontSizeMultiplier={1.3}
@@ -224,15 +224,15 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
                   {progressLine != null && progressLine !== '' ? (
                     <View style={styles.metaRow}>
                       <Text
-                        style={[styles.metaText, { color: '#6B7280' }]}
+                        style={[styles.metaText, { color: theme.colors.mutedText }]}
                         numberOfLines={1}
                         maxFontSizeMultiplier={1.3}
                       >
                         {progressLine.split(' • ')[0]}
                       </Text>
-                      <View style={[styles.bullet, { backgroundColor: '#9CA3AF' }]} />
+                      <View style={[styles.bullet, { backgroundColor: theme.colors.mutedText }]} />
                       <Text
-                        style={[styles.metaText, { color: '#6B7280' }]}
+                        style={[styles.metaText, { color: theme.colors.mutedText }]}
                         numberOfLines={1}
                         maxFontSizeMultiplier={1.3}
                       >
@@ -245,7 +245,7 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
                   {progressValue !== null ? (
                     <View style={styles.progressContainer}>
                       <LinearGradient
-                        colors={['#E5E7EB', '#F3F4F6']}
+                        colors={isDark ? [theme.colors.border, theme.colors.card] : ['#E5E7EB', '#F3F4F6']}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={styles.progressTrack}
@@ -267,7 +267,7 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
                 </>
               ) : (
                 <Text
-                  style={[styles.fallbackText, { color: '#6B7280' }]}
+                  style={[styles.fallbackText, { color: theme.colors.mutedText }]}
                   numberOfLines={2}
                   ellipsizeMode="tail"
                   maxFontSizeMultiplier={1.3}

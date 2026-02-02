@@ -15,7 +15,48 @@ type ThemeContextValue = {
   usingSystem: boolean;
 };
 
-const Ctx = createContext<ThemeContextValue | undefined>(undefined);
+// Minimal theme fallback so we never return theme: undefined (e.g. in lazy bundles or odd load order)
+const FALLBACK_THEME: Theme = {
+  colors: {
+    primary: '#264FD4',
+    ctaCardAccent: '#4D74ED',
+    profileHeader: '#264FD4',
+    secondary: '#12BFA1',
+    onPrimary: '#FFFFFF',
+    onSecondary: '#0E141B',
+    link: '#264FD4',
+    background: '#F4F8FF',
+    success: '#2E7D32',
+    error: '#D32F2F',
+    text: '#0D1B2A',
+    mutedText: '#4A5A70',
+    card: '#FFFFFF',
+    border: '#E5EAF2',
+  },
+  spacing: { xs: 8, sm: 12, md: 16, lg: 24, xl: 32 },
+  radius: { sm: 8, md: 12, lg: 16, round: 999 },
+  typography: {
+    regular: 'Poppins_400Regular',
+    medium: 'Poppins_500Medium',
+    semiBold: 'Poppins_600SemiBold',
+    bold: 'Poppins_700Bold',
+  },
+};
+
+// Resolve default theme at call time so it's always defined even in lazy bundles or odd load order
+function getDefaultThemeValue(): ThemeContextValue {
+  const theme =
+    typeof lightTheme !== 'undefined' && lightTheme != null ? lightTheme : FALLBACK_THEME;
+  return {
+    theme,
+    mode: 'system',
+    isDark: false,
+    toggleTheme: () => {},
+    setMode: () => {},
+    usingSystem: true,
+  };
+}
+const Ctx = createContext<ThemeContextValue | null>(null);
 
 const STORAGE_KEY = 'app:themeMode';
 
@@ -84,8 +125,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
-export function useAppTheme() {
+export function useAppTheme(): ThemeContextValue {
   const ctx = useContext(Ctx);
-  if (!ctx) throw new Error('useAppTheme must be used within ThemeProvider');
-  return ctx;
+  // Single code path: never return null/undefined; always return object with theme (avoids Hermes "Property 'theme' doesn't exist")
+  const safe: ThemeContextValue = ctx && ctx.theme ? ctx : getDefaultThemeValue();
+  return safe;
 }

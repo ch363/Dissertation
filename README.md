@@ -1,253 +1,290 @@
-# Fluentia - Language Learning Platform
+# Fluentia — Language Learning Platform
 
-A comprehensive language learning application consisting of a mobile React Native app and a NestJS backend API. The platform provides personalized language learning experiences with adaptive content delivery, progress tracking, and multiple learning modalities.
+A full-stack language learning application: a **React Native (Expo)** mobile app and a **NestJS** backend API. The platform delivers adaptive learning with spaced repetition, progress tracking, and multiple practice modalities (e.g. multiple choice, translation, fill-in-the-blank, listening, pronunciation).
+
+---
+
+## Table of Contents
+
+- [Project Overview](#project-overview)
+- [Repository Structure](#repository-structure)
+- [Tech Stack](#tech-stack)
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+  - [Backend Setup](#backend-setup)
+  - [Mobile Setup](#mobile-setup)
+  - [App Store deployable (EAS)](#app-store-deployable-eas)
+- [Key Features](#key-features)
+- [Database Schema](#database-schema)
+- [API Overview](#api-overview)
+- [Development](#development)
+- [Documentation](#documentation)
+- [License & Support](#license--support)
+
+---
 
 ## Project Overview
 
-Fluentia is a dissertation project that combines modern mobile development with a robust backend API to deliver an engaging language learning experience. The system supports multiple knowledge levels (A1-C2), various delivery methods (flashcards, multiple choice, speech-to-text, etc.), and tracks user progress through modules, lessons, and teachings.
+Fluentia is a dissertation project that combines a mobile-first learning experience with a REST API for content, progress, and orchestration. The system supports CEFR levels (A1–C2), multiple delivery methods (flashcards, multiple choice, translation, fill-in-the-blank, listening, pronunciation), and tracks user progress through modules, lessons, teachings, and questions. Authentication is handled by **Supabase Auth**; the NestJS backend verifies JWTs and provisions users on first use.
+
+---
 
 ## Repository Structure
 
 ```
 Dissertation/
-├── backend/          # NestJS API server with Prisma ORM
-├── mobile/           # React Native + Expo mobile application
+├── backend/          # NestJS API (Prisma, PostgreSQL)
+├── mobile/           # React Native + Expo app (Expo Router)
+├── ARCHITECTURE.md   # System and module architecture
+├── DESIGN_SPEC.md    # Design and UX specification
+├── USER_JOURNEYS.md  # User flows and journeys
 └── README.md         # This file
 ```
 
+---
+
 ## Tech Stack
 
-### Backend
-- **Framework**: NestJS (Node.js)
-- **Database**: PostgreSQL
-- **ORM**: Prisma
-- **Language**: TypeScript
+| Layer   | Technologies |
+|--------|--------------|
+| **Backend** | NestJS 11, TypeScript 5, Prisma 7, PostgreSQL, Supabase (JWT verification), Azure Speech (pronunciation) |
+| **Mobile**  | React Native, Expo 51, Expo Router, TypeScript, Supabase Auth & client, React Context |
 
-### Mobile
-- **Framework**: React Native with Expo
-- **Routing**: Expo Router
-- **Backend Integration**: Supabase
-- **Language**: TypeScript
-- **State Management**: React Context API
+The mobile app uses **Supabase** for sign-in/sign-up and session management; all learning data, progress, and orchestration go through the **NestJS API** (configured via `EXPO_PUBLIC_API_URL`).
+
+---
+
+## Prerequisites
+
+- **Node.js** v18 or later
+- **PostgreSQL** (local or hosted)
+- **npm** (or yarn)
+- **Mobile development**
+  - iOS: Xcode and iOS Simulator, or physical device with Expo Go
+  - Android: Android Studio and emulator, or physical device with Expo Go
+
+---
 
 ## Getting Started
 
-### Prerequisites
-
-- Node.js (v18 or higher)
-- PostgreSQL database
-- npm or yarn
-- For mobile development:
-  - iOS: Xcode (for iOS Simulator)
-  - Android: Android Studio (for Android Emulator)
-  - Or Expo Go app on a physical device
-
 ### Backend Setup
 
-1. Navigate to the backend directory:
-```bash
-cd backend
-```
+1. **Install dependencies**
 
-2. Install dependencies:
-```bash
-npm install
-```
+   ```bash
+   cd backend && npm install
+   ```
 
-3. Set up environment variables:
-Create a `.env` file in the `backend/` directory (see `.env.example` for template):
-```
-DATABASE_URL="postgresql://user:password@localhost:5432/fluentia"
-SUPABASE_URL="https://your-project.supabase.co"
-SUPABASE_JWT_SECRET="your-jwt-secret-here"
-SUPABASE_ANON_KEY="your-anon-key-here"  # Optional
-SUPABASE_SERVICE_ROLE_KEY="your-service-role-key-here"  # Optional
-PORT=3000
-```
+2. **Environment variables**
 
-4. Set up the database:
-```bash
-npm run prisma:generate
-npm run prisma:migrate
-```
+   Create a `.env` file in `backend/` (see `backend/.env.example`):
 
-5. Start the development server:
-```bash
-npm run start:dev
-```
+   - **Database:** `DATABASE_URL` — PostgreSQL connection string  
+   - **Supabase:** `SUPABASE_URL`, `SUPABASE_JWT_SECRET` (required); `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (optional)  
+   - **Server:** `PORT` (default `3000`)  
+   - **Azure Speech** (optional, for pronunciation): `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`, `AZURE_SPEECH_DEFAULT_LOCALE`
 
-The API will be available at `http://localhost:3000`
+3. **Database**
 
-**Important**: The backend uses Supabase Auth for authentication. All authenticated endpoints require a valid Supabase JWT token in the `Authorization: Bearer <token>` header.
+   ```bash
+   npm run prisma:generate
+   npm run prisma:migrate
+   npm run seed   # optional: seed demo content
+   ```
 
-For more details, see [backend/README.md](./backend/README.md)
+4. **Run the API**
+
+   ```bash
+   npm run start:dev
+   ```
+
+   API base URL: `http://localhost:3000`. All authenticated routes expect `Authorization: Bearer <supabase-jwt>`.
+
+   More detail: [backend/README.md](./backend/README.md).
 
 ### Mobile Setup
 
-1. Navigate to the mobile directory:
-```bash
-cd mobile
-```
+1. **Install dependencies**
 
-2. Install dependencies:
-```bash
-npm install
-```
+   ```bash
+   cd mobile && npm install
+   ```
 
-3. Set up environment variables:
-Create a `.env` file in the `mobile/` directory with:
-```
-EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
+2. **Environment variables**
 
-4. Start the development server:
-```bash
-npm run start
-```
+   Create a `.env` file in `mobile/` (see `mobile/.env.example`):
 
-5. Run on a platform:
-```bash
-# iOS Simulator
-npm run ios
+   - `EXPO_PUBLIC_SUPABASE_URL` — Supabase project URL  
+   - `EXPO_PUBLIC_SUPABASE_ANON_KEY` — Supabase anon key  
+   - `EXPO_PUBLIC_API_URL` — NestJS API base URL (e.g. `http://localhost:3000`)  
+   - `EXPO_PUBLIC_SUPABASE_REDIRECT_URL` — optional; e.g. `fluentia://auth/sign-in` for email links
 
-# Android Emulator
-npm run android
-```
+3. **Run the app**
 
-For more details, see [mobile/README.md](./mobile/README.md)
+   ```bash
+   npm run start
+   ```
+
+   Then: `npm run ios` or `npm run android`, or scan the QR code with Expo Go.
+
+   More detail: [mobile/README.md](./mobile/README.md).
+
+### App Store deployable (EAS)
+
+To get the mobile app ready for App Store (and TestFlight) via [Expo Application Services (EAS)](https://docs.expo.dev/build/introduction/):
+
+1. **Log in and link the project** (from `mobile/`):
+
+   ```bash
+   cd mobile
+   npx eas-cli login
+   npx eas-cli init
+   ```
+
+   Alternatively, create a new project at [expo.dev](https://expo.dev) and link it (e.g. `npx eas-cli init` and choose “Link to existing project”).
+
+2. **Set the EAS project ID**  
+   After init, EAS will give you a project ID. Put it in `mobile/app.json`:
+
+   - Replace the placeholder in `expo.extra.eas.projectId` (currently `00000000-0000-0000-0000-000000000000`) with your real EAS project ID.
+
+3. **Build profiles**  
+   `mobile/eas.json` is already set up with:
+
+   - **production** — App Store build (`distribution: "store"`). Use for release and TestFlight.
+   - **preview** — Internal distribution for testing without the store (`distribution: "internal"`).
+
+   Build commands (from `mobile/`):
+
+   ```bash
+   npx eas-cli build --platform ios --profile production   # App Store / TestFlight
+   npx eas-cli build --platform ios --profile preview     # Internal test build
+   ```
+
+   After a successful build, use [EAS Submit](https://docs.expo.dev/submit/introduction/) to send the build to App Store Connect (e.g. `npx eas-cli submit --platform ios --profile production`).
+
+---
 
 ## Key Features
 
-### Learning System
-- **Modular Structure**: Modules → Lessons → Teachings → Questions
-- **Knowledge Levels**: A1, A2, B1, B2, C1, C2 (CEFR standard)
-- **Multiple Delivery Methods**: 
-  - Fill in the blank
-  - Flashcards
-  - Multiple choice
-  - Speech-to-text
-  - Text-to-speech
-  - Text translation
+- **Content hierarchy:** Modules → Lessons → Teachings → Questions; CEFR levels (A1–C2).
+- **Delivery methods:** Multiple choice, translation, fill-in-the-blank, flashcards, listening, pronunciation (Azure Speech).
+- **Auth & identity:** Supabase Auth; user provisioning via `GET /me`; profile, avatar, preferences.
+- **Progress:** Lesson/teaching completion, question attempts (append-only), spaced repetition (FSRS), delivery-method preferences, XP and knowledge-level progression.
+- **Orchestration:** Learning path, review summary, suggestions, session plans (learn/review/mixed, time budget).
+- **Mobile:** Onboarding, home dashboard, lesson browsing, practice sessions, profile and settings.
 
-### User Features
-- **Supabase Authentication**: JWT-based authentication with server-side verification
-- **User Provisioning**: Automatic user creation via `GET /me` endpoint
-- **Progress Tracking**: 
-  - Lesson engagement and completion
-  - Teaching completion markers
-  - Question performance logs (append-only)
-  - Spaced repetition scheduling
-- **Knowledge Level Progression**: XP tracking and level advancement
-- **Performance Analytics**: Dashboard with due reviews, active lessons, and XP totals
-- **Adaptive Learning**: Delivery method preference scores for personalized content delivery
-- **Learning Orchestration**: Smart "next item" algorithm prioritizing reviews over new content
-
-### Mobile App Features
-- Onboarding flow for personalized experience
-- Home dashboard with learning progress
-- Lesson browsing and completion
-- Practice tools (flashcards, listening, typing)
-- Profile management with achievements
-- Settings for preferences and speech
+---
 
 ## Database Schema
 
-The backend uses Prisma to manage a PostgreSQL database with the following main entities:
+Managed by Prisma in `backend/prisma/schema.prisma`. Main areas:
 
-### Content Hierarchy
-- **Module**: Top-level learning units
-- **Lesson**: Individual lessons within modules
-- **Teaching**: Learning content items with knowledge levels (A1-C2)
-- **Question**: Practice questions linked to teachings
-- **QuestionDeliveryMethod**: Join table linking questions to delivery methods
+- **Content:** `Module`, `Lesson`, `Teaching`, `Question`, `QuestionDeliveryMethod`
+- **Users & progress:** `User` (id = Supabase auth id), `UserLesson`, `UserTeachingCompleted`, `UserQuestionPerformance`, `UserDeliveryMethodScore`, `UserKnowledgeLevelProgress`, onboarding/preferences
 
-### User & Progress
-- **User**: User accounts with progress tracking (id matches Supabase auth.users.id)
-- **UserLesson**: Tracks lesson engagement and completion per user
-- **UserTeachingCompleted**: Immutable markers for completed teachings
-- **UserQuestionPerformance**: Append-only log of question attempts with spaced repetition
-- **UserDeliveryMethodScore**: Adaptive preference scores per delivery method
-- **UserKnowledgeLevelProgress**: XP/level progression over time
+See [backend/prisma/schema.prisma](./backend/prisma/schema.prisma) for the full schema.
 
-See [backend/prisma/schema.prisma](./backend/prisma/schema.prisma) for the complete schema.
+---
 
-## API Endpoints
+## API Overview
 
-### Authentication
-All authenticated endpoints require a Supabase JWT token in the `Authorization: Bearer <token>` header.
+Base URL: `http://localhost:3000` (or `EXPO_PUBLIC_API_URL`). Authenticated endpoints require:
 
-### Identity & User (Authenticated)
-- `GET /me` - User provisioning entrypoint (upserts user from JWT)
-- `PATCH /me` - Update user preferences
-- `GET /me/dashboard` - Get dashboard stats (due reviews, active lessons, XP)
-- `GET /me/lessons` - Get user's started lessons with progress
+```http
+Authorization: Bearer <supabase-jwt>
+```
 
-### Content (Public reads, authenticated writes)
-- **Modules**: `GET /modules`, `POST /modules`, `GET /modules/:id`, `PATCH /modules/:id`, `DELETE /modules/:id`, `GET /modules/:id/lessons`
-- **Lessons**: `GET /lessons?moduleId=`, `POST /lessons`, `GET /lessons/:id`, `PATCH /lessons/:id`, `DELETE /lessons/:id`, `GET /lessons/:id/teachings`
-- **Teachings**: `GET /teachings?lessonId=`, `POST /teachings`, `GET /teachings/:id`, `PATCH /teachings/:id`, `DELETE /teachings/:id`, `GET /teachings/:id/questions`
-- **Questions**: `GET /questions?teachingId=`, `POST /questions`, `GET /questions/:id`, `DELETE /questions/:id`, `PUT /questions/:id/delivery-methods`
+### Health (unauthenticated)
 
-### Progress (All Authenticated)
-- `POST /progress/lessons/:lessonId/start` - Start/update lesson engagement
-- `GET /progress/lessons` - Get user's lesson progress
-- `POST /progress/teachings/:teachingId/complete` - Mark teaching as completed
-- `POST /progress/questions/:questionId/attempt` - Record question attempt (append-only)
-- `GET /progress/reviews/due` - Get all due reviews
-- `GET /progress/reviews/due/latest` - Get deduped due reviews (latest per question)
-- `POST /progress/delivery-method/:method/score` - Update delivery method preference score
-- `POST /progress/knowledge-level-progress` - Record XP progression
+- `GET /health` — Liveness  
+- `GET /health/db` — Database connectivity  
 
-### Learning Orchestration (Authenticated)
-- `GET /learn/next?lessonId=<uuid>` - Get next item in lesson (reviews → new → done)
-- `GET /learn/suggestions?currentLessonId=&moduleId=&limit=` - Get lesson/module suggestions
+### Identity & profile (authenticated)
 
-For detailed API documentation, see [backend/README.md](./backend/README.md)
+- `GET /me` — Provision user from JWT, return profile  
+- `PATCH /me` — Update user/preferences  
+- `GET /me/profile`, `POST /me/profile/ensure`, `PATCH /me` — Profile lifecycle  
+- `GET /me/dashboard`, `GET /me/stats`, `GET /me/lessons`, `GET /me/recent`, `GET /me/mastery`  
+- `POST /me/avatar`, `POST /me/reset`, `DELETE /me`  
+
+### Onboarding (authenticated)
+
+- `POST /onboarding` — Save onboarding answers  
+- `GET /onboarding` — Get onboarding data  
+- `GET /onboarding/has` — Check if onboarding is complete  
+
+### Content (public read; authenticated write)
+
+- **Modules:** `GET /modules`, `GET /modules/featured`, `GET /modules/:id`, `GET /modules/:id/lessons`, `POST/PATCH/DELETE /modules/*`  
+- **Lessons:** `GET /lessons`, `GET /lessons/recommended`, `GET /lessons/:id`, `GET /lessons/:id/teachings`, `POST/PATCH/DELETE /lessons/*`  
+- **Teachings:** `GET /teachings`, `GET /teachings/:id`, `GET /teachings/:id/questions`, `POST/PATCH/DELETE /teachings/*`  
+- **Questions:** `GET /questions`, `GET /questions/:id`, `PUT /questions/:id/delivery-methods`, `POST/DELETE /questions/*`  
+
+### Progress (authenticated)
+
+- Lessons: `POST /progress/lessons/:lessonId/start`, `GET /progress/lessons`, `POST /progress/lessons/:lessonId/reset`  
+- Teachings: `POST /progress/teachings/:teachingId/complete`  
+- Questions: `POST /progress/questions/:questionId/attempt`, `POST /progress/questions/:questionId/validate`, `POST /progress/questions/:questionId/pronunciation`  
+- Reviews: `GET /progress/reviews/due`, `GET /progress/reviews/due/latest`  
+- Preferences & XP: `POST /progress/delivery-method/:method/score`, `POST /progress/knowledge-level-progress`  
+- Other: `GET /progress/summary`, `POST /progress/modules/:moduleIdOrSlug/complete`, `GET /progress/attempts`, `POST /progress/questions/:questionId/reset`  
+
+### Learning orchestration (authenticated)
+
+- `GET /learn/learning-path` — Learning path cards  
+- `GET /learn/review-summary` — Review summary  
+- `GET /learn/suggestions?currentLessonId=&moduleId=&limit=` — Lesson/module suggestions  
+- `GET /learn/session-plan?mode=&timeBudgetSec=&lessonId=&moduleId=&theme=` — Session plan (learn/review/mixed)  
+
+### Search (public)
+
+- `GET /search?q=...` — Search content (query params as defined in backend)  
+
+### Speech (authenticated)
+
+- Pronunciation assessment (e.g. `POST /speech/pronunciation-score` or as referenced in progress module) — Azure Speech–backed pronunciation scoring  
+
+For full request/response shapes and error handling, see [backend/README.md](./backend/README.md) and the backend Swagger/OpenAPI surface if enabled.
+
+---
 
 ## Development
 
-### Code Quality
+### Scripts
 
-Both projects include:
-- ESLint for code linting
-- Prettier for code formatting
-- TypeScript for type safety
-- Jest for testing
+| Repo    | Lint        | Type check | Test        | CI (gate)   |
+|---------|-------------|------------|-------------|-------------|
+| Backend | `npm run lint` | —          | `npm test`, `npm run test:e2e`, `npm run test:cov` | Run lint + tests before PR |
+| Mobile  | `npm run lint` | `npm run type-check` | `npm test` | `npm run ci` (lint + type-check + test) |
 
-### Running Tests
-
-**Backend:**
-```bash
-cd backend
-npm test              # Unit tests
-npm run test:e2e      # End-to-end tests
-npm run test:cov      # Test coverage
-```
-
-**Mobile:**
-```bash
-cd mobile
-npm test              # Unit tests
-npm run ci            # Lint + type-check + tests
-```
+Pre-push: mobile uses `simple-git-hooks` to run `npm run ci` when pushing from the repo root (if configured).
 
 ### Contributing
 
-1. Create a feature branch: `git checkout -b feat/feature-name`
-2. Make your changes
-3. Run tests and linting: `npm run ci` (in respective directory)
-4. Commit your changes
-5. Push and create a Pull Request
+1. Branch from `main`: `git checkout -b feat/your-feature`  
+2. Implement changes; run `npm run ci` (or backend equivalent) locally.  
+3. Commit and push; open a Pull Request.  
+4. Ensure CI passes; include screenshots for UI changes where relevant.
 
-## Architecture
+---
 
-For detailed architecture documentation, see [ARCHITECTURE.md](./ARCHITECTURE.md)
+## Documentation
 
-## License
+| Document | Description |
+|----------|-------------|
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | System overview, backend/mobile structure, data flow, deployment notes |
+| [DESIGN_SPEC.md](./DESIGN_SPEC.md) | Design and UX specification |
+| [USER_JOURNEYS.md](./USER_JOURNEYS.md) | User flows and journeys |
+| [backend/README.md](./backend/README.md) | API auth, learn/session semantics, env vars, seeding, content model |
+| [mobile/README.md](./mobile/README.md) | Mobile setup, env, testing, CI |
 
-This project is part of a dissertation and is not licensed for public use.
+Additional reports (e.g. application report, content delivery) are in the repository root where applicable.
 
-## Support
+---
 
-For questions or issues, please refer to the individual README files in the `backend/` and `mobile/` directories.
+## License & Support
+
+This project is part of a dissertation and is **not licensed for public use**.  
+
+For setup or implementation questions, refer to the docs above and the READMEs in `backend/` and `mobile/`.

@@ -22,7 +22,7 @@ import { theme as baseTheme } from '@/services/theme/tokens';
 import { useAsyncData } from '@/hooks/useAsyncData';
 
 function formatDueCount(n: number) {
-  if (n === 0) return 'No reviews due today';
+  if (n === 0) return 'Nothing to review';
   return `${n} ${n === 1 ? 'review' : 'reviews'} due today`;
 }
 

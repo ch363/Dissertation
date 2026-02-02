@@ -45,6 +45,27 @@ const MODULE_COVER = {
   secondaryBorder: '#E2E8F0',
 } as const;
 
+const MODULE_COVER_DARK = {
+  pillBg: 'rgba(62, 138, 255, 0.2)',
+  pillBorder: 'rgba(62, 138, 255, 0.35)',
+  blue: '#62A0FF',
+  blueLight: '#7EB8FF',
+  blueDark: '#4D74ED',
+  title: '#E6EEF8',
+  muted: '#8A9FB8',
+  mutedDesc: '#8A9FB8',
+  metaText: '#B8C9E0',
+  metaBg: 'rgba(42, 58, 79, 0.6)',
+  metaBorder: 'rgba(42, 58, 79, 0.8)',
+  progressBg: '#172435',
+  progressBorder: 'rgba(42, 58, 79, 0.8)',
+  cardBorder: 'rgba(42, 58, 79, 0.8)',
+  tipGradientStart: 'rgba(62, 138, 255, 0.15)',
+  tipGradientEnd: 'rgba(77, 116, 237, 0.15)',
+  tipBorder: 'rgba(62, 138, 255, 0.3)',
+  secondaryBorder: '#2A3A4F',
+} as const;
+
 type PrimaryAction =
   | {
       kind: 'continue';
@@ -61,7 +82,8 @@ type PrimaryAction =
 
 export default function CourseDetail() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  const { theme } = useAppTheme();
+  const { theme, isDark } = useAppTheme();
+  const cover = isDark ? MODULE_COVER_DARK : MODULE_COVER;
   const [lessonOutcomes, setLessonOutcomes] = useState<Record<string, string>>({});
   const [lessonsLoadError, setLessonsLoadError] = useState<string | null>(null);
   const outcomeRequestsRef = useRef(new Set<string>());
@@ -340,7 +362,7 @@ export default function CourseDetail() {
   const totalMin = Math.ceil(totalItems * 1.5);
 
   return (
-      <SafeAreaView style={[styles.container, { backgroundColor: '#FAFBFC' }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={styles.navBar}>
         <Pressable
           accessibilityRole="button"
@@ -348,14 +370,18 @@ export default function CourseDetail() {
           onPress={() => router.back()}
           style={({ pressed }) => [styles.navButton, pressed && styles.navButtonPressed]}
         >
-          <Ionicons name="chevron-back" size={28} color="#0F172A" />
+          <Ionicons name="chevron-back" size={28} color={theme.colors.text} />
         </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Menu"
-          style={({ pressed }) => [styles.navButtonMenu, pressed && styles.navButtonPressed]}
+          style={({ pressed }) => [
+            styles.navButtonMenu,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+            pressed && { backgroundColor: theme.colors.border },
+          ]}
         >
-          <Ionicons name="menu" size={22} color="#334155" />
+          <Ionicons name="menu" size={22} color={theme.colors.mutedText} />
         </Pressable>
       </View>
 
@@ -365,32 +391,32 @@ export default function CourseDetail() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.modulePill}>
-          <Ionicons name="book-outline" size={12} color={MODULE_COVER.blue} />
-          <Text style={styles.modulePillText}>MODULE</Text>
+        <View style={[styles.modulePill, { backgroundColor: cover.pillBg, borderColor: cover.pillBorder }]}>
+          <Ionicons name="book-outline" size={12} color={cover.blue} />
+          <Text style={[styles.modulePillText, { color: cover.blue }]}>MODULE</Text>
         </View>
 
-        <Text style={styles.moduleTitle} accessibilityRole="header">
+        <Text style={[styles.moduleTitle, { color: cover.title }]} accessibilityRole="header">
           {displayTitle}
         </Text>
 
         {lessons.length > 0 && (
           <View style={styles.progressBlock}>
             <View style={styles.progressRow}>
-              <Text style={styles.progressLabel}>
+              <Text style={[styles.progressLabel, { color: cover.muted }]}>
                 {completedLessonsCount} of {lessons.length} lessons complete
               </Text>
-              <Text style={styles.progressPercent}>{progressPercent}%</Text>
+              <Text style={[styles.progressPercent, { color: cover.blue }]}>{progressPercent}%</Text>
             </View>
-            <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
+            <View style={[styles.progressBarBg, { backgroundColor: cover.progressBg, borderColor: cover.progressBorder }]}>
+              <View style={[styles.progressBarFill, { width: `${progressPercent}%`, backgroundColor: cover.blue }]} />
             </View>
           </View>
         )}
 
-        <View style={[styles.summaryCard, { borderColor: MODULE_COVER.cardBorder }]}>
+        <View style={[styles.summaryCard, { backgroundColor: theme.colors.card, borderColor: cover.cardBorder }]}>
           <LinearGradient
-            colors={[MODULE_COVER.blueLight, MODULE_COVER.blue, MODULE_COVER.blueDark]}
+            colors={[cover.blueLight, cover.blue, cover.blueDark]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.summaryIcon}
@@ -399,17 +425,17 @@ export default function CourseDetail() {
           </LinearGradient>
           {lessons.length > 0 && (
             <View style={styles.metaRow}>
-              <View style={[styles.metaPill, { backgroundColor: MODULE_COVER.metaBg, borderColor: MODULE_COVER.metaBorder }]}>
-                <Ionicons name="time-outline" size={14} color={MODULE_COVER.mutedDesc} />
-                <Text style={styles.metaPillText}>~{totalMin} min</Text>
+              <View style={[styles.metaPill, { backgroundColor: cover.metaBg, borderColor: cover.metaBorder }]}>
+                <Ionicons name="time-outline" size={14} color={cover.mutedDesc} />
+                <Text style={[styles.metaPillText, { color: cover.metaText }]}>~{totalMin} min</Text>
               </View>
-              <View style={[styles.metaPill, { backgroundColor: MODULE_COVER.metaBg, borderColor: MODULE_COVER.metaBorder }]}>
-                <Ionicons name="document-text-outline" size={14} color={MODULE_COVER.mutedDesc} />
-                <Text style={styles.metaPillText}>{totalItems} {totalItems === 1 ? 'exercise' : 'exercises'}</Text>
+              <View style={[styles.metaPill, { backgroundColor: cover.metaBg, borderColor: cover.metaBorder }]}>
+                <Ionicons name="document-text-outline" size={14} color={cover.mutedDesc} />
+                <Text style={[styles.metaPillText, { color: cover.metaText }]}>{totalItems} {totalItems === 1 ? 'exercise' : 'exercises'}</Text>
               </View>
             </View>
           )}
-          <Text style={styles.summaryDescription} numberOfLines={3}>
+          <Text style={[styles.summaryDescription, { color: cover.mutedDesc }]} numberOfLines={3}>
             {displayDescription}
           </Text>
         </View>
@@ -431,10 +457,10 @@ export default function CourseDetail() {
             accessibilityLabel={primaryAction.label}
             onPress={handlePrimaryActionPress}
             onPressIn={handlePrimaryActionPressIn}
-            style={({ pressed }) => [styles.primaryCtaWrap, pressed && { opacity: 0.95 }]}
+            style={({ pressed }) => [styles.primaryCtaWrap, { shadowColor: cover.blue }, pressed && { opacity: 0.95 }]}
           >
             <LinearGradient
-              colors={[MODULE_COVER.blueLight, MODULE_COVER.blue, MODULE_COVER.blueDark]}
+              colors={[cover.blueLight, cover.blue, cover.blueDark]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.primaryCtaGradient}
@@ -454,19 +480,19 @@ export default function CourseDetail() {
           accessibilityRole="button"
           accessibilityLabel="View all lessons"
           onPress={handleViewAllLessons}
-          style={({ pressed }) => [styles.secondaryCta, pressed && { opacity: 0.9 }]}
+          style={({ pressed }) => [styles.secondaryCta, { backgroundColor: theme.colors.card, borderColor: cover.secondaryBorder }, pressed && { opacity: 0.9 }]}
         >
-          <Text style={styles.secondaryCtaText}>View all lessons</Text>
+          <Text style={[styles.secondaryCtaText, { color: cover.title }]}>View all lessons</Text>
         </Pressable>
 
         <LinearGradient
-          colors={[MODULE_COVER.tipGradientStart, MODULE_COVER.tipGradientEnd]}
+          colors={[cover.tipGradientStart, cover.tipGradientEnd]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.tipCard, { borderColor: MODULE_COVER.tipBorder }]}
+          style={[styles.tipCard, { borderColor: cover.tipBorder }]}
         >
           <LinearGradient
-            colors={[MODULE_COVER.blueLight, MODULE_COVER.blue]}
+            colors={[cover.blueLight, cover.blue]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.tipIconWrap}
@@ -474,8 +500,8 @@ export default function CourseDetail() {
             <Ionicons name="bulb-outline" size={16} color="#FFFFFF" />
           </LinearGradient>
           <View style={styles.tipTextWrap}>
-            <Text style={styles.tipTitle}>Start small</Text>
-            <Text style={styles.tipDescription}>Just 5 minutes builds momentum.</Text>
+            <Text style={[styles.tipTitle, { color: cover.title }]}>Start small</Text>
+            <Text style={[styles.tipDescription, { color: cover.mutedDesc }]}>Just 5 minutes builds momentum.</Text>
           </View>
         </LinearGradient>
 
@@ -486,7 +512,7 @@ export default function CourseDetail() {
             collapsable={false}
             style={styles.lessonsSection}
           >
-          <Text style={styles.lessonsSectionTitle}>
+          <Text style={[styles.lessonsSectionTitle, { color: cover.title }]}>
             Lessons
           </Text>
           <View style={styles.lessonsList}>
@@ -520,9 +546,9 @@ export default function CourseDetail() {
 
               const metaRow = (
                 <View style={styles.lessonMetaRow}>
-                  <View style={styles.lessonStatusPill}>
-                    <View style={styles.lessonStatusDot} />
-                    <Text style={styles.lessonMetaText}>{statusLabel}</Text>
+                  <View style={[styles.lessonStatusPill, { backgroundColor: cover.metaBg, borderColor: cover.metaBorder }]}>
+                    <View style={[styles.lessonStatusDot, { backgroundColor: theme.colors.mutedText }]} />
+                    <Text style={[styles.lessonMetaText, { color: cover.mutedDesc }]}>{statusLabel}</Text>
                   </View>
                   <MetaRow text={progressLabel} icon="document-text-outline" textColor={theme.colors.mutedText} />
                   <MetaRow text={`~${durationMin} min`} icon="time-outline" textColor={theme.colors.mutedText} />
@@ -530,7 +556,7 @@ export default function CourseDetail() {
               );
               const leftIcon = (
                 <LinearGradient
-                  colors={[MODULE_COVER.blue, MODULE_COVER.blueDark]}
+                  colors={[cover.blue, cover.blueDark]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.lessonNumberBadge}

@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View, ScrollView } from 'react-native';
@@ -614,8 +615,13 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
     router.back();
   };
 
+  // Figma / Professional App Redesign: full-screen gradient (slate-50 → blue-50 → indigo-50)
+  const sessionBgGradient = ['#f8fafc', '#eff6ff', '#eef2ff'] as const;
+  const primaryButtonGradient = ['#2563eb', '#4f46e5'] as const; // blue-600 to indigo-600
+
   return (
     <View style={styles.container}>
+      <LinearGradient colors={sessionBgGradient} style={StyleSheet.absoluteFill} />
       <View style={styles.header}>
         <LessonProgressHeader
           title={plan.title ?? 'Course'}
@@ -684,6 +690,10 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
             onPress={handleNext}
             disabled={!canProceed}
           >
+            <LinearGradient
+              colors={primaryButtonGradient}
+              style={StyleSheet.absoluteFill}
+            />
             <Text style={styles.primaryButtonLabel}>
               {currentCard.kind === CardKind.Teach && !isLast
                 ? 'Start Practice'
@@ -703,7 +713,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: theme.spacing.lg,
     paddingBottom: theme.spacing.lg,
-    backgroundColor: theme.colors.background,
+    overflow: 'hidden',
   },
   header: {
     paddingBottom: theme.spacing.md,
@@ -750,13 +760,18 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xs, // Minimal padding to fit everything on screen
   },
   footer: {
-    paddingTop: theme.spacing.xs, // Minimal padding to fit everything on screen
+    paddingTop: theme.spacing.sm,
   },
   primaryButton: {
-    backgroundColor: theme.colors.primary,
-    padding: theme.spacing.md,
-    borderRadius: theme.radius.lg,
+    minHeight: 56,
+    borderRadius: 20,
     alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
   },
   primaryButtonDisabled: {
     opacity: 0.5,

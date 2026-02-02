@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { getUserFriendlyMessage } from '@/services/errors';
 import { createLogger } from '@/services/logging';
 
 export interface UseAsyncDataOptions {
@@ -38,8 +39,7 @@ export function useAsyncData<T>(
       setData(result);
       onSuccess?.(result);
     } catch (err: any) {
-      const errorMessage = err?.message || 'Failed to load data';
-      setError(errorMessage);
+      setError(getUserFriendlyMessage(err));
       logger.error('Failed to load data', err);
       onError?.(err);
     } finally {
@@ -51,7 +51,9 @@ export function useAsyncData<T>(
     if (!skip) {
       loadData();
     }
-  }, deps);
+    // Refetch when skip or deps change; omit loadData to avoid refetches when onSuccess/onError/logger change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadData is stable for refetch triggers (deps).
+  }, [skip, ...deps]);
 
   return {
     data,

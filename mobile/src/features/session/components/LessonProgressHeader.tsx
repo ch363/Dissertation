@@ -53,7 +53,7 @@ export function LessonProgressHeader({ title, current, total, onBackPress }: Pro
         </Pressable>
       </View>
 
-      <Text style={styles.counterText}>{`Question ${current}/${total}`}</Text>
+      <Text style={styles.counterText}>{`Question ${current} of ${total}`}</Text>
 
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />

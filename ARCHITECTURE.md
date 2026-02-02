@@ -52,11 +52,16 @@ backend/
 │   ├── app.module.ts           # Root module (imports all feature modules)
 │   ├── app.controller.ts       # Root controller
 │   ├── app.service.ts          # Root service
+│   ├── common/                 # Shared guards, decorators, filters
+│   │   ├── guards/
+│   │   │   └── supabase-jwt.guard.ts   # JWT verification guard
+│   │   ├── decorators/
+│   │   │   └── user.decorator.ts       # @UserId() decorator
+│   │   └── filters/                     # Global exception filters
 │   ├── auth/                   # Authentication module
 │   │   ├── auth.module.ts      # Auth module configuration
-│   │   ├── supabase-auth.guard.ts      # JWT verification guard
-│   │   ├── supabase-auth.strategy.ts   # Passport JWT strategy
-│   │   └── user-id.decorator.ts        # @UserId() decorator
+│   │   ├── supabase.strategy.ts        # Passport JWT strategy
+│   │   └── supabase-jwt.service.ts     # JWT validation service
 │   ├── users/                  # User management module
 │   │   ├── users.module.ts
 │   │   ├── users.controller.ts # /me endpoints
@@ -498,7 +503,7 @@ Fluentia uses **Supabase Auth** as the single identity provider for both mobile 
 │  (NestJS)   │
 └──────┬──────┘
        │
-       │ 4. SupabaseAuthGuard
+       │ 4. SupabaseJwtGuard
        │    verifies JWT
        ▼
 ┌─────────────┐
@@ -518,7 +523,7 @@ Fluentia uses **Supabase Auth** as the single identity provider for both mobile 
 
 ### Backend (NestJS)
 
-- **JWT Verification**: `SupabaseAuthGuard` validates Supabase JWT tokens on every authenticated endpoint
+- **JWT Verification**: `SupabaseJwtGuard` (in `common/guards/supabase-jwt.guard.ts`) validates Supabase JWT tokens on every authenticated endpoint
 - **Token Extraction**: Uses Passport JWT strategy to extract token from `Authorization: Bearer <token>` header
 - **User ID Extraction**: Reads user ID from JWT `sub` claim (matches `auth.users.id` in Supabase)
 - **User Provisioning**: Business-layer only via `GET /me` endpoint (upserts `public.users` with `id = authUid`)
@@ -611,15 +616,22 @@ Question attempts use a simple spaced repetition algorithm:
 - Score < 80: Next review due in 1 day
 - Stored in `UserQuestionPerformance.nextReviewDue`
 
+## Implemented (Current)
+
+### Backend
+- RESTful API endpoints for all entities
+- Input validation with class-validator
+- JWT authentication with Supabase (`SupabaseJwtGuard`, `supabase.strategy`)
+- **Error handling**: Global exception filters (`AllExceptionsFilter`, `HttpExceptionFilter`, `PrismaExceptionFilter`) in `main.ts`
+- **CORS**: Configured in `main.ts` via `app.enableCors()` and `CORS_ORIGIN` env
+
+### Mobile
+- **Backend API integration**: Mobile uses `apiClient` (in `services/api/client.ts`) to call NestJS endpoints for learn, progress, profile, modules, mastery, onboarding, etc.
+
 ## Future Enhancements
 
 ### Backend
-- [x] RESTful API endpoints for all entities ✅
-- [x] Input validation with class-validator ✅
-- [x] JWT authentication with Supabase ✅
-- [ ] Error handling middleware (centralized)
 - [ ] Rate limiting
-- [ ] CORS configuration
 - [ ] API documentation (Swagger/OpenAPI)
 - [ ] Unit and integration tests
 - [ ] Admin role-based access control
@@ -632,7 +644,6 @@ Question attempts use a simple spaced repetition algorithm:
 - [ ] Performance monitoring
 - [ ] Enhanced error boundaries
 - [ ] E2E testing with Maestro
-- [ ] Integration with backend API endpoints
 
 ## Conclusion
 

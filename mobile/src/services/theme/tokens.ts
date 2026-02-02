@@ -104,5 +104,6 @@ export const darkTheme: Theme = {
   typography,
 };
 
-// Backward-compatible named export; some files import { theme }
+// Backward-compatible named export; some files import { theme }.
+// Tokens are loaded first in expo-entry.js so theme is defined before any screen/layout runs.
 export const theme = lightTheme;

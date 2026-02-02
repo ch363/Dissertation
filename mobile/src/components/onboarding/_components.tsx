@@ -284,7 +284,8 @@ export function StickyCTA({ children }: { children: React.ReactNode }) {
   return <View>{children}</View>;
 }
 
-export function Spacer({ size = theme.spacing.sm }: { size?: number }) {
+const SPACER_DEFAULT = 12; // same as theme.spacing.sm, avoid module-level theme ref
+export function Spacer({ size = SPACER_DEFAULT }: { size?: number }) {
   return <View style={{ height: size }} />;
 }
 

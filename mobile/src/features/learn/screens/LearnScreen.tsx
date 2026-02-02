@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { ScrollView, StaticCard } from '@/components/ui';
+import { ScrollView } from '@/components/ui';
 
 import { LearnHeader } from '@/components/learn/LearnHeader';
 import { SuggestedForYouSection } from '@/components/learn/SuggestedForYouSection';
@@ -24,9 +24,13 @@ import { theme as baseTheme } from '@/services/theme/tokens';
 import { useAsyncData } from '@/hooks/useAsyncData';
 
 export default function LearnScreen() {
-  const { theme } = useAppTheme();
+  const { theme, isDark } = useAppTheme();
+  const catalogGradientColors = isDark ? [theme.colors.profileHeader, theme.colors.profileHeader] : [theme.colors.primary, theme.colors.primary];
+  const catalogBadgeBg = isDark ? (theme.colors.profileHeader + '40') : '#DBEAFE';
+  const catalogBadgeText = isDark ? theme.colors.text : '#264FD4';
   const router = useRouter();
   const hasLoadedOnceRef = useRef(false);
+  const isLoadingRef = useRef(false);
 
   const { data, loading, reload } = useAsyncData<{
     learningPathItems: LearningPathItem[];
@@ -98,16 +102,19 @@ export default function LearnScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (loading) return;
+      if (isLoadingRef.current) return;
       const cached = getCachedLearnScreenData();
       const needLoad = !hasLoadedOnceRef.current || !cached;
       if (needLoad) {
         hasLoadedOnceRef.current = true;
-        reload();
+        isLoadingRef.current = true;
+        reload().finally(() => {
+          isLoadingRef.current = false;
+        });
       } else if (cached) {
         preloadLearnScreenData().catch(() => {});
       }
-    }, [reload, loading])
+    }, [reload])
   );
 
   if (loading) {
@@ -124,54 +131,44 @@ export default function LearnScreen() {
         <LearnHeader />
         {dueReviewCount > 0 ? (
           <>
-            <StaticCard style={[styles.sectionBlock, styles.firstSection]}>
-              <ReviewSection
-                dueCount={dueReviewCount}
-                estimatedReviewMinutes={estimatedReviewMinutes}
-                onStart={() => router.push({ pathname: routes.tabs.review, params: { from: 'learn' } })}
-              />
-            </StaticCard>
-            <StaticCard style={styles.sectionBlock}>
-              <LearningPathCarousel
-                items={learningPathItems}
-                onPressItem={(route: string) => router.push(route)}
-              />
-            </StaticCard>
+            <ReviewSection
+              dueCount={dueReviewCount}
+              estimatedReviewMinutes={estimatedReviewMinutes}
+              onStart={() => router.push({ pathname: routes.tabs.review, params: { from: 'learn' } })}
+            />
+            <LearningPathCarousel
+              items={learningPathItems}
+              onPressItem={(route: string) => router.push(route)}
+            />
           </>
         ) : (
           <>
-            <StaticCard style={[styles.sectionBlock, styles.firstSection]}>
-              <LearningPathCarousel
-                items={learningPathItems}
-                onPressItem={(route: string) => router.push(route)}
-              />
-            </StaticCard>
-            <StaticCard style={styles.sectionBlock}>
-              <ReviewSection
-                dueCount={dueReviewCount}
-                estimatedReviewMinutes={estimatedReviewMinutes}
-                onStart={() => router.push({ pathname: routes.tabs.review, params: { from: 'learn' } })}
-              />
-            </StaticCard>
+            <LearningPathCarousel
+              items={learningPathItems}
+              onPressItem={(route: string) => router.push(route)}
+            />
+            <ReviewSection
+              dueCount={dueReviewCount}
+              estimatedReviewMinutes={estimatedReviewMinutes}
+              onStart={() => router.push({ pathname: routes.tabs.review, params: { from: 'learn' } })}
+            />
           </>
         )}
         {suggestedModule != null && (
-          <StaticCard style={styles.sectionBlock}>
-            <SuggestedForYouSection
-              suggestion={suggestedModule}
-              onPress={() => router.push(routeBuilders.courseDetail(suggestedModule.module.id))}
-            />
-          </StaticCard>
+          <SuggestedForYouSection
+            suggestion={suggestedModule}
+            onPress={() => router.push(routeBuilders.courseDetail(suggestedModule.module.id))}
+          />
         )}
 
-        <StaticCard style={[styles.sectionBlock, styles.allModulesSection]}>
+        <View style={styles.allModulesSection}>
           <View style={styles.allModulesHeader}>
             <View style={styles.allModulesHeaderLeft}>
               <Text style={[styles.allModulesTitle, { color: theme.colors.text }]}>
                 All Modules
               </Text>
-              <View style={styles.allModulesBadge}>
-                <Text style={styles.allModulesBadgeText}>Catalog</Text>
+              <View style={[styles.allModulesBadge, { backgroundColor: catalogBadgeBg }]}>
+                <Text style={[styles.allModulesBadgeText, { color: catalogBadgeText }]}>Catalog</Text>
               </View>
             </View>
           </View>
@@ -184,11 +181,15 @@ export default function LearnScreen() {
             onPress={() => router.push(routes.course.list)}
             style={({ pressed }) => [
               styles.allModulesCard,
-              { opacity: pressed ? 0.95 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] },
+              {
+                opacity: pressed ? 0.95 : 1,
+                transform: [{ scale: pressed ? 0.98 : 1 }],
+                shadowColor: isDark ? theme.colors.profileHeader : undefined,
+              },
             ]}
           >
             <LinearGradient
-              colors={[theme.colors.primary, theme.colors.primary]}
+              colors={catalogGradientColors}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.allModulesGradient}
@@ -209,7 +210,7 @@ export default function LearnScreen() {
               </View>
             </LinearGradient>
           </Pressable>
-        </StaticCard>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -222,19 +223,10 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 120,
   },
-  sectionBlock: {
-    marginTop: 8,
-    paddingVertical: 8,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  firstSection: {
-    marginTop: 4,
-  },
   allModulesSection: {
-    marginTop: 8,
+    marginTop: 24,
     paddingHorizontal: 20,
-    gap: 12,
+    gap: 14,
   },
   allModulesHeader: {
     flexDirection: 'row',

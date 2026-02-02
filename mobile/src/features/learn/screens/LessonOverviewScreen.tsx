@@ -104,7 +104,7 @@ export default function LessonOverviewScreen() {
             </Text>
           ) : null}
           {locked ? (
-            <View style={styles.lockPill}>
+            <View style={[styles.lockPill, { borderColor: theme.colors.border }]}>
               <Text style={[styles.lockText, { color: theme.colors.mutedText }]}>
                 Locked until previous lesson is completed
               </Text>
@@ -203,7 +203,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 14,
     padding: baseTheme.spacing.md,
-    backgroundColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOpacity: 0.04,
     shadowRadius: 6,

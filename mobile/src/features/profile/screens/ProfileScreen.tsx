@@ -161,27 +161,46 @@ export default function Profile() {
           <View style={styles.statsSection}>
             <View style={styles.statsRowPrimary}>
               <View style={styles.statCardSlot}>
-                <Link href={routes.tabs.review} asChild style={styles.statCardSlotInner}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Due reviews: ${dashboard.dueReviewCount}. Tap to start reviews.`}
-                    style={({ pressed }) => [styles.statCardTouchable, pressed && styles.statCardPressed]}
+                {dashboard.dueReviewCount === 0 ? (
+                  <View
+                    style={[styles.statCard, styles.statCardWhite, styles.statCardDisabled]}
+                    accessibilityRole="text"
+                    accessibilityLabel="Due reviews: 0. Nothing to review. Not available."
                   >
-                    <View style={[styles.statCard, styles.statCardWhite, styles.statCardActionable]}>
-                      <View style={styles.statCardContent}>
-                        <View style={styles.statCardMain}>
-                          <View style={[styles.statIconContainer, styles.statIconRedAction]}>
-                            <Ionicons name="time-outline" size={22} color="#DC2626" />
-                          </View>
-                          <Text style={styles.statValue}>{dashboard.dueReviewCount}</Text>
-                          <Text style={styles.statLabel}>Due Reviews</Text>
-                          <Text style={styles.statActionSublabel}>Tap to start</Text>
+                    <View style={styles.statCardContent}>
+                      <View style={styles.statCardMain}>
+                        <View style={[styles.statIconContainer, styles.statIconRedAction]}>
+                          <Ionicons name="time-outline" size={22} color="#DC2626" />
                         </View>
-                        <Ionicons name="chevron-forward" size={20} color={theme.colors.mutedText} />
+                        <Text style={styles.statValue}>{dashboard.dueReviewCount}</Text>
+                        <Text style={styles.statLabel}>Due Reviews</Text>
+                        <Text style={styles.statActionSublabel}>Nothing to review</Text>
                       </View>
                     </View>
-                  </Pressable>
-                </Link>
+                  </View>
+                ) : (
+                  <Link href={routes.tabs.review} asChild style={styles.statCardSlotInner}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Due reviews: ${dashboard.dueReviewCount}. Tap to start reviews.`}
+                      style={({ pressed }) => [styles.statCardTouchable, pressed && styles.statCardPressed]}
+                    >
+                      <View style={[styles.statCard, styles.statCardWhite, styles.statCardActionable]}>
+                        <View style={styles.statCardContent}>
+                          <View style={styles.statCardMain}>
+                            <View style={[styles.statIconContainer, styles.statIconRedAction]}>
+                              <Ionicons name="time-outline" size={22} color="#DC2626" />
+                            </View>
+                            <Text style={styles.statValue}>{dashboard.dueReviewCount}</Text>
+                            <Text style={styles.statLabel}>Due Reviews</Text>
+                            <Text style={styles.statActionSublabel}>Tap to start</Text>
+                          </View>
+                          <Ionicons name="chevron-forward" size={20} color={theme.colors.mutedText} />
+                        </View>
+                      </View>
+                    </Pressable>
+                  </Link>
+                )}
               </View>
 
               <View style={styles.statCardSlot}>

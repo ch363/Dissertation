@@ -1,3 +1,4 @@
+import { ApiClientError } from '@/services/api/types';
 import { createLogger } from '../logging';
 
 const logger = createLogger('ErrorHandler');
@@ -26,6 +27,13 @@ export class AppError extends Error {
 export function classifyError(error: unknown): ErrorType {
   if (error instanceof AppError) {
     return error.type;
+  }
+
+  if (error instanceof ApiClientError) {
+    const code = error.statusCode;
+    if (code === 401 || code === 403) return ErrorType.AUTH;
+    if (code === 404) return ErrorType.NOT_FOUND;
+    if (code != null && code >= 500) return ErrorType.SERVER;
   }
 
   if (error instanceof Error) {

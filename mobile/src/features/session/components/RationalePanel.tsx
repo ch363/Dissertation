@@ -7,7 +7,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { theme } from '@/services/theme/tokens';
+
+import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { theme as baseTheme } from '@/services/theme/tokens';
 
 interface RationalePanelProps {
   rationale: string;
@@ -20,10 +22,12 @@ export const RationalePanel: React.FC<RationalePanelProps> = ({
   visible,
   onToggle,
 }) => {
+  const ctx = useAppTheme();
+  const theme = ctx?.theme ?? baseTheme;
   if (!rationale) return null;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
       <Pressable
         style={styles.toggleButton}
         onPress={onToggle}
@@ -35,14 +39,14 @@ export const RationalePanel: React.FC<RationalePanelProps> = ({
           size={20}
           color={theme.colors.primary}
         />
-        <Text style={styles.toggleText}>
+        <Text style={[styles.toggleText, { color: theme.colors.primary }]}>
           {visible ? 'Hide Why' : 'Why?'}
         </Text>
       </Pressable>
 
       {visible && (
-        <View style={styles.content}>
-          <Text style={styles.rationaleText}>{rationale}</Text>
+        <View style={[styles.content, { borderTopColor: theme.colors.border }]}>
+          <Text style={[styles.rationaleText, { color: theme.colors.mutedText }]}>{rationale}</Text>
         </View>
       )}
     </View>
@@ -51,34 +55,29 @@ export const RationalePanel: React.FC<RationalePanelProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: theme.spacing.md,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.md,
+    marginTop: baseTheme.spacing.md,
+    borderRadius: baseTheme.radius.md,
     borderWidth: 1,
-    borderColor: theme.colors.border,
     overflow: 'hidden',
   },
   toggleButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: theme.spacing.md,
-    gap: theme.spacing.sm,
+    padding: baseTheme.spacing.md,
+    gap: baseTheme.spacing.sm,
   },
   toggleText: {
-    fontSize: theme.fontSize.md,
+    fontSize: 15,
     fontWeight: '600',
-    color: theme.colors.primary,
   },
   content: {
-    paddingHorizontal: theme.spacing.md,
-    paddingBottom: theme.spacing.md,
+    paddingHorizontal: baseTheme.spacing.md,
+    paddingBottom: baseTheme.spacing.md,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
   },
   rationaleText: {
-    fontSize: theme.fontSize.md,
+    fontSize: 15,
     lineHeight: 22,
-    color: theme.colors.textSecondary,
-    marginTop: theme.spacing.sm,
+    marginTop: baseTheme.spacing.sm,
   },
 });

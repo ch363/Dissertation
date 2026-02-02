@@ -3,7 +3,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
-import { theme } from '@/services/theme/tokens';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { theme as baseTheme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
 import { FillBlankCard as FillBlankCardType } from '@/types/session';
 import { announce } from '@/utils/a11y';
@@ -20,6 +21,8 @@ type Props = {
 };
 
 export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult, isCorrect }: Props) {
+  const ctx = useAppTheme();
+  const theme = ctx?.theme ?? baseTheme;
   const [isPlaying, setIsPlaying] = useState(false);
   const previousAnswerRef = useRef<string | undefined>(undefined);
 
@@ -110,11 +113,11 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
   const hasBlank = sentenceParts.length === 2;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.instruction}>FILL IN THE BLANK</Text>
+    <View style={[styles.container, { gap: theme.spacing.md }]}>
+      <Text style={[styles.instruction, { color: theme.colors.success }]}>FILL IN THE BLANK</Text>
 
       {/* Main Question Card */}
-      <View style={styles.questionCard}>
+      <View style={[styles.questionCard, { backgroundColor: theme.colors.card }]}>
         {/* Audio button - always show if text is available */}
         {(card.audioUrl || card.text) && (
           <Pressable
@@ -128,38 +131,43 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
             <Ionicons
               name={isPlaying ? 'pause' : 'volume-high'}
               size={20}
-              color="#4A90E2"
+              color={theme.colors.primary}
               accessible={false}
               importantForAccessibility="no"
             />
-            <Text style={styles.audioLabel}>Listen and complete</Text>
+            <Text style={[styles.audioLabel, { color: theme.colors.text }]}>Listen and complete</Text>
           </Pressable>
         )}
 
         {/* Sentence with blank */}
         <View style={styles.sentenceContainer}>
-          {sentenceParts[0] && <Text style={styles.sentenceText}>{sentenceParts[0].trim()}</Text>}
+          {sentenceParts[0] && <Text style={[styles.sentenceText, { color: theme.colors.text }]}>{sentenceParts[0].trim()}</Text>}
           <View 
             style={[
               styles.blankField, 
+              {
+                borderColor: theme.colors.primary,
+                backgroundColor: theme.colors.primary + '18',
+              },
               selectedAnswer && showResult
                 ? isCorrect 
-                  ? styles.blankFieldCorrect 
-                  : styles.blankFieldIncorrect
+                  ? { backgroundColor: theme.colors.success + '30', borderColor: theme.colors.success, borderWidth: 3 }
+                  : { backgroundColor: theme.colors.error + '20', borderColor: theme.colors.error, borderWidth: 3 }
                 : selectedAnswer 
-                  ? styles.blankFieldFilled 
+                  ? { backgroundColor: theme.colors.primary + '18', borderColor: theme.colors.primary }
                   : null
             ]}
           >
             <Text 
               style={[
                 styles.blankText, 
+                { color: theme.colors.primary },
                 selectedAnswer && showResult
                   ? isCorrect
-                    ? styles.blankTextCorrect
-                    : styles.blankTextIncorrect
+                    ? { color: theme.colors.success }
+                    : { color: theme.colors.error }
                   : selectedAnswer
-                    ? styles.blankTextFilled
+                    ? { color: theme.colors.text }
                     : null
               ]}
             >
@@ -170,19 +178,19 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
               <Ionicons 
                 name={isCorrect ? "checkmark-circle" : "close-circle"} 
                 size={20} 
-                color={isCorrect ? "#28a745" : "#dc3545"} 
+                color={isCorrect ? theme.colors.success : theme.colors.error} 
                 style={styles.blankIcon} 
               />
             )}
           </View>
-          {sentenceParts[1] && <Text style={styles.sentenceText}>{sentenceParts[1].trim()}</Text>}
+          {sentenceParts[1] && <Text style={[styles.sentenceText, { color: theme.colors.text }]}>{sentenceParts[1].trim()}</Text>}
         </View>
       </View>
 
       {/* Options Card */}
       {card.options && card.options.length > 0 && (
-        <View style={styles.optionsCard}>
-          <Text style={styles.optionsLabel}>TAP TO FILL THE BLANK</Text>
+        <View style={[styles.optionsCard, { backgroundColor: theme.colors.card }]}>
+          <Text style={[styles.optionsLabel, { color: theme.colors.mutedText }]}>TAP TO FILL THE BLANK</Text>
           <View style={styles.optionsGrid}>
             {card.options.map((opt) => {
               const isSelected = selectedAnswer === opt.label;
@@ -196,10 +204,11 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
                   key={opt.id}
                   style={[
                     styles.optionButton, 
-                    !showResult && isSelected && styles.optionButtonSelected,
-                    isCorrectOption && styles.optionButtonCorrect,
-                    isIncorrectOption && styles.optionButtonIncorrect,
-                    isDisabled && !isCorrectOption && styles.optionButtonDisabled,
+                    { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+                    !showResult && isSelected && { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+                    isCorrectOption && { backgroundColor: theme.colors.success + '25', borderColor: theme.colors.success },
+                    isIncorrectOption && { backgroundColor: theme.colors.error + '20', borderColor: theme.colors.error },
+                    isDisabled && !isCorrectOption && { opacity: 0.7 },
                   ]}
                   onPress={() => {
                     // Only allow selection if correct answer hasn't been selected yet
@@ -218,10 +227,11 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
                   <Text 
                     style={[
                       styles.optionText, 
-                      !showResult && isSelected && styles.optionTextSelected,
-                      isCorrectOption && styles.optionTextCorrect,
-                      isIncorrectOption && styles.optionTextIncorrect,
-                      isDisabled && !isCorrectOption && styles.optionTextDisabled,
+                      { color: theme.colors.text },
+                      !showResult && isSelected && { color: theme.colors.onPrimary },
+                      isCorrectOption && { color: theme.colors.success },
+                      isIncorrectOption && { color: theme.colors.error },
+                      isDisabled && !isCorrectOption && { color: theme.colors.mutedText },
                     ]}
                   >
                     {opt.label}
@@ -231,7 +241,7 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
                     <Ionicons
                       name="checkmark-circle"
                       size={20}
-                      color="#28a745"
+                      color={theme.colors.success}
                       style={styles.optionIcon}
                       accessible={false}
                       importantForAccessibility="no"
@@ -241,7 +251,7 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
                     <Ionicons
                       name="close-circle"
                       size={20}
-                      color="#dc3545"
+                      color={theme.colors.error}
                       style={styles.optionIcon}
                       accessible={false}
                       importantForAccessibility="no"
@@ -259,21 +269,19 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
 
 const styles = StyleSheet.create({
   container: {
-    gap: theme.spacing.md,
+    gap: baseTheme.spacing.md,
   },
   instruction: {
-    fontFamily: theme.typography.bold,
+    fontFamily: baseTheme.typography.bold,
     fontSize: 14,
-    color: '#28a745',
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: theme.spacing.xs,
+    marginBottom: baseTheme.spacing.xs,
   },
   questionCard: {
-    backgroundColor: '#fff',
     borderRadius: 16,
-    padding: theme.spacing.lg,
-    gap: theme.spacing.md,
+    padding: baseTheme.spacing.lg,
+    gap: baseTheme.spacing.md,
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 10,
@@ -283,24 +291,22 @@ const styles = StyleSheet.create({
   audioButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.xs,
-    marginBottom: theme.spacing.sm,
+    gap: baseTheme.spacing.xs,
+    marginBottom: baseTheme.spacing.sm,
   },
   audioLabel: {
-    fontFamily: theme.typography.regular,
+    fontFamily: baseTheme.typography.regular,
     fontSize: 14,
-    color: theme.colors.text,
   },
   sentenceContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: theme.spacing.xs,
+    gap: baseTheme.spacing.xs,
   },
   sentenceText: {
-    fontFamily: theme.typography.regular,
+    fontFamily: baseTheme.typography.regular,
     fontSize: 18,
-    color: theme.colors.text,
     lineHeight: 28,
   },
   blankField: {
@@ -308,52 +314,31 @@ const styles = StyleSheet.create({
     minHeight: 44,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#4A90E2',
-    backgroundColor: '#E8F4FD',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: baseTheme.spacing.md,
+    paddingVertical: baseTheme.spacing.xs,
     flexDirection: 'row',
-    gap: theme.spacing.xs,
+    gap: baseTheme.spacing.xs,
   },
   blankIcon: {
-    marginLeft: theme.spacing.xs,
+    marginLeft: baseTheme.spacing.xs,
   },
-  blankFieldFilled: {
-    backgroundColor: '#E8F4FD',
-    borderColor: '#4A90E2',
-  },
-  blankFieldCorrect: {
-    backgroundColor: '#d4edda',
-    borderColor: '#28a745',
-    borderWidth: 3,
-  },
-  blankFieldIncorrect: {
-    backgroundColor: '#f8d7da',
-    borderColor: '#dc3545',
-    borderWidth: 3,
-  },
+  blankFieldFilled: {},
+  blankFieldCorrect: {},
+  blankFieldIncorrect: {},
   blankText: {
-    fontFamily: theme.typography.semiBold,
+    fontFamily: baseTheme.typography.semiBold,
     fontSize: 18,
-    color: '#4A90E2',
     minHeight: 20,
   },
-  blankTextFilled: {
-    color: theme.colors.text,
-  } as const,
-  blankTextCorrect: {
-    color: '#28a745',
-  },
-  blankTextIncorrect: {
-    color: '#dc3545',
-  },
+  blankTextFilled: {},
+  blankTextCorrect: {},
+  blankTextIncorrect: {},
   optionsCard: {
-    backgroundColor: '#fff',
     borderRadius: 16,
-    padding: theme.spacing.lg,
-    gap: theme.spacing.md,
+    padding: baseTheme.spacing.lg,
+    gap: baseTheme.spacing.md,
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 10,
@@ -361,70 +346,44 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   optionsLabel: {
-    fontFamily: theme.typography.semiBold,
+    fontFamily: baseTheme.typography.semiBold,
     fontSize: 12,
-    color: theme.colors.mutedText,
+    color: baseTheme.colors.mutedText,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: theme.spacing.xs,
+    marginBottom: baseTheme.spacing.xs,
   },
   optionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.md,
+    gap: baseTheme.spacing.md,
   },
   optionButton: {
     flex: 1,
     minWidth: '45%',
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: baseTheme.spacing.md,
+    paddingHorizontal: baseTheme.spacing.sm,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#4A90E2',
-    backgroundColor: '#E8F4FD',
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 56,
     flexDirection: 'row',
-    gap: theme.spacing.xs,
+    gap: baseTheme.spacing.xs,
   },
   optionIcon: {
-    marginLeft: theme.spacing.xs,
+    marginLeft: baseTheme.spacing.xs,
   },
-  optionButtonSelected: {
-    backgroundColor: '#4A90E2',
-    borderColor: '#4A90E2',
-  },
-  optionButtonCorrect: {
-    backgroundColor: '#d4edda',
-    borderColor: '#28a745',
-    borderWidth: 3,
-  },
-  optionButtonIncorrect: {
-    backgroundColor: '#f8d7da',
-    borderColor: '#dc3545',
-    borderWidth: 3,
-  },
+  optionButtonSelected: {},
+  optionButtonCorrect: {},
+  optionButtonIncorrect: {},
   optionText: {
-    fontFamily: theme.typography.semiBold,
+    fontFamily: baseTheme.typography.semiBold,
     fontSize: 16,
-    color: '#4A90E2',
   },
-  optionTextSelected: {
-    color: '#fff',
-  },
-  optionTextCorrect: {
-    color: '#28a745',
-  },
-  optionTextIncorrect: {
-    color: '#dc3545',
-  },
-  optionButtonDisabled: {
-    opacity: 0.5,
-    borderColor: '#ccc',
-    backgroundColor: '#f5f5f5',
-  },
-  optionTextDisabled: {
-    color: '#999',
-  },
+  optionTextSelected: {},
+  optionTextCorrect: {},
+  optionTextIncorrect: {},
+  optionButtonDisabled: {},
+  optionTextDisabled: {},
 });

@@ -1,6 +1,6 @@
 import { getSupabaseClient } from '@/services/supabase/client';
 import { getApiUrl } from './config';
-import { ApiClientError, type ApiResponse } from './types';
+import { ApiClientError, type ApiError, isApiEnvelope } from './types';
 import { createLogger } from '@/services/logging';
 
 const logger = createLogger('ApiClient');
@@ -30,9 +30,11 @@ class ApiClient {
     const url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
     
     const token = await this.getAuthToken();
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(typeof options.headers === 'object' && options.headers !== null && !Array.isArray(options.headers)
+        ? (options.headers as Record<string, string>)
+        : {}),
     };
 
     if (token) {
@@ -77,16 +79,15 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        let errorMessage = data.message || data.error || `HTTP ${response.status}`;
-        
-        if (data.message && typeof data.message === 'string') {
-          if (data.message.includes('Unique constraint')) {
-            errorMessage = `Database constraint error: ${data.message}`;
-          } else if (data.message.includes('Invalid')) {
-            errorMessage = data.message;
-          }
+        const errBody = (data && typeof data === 'object' ? data : {}) as { message?: string; error?: string };
+        let errorMessage = errBody.message ?? errBody.error ?? `HTTP ${response.status}`;
+
+        if (errBody.message?.includes('Unique constraint')) {
+          errorMessage = `Database constraint error: ${errBody.message}`;
+        } else if (errBody.message?.includes('Invalid')) {
+          errorMessage = errBody.message;
         }
-        
+
         throw new ApiClientError(
           errorMessage,
           response.status,
@@ -94,23 +95,22 @@ class ApiClient {
         );
       }
 
-      if (data && typeof data === 'object') {
-        if ('data' in data && 'success' in data) {
-          if ((data as any).success === true) {
-            return (data as any).data as T;
-          }
-          if ((data as any).success === false && (data as any).message) {
-            throw new ApiClientError(
-              (data as any).message || 'Request failed',
-              response.status,
-              response,
-            );
-          }
+      if (data && typeof data === 'object' && isApiEnvelope(data)) {
+        if (data.success) {
+          return data.data as T;
         }
-        if ('statusCode' in data && 'error' in data) {
+        throw new ApiClientError(
+          data.message || 'Request failed',
+          response.status,
+          response,
+        );
+      }
+      if (data && typeof data === 'object') {
+        const err = data as ApiError;
+        if ('statusCode' in err && 'error' in err) {
           throw new ApiClientError(
-            data.message || data.error || 'Unknown error',
-            data.statusCode || response.status,
+            err.message || err.error || 'Unknown error',
+            err.statusCode ?? response.status,
             response,
           );
         }

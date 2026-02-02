@@ -1,12 +1,16 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { routes } from '@/services/navigation/routes';
-import { theme } from '@/services/theme/tokens';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
 
 export default function LandingScreen() {
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const goSignUp = () => router.push(routes.auth.signUp);
   const goSignIn = () => router.push(routes.auth.signIn);
 
@@ -31,56 +35,58 @@ export default function LandingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: '#F5F7FB',
-  },
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: theme.spacing.lg,
-    backgroundColor: '#F5F7FB',
-  },
-  logo: {
-    width: 140,
-    height: 140,
-    marginBottom: theme.spacing.lg,
-  },
-  title: {
-    fontFamily: theme.typography.bold,
-    fontSize: 32,
-    color: theme.colors.text,
-    marginTop: theme.spacing.sm,
-  },
-  subtitle: {
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.xl,
-    fontFamily: theme.typography.regular,
-    color: theme.colors.mutedText,
-    textAlign: 'center',
-  },
-  buttons: {
-    width: '100%',
-    marginTop: theme.spacing.md,
-    gap: theme.spacing.md,
-  },
-  button: {
-    width: '100%',
-    paddingVertical: 14,
-    borderRadius: theme.radius.md,
-    alignItems: 'center',
-  },
-  primary: {
-    backgroundColor: theme.colors.primary,
-  },
-  secondary: {
-    backgroundColor: theme.colors.secondary,
-  },
-  buttonText: {
-    color: '#fff',
-    fontFamily: theme.typography.semiBold,
-    fontSize: 16,
-  },
-});
+function createStyles(theme: ReturnType<typeof useAppTheme>['theme']) {
+  return StyleSheet.create({
+    safe: {
+      flex: 1,
+      backgroundColor: '#F5F7FB',
+    },
+    container: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: theme.spacing.lg,
+      backgroundColor: '#F5F7FB',
+    },
+    logo: {
+      width: 140,
+      height: 140,
+      marginBottom: theme.spacing.lg,
+    },
+    title: {
+      fontFamily: theme.typography.bold,
+      fontSize: 32,
+      color: theme.colors.text,
+      marginTop: theme.spacing.sm,
+    },
+    subtitle: {
+      marginTop: theme.spacing.sm,
+      marginBottom: theme.spacing.xl,
+      fontFamily: theme.typography.regular,
+      color: theme.colors.mutedText,
+      textAlign: 'center',
+    },
+    buttons: {
+      width: '100%',
+      marginTop: theme.spacing.md,
+      gap: theme.spacing.md,
+    },
+    button: {
+      width: '100%',
+      paddingVertical: 14,
+      borderRadius: theme.radius.md,
+      alignItems: 'center',
+    },
+    primary: {
+      backgroundColor: theme.colors.primary,
+    },
+    secondary: {
+      backgroundColor: theme.colors.secondary,
+    },
+    buttonText: {
+      color: '#fff',
+      fontFamily: theme.typography.semiBold,
+      fontSize: 16,
+    },
+  });
+}

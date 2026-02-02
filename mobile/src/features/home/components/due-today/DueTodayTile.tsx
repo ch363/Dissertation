@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { CARD_BORDER, CARD_RADIUS, softShadow } from '../homeStyles';
+import { CARD_RADIUS, softShadow } from '../homeStyles';
 
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -35,17 +35,17 @@ export function DueTodayTile({ item, onPress }: Props) {
         styles.tile,
         {
           backgroundColor: theme.colors.card,
-          borderColor: CARD_BORDER,
+          borderColor: theme.colors.border,
         },
       ]}
     >
       <View style={styles.topRow}>
-        <View style={styles.iconCircle}>
-          <Ionicons name={item.icon} size={20} color="#1B6ED4" accessible={false} importantForAccessibility="no" />
+        <View style={[styles.iconCircle, { backgroundColor: theme.colors.primary + '20' }]}>
+          <Ionicons name={item.icon} size={20} color={theme.colors.primary} accessible={false} importantForAccessibility="no" />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: theme.colors.text }]}>{item.title}</Text>
-          <Text style={[styles.subtitle, { color: '#5F6F86' }]}>{item.lessons}</Text>
+          <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>{item.lessons}</Text>
         </View>
         {item.completed ? (
           <Ionicons
@@ -82,7 +82,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: baseTheme.spacing.md,
     gap: baseTheme.spacing.sm,
     minHeight: 134,
-    backgroundColor: '#FFFFFF',
     ...softShadow,
   },
   topRow: {
@@ -94,7 +93,6 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 14,
-    backgroundColor: '#E6F0FF',
     alignItems: 'center',
     justifyContent: 'center',
   },
