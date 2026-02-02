@@ -1,19 +1,21 @@
 import { StyleSheet } from "react-native";
-import { theme as baseTheme } from "@/services/theme/tokens";
+import { theme as baseTheme, Theme } from "@/services/theme/tokens";
 
-export const profileScreenStyles = StyleSheet.create({
+export function createProfileScreenStyles(theme: Theme) {
+  const c = theme.colors;
+  return StyleSheet.create({
   safeArea: {
     flex: 1,
   },
   content: {
     padding: 20,
-    gap: 24,
+    gap: 12,
   },
 
-  // Header Gradient Styles
+  // Header Gradient Styles (on primary gradient — keep light text/contrast)
   headerGradient: {
     borderRadius: 24,
-    padding: 24,
+    padding: 20,
     shadowOpacity: 0.3,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 8 },
@@ -23,7 +25,7 @@ export const profileScreenStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -108,150 +110,206 @@ export const profileScreenStyles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  editButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  headerMenuButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
     borderRadius: 12,
     padding: 10,
   },
+  headerMenuButtonPressed: {
+    opacity: 0.85,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  },
   weeklyProgress: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 12,
+    padding: 10,
+    marginTop: 8,
   },
   weeklyProgressHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   weeklyProgressLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   weeklyProgressTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: baseTheme.typography.medium,
-    color: '#FFFFFF',
+    color: 'rgba(255, 255, 255, 0.9)',
   },
   weeklyProgressXP: {
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: baseTheme.typography.bold,
-    color: '#FFFFFF',
+    color: 'rgba(255, 255, 255, 0.95)',
   },
   weeklyProgressSubtext: {
-    fontSize: 12,
-    color: '#BFDBFE',
+    fontSize: 11,
+    color: 'rgba(191, 219, 254, 0.85)',
   },
 
-  // Stats Cards Styles — high-end card treatment
+  // Stats Cards Styles — theme-aware
   statsSection: {
-    gap: 14,
+    gap: 10,
   },
   statsRowPrimary: {
     flexDirection: 'row',
-    gap: 14,
+    gap: 10,
   },
-  statCardWrapper: {
+  statCardSlot: {
     flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
+  },
+  statCardSlotInner: {
+    flex: 1,
+    minWidth: 0,
+  },
+  statCardTouchable: {
+    flex: 1,
+    minWidth: 0,
   },
   statCard: {
-    backgroundColor: '#FFFFFF',
+    flex: 1,
+    minWidth: 0,
     borderRadius: 20,
-    padding: 20,
-    minHeight: 136,
-    shadowColor: '#0F172A',
+    padding: 14,
+    minHeight: 108,
+    shadowColor: c.border,
     shadowOpacity: 0.06,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
     borderWidth: 1,
-    borderColor: 'rgba(241, 245, 249, 0.9)',
+    borderColor: c.border,
     overflow: 'hidden',
   },
+  statCardActionable: {
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+    borderWidth: 1.5,
+    borderColor: c.error + '40',
+  },
+  statCardWhite: {
+    backgroundColor: c.card,
+  },
+  statCardPressed: {
+    opacity: 0.9,
+  },
+  statCardContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  statCardMain: {
+    flex: 1,
+  },
   statIconContainer: {
-    borderRadius: 14,
-    padding: 11,
-    width: 44,
-    height: 44,
+    borderRadius: 12,
+    padding: 8,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   statIconRed: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: c.error + '20',
+  },
+  statIconRedAction: {
+    backgroundColor: c.error + '25',
   },
   statIconBlue: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: c.primary + '20',
   },
   statIconOrange: {
-    backgroundColor: '#FFF7ED',
+    backgroundColor: '#EA580C' + '20',
   },
   statIconPurple: {
-    backgroundColor: '#FAF5FF',
+    backgroundColor: '#9333EA' + '20',
   },
   statValue: {
-    fontSize: 32,
+    fontSize: 28,
     fontFamily: baseTheme.typography.bold,
-    color: '#0F172A',
-    marginBottom: 6,
+    color: c.text,
+    marginBottom: 4,
     letterSpacing: -0.5,
   },
   statLabel: {
     fontSize: 11,
     fontFamily: baseTheme.typography.semiBold,
-    color: '#64748B',
+    color: c.mutedText,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
-  statUrgent: {
-    fontSize: 11,
-    fontFamily: baseTheme.typography.semiBold,
-    color: '#DC2626',
-    marginTop: 10,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
+  statActionSublabel: {
+    fontSize: 10,
+    fontFamily: baseTheme.typography.medium,
+    color: c.mutedText,
+    marginTop: 2,
+    letterSpacing: 0.2,
   },
 
   // Progress Section Styles
   progressSection: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
     borderRadius: 24,
-    padding: 24,
-    shadowColor: '#000',
+    padding: 20,
+    shadowColor: c.border,
     shadowOpacity: 0.05,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: c.border,
   },
   progressHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 14,
   },
   sectionTitle: {
     fontSize: 20,
     fontFamily: baseTheme.typography.bold,
-    color: '#0F172A',
+    color: c.text,
+  },
+  viewAllButtonWrap: {
+    flexShrink: 0,
   },
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    flexWrap: 'nowrap',
+    flexShrink: 0,
+  },
+  viewAllButtonPressed: {
+    opacity: 0.7,
   },
   viewAllText: {
     fontSize: 14,
+    lineHeight: 16,
     fontFamily: baseTheme.typography.semiBold,
+    flexShrink: 0,
+  },
+  viewAllChevronWrap: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 16,
+    flexShrink: 0,
   },
   levelInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   levelLeft: {
     flexDirection: 'row',
@@ -270,7 +328,7 @@ export const profileScreenStyles = StyleSheet.create({
   levelText: {
     fontSize: 18,
     fontFamily: baseTheme.typography.bold,
-    color: '#0F172A',
+    color: c.text,
   },
   levelRight: {
     alignItems: 'flex-end',
@@ -278,18 +336,18 @@ export const profileScreenStyles = StyleSheet.create({
   xpProgress: {
     fontSize: 14,
     fontFamily: baseTheme.typography.medium,
-    color: '#64748B',
+    color: c.mutedText,
   },
   xpToNext: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: c.mutedText,
   },
   progressBarContainer: {
-    marginBottom: 20,
+    marginBottom: 14,
   },
   progressBarBg: {
     height: 12,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: c.border,
     borderRadius: 6,
     overflow: 'hidden',
     position: 'relative',
@@ -321,60 +379,60 @@ export const profileScreenStyles = StyleSheet.create({
     flex: 1,
   },
   progressStatIconBlue: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: c.primary + '25',
     borderRadius: 8,
     padding: 8,
   },
   progressStatIconRed: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: c.error + '20',
     borderRadius: 8,
     padding: 8,
   },
   progressStatIconGray: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: c.border + '60',
     borderRadius: 8,
     padding: 8,
   },
   progressStatLabel: {
     fontSize: 12,
     fontFamily: baseTheme.typography.medium,
-    color: '#64748B',
+    color: c.mutedText,
   },
   progressStatValue: {
     fontSize: 14,
     fontFamily: baseTheme.typography.bold,
-    color: '#0F172A',
+    color: c.text,
   },
   progressStatValueRed: {
-    color: '#DC2626',
+    color: c.error,
   },
   progressStatValueGray: {
-    color: '#94A3B8',
+    color: c.mutedText,
   },
   progressDivider: {
     width: 1,
     height: 40,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: c.border,
   },
 
   // Skill Mastery Styles
   skillSection: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
     borderRadius: 24,
-    padding: 24,
-    shadowColor: '#000',
+    padding: 20,
+    shadowColor: c.border,
     shadowOpacity: 0.05,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: c.border,
   },
   skillHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 14,
   },
   skillHeaderLeft: {
     flexDirection: 'row',
@@ -382,7 +440,7 @@ export const profileScreenStyles = StyleSheet.create({
     gap: 8,
   },
   skillBadge: {
-    backgroundColor: '#DBEAFE',
+    backgroundColor: c.primary + '30',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -394,12 +452,34 @@ export const profileScreenStyles = StyleSheet.create({
   skillsList: {
     gap: 12,
   },
+  emptyStateContainer: {
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 100,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    fontFamily: baseTheme.typography.medium,
+    color: c.mutedText,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  emptyStateIcon: {
+    marginBottom: 12,
+    opacity: 0.6,
+  },
   skillCard: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: c.border + '40',
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
     borderColor: 'transparent',
+  },
+  skillCardPressed: {
+    opacity: 0.92,
+    backgroundColor: c.border + '60',
   },
   skillCardHeader: {
     flexDirection: 'row',
@@ -422,17 +502,17 @@ export const profileScreenStyles = StyleSheet.create({
   skillName: {
     fontSize: 16,
     fontFamily: baseTheme.typography.bold,
-    color: '#0F172A',
+    color: c.text,
   },
   skillLevelBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
-    shadowColor: '#000',
+    shadowColor: c.border,
     shadowOpacity: 0.05,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 1 },
@@ -441,12 +521,12 @@ export const profileScreenStyles = StyleSheet.create({
   skillLevelText: {
     fontSize: 12,
     fontFamily: baseTheme.typography.bold,
-    color: '#475569',
+    color: c.mutedText,
   },
   skillSubtext: {
     fontSize: 12,
     fontFamily: baseTheme.typography.medium,
-    color: '#64748B',
+    color: c.mutedText,
   },
   skillProgressContainer: {
     position: 'relative',
@@ -457,11 +537,11 @@ export const profileScreenStyles = StyleSheet.create({
     right: 0,
     fontSize: 12,
     fontFamily: baseTheme.typography.bold,
-    color: '#475569',
+    color: c.mutedText,
   },
   skillProgressBg: {
     height: 8,
-    backgroundColor: '#CBD5E1',
+    backgroundColor: c.border,
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -474,7 +554,7 @@ export const profileScreenStyles = StyleSheet.create({
   settingsSection: {
     borderRadius: 24,
     padding: 20,
-    shadowColor: '#000',
+    shadowColor: c.border,
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
@@ -495,6 +575,19 @@ export const profileScreenStyles = StyleSheet.create({
     gap: 16,
     paddingVertical: 8,
     paddingHorizontal: 4,
+    flexWrap: 'nowrap',
+    position: 'relative',
+    minHeight: 52,
+  },
+  settingsRowChevron: {
+    position: 'absolute',
+    right: 4,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  settingsRowPressed: {
+    opacity: 0.92,
   },
   settingsRowIconGradient: {
     width: 52,
@@ -502,7 +595,7 @@ export const profileScreenStyles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: c.border,
     shadowOpacity: 0.15,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
@@ -510,6 +603,8 @@ export const profileScreenStyles = StyleSheet.create({
   },
   settingsRowContent: {
     flex: 1,
+    marginRight: 32,
+    minWidth: 0,
   },
   settingsRowLabel: {
     fontSize: 18,
@@ -523,22 +618,22 @@ export const profileScreenStyles = StyleSheet.create({
 
   // Activity Section Styles
   activitySection: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: c.card,
     borderRadius: 24,
-    padding: 24,
-    shadowColor: '#000',
+    padding: 20,
+    shadowColor: c.border,
     shadowOpacity: 0.05,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: c.border,
   },
   activityHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 14,
   },
   activityHeaderLeft: {
     flexDirection: 'row',
@@ -546,7 +641,7 @@ export const profileScreenStyles = StyleSheet.create({
     gap: 8,
   },
   activityBadge: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: c.border + '60',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -554,7 +649,7 @@ export const profileScreenStyles = StyleSheet.create({
   activityBadgeText: {
     fontSize: 12,
     fontFamily: baseTheme.typography.bold,
-    color: '#475569',
+    color: c.mutedText,
   },
   activityList: {
     gap: 12,
@@ -565,6 +660,10 @@ export const profileScreenStyles = StyleSheet.create({
     gap: 16,
     padding: 12,
     borderRadius: 16,
+  },
+  activityItemPressed: {
+    opacity: 0.92,
+    backgroundColor: c.border + '40',
   },
   activityIcon: {
     borderRadius: 12,
@@ -583,12 +682,12 @@ export const profileScreenStyles = StyleSheet.create({
   activityTitle: {
     fontSize: 14,
     fontFamily: baseTheme.typography.semiBold,
-    color: '#0F172A',
+    color: c.text,
   },
   activitySubtitle: {
     fontSize: 12,
     fontFamily: baseTheme.typography.medium,
-    color: '#64748B',
+    color: c.mutedText,
   },
   activityTime: {
     flexDirection: 'row',
@@ -598,10 +697,10 @@ export const profileScreenStyles = StyleSheet.create({
   },
   activityTimeText: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: c.mutedText,
   },
   activityXpBadge: {
-    backgroundColor: '#EFF6FF',
+    backgroundColor: c.primary + '25',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
@@ -698,4 +797,5 @@ export const profileScreenStyles = StyleSheet.create({
     fontFamily: baseTheme.typography.regular,
     fontSize: 16,
   },
-});
+  });
+}

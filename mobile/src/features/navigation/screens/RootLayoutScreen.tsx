@@ -11,7 +11,6 @@ import { AppProviders } from '@/services/app/AppProviders';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 
 export default function RootLayout() {
-  // Load fonts
   const [loaded] = useFonts({
     Poppins_400Regular,
     Poppins_600SemiBold,

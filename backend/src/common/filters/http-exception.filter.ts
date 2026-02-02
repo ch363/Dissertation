@@ -35,7 +35,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
           : HttpStatus[status] || 'Error',
     };
 
-    // Log error for debugging
     if (status >= 500) {
       this.logger.error(
         `${request.method} ${request.url} - ${status} - ${errorResponse.message}`,

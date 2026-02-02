@@ -1,2 +1,2 @@
-export { ModuleCompleteBanner, FirstLessonNudge, OfflineNotice } from './ModuleEmptyStates';
+export { ModuleCompleteBanner, OfflineNotice } from './ModuleEmptyStates';
 

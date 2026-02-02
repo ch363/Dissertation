@@ -13,7 +13,7 @@ const emailRegex = /\S+@\S+\.\S+/;
 const RESET_REDIRECT = 'fluentia://update-password';
 
 export default function ForgotPassword() {
-  const { theme: appTheme } = useAppTheme();
+  const { theme } = useAppTheme();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -45,22 +45,22 @@ export default function ForgotPassword() {
   }, [error, message]);
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: appTheme.colors.background }]}>
-      <View style={[styles.container, { backgroundColor: appTheme.colors.background }]}>
-      <Text style={[styles.title, { color: appTheme.colors.text }]} accessibilityRole="header">Forgot password</Text>
-      <Text style={[styles.subtitle, { color: appTheme.colors.mutedText }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <Text style={[styles.title, { color: theme.colors.text }]} accessibilityRole="header">Forgot password</Text>
+      <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
         Enter your email to receive a reset link. It will open the app to update your password.
       </Text>
 
-      <Text style={[styles.inputLabel, { color: appTheme.colors.text }]}>Email</Text>
+      <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Email</Text>
       <TextInput
-        style={[styles.input, { backgroundColor: appTheme.colors.card, borderColor: appTheme.colors.border, color: appTheme.colors.text }]}
+        style={[styles.input, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, color: theme.colors.text }]}
         value={email}
         onChangeText={setEmail}
         placeholder="you@example.com"
         keyboardType="email-address"
         autoCapitalize="none"
-        placeholderTextColor={appTheme.colors.mutedText}
+        placeholderTextColor={theme.colors.mutedText}
         accessibilityLabel="Email"
         accessibilityHint="Enter the email address for your account"
         accessibilityState={{ invalid: !!emailError }}
@@ -94,7 +94,7 @@ export default function ForgotPassword() {
         accessibilityHint="Sends a password reset link to your email"
       />
 
-      <Link href="/sign-in" style={[styles.link, { color: appTheme.colors.link }]}>
+      <Link href="/sign-in" style={[styles.link, { color: theme.colors.link }]}>
         Back to sign in
       </Link>
       </View>

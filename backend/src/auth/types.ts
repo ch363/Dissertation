@@ -5,10 +5,10 @@ export interface JwtPayload {
 }
 
 export interface SupabaseJwtClaims extends JwtPayload {
-  sub: string; // User ID
+  sub: string;
   email?: string;
-  aud: string; // Audience
-  role: string; // User role
-  iat: number; // Issued at
-  exp: number; // Expiration
+  aud: string;
+  role: string;
+  iat: number;
+  exp: number;
 }

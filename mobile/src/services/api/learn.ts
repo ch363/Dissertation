@@ -1,18 +1,5 @@
 import { apiClient } from './client';
 
-export interface LearnNextResponse {
-  type: 'review' | 'new' | 'done';
-  lessonId: string;
-  teachingId?: string;
-  question?: {
-    id: string;
-    teachingId: string;
-    deliveryMethods: string[];
-  };
-  suggestedDeliveryMethod?: string;
-  rationale?: string;
-}
-
 export interface LessonSuggestion {
   lesson: {
     id: string;
@@ -40,16 +27,6 @@ export interface LearnSuggestionsResponse {
   modules: ModuleSuggestion[];
 }
 
-/**
- * Get next item in lesson (reviews → new → done)
- */
-export async function getNext(lessonId: string): Promise<LearnNextResponse> {
-  return apiClient.get<LearnNextResponse>(`/learn/next?lessonId=${lessonId}`);
-}
-
-/**
- * Get lesson/module suggestions
- */
 export async function getSuggestions(options?: {
   currentLessonId?: string;
   moduleId?: string;
@@ -64,9 +41,6 @@ export async function getSuggestions(options?: {
   return apiClient.get<LearnSuggestionsResponse>(`/learn/suggestions${query ? `?${query}` : ''}`);
 }
 
-/**
- * Get complete session plan
- */
 export async function getSessionPlan(options?: {
   mode?: 'learn' | 'review' | 'mixed';
   timeBudgetSec?: number;

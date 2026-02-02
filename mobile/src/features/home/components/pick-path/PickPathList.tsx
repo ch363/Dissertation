@@ -1,10 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { CARD_BORDER, OUTER_CARD_RADIUS, softShadow } from '../homeStyles';
-
-import { SurfaceCard } from '@/components/ui/SurfaceCard';
+import { TappableCard } from '@/components/ui';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
@@ -29,72 +26,28 @@ export function PickPathList({ items, onPressItem, headerLabel }: Props) {
   return (
     <View style={styles.section}>
       <Text style={[styles.header, { color: theme.colors.text }]}>{headerLabel}</Text>
-      <SurfaceCard
-        style={[
-          styles.card,
-          {
-            backgroundColor: theme.colors.card,
-            borderColor: CARD_BORDER,
-          },
-        ]}
-      >
-        {items.map((item, idx) => {
+      <View style={styles.cardList}>
+        {items.map((item) => {
           const disabled = !!item.locked;
+          const subtitle = disabled && item.lockCopy
+            ? `${item.lessons}\n${item.lockCopy}`
+            : item.lessons;
           return (
-            <React.Fragment key={item.title}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ disabled }}
-                accessibilityLabel={`${item.title}, ${item.lessons}${disabled ? ', locked' : ''}`}
-                disabled={disabled}
-                onPress={() => onPressItem(item.route)}
-                style={[styles.row, disabled && { opacity: 0.7 }]}
-              >
-                <View style={styles.rowLeft}>
-                  <View style={styles.iconCircle}>
-                    <Ionicons
-                      name={disabled ? 'lock-closed' : 'star'}
-                      size={18}
-                      color={disabled ? theme.colors.mutedText : '#1B6ED4'}
-                      accessible={false}
-                      importantForAccessibility="no"
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.title, { color: theme.colors.text }]}>{item.title}</Text>
-                    <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
-                      {item.lessons}
-                    </Text>
-                    {disabled && item.lockCopy ? (
-                      <Text style={[styles.lockCopy, { color: theme.colors.mutedText }]}>
-                        {item.lockCopy}
-                      </Text>
-                    ) : null}
-                  </View>
-                </View>
-                {item.completed ? (
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={20}
-                    color={theme.colors.primary}
-                    accessible={false}
-                    importantForAccessibility="no"
-                  />
-                ) : (
-                  <Ionicons
-                    name="chevron-forward"
-                    size={20}
-                    color={theme.colors.mutedText}
-                    accessible={false}
-                    importantForAccessibility="no"
-                  />
-                )}
-              </Pressable>
-              {idx < items.length - 1 ? <View style={styles.divider} /> : null}
-            </React.Fragment>
+            <TappableCard
+              key={item.title}
+              title={item.title}
+              subtitle={subtitle}
+              leftIcon={disabled ? 'lock-closed' : 'star'}
+              onPress={() => {
+                if (!disabled) onPressItem(item.route);
+              }}
+              accessibilityLabel={`${item.title}, ${item.lessons}${disabled ? ', locked' : ''}`}
+              accessibilityHint={disabled ? undefined : 'Opens this path'}
+              style={disabled ? styles.cardDisabled : undefined}
+            />
           );
         })}
-      </SurfaceCard>
+      </View>
     </View>
   );
 }
@@ -107,52 +60,10 @@ const styles = StyleSheet.create({
     fontFamily: baseTheme.typography.bold,
     fontSize: 20,
   },
-  card: {
-    paddingVertical: baseTheme.spacing.sm,
-    paddingHorizontal: baseTheme.spacing.sm,
-    borderRadius: OUTER_CARD_RADIUS,
-    backgroundColor: '#FFFFFF',
-    ...softShadow,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: baseTheme.spacing.md,
-    paddingVertical: baseTheme.spacing.md + 2,
-    minHeight: 64,
-  },
-  rowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  cardList: {
     gap: baseTheme.spacing.sm,
-    flex: 1,
   },
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: '#E5F0FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 16,
-  },
-  subtitle: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 13,
-    marginTop: 2,
-  },
-  lockCopy: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 13,
-    marginTop: 4,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: CARD_BORDER,
-    marginLeft: 60,
+  cardDisabled: {
+    opacity: 0.7,
   },
 });

@@ -11,19 +11,6 @@ import { SrsService } from './srs/srs.service';
 import { XpService } from './scoring/xp.service';
 import { MasteryService } from './mastery/mastery.service';
 
-/**
- * Engine Module
- *
- * This module provides the "brain" of the adaptive learning system:
- * - Content Delivery: Selects what content to show next (reviews vs new)
- * - Session Planning: Generates complete learning session plans with teach-then-test, interleaving, and adaptive modality
- * - SRS (Spaced Repetition): Manages scheduling and intervals using FSRS algorithm
- * - Scoring: Tracks XP and achievements
- * - Mastery: Tracks skill mastery using Bayesian Knowledge Tracing (BKT)
- *
- * This is a SERVICE LAYER, not middleware. It's called by domain services
- * (LearnService, ProgressService) to handle adaptive learning logic.
- */
 @Module({
   imports: [PrismaModule, ContentModule, OnboardingModule],
   providers: [

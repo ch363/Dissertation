@@ -1,9 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
+import { Button, StaticCard } from '@/components/ui';
 import { routeBuilders } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 
@@ -28,7 +29,6 @@ export default function CompletionScreen() {
   const timeBudgetSec = params.timeBudgetSec;
   const returnTo = params.returnTo;
 
-  // Get stats from route params (calculated in SessionRunner)
   const stats = useMemo(() => {
     const totalXp = params.totalXp ? parseInt(params.totalXp, 10) : 0;
     const teachingsMastered = params.teachingsMastered ? parseInt(params.teachingsMastered, 10) : 0;
@@ -51,7 +51,7 @@ export default function CompletionScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.card}>
+        <StaticCard style={styles.card}>
           <Text style={styles.screenLabel}>Completion</Text>
           <View style={styles.header}>
             <View style={styles.trophyWrapper}>
@@ -88,11 +88,9 @@ export default function CompletionScreen() {
           </View>
 
           <View style={styles.actions}>
-            <Pressable style={styles.primaryButton} onPress={handleContinue}>
-              <Text style={styles.primaryButtonLabel}>Continue</Text>
-            </Pressable>
+            <Button title="Continue" onPress={handleContinue} accessibilityHint="Goes to session summary" />
           </View>
-        </View>
+        </StaticCard>
       </ScrollView>
     </SafeAreaView>
   );

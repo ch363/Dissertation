@@ -20,7 +20,6 @@ function CircularProgress({ progress, size = 60, strokeWidth = 6 }: { progress: 
 
   return (
     <Svg width={size} height={size} style={styles.svg}>
-      {/* Background circle */}
       <Circle
         cx={center}
         cy={center}
@@ -29,7 +28,6 @@ function CircularProgress({ progress, size = 60, strokeWidth = 6 }: { progress: 
         strokeWidth={strokeWidth}
         fill="none"
       />
-      {/* Progress circle */}
       <Circle
         cx={center}
         cy={center}
@@ -50,7 +48,6 @@ function SkillItem({ skill }: { skill: SkillMastery }) {
   const { theme } = useAppTheme();
   const percentage = Math.round(skill.masteryProbability * 100);
   
-  // Humanize skill tag name
   const formatSkillName = (tag: string): string => {
     return tag
       .split(/[-_]/)

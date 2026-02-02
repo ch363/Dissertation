@@ -13,6 +13,9 @@ import { CardRenderer } from './CardRenderer';
 import { LessonProgressHeader } from './LessonProgressHeader';
 import { routeBuilders } from '@/services/navigation/routes';
 import { clearCachedSessionPlan } from '@/services/api/session-plan-cache';
+import { createLogger } from '@/services/logging';
+
+const logger = createLogger('SessionRunner');
 
 // Lazy load haptics to avoid crashing if module isn't installed
 let HapticsModule: typeof import('expo-haptics') | null = null;
@@ -22,7 +25,7 @@ async function getHapticsModule() {
     try {
       HapticsModule = await import('expo-haptics');
     } catch (error) {
-      console.debug('expo-haptics not available, haptic feedback disabled:', error);
+      logger.debug('expo-haptics not available, haptic feedback disabled', { error });
       // Return null - haptics will be skipped gracefully
     }
   }
@@ -43,7 +46,7 @@ async function triggerHaptic(style: 'light' | 'medium') {
     await Haptics.impactAsync(feedbackStyle);
   } catch (error) {
     // Silently fail - haptics are non-critical
-    console.debug('Haptic feedback failed:', error);
+    logger.debug('Haptic feedback failed', { error });
   }
 }
 
@@ -165,7 +168,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
 
     // Extract questionId from cardId (format: "question-${questionId}")
     if (!currentCard.id.startsWith('question-')) {
-      console.warn('Card ID does not start with "question-":', currentCard.id);
+      logger.warn('Card ID does not start with "question-"', { cardId: currentCard.id });
       return;
     }
 
@@ -185,11 +188,11 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
 
       if (isPronunciationMode && audioUri) {
         // Handle pronunciation validation
-        console.log('🎤 Processing pronunciation recording:', { audioUri, questionId });
+        logger.info('Processing pronunciation recording', { audioUri, questionId });
         setAudioRecordingUri(audioUri);
         const audioFile = await SpeechRecognition.getAudioFile(audioUri);
         if (!audioFile?.base64) {
-          console.error('❌ Failed to get audio file for pronunciation validation');
+          logger.error('Failed to get audio file for pronunciation validation');
           setIsCorrect(false);
           setShowResult(true);
           return;
@@ -203,14 +206,14 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
             ? 'flac'
             : 'wav';
         
-        console.log('✅ Audio file loaded:', { 
+        logger.info('Audio file loaded', { 
           format: audioFormat, 
           base64Length: audioFile.base64.length,
           uri: audioFile.uri 
         });
         
         const pronunciationResponse = await validatePronunciation(questionId, audioFile.base64, audioFormat);
-        console.log('✅ Pronunciation response received:', {
+        logger.info('Pronunciation response received', {
           isCorrect: pronunciationResponse.isCorrect,
           overallScore: pronunciationResponse.overallScore,
           transcription: pronunciationResponse.transcription
@@ -249,12 +252,12 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
             try {
               await updateDeliveryMethodScore(deliveryMethod, { delta });
             } catch (error) {
-              console.error('Error updating delivery method score:', error);
+              logger.error('Error updating delivery method score', error as Error);
             }
 
             setRecordedAttempts((prev) => new Set(prev).add(currentCard.id));
           } catch (error) {
-            console.error('Error recording question attempt:', error);
+            logger.error('Error recording question attempt', error as Error);
           }
         }
 
@@ -327,13 +330,13 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           try {
             await updateDeliveryMethodScore(deliveryMethod, { delta });
           } catch (error) {
-            console.error('Error updating delivery method score:', error);
+            logger.error('Error updating delivery method score', error as Error);
             // Continue even if this fails
           }
 
           setRecordedAttempts((prev) => new Set(prev).add(currentCard.id));
         } catch (error) {
-          console.error('Error recording question attempt:', error);
+          logger.error('Error recording question attempt', error as Error);
           // Continue even if API call fails
         }
       }
@@ -349,7 +352,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
       };
       setAttempts((prev) => [...prev, newAttempt]);
     } catch (error) {
-      console.error('Error validating answer:', error);
+      logger.error('Error validating answer', error as Error);
       // Fallback: mark as incorrect if validation fails
       setIsCorrect(false);
       setShowResult(true);
@@ -406,13 +409,13 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
               try {
                 await updateDeliveryMethodScore(deliveryMethod, { delta });
               } catch (error) {
-                console.error('Error updating delivery method score:', error);
+                logger.error('Error updating delivery method score', error as Error);
                 // Continue even if this fails
               }
 
               setRecordedAttempts((prev) => new Set(prev).add(currentCard.id));
             } catch (error) {
-              console.error('Error recording question attempt:', error);
+              logger.error('Error recording question attempt', error as Error);
               // Continue even if API call fails
             }
           }
@@ -420,7 +423,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           // If correct, we can proceed immediately
           // If incorrect, user must select correct answer
         } catch (error) {
-          console.error('Error validating FillBlank answer:', error);
+          logger.error('Error validating FillBlank answer', error as Error);
           setIsCorrect(false);
           setShowResult(true);
           triggerHaptic('medium');
@@ -485,13 +488,13 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           try {
             await updateDeliveryMethodScore(deliveryMethod, { delta });
           } catch (error) {
-            console.error('Error updating delivery method score:', error);
+            logger.error('Error updating delivery method score', error as Error);
             // Continue even if this fails
           }
 
           setRecordedAttempts((prev) => new Set(prev).add(currentCard.id));
         } catch (error) {
-          console.error('Error recording flashcard rating:', error);
+          logger.error('Error recording flashcard rating', error as Error);
           // Continue even if API call fails
         }
       }
@@ -540,7 +543,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           await completeTeaching(teachingId);
           invalidateLessonPlanCache();
         } catch (error) {
-          console.error('Error completing teaching:', error);
+          logger.error('Error completing teaching', error as Error);
           // Continue even if API call fails
         }
       }
@@ -665,9 +668,9 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           onCheckAnswer={handleCheckAnswerWrapper}
           onContinue={isSpeakListening ? handleNext : undefined}
           onRating={(rating) => {
-            console.log('SessionRunner: Rating received:', rating);
+            logger.info('Rating received', { rating });
             setFlashcardRating(rating);
-            console.log('SessionRunner: flashcardRating state updated to:', rating);
+            logger.debug('flashcardRating state updated', { rating });
           }}
           selectedRating={flashcardRating}
           pronunciationResult={pronunciationResult}

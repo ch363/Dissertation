@@ -1,11 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Question, DELIVERY_METHOD } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateQuestionDto } from './dto/create-question.dto';
-import { DELIVERY_METHOD } from '@prisma/client';
+import { BaseCrudService } from '../common/services/base-crud.service';
 
 @Injectable()
-export class QuestionsService {
-  constructor(private prisma: PrismaService) {}
+export class QuestionsService extends BaseCrudService<Question> {
+  constructor(prisma: PrismaService) {
+    super(prisma, 'question', 'Question');
+  }
 
   async findAll(teachingId?: string) {
     const where = teachingId ? { teachingId } : {};
@@ -50,49 +52,14 @@ export class QuestionsService {
     return question;
   }
 
-  async create(createDto: CreateQuestionDto) {
-    // Authorization: Admin access required. Authorization is enforced at the Controller level via @UseGuards(SupabaseJwtGuard).
-    // TODO: Implement admin role check in Controller guard (see questions.controller.ts)
-    return this.prisma.question.create({
-      data: createDto,
-      include: {
-        teaching: {
-          select: {
-            id: true,
-            userLanguageString: true,
-            learningLanguageString: true,
-          },
-        },
-      },
-    });
-  }
-
-  async remove(id: string) {
-    // Authorization: Admin access required. Authorization is enforced at the Controller level via @UseGuards(SupabaseJwtGuard).
-    // TODO: Implement admin role check in Controller guard (see questions.controller.ts)
-    // Cascade delete is handled by Prisma schema
-    try {
-      return await this.prisma.question.delete({
-        where: { id },
-      });
-    } catch (error) {
-      throw new NotFoundException(`Question with ID ${id} not found`);
-    }
-  }
-
   async updateDeliveryMethods(
     questionId: string,
     deliveryMethods: DELIVERY_METHOD[],
   ) {
-    // Authorization: Admin access required. Authorization is enforced at the Controller level via @UseGuards(SupabaseJwtGuard).
-    // TODO: Implement admin role check in Controller guard (see questions.controller.ts)
-    // With variants schema, this method ensures the specified variants exist.
-    // (Payload is managed by the content importer; admin tooling can be added later.)
     if (deliveryMethods.length === 0) {
       throw new NotFoundException('At least one delivery method is required');
     }
 
-    // Verify question exists
     const question = await this.prisma.question.findUnique({
       where: { id: questionId },
     });
@@ -101,7 +68,6 @@ export class QuestionsService {
       throw new NotFoundException(`Question with ID ${questionId} not found`);
     }
 
-    // Upsert variants with empty payload (data = {}) for now.
     await Promise.all(
       deliveryMethods.map((deliveryMethod) =>
         this.prisma.questionVariant.upsert({

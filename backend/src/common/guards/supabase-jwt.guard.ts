@@ -18,7 +18,6 @@ export class SupabaseJwtGuard extends AuthGuard('supabase') {
   }
 
   handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
-    // Log detailed error information for debugging
     if (err) {
       this.logger.error('Auth error:', err.message || err);
       throw err;
@@ -46,7 +45,7 @@ export class SupabaseJwtGuard extends AuthGuard('supabase') {
         );
       }
 
-      // Provide specific error message for signature issues
+      // Common causes: mismatched JWT secret, token from wrong project, or corrupted token
       if (info?.message === 'invalid signature') {
         this.logger.error(
           'JWT signature verification failed. This usually means:',

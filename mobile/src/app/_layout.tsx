@@ -12,6 +12,9 @@ import { AppProviders } from '@/services/app/AppProviders';
 import { RouteGuard } from '@/services/navigation/RouteGuard';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { createLogger } from '@/services/logging';
+
+const logger = createLogger('RootLayout');
 
 // Disable iOS "rubber-band" bounce and Android overscroll glow globally.
 function applyGlobalScrollDefaults() {
@@ -47,7 +50,7 @@ applyGlobalScrollDefaults();
 const globalAny = global as typeof globalThis & { ErrorUtils?: any };
 const originalGlobalHandler = globalAny.ErrorUtils?.getGlobalHandler?.();
 globalAny.ErrorUtils?.setGlobalHandler?.((error: any, isFatal: boolean) => {
-  console.error('GlobalError', {
+  logger.error('GlobalError', error, {
     isFatal,
     message: (error as any)?.message,
     stack: (error as any)?.stack,
@@ -59,7 +62,6 @@ globalAny.ErrorUtils?.setGlobalHandler?.((error: any, isFatal: boolean) => {
 LogBox.ignoreLogs([]);
 
 export default function RootLayout() {
-  // Load fonts
   const [loaded] = useFonts({
     Poppins_400Regular,
     Poppins_600SemiBold,

@@ -1,11 +1,11 @@
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useRef } from 'react';
-import { View, Text, Pressable, RefreshControl, Image } from 'react-native';
+import { useEffect, useMemo, useRef } from 'react';
+import { View, Text, Pressable, RefreshControl, Image, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { ScrollView } from '@/components/ui';
+import { ScrollView, StaticCard } from '@/components/ui';
 import { routes } from '@/services/navigation/routes';
 import { HelpButton } from '@/components/navigation/HelpButton';
 import { SKILL_CONFIG, DEFAULT_SKILL_CONFIG } from '@/features/profile/profileConstants';
@@ -13,13 +13,14 @@ import { useProfileData } from '@/features/profile/hooks/useProfileData';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 import { ProfileScreenSkeleton } from '@/features/profile/components/ProfileScreenSkeleton';
-import { profileScreenStyles as styles } from './profileScreenStyles';
+import { createProfileScreenStyles } from './profileScreenStyles';
 
 const TAB_BAR_HEIGHT = 84;
 
 export default function Profile() {
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createProfileScreenStyles(theme), [theme]);
   const params = useLocalSearchParams<{ edit?: string }>();
   const hasOpenedEditFromParams = useRef(false);
   const {
@@ -41,7 +42,6 @@ export default function Profile() {
   } = useProfileData();
 
   const router = useRouter();
-  // When navigated from Settings with ?edit=1, go to Edit Profile screen once data is loaded
   useEffect(() => {
     if (!params.edit) {
       hasOpenedEditFromParams.current = false;
@@ -66,19 +66,17 @@ export default function Profile() {
         ]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
       >
-        {/* Sleek Profile Header with Gradient */}
         <LinearGradient
-          colors={[theme.colors.primary, theme.colors.primary]}
+          colors={[theme.colors.profileHeader, theme.colors.profileHeader]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.headerGradient, { shadowColor: theme.colors.primary }]}
+          style={[styles.headerGradient, { shadowColor: theme.colors.profileHeader }]}
         >
           <View style={styles.headerTop}>
             <View style={styles.headerLeft}>
-              {/* Avatar with gradient border and level badge */}
               <View style={styles.avatarContainer}>
                 <LinearGradient
-                  colors={[theme.colors.ctaCardAccent, theme.colors.primary]}
+                  colors={[theme.colors.ctaCardAccent, theme.colors.profileHeader]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.avatarGradientBorder}
@@ -87,17 +85,15 @@ export default function Profile() {
                     {avatarUrl ? (
                       <Image source={{ uri: avatarUrl }} style={styles.avatar} />
                     ) : (
-                      <Text style={[styles.avatarText, { color: theme.colors.primary }]}>{(displayName || 'U').charAt(0).toUpperCase()}</Text>
+                      <Text style={[styles.avatarText, { color: theme.colors.profileHeader }]}>{(displayName || 'U').charAt(0).toUpperCase()}</Text>
                     )}
                   </View>
                 </LinearGradient>
-                {/* Level badge */}
                 <View style={styles.levelBadge}>
                   <Text style={styles.levelBadgeText}>L{currentLevel}</Text>
                 </View>
               </View>
 
-              {/* Name and level info */}
               <View style={styles.headerInfo}>
                 <Text style={styles.headerName}>{displayName || 'User'}</Text>
                 <View style={styles.headerStats}>
@@ -109,19 +105,36 @@ export default function Profile() {
             </View>
 
             <View style={styles.headerRight}>
-              <HelpButton iconColor="#FFFFFF" />
+              <HelpButton
+                variant="elevated"
+                accessibilityLabel="Help, profile"
+                accessibilityHint="Opens help information"
+              />
               <Pressable
-                onPress={() => router.push(routes.tabs.profile.edit)}
-                style={styles.editButton}
-                accessibilityLabel="Edit profile"
+                onPress={() => {
+                  Alert.alert(
+                    'Profile',
+                    undefined,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Edit profile',
+                        onPress: () => router.push(routes.tabs.profile.edit),
+                      },
+                    ],
+                    { cancelable: true }
+                  );
+                }}
+                style={({ pressed }) => [styles.headerMenuButton, pressed && styles.headerMenuButtonPressed]}
+                accessibilityLabel="More options"
+                accessibilityHint="Opens menu with Edit profile"
                 accessibilityRole="button"
               >
-                <Ionicons name="create-outline" size={18} color="#FFFFFF" />
+                <Ionicons name="ellipsis-horizontal" size={20} color="#FFFFFF" />
               </Pressable>
             </View>
           </View>
 
-          {/* Weekly Progress Indicator */}
           <View style={styles.weeklyProgress}>
             <View style={styles.weeklyProgressHeader}>
               <View style={styles.weeklyProgressLeft}>
@@ -137,67 +150,78 @@ export default function Profile() {
             <Text style={styles.weeklyProgressSubtext}>
               {typeof dashboard?.weeklyXPChange === 'number'
                 ? dashboard.weeklyXPChange !== 0
-                  ? `${dashboard.weeklyXPChange > 0 ? '+' : ''}${dashboard.weeklyXPChange}% from last week`
-                  : 'Same as last week'
+                  ? `${dashboard.weeklyXPChange > 0 ? '+' : ''}${dashboard.weeklyXPChange}% XP vs last week`
+                  : 'Same XP as last week'
                 : 'No comparison yet'}
             </Text>
           </View>
         </LinearGradient>
 
-        {/* Stats Cards Grid — premium stat cards */}
         {dashboard && (
           <View style={styles.statsSection}>
             <View style={styles.statsRowPrimary}>
-              <Link href={routes.tabs.review} asChild style={styles.statCardWrapper}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Due reviews: ${dashboard.dueReviewCount}`}
-                  style={styles.statCard}
-                >
-                  <View style={[styles.statIconContainer, styles.statIconRed]}>
-                    <Ionicons name="time-outline" size={22} color="#DC2626" />
-                  </View>
-                  <Text style={styles.statValue}>{dashboard.dueReviewCount}</Text>
-                  <Text style={styles.statLabel}>Due Reviews</Text>
-                  {dashboard.dueReviewCount > 0 && (
-                    <Text style={styles.statUrgent}>Review now</Text>
-                  )}
-                </Pressable>
-              </Link>
-
-              <View style={[styles.statCardWrapper, styles.statCard]}>
-                <View style={[styles.statIconContainer, styles.statIconPurple]}>
-                  <Ionicons name="time" size={22} color="#9333EA" />
-                </View>
-                <Text style={styles.statValue}>{dashboard.studyTimeMinutes ?? 0}m</Text>
-                <Text style={styles.statLabel}>Study Time</Text>
+              <View style={styles.statCardSlot}>
+                <Link href={routes.tabs.review} asChild style={styles.statCardSlotInner}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Due reviews: ${dashboard.dueReviewCount}. Tap to start reviews.`}
+                    style={({ pressed }) => [styles.statCardTouchable, pressed && styles.statCardPressed]}
+                  >
+                    <View style={[styles.statCard, styles.statCardWhite, styles.statCardActionable]}>
+                      <View style={styles.statCardContent}>
+                        <View style={styles.statCardMain}>
+                          <View style={[styles.statIconContainer, styles.statIconRedAction]}>
+                            <Ionicons name="time-outline" size={22} color="#DC2626" />
+                          </View>
+                          <Text style={styles.statValue}>{dashboard.dueReviewCount}</Text>
+                          <Text style={styles.statLabel}>Due Reviews</Text>
+                          <Text style={styles.statActionSublabel}>Tap to start</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={20} color={theme.colors.mutedText} />
+                      </View>
+                    </View>
+                  </Pressable>
+                </Link>
               </View>
 
-              <View style={[styles.statCardWrapper, styles.statCard]}>
-                <View style={[styles.statIconContainer, styles.statIconOrange]}>
-                  <Ionicons name="flame" size={22} color="#EA580C" />
+              <View style={styles.statCardSlot}>
+                <View style={[styles.statCard, styles.statCardWhite]}>
+                  <View style={[styles.statIconContainer, styles.statIconPurple]}>
+                    <Ionicons name="time" size={22} color="#9333EA" />
+                  </View>
+                  <Text style={styles.statValue}>{dashboard.studyTimeMinutes ?? 0}m</Text>
+                  <Text style={styles.statLabel}>Study Time</Text>
                 </View>
-                <Text style={styles.statValue}>{dashboard.streak || 0}</Text>
-                <Text style={styles.statLabel}>Day Streak</Text>
+              </View>
+
+              <View style={styles.statCardSlot}>
+                <View style={[styles.statCard, styles.statCardWhite]}>
+                  <View style={[styles.statIconContainer, styles.statIconOrange]}>
+                    <Ionicons name="flame" size={22} color="#EA580C" />
+                  </View>
+                  <Text style={styles.statValue}>{dashboard.streak || 0}</Text>
+                  <Text style={styles.statLabel}>Day Streak</Text>
+                </View>
               </View>
             </View>
           </View>
         )}
 
-        {/* Level Progress Section */}
         <View style={styles.progressSection}>
-          {/* Header */}
           <View style={styles.progressHeader}>
             <Text style={styles.sectionTitle}>Level Progress</Text>
-            <Link href="/profile/progress" asChild>
-              <Pressable accessibilityRole="button" hitSlop={8} style={styles.viewAllButton}>
-                <Text style={[styles.viewAllText, { color: theme.colors.primary }]}>View All</Text>
-                <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
-              </Pressable>
-            </Link>
+            <View style={styles.viewAllButtonWrap}>
+              <Link href="/profile/progress" asChild>
+                <Pressable accessibilityRole="button" hitSlop={8} style={({ pressed }) => [styles.viewAllButton, pressed && styles.viewAllButtonPressed]}>
+                  <Text style={[styles.viewAllText, { color: theme.colors.primary }]}>View all</Text>
+                  <View style={styles.viewAllChevronWrap}>
+                    <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
+                  </View>
+                </Pressable>
+              </Link>
+            </View>
           </View>
 
-          {/* Level Info */}
           <View style={styles.levelInfo}>
             <View style={styles.levelLeft}>
               <LinearGradient
@@ -220,7 +244,6 @@ export default function Profile() {
             </View>
           </View>
 
-          {/* Progress Bar */}
           <View style={styles.progressBarContainer}>
             <View style={styles.progressBarBg}>
               <View style={[styles.progressBarFill, { width: `${progressToNext * 100}%` }]}>
@@ -231,14 +254,12 @@ export default function Profile() {
                   style={styles.progressBarGradient}
                 />
               </View>
-              {/* Milestone markers */}
               <View style={[styles.milestone, { left: '25%' }]} />
               <View style={[styles.milestone, { left: '50%' }]} />
               <View style={[styles.milestone, { left: '75%' }]} />
             </View>
           </View>
 
-          {/* Stats Row */}
           <View style={styles.progressStats}>
             <View style={styles.progressStatItem}>
               <View style={styles.progressStatIconBlue}>
@@ -253,23 +274,19 @@ export default function Profile() {
             <View style={styles.progressDivider} />
 
             <View style={styles.progressStatItem}>
-              <View style={dashboard && dashboard.dueReviewCount > 0 ? styles.progressStatIconRed : styles.progressStatIconGray}>
-                <Ionicons name="time-outline" size={16} color={dashboard && dashboard.dueReviewCount > 0 ? '#DC2626' : '#9CA3AF'} />
+              <View style={styles.progressStatIconGray}>
+                <Ionicons name="checkmark-done-outline" size={16} color={theme.colors.mutedText} />
               </View>
               <View>
-                <Text style={styles.progressStatLabel}>Reviews Due</Text>
-                <Text style={[
-                  styles.progressStatValue,
-                  dashboard && dashboard.dueReviewCount > 0 ? styles.progressStatValueRed : styles.progressStatValueGray
-                ]}>
-                  {dashboard?.dueReviewCount || 0} pending
+                <Text style={styles.progressStatLabel}>Accuracy (30d)</Text>
+                <Text style={styles.progressStatValue}>
+                  {typeof dashboard?.accuracyPercentage === 'number' ? `${Math.round(dashboard.accuracyPercentage)}%` : '—'}
                 </Text>
               </View>
             </View>
           </View>
         </View>
 
-        {/* Skill Mastery */}
         <View style={styles.skillSection}>
           <View style={styles.skillHeader}>
             <View style={styles.skillHeaderLeft}>
@@ -278,119 +295,121 @@ export default function Profile() {
                 <Text style={[styles.skillBadgeText, { color: theme.colors.primary }]}>{(mastery || []).length}</Text>
               </View>
             </View>
-            <Link href="/profile/skills" asChild>
-              <Pressable accessibilityRole="button" hitSlop={8} style={styles.viewAllButton}>
-                <Text style={[styles.viewAllText, { color: theme.colors.primary }]}>View</Text>
-                <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
-              </Pressable>
-            </Link>
-          </View>
-
-          {/* Skills List */}
-          <View style={styles.skillsList}>
-            {(mastery || []).slice(0, 3).map((skill) => {
-              const config = SKILL_CONFIG[skill.skillType] ?? { ...DEFAULT_SKILL_CONFIG, name: skill.skillType };
-
-              const progress = Math.min(100, Math.round((skill.averageMastery || 0) * 100));
-              const level = Math.max(1, Math.ceil((skill.averageMastery || 0) * 5));
-
-              return (
-                <Pressable
-                  key={skill.skillType}
-                  style={styles.skillCard}
-                  accessibilityRole="button"
-                >
-                  <View style={styles.skillCardHeader}>
-                    <Text style={styles.skillEmoji}>{config.icon}</Text>
-                    <View style={styles.skillCardInfo}>
-                      <View style={styles.skillCardTop}>
-                        <Text style={styles.skillName}>{config.name}</Text>
-                        <View style={styles.skillLevelBadge}>
-                          <Ionicons name="star" size={12} color="#F59E0B" />
-                          <Text style={styles.skillLevelText}>Level {level}</Text>
-                        </View>
-                      </View>
-                      <Text style={styles.skillSubtext}>
-                        {skill.masteredCount || 0} / {skill.totalCount || 0} questions mastered
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Progress Bar */}
-                  <View style={styles.skillProgressContainer}>
-                    <Text style={styles.skillProgressPercent}>{progress}%</Text>
-                    <View style={styles.skillProgressBg}>
-                      <LinearGradient
-                        colors={config.colors}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={[styles.skillProgressFill, { width: `${progress}%` }]}
-                      />
-                    </View>
+            <View style={styles.viewAllButtonWrap}>
+              <Link href="/profile/skills" asChild>
+                <Pressable accessibilityRole="button" hitSlop={8} style={({ pressed }) => [styles.viewAllButton, pressed && styles.viewAllButtonPressed]}>
+                  <Text style={[styles.viewAllText, { color: theme.colors.primary }]}>View all</Text>
+                  <View style={styles.viewAllChevronWrap}>
+                    <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
                   </View>
                 </Pressable>
-              );
-            })}
+              </Link>
+            </View>
+          </View>
+
+          <View style={styles.skillsList}>
+            {(mastery || []).length === 0 ? (
+              <View style={styles.emptyStateContainer}>
+                <View style={styles.emptyStateIcon}>
+                  <Ionicons name="school-outline" size={40} color={theme.colors.mutedText} />
+                </View>
+                <Text style={styles.emptyStateText}>
+                  Complete lessons to unlock mastery tracking
+                </Text>
+              </View>
+            ) : (
+              (mastery || []).slice(0, 3).map((skill) => {
+                const config = SKILL_CONFIG[skill.skillType] ?? { ...DEFAULT_SKILL_CONFIG, name: skill.skillType };
+
+                const progress = Math.min(100, Math.round((skill.averageMastery || 0) * 100));
+                const level = Math.max(1, Math.ceil((skill.averageMastery || 0) * 5));
+
+                return (
+                  <Pressable
+                    key={skill.skillType}
+                    style={({ pressed }) => [styles.skillCard, pressed && styles.skillCardPressed]}
+                    accessibilityRole="button"
+                  >
+                    <View style={styles.skillCardHeader}>
+                      <Text style={styles.skillEmoji}>{config.icon}</Text>
+                      <View style={styles.skillCardInfo}>
+                        <View style={styles.skillCardTop}>
+                          <Text style={styles.skillName}>{config.name}</Text>
+                          <View style={styles.skillLevelBadge}>
+                            <Ionicons name="star" size={12} color="#F59E0B" />
+                            <Text style={styles.skillLevelText}>Level {level}</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.skillSubtext}>
+                          {skill.masteredCount || 0} / {skill.totalCount || 0} questions mastered
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.skillProgressContainer}>
+                      <Text style={styles.skillProgressPercent}>{progress}%</Text>
+                      <View style={styles.skillProgressBg}>
+                        <LinearGradient
+                          colors={config.colors}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={[styles.skillProgressFill, { width: `${progress}%` }]}
+                        />
+                      </View>
+                    </View>
+                  </Pressable>
+                );
+              })
+            )}
           </View>
         </View>
 
-        {/* Settings — primary utility, prominent card */}
-        <View style={[styles.settingsSection, { borderColor: theme.colors.primary + '30', backgroundColor: theme.colors.card }]}>
-          <Text style={[styles.settingsSectionTitle, { color: theme.colors.text }]}>Preferences & account</Text>
-          <Link href={routes.tabs.settings.root} asChild>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Open settings"
-              style={styles.settingsRow}
-            >
-              <LinearGradient
-                colors={[theme.colors.primary, theme.colors.primary]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.settingsRowIconGradient}
-              >
-                <Ionicons name="settings-outline" size={26} color="#FFFFFF" />
-              </LinearGradient>
-              <View style={styles.settingsRowContent}>
-                <Text style={[styles.settingsRowLabel, { color: theme.colors.text }]}>Settings</Text>
-                <Text style={[styles.settingsRowSubtitle, { color: theme.colors.mutedText }]}>Speech, session defaults, sign out</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={22} color={theme.colors.primary} />
-            </Pressable>
-          </Link>
-        </View>
-
-        {/* Recent Activity */}
-        {recentActivity && activityItems.length > 0 && (
-          <View style={styles.activitySection}>
-            <View style={styles.activityHeader}>
-              <View style={styles.activityHeaderLeft}>
-                <Text style={styles.sectionTitle}>Recent Activity</Text>
+        <View style={styles.activitySection}>
+          <View style={styles.activityHeader}>
+            <View style={styles.activityHeaderLeft}>
+              <Text style={styles.sectionTitle}>Recent Activity</Text>
+              {activityItems.length > 0 && (
                 <View style={styles.activityBadge}>
                   <Text style={styles.activityBadgeText}>{activityItems.length}</Text>
                 </View>
-              </View>
-              <Pressable accessibilityRole="button" hitSlop={8} style={styles.viewAllButton}>
-                <Text style={[styles.viewAllText, { color: theme.colors.primary }]}>All</Text>
-                <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
-              </Pressable>
+              )}
             </View>
+            <View style={styles.viewAllButtonWrap}>
+              <Link href={routes.tabs.profile.reviews} asChild>
+                <Pressable accessibilityRole="button" hitSlop={8} style={({ pressed }) => [styles.viewAllButton, pressed && styles.viewAllButtonPressed]}>
+                  <Text style={[styles.viewAllText, { color: theme.colors.primary }]}>View all</Text>
+                  <View style={styles.viewAllChevronWrap}>
+                    <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
+                  </View>
+                </Pressable>
+              </Link>
+            </View>
+          </View>
 
-            {/* Activity List */}
+          {activityItems.length === 0 ? (
+            <View style={styles.emptyStateContainer}>
+              <View style={styles.emptyStateIcon}>
+                <Ionicons name="time-outline" size={40} color={theme.colors.mutedText} />
+              </View>
+              <Text style={styles.emptyStateText}>
+                Complete lessons and reviews to see your activity here
+              </Text>
+            </View>
+          ) : (
             <View style={styles.activityList}>
               {activityItems.slice(0, 4).map((item, index) => {
                 const iconColors = [
-                  { bg: '#EFF6FF', color: theme.colors.primary },
-                  { bg: '#FEF3C7', color: '#D97706' },
-                  { bg: '#FED7AA', color: '#EA580C' },
-                  { bg: '#DCFCE7', color: '#16A34A' },
+                  { bg: theme.colors.primary + '25', color: theme.colors.primary },
+                  { bg: '#D97706' + '25', color: '#D97706' },
+                  { bg: '#EA580C' + '25', color: '#EA580C' },
+                  { bg: '#16A34A' + '25', color: '#16A34A' },
                 ];
                 const colors = iconColors[index % iconColors.length];
 
                 return (
                   <Pressable
                     key={index}
-                    style={styles.activityItem}
+                    style={({ pressed }) => [styles.activityItem, pressed && styles.activityItemPressed]}
                     accessibilityRole="button"
                   >
                     <View style={[styles.activityIcon, { backgroundColor: colors.bg }]}>
@@ -407,7 +426,7 @@ export default function Profile() {
                         {item.subtitle}
                       </Text>
                       <View style={styles.activityTime}>
-                        <Ionicons name="time-outline" size={10} color="#9CA3AF" />
+                        <Ionicons name="time-outline" size={10} color={theme.colors.mutedText} />
                         <Text style={styles.activityTimeText}>
                           {new Date(item.time).toLocaleDateString()}
                         </Text>
@@ -421,8 +440,34 @@ export default function Profile() {
                 );
               })}
             </View>
-          </View>
-        )}
+          )}
+        </View>
+
+        <StaticCard title="Preferences & account" titleVariant="subtle" style={[styles.settingsSection, { borderColor: theme.colors.primary + '30' }]}>
+          <Link href={routes.tabs.settings.root} asChild>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open settings"
+              style={({ pressed }) => [styles.settingsRow, pressed && styles.settingsRowPressed]}
+            >
+              <LinearGradient
+                colors={[theme.colors.primary, theme.colors.primary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.settingsRowIconGradient}
+              >
+                <Ionicons name="settings-outline" size={26} color="#FFFFFF" />
+              </LinearGradient>
+              <View style={styles.settingsRowContent}>
+                <Text style={[styles.settingsRowLabel, { color: theme.colors.text }]}>Settings</Text>
+                <Text style={[styles.settingsRowSubtitle, { color: theme.colors.mutedText }]}>Speech, session defaults, sign out</Text>
+              </View>
+              <View style={styles.settingsRowChevron}>
+                <Ionicons name="chevron-forward" size={22} color={theme.colors.primary} />
+              </View>
+            </Pressable>
+          </Link>
+        </StaticCard>
 
       </ScrollView>
     </SafeAreaView>

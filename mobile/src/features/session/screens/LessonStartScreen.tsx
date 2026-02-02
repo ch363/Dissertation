@@ -1,51 +1,40 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { LoadingScreen } from '@/components/ui';
+import { Button, LoadingScreen, StaticCard } from '@/components/ui';
 import { makeSessionId } from '@/features/session/sessionBuilder';
 import { routeBuilders, routes } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 import { getLesson, getLessonTeachings, type Lesson } from '@/services/api/modules';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { useAsyncData } from '@/hooks/useAsyncData';
 
 export default function LessonStartScreen() {
   const params = useLocalSearchParams<{ lessonId?: string }>();
   const lessonId = (params.lessonId as string | undefined) ?? 'demo';
-  const { theme: appTheme } = useAppTheme();
-  const [lesson, setLesson] = useState<Lesson | null>(null);
-  const [cardCount, setCardCount] = useState<number>(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const loadLesson = async () => {
+  const { theme } = useAppTheme();
+  
+  const { data, loading, error } = useAsyncData<{ lesson: Lesson; cardCount: number }>(
+    'LessonStartScreen',
+    async () => {
       if (!lessonId || lessonId === 'demo') {
-        setLoading(false);
-        return;
+        throw new Error('Invalid lesson ID');
       }
+      const [lessonData, teachingsData] = await Promise.all([
+        getLesson(lessonId),
+        getLessonTeachings(lessonId).catch(() => []),
+      ]);
+      return { lesson: lessonData, cardCount: teachingsData.length };
+    },
+    [lessonId],
+    { skip: !lessonId || lessonId === 'demo' }
+  );
 
-      setLoading(true);
-      setError(null);
-      try {
-        const [lessonData, teachingsData] = await Promise.all([
-          getLesson(lessonId),
-          getLessonTeachings(lessonId).catch(() => []),
-        ]);
-        setLesson(lessonData);
-        setCardCount(teachingsData.length);
-      } catch (err: any) {
-        console.error('Failed to load lesson:', err);
-        setError(err?.message || 'Failed to load lesson');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadLesson();
-  }, [lessonId]);
+  const lesson = data?.lesson ?? null;
+  const cardCount = data?.cardCount ?? 0;
 
   const sessionId = makeSessionId('learn');
 
@@ -78,11 +67,11 @@ export default function LessonStartScreen() {
   if (error || !lesson) {
     return (
       <SafeAreaView style={styles.safe}>
-        <View style={styles.card}>
-          <Text style={[styles.title, { color: appTheme.colors.error }]}>
+        <StaticCard style={styles.card}>
+          <Text style={[styles.title, { color: theme.colors.error }]}>
             {error || 'Lesson not found'}
           </Text>
-        </View>
+        </StaticCard>
       </SafeAreaView>
     );
   }
@@ -99,7 +88,7 @@ export default function LessonStartScreen() {
           hitSlop={10}
           style={styles.backButton}
         >
-          <Ionicons name="chevron-back" size={22} color={appTheme.colors.mutedText} />
+          <Ionicons name="chevron-back" size={22} color={theme.colors.mutedText} />
         </Pressable>
         <Text style={styles.headerTitle}>Lesson</Text>
         <Pressable
@@ -109,19 +98,17 @@ export default function LessonStartScreen() {
           hitSlop={10}
           style={styles.homeButton}
         >
-          <Ionicons name="home" size={22} color={appTheme.colors.mutedText} />
+          <Ionicons name="home" size={22} color={theme.colors.mutedText} />
         </Pressable>
       </View>
       
-      <View style={styles.card}>
+      <StaticCard style={styles.card}>
         <Text style={styles.title}>{lesson.title}</Text>
         <Text style={styles.subtitle}>
           {cardCount} cards • Mix of teach and practice cards
         </Text>
-        <Pressable style={styles.primary} onPress={handleStart}>
-          <Text style={styles.primaryLabel}>Start session</Text>
-        </Pressable>
-      </View>
+        <Button title="Start session" onPress={handleStart} accessibilityHint="Starts the lesson session" />
+      </StaticCard>
     </SafeAreaView>
   );
 }

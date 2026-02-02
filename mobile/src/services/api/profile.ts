@@ -6,18 +6,19 @@ import {
   cacheAvatarFile,
   clearCachedAvatar,
 } from '@/services/cache/avatar-cache';
+import { createLogger } from '@/services/logging';
 
-// Lazy load FileSystem to avoid native module errors during hot reload
+const Logger = createLogger('ProfileAPI');
+
 let FileSystemModule: typeof import('expo-file-system') | null = null;
 
 async function getFileSystemModule(): Promise<typeof import('expo-file-system') | null> {
   if (!FileSystemModule) {
-    // expo-file-system is not reliably available on web, and can be missing in stale native builds.
     if (Platform.OS === 'web') return null;
     try {
       FileSystemModule = await import('expo-file-system');
     } catch (error) {
-      console.warn('expo-file-system native module not available:', error);
+      Logger.warn('expo-file-system native module not available', { error });
       return null;
     }
   }
@@ -30,22 +31,39 @@ export interface Profile {
   avatarUrl?: string | null;
   createdAt: string;
   updatedAt: string;
-  displayName?: string; // Will be added by backend in Phase 2
+  displayName?: string;
 }
+
+export type DeliveryMethodType =
+  | 'FILL_BLANK'
+  | 'FLASHCARD'
+  | 'MULTIPLE_CHOICE'
+  | 'SPEECH_TO_TEXT'
+  | 'TEXT_TO_SPEECH'
+  | 'TEXT_TRANSLATION';
+
+export type AccuracyByDeliveryMethod = Partial<Record<DeliveryMethodType, number>>;
+
+export type GrammaticalAccuracyByDeliveryMethod = Partial<Record<DeliveryMethodType, number>>;
 
 export interface DashboardData {
   dueReviewCount: number;
+  estimatedReviewMinutes?: number;
   activeLessonCount: number;
   xpTotal: number;
   streak: number | null;
   weeklyXP: number;
   weeklyXPChange: number;
   accuracyPercentage: number;
+  accuracyByDeliveryMethod?: AccuracyByDeliveryMethod;
+  grammaticalAccuracyByDeliveryMethod?: GrammaticalAccuracyByDeliveryMethod;
   studyTimeMinutes: number;
 }
 
 export interface StatsData {
   minutesToday: number;
+  completedItemsToday: number;
+  accuracyToday?: number;
 }
 
 export interface RecentActivity {
@@ -108,33 +126,20 @@ export interface RecentActivity {
     | null;
 }
 
-/**
- * Get current user profile
- */
 export async function getMyProfile(): Promise<Profile | null> {
   return apiClient.get<Profile>('/me/profile');
 }
 
-/**
- * Update or create user profile
- */
 export async function upsertMyProfile(data: { name?: string; avatarUrl?: string }): Promise<Profile> {
   if (data.name || data.avatarUrl) {
-    // Update existing profile
     return apiClient.patch<Profile>('/me', data);
   }
-  // Ensure profile exists
   return apiClient.post<Profile>('/me/profile/ensure', data);
 }
 
-/**
- * Ensure profile exists (provisioning)
- */
 export async function ensureProfileSeed(name?: string): Promise<Profile> {
   const cleanProvided = name?.trim();
 
-  // If no name was provided, try to derive it from Supabase auth metadata.
-  // This avoids relying on backend service-role access to Supabase Admin APIs.
   let derivedName: string | undefined;
   if (!cleanProvided) {
     try {
@@ -158,9 +163,7 @@ export async function ensureProfileSeed(name?: string): Promise<Profile> {
           }
         }
       }
-    } catch {
-      // best-effort: fall back to ensuring profile without a name
-    }
+    } catch {}
   }
 
   const finalName = cleanProvided || derivedName;
@@ -170,9 +173,6 @@ export async function ensureProfileSeed(name?: string): Promise<Profile> {
   );
 }
 
-/**
- * Get user dashboard statistics
- */
 export async function getDashboard(options?: { tzOffsetMinutes?: number }): Promise<DashboardData> {
   const tzOffsetMinutes = options?.tzOffsetMinutes ?? new Date().getTimezoneOffset();
   const params = new URLSearchParams();
@@ -183,40 +183,23 @@ export async function getDashboard(options?: { tzOffsetMinutes?: number }): Prom
   return apiClient.get<DashboardData>(`/me/dashboard${query ? `?${query}` : ''}`);
 }
 
-/**
- * Get user statistics (minutes studied today)
- */
 export async function getStats(): Promise<StatsData> {
   return apiClient.get<StatsData>('/me/stats');
 }
 
-/**
- * Get recent activity
- */
 export async function getRecentActivity(): Promise<RecentActivity> {
   return apiClient.get<RecentActivity>('/me/recent');
 }
 
-/**
- * Upload avatar image to Supabase Storage
- * Caches the image locally first for instant preview, then uploads to Supabase Storage
- * @param imageUri - Local file URI from expo-image-picker
- * @param userId - User ID for file naming and caching
- * @returns Public URL from Supabase Storage
- */
 export async function uploadAvatar(imageUri: string, userId: string): Promise<string> {
   try {
-    // Step 1: Cache the local file immediately for instant preview
     await cacheAvatarFile(imageUri, userId);
 
-    // Step 2: Read the file for upload
     const FileSystem = await getFileSystemModule();
 
-    // Get file extension from URI or default to jpg
     const extension = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
     const fileName = `${userId}/avatar.${extension}`;
 
-    // Step 3: Upload to Supabase Storage
     let bytes: Uint8Array;
     if (FileSystem) {
       const fileInfo = await FileSystem.getInfoAsync(imageUri);
@@ -224,12 +207,10 @@ export async function uploadAvatar(imageUri: string, userId: string): Promise<st
         throw new Error('Image file not found');
       }
 
-      // Read file as base64 and convert to binary for upload
       const base64Data = await FileSystem.readAsStringAsync(imageUri, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      // Manual base64 decode for React Native
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
       let output = '';
       let i = 0;
@@ -252,7 +233,6 @@ export async function uploadAvatar(imageUri: string, userId: string): Promise<st
         bytes[j] = output.charCodeAt(j);
       }
     } else if (Platform.OS === 'web') {
-      // Web fallback: fetch the blob and upload bytes
       const resp = await fetch(imageUri);
       if (!resp.ok) {
         throw new Error(`Failed to read image for upload (HTTP ${resp.status})`);
@@ -260,7 +240,6 @@ export async function uploadAvatar(imageUri: string, userId: string): Promise<st
       const ab = await resp.arrayBuffer();
       bytes = new Uint8Array(ab);
     } else {
-      // Native fallback: this indicates a stale build (missing native module).
       throw new Error('File system is not available. Please rebuild the app (expo run:ios / expo run:android).');
     }
 
@@ -270,15 +249,14 @@ export async function uploadAvatar(imageUri: string, userId: string): Promise<st
       .from('avatars')
       .upload(fileName, bytes, {
         contentType: `image/${extension === 'jpg' ? 'jpeg' : extension}`,
-        upsert: true, // Replace existing file if it exists
+        upsert: true,
       });
 
     if (uploadError) {
-      console.error('Supabase Storage upload error:', uploadError);
+      Logger.error('Supabase Storage upload error', uploadError);
       throw new Error(`Failed to upload avatar: ${uploadError.message}`);
     }
 
-    // Step 4: Get public URL
     const { data: urlData } = supabase.storage
       .from('avatars')
       .getPublicUrl(fileName);
@@ -289,75 +267,52 @@ export async function uploadAvatar(imageUri: string, userId: string): Promise<st
 
     const publicUrl = urlData.publicUrl;
 
-    // Step 5: Save URL to database via backend API
     try {
       await apiClient.post<{ avatarUrl: string }>('/me/avatar', {
         avatarUrl: publicUrl,
       });
     } catch (apiError) {
-      console.error('Failed to save avatar URL to backend:', apiError);
-      // Don't throw - the upload was successful, URL can be saved later
+      Logger.error('Failed to save avatar URL to backend', apiError);
     }
 
     return publicUrl;
   } catch (error) {
-    // Clear cached file on error
-    await clearCachedAvatar(userId).catch(() => {
-      // Ignore cache clear errors
-    });
+    await clearCachedAvatar(userId).catch(() => {});
     throw error;
   }
 }
 
-/**
- * Refresh signed avatar URL from stored URL
- * If the URL is from Supabase Storage and the bucket is private, generates a signed URL
- * For public buckets, returns the URL as-is
- * @param url - Avatar URL (Supabase Storage URL or other)
- * @returns Refreshed URL (signed if private bucket, original if public)
- */
 export async function refreshSignedAvatarUrlFromUrl(url: string): Promise<string> {
   if (!url) {
     return url;
   }
 
   try {
-    // Check if URL is from Supabase Storage
     const supabase = getSupabaseClient();
     const supabaseUrl = supabase.storage.url;
     
-    // Extract bucket and file path from URL
-    // Supabase Storage URLs format: https://{project}.supabase.co/storage/v1/object/public/{bucket}/{path}
-    // or: https://{project}.supabase.co/storage/v1/object/sign/{bucket}/{path}?token=...
     const urlObj = new URL(url);
     const isSupabaseStorage = urlObj.hostname.includes('supabase.co') && 
                               urlObj.pathname.includes('/storage/v1/object/');
 
     if (!isSupabaseStorage) {
-      // Not a Supabase Storage URL, return as-is
       return url;
     }
 
-    // Extract bucket and file path
     const pathMatch = urlObj.pathname.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+)/);
     if (!pathMatch) {
-      // Can't parse URL, return as-is
       return url;
     }
 
     const [, bucket, filePath] = pathMatch;
 
-    // Check if URL is already signed (has token parameter)
     if (urlObj.searchParams.has('token')) {
-      // URL is already signed, but might be expired
-      // Generate a new signed URL (valid for 1 hour)
       const { data, error } = await supabase.storage
         .from(bucket)
-        .createSignedUrl(filePath, 3600); // 1 hour expiry
+        .createSignedUrl(filePath, 3600);
 
       if (error) {
-        console.error('Failed to create signed URL:', error);
-        // If signed URL generation fails, try public URL as fallback
+        Logger.error('Failed to create signed URL', error);
         const { data: publicData } = supabase.storage
           .from(bucket)
           .getPublicUrl(filePath);
@@ -367,11 +322,9 @@ export async function refreshSignedAvatarUrlFromUrl(url: string): Promise<string
       return data.signedUrl;
     }
 
-    // URL is public, return as-is
     return url;
   } catch (error) {
-    console.error('Error refreshing signed URL:', error);
-    // On error, return original URL
+    Logger.error('Error refreshing signed URL', error);
     return url;
   }
 }

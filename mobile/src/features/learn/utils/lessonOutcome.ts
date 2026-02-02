@@ -25,7 +25,6 @@ function pickExamplePhrases(teachings: Teaching[]): string[] {
   for (const t of teachings) {
     const raw = (t.userLanguageString ?? '').trim();
     if (!raw) continue;
-    // Avoid extremely long examples on cards.
     const shortened = raw.length > 28 ? `${raw.slice(0, 25).trim()}…` : raw;
     if (!examples.includes(shortened)) examples.push(shortened);
     if (examples.length >= 3) break;
@@ -58,7 +57,6 @@ export function buildLessonOutcome(teachings: Teaching[]): string | null {
     /\b(understand|don't understand)\b/.test(text);
   const numbers = /\b(one|two|three|four|five|six|seven|eight|nine|ten)\b/.test(text);
 
-  // Special-case the most common motivational trio.
   if (greet && introduce && polite) {
     return 'Say hello, introduce yourself, and be polite';
   }
@@ -75,7 +73,6 @@ export function buildLessonOutcome(teachings: Teaching[]): string | null {
   const outcome = joinWithAnd(parts.slice(0, 3));
   if (outcome) return outcome;
 
-  // Last-resort: concrete examples.
   const examples = pickExamplePhrases(teachings);
   if (examples.length >= 2) {
     const list = examples.length === 2 ? `"${examples[0]}" and "${examples[1]}"` : `"${examples[0]}", "${examples[1]}", and "${examples[2]}"`;

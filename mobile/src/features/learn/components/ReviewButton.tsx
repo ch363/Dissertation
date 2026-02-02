@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/Button';
 import { getProgressSummary, type ProgressSummary } from '@/services/api/progress';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
+import { createLogger } from '@/services/logging';
+
+const logger = createLogger('ReviewButton');
 
 type Props = {
   title: string;
@@ -41,7 +44,7 @@ export function ReviewButton({
         }
       } catch (error) {
         if (!cancelled) {
-          console.error('Failed to fetch due review count:', error);
+          logger.error('Failed to fetch due review count', error);
           setDueReviewCount(0);
         }
       } finally {

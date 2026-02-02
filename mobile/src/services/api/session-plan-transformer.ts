@@ -1,9 +1,9 @@
 import { CardKind, Card, SessionPlan } from '@/types/session';
 import { DELIVERY_METHOD, getCardKindForDeliveryMethod } from '@/features/session/delivery-methods';
+import { createLogger } from '@/services/logging';
 
-/**
- * Backend session plan DTO (what the API returns)
- */
+const logger = createLogger('SessionPlanTransformer');
+
 interface BackendSessionPlan {
   id: string;
   kind: 'learn' | 'review' | 'mixed';
@@ -61,16 +61,13 @@ interface BackendRecapItem {
   summary?: any;
 }
 
-/**
- * Transform backend session plan to frontend format
- */
 export function transformSessionPlan(
   backendPlan: BackendSessionPlan,
   sessionId: string,
 ): SessionPlan {
   const cards: Card[] = [];
 
-  console.log('Transforming session plan:', {
+  logger.info('Transforming session plan', {
     stepsCount: backendPlan.steps?.length || 0,
     steps: backendPlan.steps?.map(s => ({ type: s.type, hasItem: !!s.item })) || [],
   });
@@ -95,7 +92,7 @@ export function transformSessionPlan(
       const item = step.item as BackendPracticeItem;
       const deliveryMethod = item.deliveryMethod;
 
-      console.log('Processing practice step:', {
+      logger.info('Processing practice step', {
         questionId: item.questionId,
         deliveryMethod,
         hasOptions: !!item.options,
@@ -107,7 +104,6 @@ export function transformSessionPlan(
         hasCorrectOptionId: !!item.correctOptionId,
       });
 
-      // Transform based on delivery method using centralized mapping
       const deliveryMethodTyped = deliveryMethod as typeof DELIVERY_METHOD[keyof typeof DELIVERY_METHOD];
       
       if (deliveryMethodTyped === DELIVERY_METHOD.MULTIPLE_CHOICE) {
@@ -124,15 +120,13 @@ export function transformSessionPlan(
             sourceText: item.sourceText || item.source, // For translation MCQ (prefer sourceText, fallback to source)
           });
         } else {
-          console.error('MULTIPLE_CHOICE question missing required data - creating fallback card:', {
+          logger.error('MULTIPLE_CHOICE question missing required data - creating fallback card', {
             questionId: item.questionId,
             hasOptions: !!item.options,
             optionsLength: item.options?.length,
             hasCorrectOptionId: !!item.correctOptionId,
             item: JSON.stringify(item, null, 2),
           });
-          // Create a fallback card with minimal options to prevent the question from disappearing
-          // This should not happen if backend is working correctly, but prevents UI breakage
           cards.push({
             id: `question-${item.questionId}`,
             kind: CardKind.MultipleChoice,
@@ -159,14 +153,13 @@ export function transformSessionPlan(
             answer: item.answer,
             hint: item.hint,
             audioUrl: item.audioUrl,
-            // Options for tap-to-fill (if provided by backend)
             options: item.options?.map(opt => ({
               id: opt.id || `opt-${opt.label}`,
               label: opt.label,
             })),
           });
         } else {
-          console.warn('FILL_BLANK question missing text or answer:', {
+          logger.warn('FILL_BLANK question missing text or answer', {
             questionId: item.questionId,
             hasText: !!item.text,
             hasAnswer: !!item.answer,
@@ -174,7 +167,6 @@ export function transformSessionPlan(
         }
       } else if (deliveryMethodTyped === DELIVERY_METHOD.TEXT_TRANSLATION) {
         if (item.source && item.answer) {
-          // Determine translation direction based on source language
           const isItalianToEnglish = /^[A-Za-zàèéìíîòóùú]/.test(item.source);
           const cardKind = getCardKindForDeliveryMethod(
             DELIVERY_METHOD.TEXT_TRANSLATION,
@@ -193,7 +185,7 @@ export function transformSessionPlan(
             isFlashcard: false,
           });
         } else {
-          console.warn('TEXT_TRANSLATION question missing source or answer:', {
+          logger.warn('TEXT_TRANSLATION question missing source or answer', {
             questionId: item.questionId,
             hasSource: !!item.source,
             hasAnswer: !!item.answer,
@@ -209,19 +201,18 @@ export function transformSessionPlan(
             kind: CardKind.Listening,
             prompt: item.prompt || 'Listen and type what you hear',
             rationale: step.rationale,
-            audioUrl: item.audioUrl, // Optional - ListeningCard will use TTS if missing
+            audioUrl: item.audioUrl,
             expected: item.answer,
-            translation: item.translation, // Translation for "Speak This Phrase" mode
+            translation: item.translation,
             mode: deliveryMethodTyped === DELIVERY_METHOD.TEXT_TO_SPEECH ? 'speak' : 'type',
           });
         } else {
-          console.warn('SPEECH_TO_TEXT/TEXT_TO_SPEECH question missing answer:', {
+          logger.warn('SPEECH_TO_TEXT/TEXT_TO_SPEECH question missing answer', {
             questionId: item.questionId,
             hasAnswer: !!item.answer,
           });
         }
       } else if (deliveryMethodTyped === DELIVERY_METHOD.FLASHCARD) {
-        // Flashcard uses translation format
         if (item.source && item.answer) {
           cards.push({
             id: `question-${item.questionId}`,
@@ -233,23 +224,23 @@ export function transformSessionPlan(
             expected: item.answer,
             hint: item.hint,
             audioUrl: item.audioUrl,
-            isFlashcard: true, // Enable flip card interaction
+            isFlashcard: true,
           });
         } else {
-          console.warn('FLASHCARD question missing source or answer:', {
+          logger.warn('FLASHCARD question missing source or answer', {
             questionId: item.questionId,
             hasSource: !!item.source,
             hasAnswer: !!item.answer,
           });
         }
-      } else {
-        console.warn('Unknown delivery method:', deliveryMethod, { questionId: item.questionId });
-      }
-      // Skip recap steps - frontend handles completion separately
+        } else {
+          logger.warn('Unknown delivery method', { deliveryMethod, questionId: item.questionId });
+        }
     }
   }
 
-  console.log('Transformation complete. Cards created:', cards.length, {
+  logger.info('Transformation complete. Cards created', {
+    cardCount: cards.length,
     cardTypes: cards.map(c => c.kind),
   });
 

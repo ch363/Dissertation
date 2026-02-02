@@ -1,14 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { LoggerService } from '../common/logger';
 
 @Injectable()
 export class SupabaseJwtService {
+  private readonly logger = new LoggerService(SupabaseJwtService.name);
+
   constructor(private configService: ConfigService) {}
 
-  /**
-   * Get JWT secret for token verification
-   * Uses SUPABASE_JWT_SECRET or falls back to SUPABASE_SERVICE_ROLE_KEY
-   */
   getJwtSecret(): string {
     const jwtSecret = this.configService.get<string>('supabase.jwtSecret');
     const serviceRoleKey = this.configService.get<string>(
@@ -26,9 +25,6 @@ export class SupabaseJwtService {
     return secret;
   }
 
-  /**
-   * Get Supabase URL
-   */
   getSupabaseUrl(): string {
     const url = this.configService.get<string>('supabase.url');
     if (!url) {
@@ -37,9 +33,6 @@ export class SupabaseJwtService {
     return url;
   }
 
-  /**
-   * Get Supabase service role key or anon key for client creation
-   */
   getSupabaseKey(): string {
     return (
       this.configService.get<string>('supabase.serviceRoleKey') ||
@@ -48,9 +41,6 @@ export class SupabaseJwtService {
     );
   }
 
-  /**
-   * Validate that required Supabase configuration is present
-   */
   validateConfig(): void {
     const anonKey = this.configService.get<string>('supabase.anonKey');
     const jwtSecret = this.configService.get<string>('supabase.jwtSecret');
@@ -58,12 +48,13 @@ export class SupabaseJwtService {
       'supabase.serviceRoleKey',
     );
 
-    // Warn if someone tries to use anon key for JWT verification
     if (anonKey && !jwtSecret && !serviceRoleKey) {
-      console.warn(
-        'WARNING: SUPABASE_ANON_KEY cannot be used for JWT verification. ' +
-          'Please set SUPABASE_JWT_SECRET in your .env file. ' +
-          'Find it in Supabase Dashboard > Settings > API > JWT Secret',
+      this.logger.logWarn(
+        'SUPABASE_ANON_KEY cannot be used for JWT verification',
+        {
+          message:
+            'Please set SUPABASE_JWT_SECRET in your .env file. Find it in Supabase Dashboard > Settings > API > JWT Secret',
+        },
       );
     }
   }

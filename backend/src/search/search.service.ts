@@ -2,20 +2,20 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SearchQueryDto } from './dto/search-query.dto';
 import { KNOWLEDGE_LEVEL } from '@prisma/client';
+import type {
+  SearchResults,
+  SearchableQuestion,
+  TeachingWhereCondition,
+} from './types/search-result.types';
 
 @Injectable()
 export class SearchService {
   constructor(private prisma: PrismaService) {}
 
-  async search(query: SearchQueryDto) {
+  async search(query: SearchQueryDto): Promise<SearchResults> {
     const { q, level, topic, type, limit = 20, offset = 0 } = query;
 
-    const results: {
-      modules: any[];
-      lessons: any[];
-      teachings: any[];
-      questions: any[];
-    } = {
+    const results: SearchResults = {
       modules: [],
       lessons: [],
       teachings: [],
@@ -65,7 +65,7 @@ export class SearchService {
 
     // Search teachings
     if (!type || type === 'teaching') {
-      const teachingWhere: any = {};
+      const teachingWhere: TeachingWhereCondition = {};
       if (level) {
         teachingWhere.knowledgeLevel = level;
       }
@@ -77,7 +77,7 @@ export class SearchService {
         ];
       }
 
-      results.teachings = await this.prisma.teaching.findMany({
+      results.teachings = (await this.prisma.teaching.findMany({
         where: teachingWhere,
         include: {
           lesson: {
@@ -96,7 +96,7 @@ export class SearchService {
         take: limit,
         skip: offset,
         orderBy: { createdAt: 'desc' },
-      });
+      })) as SearchResults['teachings'];
     }
 
     // Search questions (limited - questions don't have searchable text fields)
@@ -117,7 +117,7 @@ export class SearchService {
         : undefined;
 
       if (teachingIds || !searchText) {
-        results.questions = await this.prisma.question.findMany({
+        results.questions = (await this.prisma.question.findMany({
           where: {
             ...(teachingIds && { teachingId: { in: teachingIds } }),
           },
@@ -144,7 +144,7 @@ export class SearchService {
           },
           take: limit,
           skip: offset,
-        });
+        })) as SearchableQuestion[];
       }
     }
 

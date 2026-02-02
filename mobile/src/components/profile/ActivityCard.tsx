@@ -68,7 +68,6 @@ export function ActivityCard({ title, items, emptyMessage = 'No recent activity'
                   <Text style={[styles.time, { color: theme.colors.mutedText }]} numberOfLines={1}>
                     {formatTimeAgo(item.time)}
                   </Text>
-                  {/* Keep alignment uniform by reserving chevron space for all rows */}
                   <Ionicons
                     name="chevron-forward"
                     size={16}
@@ -123,8 +122,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    // Prevent the content column from forcing the meta column off-screen.
-    // This also makes `numberOfLines` truncation behave consistently in flex rows.
     minWidth: 0,
   },
   itemTitle: {
@@ -142,7 +139,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     flexShrink: 0,
     gap: baseTheme.spacing.xs,
-    // Align time/chevron with the title line (not vertically centered across title+subtitle)
     alignSelf: 'flex-start',
     marginTop: 2,
   },

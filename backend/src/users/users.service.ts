@@ -6,16 +6,11 @@ import { UpdateUserDto } from './dto/update-user.dto';
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  /**
-   * Provision user - creates user if doesn't exist, otherwise returns existing
-   * Called by me module for user provisioning
-   */
   async upsertUser(authUid: string) {
     if (!authUid || typeof authUid !== 'string' || authUid.trim() === '') {
       throw new Error('Invalid authUid: must be a non-empty string');
     }
 
-    // First try to find existing user
     const existingUser = await this.prisma.user.findUnique({
       where: { id: authUid },
     });
@@ -24,8 +19,6 @@ export class UsersService {
       return existingUser;
     }
 
-    // User doesn't exist, create it
-    // Use create instead of upsert to avoid race condition issues
     try {
       return await this.prisma.user.create({
         data: {
@@ -35,7 +28,7 @@ export class UsersService {
         },
       });
     } catch (error: any) {
-      // If unique constraint fails (race condition), fetch the existing user
+      // Race condition: another request created the user
       if (
         error.code === 'P2002' ||
         error.message?.includes('Unique constraint')
@@ -51,9 +44,6 @@ export class UsersService {
     }
   }
 
-  /**
-   * Update user information
-   */
   async updateUser(userId: string, updateDto: UpdateUserDto) {
     return this.prisma.user.update({
       where: { id: userId },
@@ -61,9 +51,6 @@ export class UsersService {
     });
   }
 
-  /**
-   * Get user by ID
-   */
   async getUser(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },

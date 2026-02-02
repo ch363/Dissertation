@@ -6,6 +6,9 @@ import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { theme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
 import { TeachCard as TeachCardType } from '@/types/session';
+import { createLogger } from '@/services/logging';
+
+const logger = createLogger('TeachCard');
 
 type Props = {
   card: TeachCardType;
@@ -38,39 +41,39 @@ export function TeachCard({ card }: Props) {
     try {
       const enabled = await getTtsEnabled();
       if (!enabled) {
-        console.warn('TTS is disabled in settings');
+        logger.warn('TTS is disabled in settings');
         setIsSpeaking(false);
         return;
       }
       
       const phrase = card.content.phrase || '';
       if (!phrase) {
-        console.warn('No phrase to speak');
+        logger.warn('No phrase to speak');
         setIsSpeaking(false);
         return;
       }
       
       const rate = await getTtsRate();
       
-      console.log('Speaking phrase:', phrase, 'with language: it-IT');
+      logger.info('Speaking phrase', { phrase, language: 'it-IT' });
       // Speak with Italian language - if voice not available, will use default
       // TTS service will handle stopping any current speech
       SafeSpeech.speak(phrase, { language: 'it-IT', rate }).catch((error) => {
-        console.error('TTS speak error in component:', error);
+        logger.error('TTS speak error in component', error as Error);
         setIsSpeaking(false);
       });
-      console.log('TTS speak called successfully');
+      logger.info('TTS speak called successfully');
       
       // Reset speaking state after estimated duration
       // Use a shorter timeout for better responsiveness
       const estimatedDuration = Math.max(2000, Math.min(phrase.length * 150, 8000));
       timeoutRef.current = setTimeout(() => {
-        console.debug('TeachCard: Resetting speaking state after timeout');
+        logger.debug('Resetting speaking state after timeout');
         setIsSpeaking(false);
         timeoutRef.current = null;
       }, estimatedDuration);
     } catch (error) {
-      console.error('Failed to speak phrase:', error);
+      logger.error('Failed to speak phrase', error as Error);
       // Always reset on error to allow retry
       setIsSpeaking(false);
       if (timeoutRef.current) {

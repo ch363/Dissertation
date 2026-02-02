@@ -15,7 +15,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HelpButton } from '@/components/navigation/HelpButton';
-import { ScrollView, SurfaceCard } from '@/components/ui';
+import { ScrollView, StaticCard } from '@/components/ui';
 import {
   getMyProfile,
   refreshSignedAvatarUrlFromUrl as refreshAvatarUrl,
@@ -236,7 +236,12 @@ export default function SettingsScreen() {
               Tailor Fluentia to how you learn best
             </Text>
           </View>
-          <HelpButton onPress={() => router.push(routes.tabs.settings.help)} />
+          <HelpButton
+            variant="elevated"
+            onPress={() => router.push(routes.tabs.settings.help)}
+            accessibilityLabel="Help, settings"
+            accessibilityHint="Opens help information"
+          />
         </View>
 
         {/* Profile card */}
@@ -285,7 +290,7 @@ export default function SettingsScreen() {
 
         {/* Help - placed high so it's visible without scrolling */}
         <Section title="HELP" color={theme.colors.mutedText}>
-          <SurfaceCard style={styles.card}>
+          <StaticCard style={styles.card}>
             <SettingNavRow
               icon={<Ionicons name="help-circle-outline" size={18} color="#FFFFFF" />}
               iconColors={ICON_GRADIENTS.blue}
@@ -295,12 +300,12 @@ export default function SettingsScreen() {
               accessibilityLabel="Open Help and FAQ"
               accessibilityHint="View instructions, tips and FAQs"
             />
-          </SurfaceCard>
+          </StaticCard>
         </Section>
 
         {/* Appearance */}
         <Section title="APPEARANCE" color={theme.colors.mutedText}>
-          <SurfaceCard style={styles.card}>
+          <StaticCard style={styles.card}>
             <SettingToggleRow
               icon={<Ionicons name="moon-outline" size={18} color="#FFFFFF" />}
               iconColors={ICON_GRADIENTS.primary}
@@ -310,12 +315,12 @@ export default function SettingsScreen() {
               accessibilityLabel="Dark Mode"
               trackColor={theme.colors.success}
             />
-          </SurfaceCard>
+          </StaticCard>
         </Section>
 
         {/* Learning */}
         <Section title="LEARNING" color={theme.colors.mutedText}>
-          <SurfaceCard style={styles.cardLearning}>
+          <StaticCard style={styles.cardLearning}>
             <SettingNavRow
               icon={<Ionicons name="chatbubble-outline" size={18} color="#FFFFFF" />}
               iconColors={ICON_GRADIENTS.blue}
@@ -347,12 +352,12 @@ export default function SettingsScreen() {
               accessibilityLabel="Adaptivity"
               trackColor={theme.colors.success}
             />
-          </SurfaceCard>
+          </StaticCard>
         </Section>
 
         {/* Notifications */}
         <Section title="NOTIFICATIONS" color={theme.colors.mutedText}>
-          <SurfaceCard style={styles.card}>
+          <StaticCard style={styles.card}>
             <SettingToggleRow
               icon={<Ionicons name="notifications-outline" size={18} color="#FFFFFF" />}
               iconColors={ICON_GRADIENTS.red}
@@ -365,12 +370,12 @@ export default function SettingsScreen() {
               accessibilityLabel="Notifications"
               trackColor={theme.colors.success}
             />
-          </SurfaceCard>
+          </StaticCard>
         </Section>
 
         {/* Account */}
         <Section title="ACCOUNT" color={theme.colors.mutedText}>
-          <SurfaceCard
+          <StaticCard
             style={[
               styles.card,
               styles.accountCard,
@@ -404,7 +409,7 @@ export default function SettingsScreen() {
               </View>
               <Ionicons name="chevron-forward" size={20} color={theme.colors.error} />
             </Pressable>
-          </SurfaceCard>
+          </StaticCard>
         </Section>
       </ScrollView>
     </SafeAreaView>
@@ -492,8 +497,6 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: 0,
-    borderRadius: CARD_RADIUS,
-    borderWidth: 1,
     overflow: 'hidden',
   },
   cardLearning: {

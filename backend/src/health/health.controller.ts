@@ -5,7 +5,7 @@ import { HealthService } from './health.service';
 
 @ApiTags('health')
 @Controller('health')
-@SkipThrottle() // Health checks should not be rate limited
+@SkipThrottle()
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 

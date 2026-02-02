@@ -1,6 +1,10 @@
 import { getMyProfile, getDashboard, getRecentActivity } from './profile';
 import { getProgressSummary } from './progress';
 import { getAllMastery } from './mastery';
+import { createLogger } from '@/services/logging';
+import { CacheManager } from '@/services/cache/cache-utils';
+
+const logger = createLogger('ProfileScreenCache');
 
 export interface ProfileScreenCacheData {
   profile: Awaited<ReturnType<typeof getMyProfile>>;
@@ -8,30 +12,10 @@ export interface ProfileScreenCacheData {
   recentActivity: Awaited<ReturnType<typeof getRecentActivity>>;
   progress: Awaited<ReturnType<typeof getProgressSummary>>;
   mastery: Awaited<ReturnType<typeof getAllMastery>>;
-  timestamp: number;
 }
 
-/**
- * Simple cache for preloaded Profile screen data
- * Key: 'profile-screen', Value: { data, timestamp }
- */
-const cache = new Map<string, ProfileScreenCacheData>();
+const cache = new CacheManager<ProfileScreenCacheData>(5 * 60 * 1000);
 
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-/**
- * Check if cached data is still valid
- */
-function isCacheValid(cached: ProfileScreenCacheData | undefined): boolean {
-  if (!cached) return false;
-  const age = Date.now() - cached.timestamp;
-  return age < CACHE_TTL;
-}
-
-/**
- * Preload Profile screen data in the background
- * This should be called after user authentication
- */
 export async function preloadProfileScreenData(profileId: string | null): Promise<void> {
   try {
     const [profile, dashboard, recentActivity, mastery] = await Promise.all([
@@ -44,6 +28,8 @@ export async function preloadProfileScreenData(profileId: string | null): Promis
         weeklyXP: 0,
         weeklyXPChange: 0,
         accuracyPercentage: 0,
+        accuracyByDeliveryMethod: {},
+        grammaticalAccuracyByDeliveryMethod: {},
         studyTimeMinutes: 0,
       })),
       getRecentActivity().catch(() => null),
@@ -66,28 +52,16 @@ export async function preloadProfileScreenData(profileId: string | null): Promis
       recentActivity,
       progress,
       mastery,
-      timestamp: Date.now(),
     });
   } catch (error) {
-    console.warn('Failed to preload Profile screen data (non-critical):', error);
-    // Silently fail - preloading is best effort
+    logger.warn('Failed to preload Profile screen data (non-critical)', error);
   }
 }
 
-/**
- * Get cached Profile screen data if available and valid
- */
 export function getCachedProfileScreenData(): ProfileScreenCacheData | null {
-  const cached = cache.get('profile-screen');
-  if (isCacheValid(cached)) {
-    return cached;
-  }
-  return null;
+  return cache.get('profile-screen');
 }
 
-/**
- * Clear the Profile screen cache
- */
 export function clearProfileScreenCache(): void {
   cache.clear();
 }

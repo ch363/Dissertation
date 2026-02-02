@@ -1,7 +1,8 @@
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 
+import { Button, StaticCard } from '@/components/ui';
 import { logError } from '@/services/logging';
 import { routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
@@ -14,7 +15,6 @@ export default function GlobalError() {
   const { theme } = useAppTheme();
   const params = useLocalSearchParams<ErrorParam>();
 
-  // The router provides the error via props in development; we rely on logError where possible.
   useEffect(() => {
     if (params?.error) {
       try {
@@ -28,26 +28,27 @@ export default function GlobalError() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Text style={[styles.title, { color: theme.colors.text }]}>Something went wrong</Text>
-      <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
-        We hit an unexpected issue. You can go back and try again.
-      </Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Go back"
-        onPress={() => router.back()}
-        style={[styles.button, { backgroundColor: theme.colors.primary }]}
-      >
-        <Text style={[styles.buttonText, { color: theme.colors.onPrimary }]}>Go back</Text>
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Go home"
-        onPress={() => router.replace(routes.tabs.home)}
-        style={[styles.button, { backgroundColor: theme.colors.secondary }]}
-      >
-        <Text style={[styles.buttonText, { color: theme.colors.onSecondary }]}>Go home</Text>
-      </Pressable>
+      <StaticCard title="Something went wrong" titleVariant="subtle" style={styles.card}>
+        <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
+          We hit an unexpected issue. You can go back and try again.
+        </Text>
+        <View style={styles.actions}>
+          <Button
+            title="Go back"
+            onPress={() => router.back()}
+            accessibilityLabel="Go back"
+            accessibilityHint="Returns to previous screen"
+          />
+          <Button
+            title="Go home"
+            onPress={() => router.replace(routes.tabs.home)}
+            variant="secondary"
+            accessibilityLabel="Go home"
+            accessibilityHint="Returns to home"
+            style={styles.secondaryButton}
+          />
+        </View>
+      </StaticCard>
     </View>
   );
 }
@@ -59,24 +60,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 22,
-    textAlign: 'center',
+  card: {
+    width: '100%',
+    maxWidth: 400,
   },
   subtitle: {
-    marginTop: baseTheme.spacing.sm,
+    marginTop: baseTheme.spacing.xs,
     fontFamily: baseTheme.typography.regular,
     fontSize: 14,
     textAlign: 'center',
   },
-  button: {
-    marginTop: baseTheme.spacing.md,
-    paddingVertical: 14,
-    paddingHorizontal: baseTheme.spacing.lg,
-    borderRadius: baseTheme.radius.md,
+  actions: {
+    marginTop: baseTheme.spacing.lg,
+    gap: baseTheme.spacing.sm,
   },
-  buttonText: {
-    fontFamily: baseTheme.typography.semiBold,
+  secondaryButton: {
+    marginTop: baseTheme.spacing.xs,
   },
 });

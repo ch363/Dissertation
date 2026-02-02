@@ -1,5 +1,5 @@
 import { useLocalSearchParams, router } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, SafeAreaView } from 'react-native';
 import { LoadingScreen } from '@/components/ui';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,16 +8,42 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getModule, getModuleLessons, getLessonTeachings, type Module, type Lesson } from '@/services/api/modules';
 import { getSuggestions } from '@/services/api/learn';
 import { getRecentActivity, type RecentActivity } from '@/services/api/profile';
-import { routeBuilders, routes } from '@/services/navigation/routes';
+import { routeBuilders } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { makeSessionId } from '@/features/session/sessionBuilder';
 import { preloadSessionPlan } from '@/services/api/session-plan-cache';
 import { getUserLessons, type UserLessonProgress } from '@/services/api/progress';
-import { LessonMicroProgress } from '@/components/learn/LessonMicroProgress';
 import { buildLessonOutcome } from '@/features/learn/utils/lessonOutcome';
 import { ScreenHeader } from '@/components/navigation';
-import { FirstLessonNudge, ModuleCompleteBanner, OfflineNotice } from '@/components/course';
+import { MetaRow, TappableCard } from '@/components/ui';
+import { ModuleCompleteBanner, OfflineNotice } from '@/components/course';
+import { useAsyncData } from '@/hooks/useAsyncData';
+import { createLogger } from '@/services/logging';
+import React from 'react';
+
+const Logger = createLogger('CourseDetailScreen');
+
+const MODULE_COVER = {
+  pillBg: '#EFF6FF',
+  pillBorder: 'rgba(191, 219, 254, 0.3)',
+  blue: '#3B82F6',
+  blueLight: '#60A5FA',
+  blueDark: '#2563EB',
+  title: '#0F172A',
+  muted: '#475569',
+  mutedDesc: '#64748B',
+  metaText: '#334155',
+  metaBg: '#F8FAFC',
+  metaBorder: 'rgba(226, 232, 240, 0.6)',
+  progressBg: '#F1F5F9',
+  progressBorder: 'rgba(226, 232, 240, 0.5)',
+  cardBorder: 'rgba(226, 232, 240, 0.6)',
+  tipGradientStart: '#EFF6FF',
+  tipGradientEnd: '#E0E7FF',
+  tipBorder: 'rgba(191, 219, 254, 0.5)',
+  secondaryBorder: '#E2E8F0',
+} as const;
 
 type PrimaryAction =
   | {
@@ -35,19 +61,88 @@ type PrimaryAction =
 
 export default function CourseDetail() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  const { theme: appTheme } = useAppTheme();
-  const [module, setModule] = useState<Module | null>(null);
-  const [lessons, setLessons] = useState<Lesson[]>([]);
-  const [userProgress, setUserProgress] = useState<UserLessonProgress[]>([]);
+  const { theme } = useAppTheme();
   const [lessonOutcomes, setLessonOutcomes] = useState<Record<string, string>>({});
-  const [recentActivity, setRecentActivity] = useState<RecentActivity | null>(null);
-  const [suggestedLessonId, setSuggestedLessonId] = useState<string | null>(null);
-  const [suggestedLessonTitle, setSuggestedLessonTitle] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [lessonsLoadError, setLessonsLoadError] = useState<string | null>(null);
-
   const outcomeRequestsRef = useRef(new Set<string>());
+  const scrollViewRef = useRef<ScrollView>(null);
+  const lessonsSectionRef = useRef<View>(null);
+  const [lessonsSectionY, setLessonsSectionY] = useState(0);
+
+  const { data, loading, error, reload } = useAsyncData<{
+    module: Module;
+    lessons: Lesson[];
+    userProgress: UserLessonProgress[];
+    recentActivity: RecentActivity | null;
+    suggestedLessonId: string | null;
+    suggestedLessonTitle: string | null;
+  }>(
+    'CourseDetailScreen',
+    async () => {
+      if (!slug) {
+        throw new Error('Course slug is required');
+      }
+
+      const moduleData = await getModule(String(slug));
+      
+      let lessonsData: Lesson[] = [];
+      let progressData: UserLessonProgress[] = [];
+      let recent: RecentActivity | null = null;
+      let suggestedLessonId: string | null = null;
+      let suggestedLessonTitle: string | null = null;
+
+      try {
+        const [lessons, progress, activity, suggestions] = await Promise.all([
+          getModuleLessons(moduleData.id),
+          getUserLessons().catch(() => [] as UserLessonProgress[]),
+          getRecentActivity().catch(() => null),
+          getSuggestions({ moduleId: moduleData.id, limit: 1 }).catch(() => ({ lessons: [], modules: [] })),
+        ]);
+        lessonsData = lessons;
+        progressData = progress;
+        recent = activity;
+        const first = suggestions?.lessons?.[0];
+        suggestedLessonId = first?.lesson?.id ?? null;
+        suggestedLessonTitle = first?.lesson?.title ?? null;
+        
+        const lessonsToPreload = lessonsData.slice(0, 5);
+        lessonsToPreload.forEach((lesson, index) => {
+          setTimeout(() => {
+            preloadSessionPlan(lesson.id).catch(() => {});
+          }, index * 100);
+        });
+
+        setLessonsLoadError(null);
+      } catch (lessonErr) {
+        setLessonsLoadError(lessonErr instanceof Error ? lessonErr.message : String(lessonErr));
+        const [activity, suggestions] = await Promise.all([
+          getRecentActivity().catch(() => null),
+          getSuggestions({ moduleId: moduleData.id, limit: 1 }).catch(() => ({ lessons: [], modules: [] })),
+        ]);
+        recent = activity;
+        const first = suggestions?.lessons?.[0];
+        suggestedLessonId = first?.lesson?.id ?? null;
+        suggestedLessonTitle = first?.lesson?.title ?? null;
+      }
+
+      return {
+        module: moduleData,
+        lessons: lessonsData,
+        userProgress: progressData,
+        recentActivity: recent,
+        suggestedLessonId,
+        suggestedLessonTitle,
+      };
+    },
+    [slug]
+  );
+
+  const module = data?.module ?? null;
+  const lessons = data?.lessons ?? [];
+  const userProgress = data?.userProgress ?? [];
+  const recentActivity = data?.recentActivity ?? null;
+  const suggestedLessonId = data?.suggestedLessonId ?? null;
+  const suggestedLessonTitle = data?.suggestedLessonTitle ?? null;
 
   const preloadLessonOutcomes = (lessonsData: Lesson[]) => {
     const missing = lessonsData
@@ -59,7 +154,6 @@ export default function CourseDetail() {
 
     missing.forEach((id, index) => {
       outcomeRequestsRef.current.add(id);
-      // Stagger slightly to avoid overwhelming the network.
       setTimeout(() => {
         getLessonTeachings(id)
           .then((teachings) => {
@@ -67,9 +161,7 @@ export default function CourseDetail() {
             if (!outcome) return;
             setLessonOutcomes((prev) => ({ ...prev, [id]: outcome }));
           })
-          .catch(() => {
-            // best-effort
-          })
+          .catch(() => {})
           .finally(() => {
             outcomeRequestsRef.current.delete(id);
           });
@@ -77,84 +169,15 @@ export default function CourseDetail() {
     });
   };
 
-  useEffect(() => {
-    const loadModule = async () => {
-      if (!slug) {
-        setError('Course slug is required');
-        setLoading(false);
-        return;
-      }
+  React.useEffect(() => {
+    if (lessons.length > 0) {
+      preloadLessonOutcomes(lessons);
+    }
+  }, [lessons]);
 
-      setLoading(true);
-      setError(null);
-      setLessonsLoadError(null);
-      try {
-        // Treat the route param as a module identifier. Backend supports either:
-        // - UUID module ID (preferred)
-        // - module title (case-insensitive)
-        const moduleData = await getModule(String(slug));
-        setModule(moduleData);
-        
-        // Fetch all lessons for this module
-        try {
-          const [lessonsData, progressData, recent, suggestions] = await Promise.all([
-            getModuleLessons(moduleData.id),
-            getUserLessons().catch(() => [] as UserLessonProgress[]),
-            getRecentActivity().catch(() => null),
-            getSuggestions({ moduleId: moduleData.id, limit: 1 }).catch(() => ({ lessons: [], modules: [] })),
-          ]);
-          console.log('Loaded lessons:', lessonsData.length, lessonsData);
-          setLessons(lessonsData);
-          setUserProgress(progressData);
-          setRecentActivity(recent);
-          const first = suggestions?.lessons?.[0];
-          setSuggestedLessonId(first?.lesson?.id ?? null);
-          setSuggestedLessonTitle(first?.lesson?.title ?? null);
-          
-          // Preload session plans for a limited set of lessons to avoid timeouts
-          // (backend can be slow under many concurrent session-plan requests)
-          const lessonsToPreload = lessonsData.slice(0, 5);
-          lessonsToPreload.forEach((lesson, index) => {
-            setTimeout(() => {
-              preloadSessionPlan(lesson.id).catch(() => {
-                // Best-effort; failure already logged in session-plan-cache
-              });
-            }, index * 100);
-          });
-
-          // Best-effort: fetch lesson teachings to generate a motivating outcome line.
-          preloadLessonOutcomes(lessonsData);
-        } catch (lessonErr) {
-          console.error('Failed to load lessons:', lessonErr);
-          setLessonsLoadError(lessonErr instanceof Error ? lessonErr.message : String(lessonErr));
-          // Still try to populate recent activity / suggestions so CTA can work.
-          void Promise.all([
-            getRecentActivity().catch(() => null),
-            getSuggestions({ moduleId: moduleData.id, limit: 1 }).catch(() => ({ lessons: [], modules: [] })),
-          ]).then(([recent, suggestions]) => {
-            setRecentActivity(recent);
-            const first = suggestions?.lessons?.[0];
-            setSuggestedLessonId(first?.lesson?.id ?? null);
-            setSuggestedLessonTitle(first?.lesson?.title ?? null);
-          });
-          // Continue without lesson data
-        }
-      } catch (err: any) {
-        console.error('Failed to load module:', err);
-        setError(err?.message || 'Failed to load course');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadModule();
-  }, [slug]);
-
-  // Use module title and description for the header
   const displayTitle = module?.title ?? '';
   const displayDescription = module?.description || 'A tailored course based on your onboarding preferences.';
   
-  // Calculate total items across all lessons
   const totalItems = lessons.reduce((sum, lesson) => sum + (lesson.numberOfItems || 0), 0);
 
   const progressByLessonId = useMemo(() => {
@@ -185,12 +208,6 @@ export default function CourseDetail() {
       ? `${completedLessonsCount}/${lessons.length} ${lessons.length === 1 ? 'lesson' : 'lessons'} complete`
       : null;
 
-  const isFirstEverLesson = useMemo(() => {
-    // “First-ever lesson” = no progress recorded at all, or everything is at 0.
-    if (userProgress.length === 0) return true;
-    return userProgress.every((p) => (p.completedTeachings ?? 0) === 0);
-  }, [userProgress]);
-
   const completionExampleOutcome = useMemo(() => {
     // Prefer a strong “outcome” line if we already generated one.
     const first = lessons.find((l) => lessonOutcomes[l.id])?.id;
@@ -214,15 +231,17 @@ export default function CourseDetail() {
       })[0];
 
     if (inProgressInThisModule?.lesson?.id) {
+      const lesson = lessons.find((l) => l.id === inProgressInThisModule.lesson.id);
+      const lessonIndex = lesson ? lessons.indexOf(lesson) + 1 : 0;
+      const estMin = lesson?.numberOfItems ? Math.ceil(lesson.numberOfItems * 1.5) : 5;
       return {
         kind: 'continue',
         label: 'Continue lesson',
         lessonId: inProgressInThisModule.lesson.id,
-        helperText: `${inProgressInThisModule.completedTeachings}/${inProgressInThisModule.totalTeachings} complete`,
+        helperText: `Lesson ${lessonIndex} of ${lessons.length} • ~${estMin} min`,
       };
     }
 
-    // Continue (module-only) if user's recent lesson is in this module and has partial progress (not 0, not complete)
     const recentLesson = recentActivity?.recentLesson ?? null;
     const isRecentInThisModule = recentLesson?.lesson?.module?.id === moduleId;
     const hasPartialProgress =
@@ -232,23 +251,30 @@ export default function CourseDetail() {
       recentLesson.completedTeachings < recentLesson.totalTeachings;
 
     if (isRecentInThisModule && hasPartialProgress && recentLesson?.lesson?.id) {
-      const helperText =
-        typeof recentLesson.completedTeachings === 'number' && typeof recentLesson.totalTeachings === 'number'
-          ? `${recentLesson.completedTeachings}/${recentLesson.totalTeachings} complete`
-          : undefined;
+      const lesson = lessons.find((l) => l.id === recentLesson.lesson.id);
+      const lessonIndex = lesson ? lessons.indexOf(lesson) + 1 : 0;
+      const estMin = lesson?.numberOfItems ? Math.ceil(lesson.numberOfItems * 1.5) : 5;
       return {
         kind: 'continue',
         label: 'Continue lesson',
         lessonId: recentLesson.lesson.id,
-        helperText,
+        helperText: `Lesson ${lessonIndex} of ${lessons.length} • ~${estMin} min`,
       };
     }
 
-    // Start recommended lesson (module-scoped suggestions), else fallback to first lesson in list
     const startLessonId = suggestedLessonId ?? lessons[0]?.id ?? null;
     if (!startLessonId) return null;
-    return { kind: 'start', label: 'Start lessons', lessonId: startLessonId };
-  }, [lessons, module?.id, recentActivity, suggestedLessonId, userProgress]);
+    const startLesson = lessons.find((l) => l.id === startLessonId);
+    const lessonIndex = startLesson ? lessons.indexOf(startLesson) + 1 : 0;
+    const estMin = startLesson?.numberOfItems ? Math.ceil(startLesson.numberOfItems * 1.5) : 5;
+    const startTitle = suggestedLessonTitle ?? startLesson?.title ?? 'Start lessons';
+    return {
+      kind: 'start',
+      label: `Start: ${startTitle}`,
+      lessonId: startLessonId,
+      helperText: `Lesson ${lessonIndex} of ${lessons.length} • ~${estMin} min`,
+    };
+  }, [lessons, module?.id, recentActivity, suggestedLessonId, suggestedLessonTitle, userProgress]);
 
   const recommendedLessonTitle = useMemo(() => {
     if (!suggestedLessonId) return null;
@@ -267,35 +293,18 @@ export default function CourseDetail() {
   const handlePrimaryActionPressIn = () => {
     if (!primaryAction) return;
     preloadSessionPlan(primaryAction.lessonId).catch((error) => {
-      console.debug('Preload failed (non-critical):', error);
+      Logger.debug('Preload failed (non-critical)', { error });
     });
   };
 
   const handleRetry = () => {
-    // Trigger a full reload by re-running the effect.
-    // (Expo Router screens re-run effect on param changes; we keep it simple by just calling the API path again.)
-    setLoading(true);
-    setError(null);
-    setLessonsLoadError(null);
-    // Reuse the module slug; the effect will re-run because `slug` is stable, so call the internal loader again via navigation refresh.
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    (async () => {
-      try {
-        const moduleData = await getModule(String(slug));
-        setModule(moduleData);
-        const [lessonsData, progressData] = await Promise.all([
-          getModuleLessons(moduleData.id),
-          getUserLessons().catch(() => [] as UserLessonProgress[]),
-        ]);
-        setLessons(lessonsData);
-        setUserProgress(progressData);
-        preloadLessonOutcomes(lessonsData);
-      } catch (e: any) {
-        setError(e?.message || 'Failed to reload course');
-      } finally {
-        setLoading(false);
-      }
-    })();
+    reload();
+  };
+
+  const handleViewAllLessons = () => {
+    if (lessonsSectionY > 0) {
+      scrollViewRef.current?.scrollTo({ y: lessonsSectionY - 24, animated: true });
+    }
   };
 
   // IMPORTANT: Hooks must run before any early returns.
@@ -310,7 +319,7 @@ export default function CourseDetail() {
 
   if (error || !module) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: appTheme.colors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <ScreenHeader
           title="Course"
           subtitle="Unable to load course"
@@ -319,7 +328,7 @@ export default function CourseDetail() {
           showHome
         />
         <View style={styles.errorContainer}>
-          <Text style={[styles.errorText, { color: appTheme.colors.error }]} accessibilityRole="alert">
+          <Text style={[styles.errorText, { color: theme.colors.error }]} accessibilityRole="alert">
             {error || 'Course not found'}
           </Text>
         </View>
@@ -327,128 +336,173 @@ export default function CourseDetail() {
     );
   }
 
+  const progressPercent = lessons.length > 0 ? Math.round((completedLessonsCount / lessons.length) * 100) : 0;
+  const totalMin = Math.ceil(totalItems * 1.5);
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: appTheme.colors.background }]}>
-      <ScreenHeader
-        title={module.title}
-        subtitle={`${lessonsCompleteLabel || 'Start your learning journey'}`}
-        icon="book-outline"
-        label="Modules"
-        showHome
-      />
-      <ScrollView 
+      <SafeAreaView style={[styles.container, { backgroundColor: '#FAFBFC' }]}>
+      <View style={styles.navBar}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          onPress={() => router.back()}
+          style={({ pressed }) => [styles.navButton, pressed && styles.navButtonPressed]}
+        >
+          <Ionicons name="chevron-back" size={28} color="#0F172A" />
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Menu"
+          style={({ pressed }) => [styles.navButtonMenu, pressed && styles.navButtonPressed]}
+        >
+          <Ionicons name="menu" size={22} color="#334155" />
+        </Pressable>
+      </View>
+
+      <ScrollView
+        ref={scrollViewRef}
         style={styles.scrollContainer}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-      {/* Module overview – icon, title, info pills */}
-      <View style={styles.headerSection}>
-        <View style={[styles.iconContainer, { backgroundColor: appTheme.colors.primary }]}>
-          <Ionicons name="book-outline" size={48} color="#FFFFFF" accessible={false} importantForAccessibility="no" />
+        <View style={styles.modulePill}>
+          <Ionicons name="book-outline" size={12} color={MODULE_COVER.blue} />
+          <Text style={styles.modulePillText}>MODULE</Text>
         </View>
-        <Text style={[styles.title, { color: appTheme.colors.text }]} accessibilityRole="header">
+
+        <Text style={styles.moduleTitle} accessibilityRole="header">
           {displayTitle}
         </Text>
+
         {lessons.length > 0 && (
-          <View style={styles.infoPillsRow}>
-            <View style={[styles.infoPill, { backgroundColor: appTheme.colors.card, borderColor: appTheme.colors.border }]}>
-              <Ionicons name="time-outline" size={18} color={appTheme.colors.text} accessible={false} importantForAccessibility="no" />
-              <Text style={[styles.infoPillText, { color: appTheme.colors.text }]}>
-                ~{Math.ceil(totalItems * 1.5)} min
+          <View style={styles.progressBlock}>
+            <View style={styles.progressRow}>
+              <Text style={styles.progressLabel}>
+                {completedLessonsCount} of {lessons.length} lessons complete
               </Text>
+              <Text style={styles.progressPercent}>{progressPercent}%</Text>
             </View>
-            <View style={[styles.infoPill, { backgroundColor: appTheme.colors.card, borderColor: appTheme.colors.border }]}>
-              <Ionicons name="book-outline" size={18} color={appTheme.colors.text} accessible={false} importantForAccessibility="no" />
-              <Text style={[styles.infoPillText, { color: appTheme.colors.text }]}>
-                {totalItems} {totalItems === 1 ? 'exercise' : 'exercises'}
-              </Text>
+            <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
             </View>
           </View>
         )}
-      </View>
 
-      {/* Module description */}
-      {displayDescription ? (
-        <Text style={[styles.subtitle, { color: appTheme.colors.mutedText }]}>
-          {displayDescription}
-        </Text>
-      ) : null}
+        <View style={[styles.summaryCard, { borderColor: MODULE_COVER.cardBorder }]}>
+          <LinearGradient
+            colors={[MODULE_COVER.blueLight, MODULE_COVER.blue, MODULE_COVER.blueDark]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.summaryIcon}
+          >
+            <Ionicons name="book-outline" size={40} color="#FFFFFF" />
+          </LinearGradient>
+          {lessons.length > 0 && (
+            <View style={styles.metaRow}>
+              <View style={[styles.metaPill, { backgroundColor: MODULE_COVER.metaBg, borderColor: MODULE_COVER.metaBorder }]}>
+                <Ionicons name="time-outline" size={14} color={MODULE_COVER.mutedDesc} />
+                <Text style={styles.metaPillText}>~{totalMin} min</Text>
+              </View>
+              <View style={[styles.metaPill, { backgroundColor: MODULE_COVER.metaBg, borderColor: MODULE_COVER.metaBorder }]}>
+                <Ionicons name="document-text-outline" size={14} color={MODULE_COVER.mutedDesc} />
+                <Text style={styles.metaPillText}>{totalItems} {totalItems === 1 ? 'exercise' : 'exercises'}</Text>
+              </View>
+            </View>
+          )}
+          <Text style={styles.summaryDescription} numberOfLines={3}>
+            {displayDescription}
+          </Text>
+        </View>
 
-      {/* Future-proof empty states */}
-      {moduleCompleted ? (
-        <View style={styles.bannerRow}>
-          <ModuleCompleteBanner moduleTitle={module.title} exampleOutcome={completionExampleOutcome} />
-        </View>
-      ) : lessons.length === 0 && lessonsLoadError ? (
-        <View style={styles.bannerRow}>
-          <OfflineNotice onRetry={handleRetry} />
-        </View>
-      ) : isFirstEverLesson && primaryAction?.kind === 'start' ? (
-        <View style={styles.bannerRow}>
-          <FirstLessonNudge onStart={handlePrimaryActionPress} />
-        </View>
-      ) : null}
+        {moduleCompleted && (
+          <View style={styles.bannerRow}>
+            <ModuleCompleteBanner moduleTitle={module.title} exampleOutcome={completionExampleOutcome} />
+          </View>
+        )}
+        {lessons.length === 0 && lessonsLoadError ? (
+          <View style={styles.bannerRow}>
+            <OfflineNotice onRetry={handleRetry} />
+          </View>
+        ) : null}
 
-      {/* Primary Action CTA (reduce choice friction) */}
-      {primaryAction ? (
-        <View style={styles.primaryActionSection}>
+        {primaryAction ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={primaryAction.label}
             onPress={handlePrimaryActionPress}
             onPressIn={handlePrimaryActionPressIn}
-            hitSlop={6}
-            style={({ pressed }) => [
-              styles.primaryCta,
-              { backgroundColor: appTheme.colors.primary, opacity: pressed ? 0.9 : 1 },
-            ]}
+            style={({ pressed }) => [styles.primaryCtaWrap, pressed && { opacity: 0.95 }]}
           >
-            <Text style={[styles.primaryCtaText, { color: appTheme.colors.onPrimary }]}>
-              {primaryAction.label}
-            </Text>
-            <Ionicons
-              name="arrow-forward"
-              size={18}
-              color={appTheme.colors.onPrimary}
-              style={styles.primaryCtaIcon}
-              accessible={false}
-              importantForAccessibility="no"
-            />
-          </Pressable>
-          {primaryAction.kind === 'start' && recommendedLessonTitle ? (
-            <View
-              style={[
-                styles.recommendationPill,
-                { backgroundColor: appTheme.colors.primary + '10', borderColor: appTheme.colors.primary + '2A' },
-              ]}
-              accessibilityLabel={`Recommended next: ${recommendedLessonTitle}`}
-              accessible
+            <LinearGradient
+              colors={[MODULE_COVER.blueLight, MODULE_COVER.blue, MODULE_COVER.blueDark]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.primaryCtaGradient}
             >
-              <Ionicons name="sparkles" size={14} color={appTheme.colors.primary} accessible={false} importantForAccessibility="no" />
-              <Text style={[styles.recommendationLabel, { color: appTheme.colors.primary }]}>Recommended next</Text>
-              <Text style={[styles.recommendationTitle, { color: appTheme.colors.text }]} numberOfLines={1}>
-                {recommendedLessonTitle}
-              </Text>
-            </View>
-          ) : null}
-          {lessonsCompleteLabel ? (
-            <Text style={[styles.primaryCtaHelper, { color: appTheme.colors.mutedText }]}>
-              {lessonsCompleteLabel}
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
+              <View style={styles.primaryCtaContent}>
+                <Text style={styles.primaryCtaLabel}>{primaryAction.label}</Text>
+                <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+              </View>
+              {primaryAction.helperText ? (
+                <Text style={styles.primaryCtaSubtitle}>{primaryAction.helperText}</Text>
+              ) : null}
+            </LinearGradient>
+          </Pressable>
+        ) : null}
 
-      {/* Lessons List Section */}
-      {lessons.length > 0 ? (
-        <View style={styles.lessonsSection}>
-          <Text style={[styles.sectionTitle, { color: appTheme.colors.text }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="View all lessons"
+          onPress={handleViewAllLessons}
+          style={({ pressed }) => [styles.secondaryCta, pressed && { opacity: 0.9 }]}
+        >
+          <Text style={styles.secondaryCtaText}>View all lessons</Text>
+        </Pressable>
+
+        <LinearGradient
+          colors={[MODULE_COVER.tipGradientStart, MODULE_COVER.tipGradientEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.tipCard, { borderColor: MODULE_COVER.tipBorder }]}
+        >
+          <LinearGradient
+            colors={[MODULE_COVER.blueLight, MODULE_COVER.blue]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.tipIconWrap}
+          >
+            <Ionicons name="bulb-outline" size={16} color="#FFFFFF" />
+          </LinearGradient>
+          <View style={styles.tipTextWrap}>
+            <Text style={styles.tipTitle}>Start small</Text>
+            <Text style={styles.tipDescription}>Just 5 minutes builds momentum.</Text>
+          </View>
+        </LinearGradient>
+
+        {lessons.length > 0 ? (
+          <View
+            ref={lessonsSectionRef}
+            onLayout={(e) => setLessonsSectionY(e.nativeEvent.layout.y)}
+            collapsable={false}
+            style={styles.lessonsSection}
+          >
+          <Text style={styles.lessonsSectionTitle}>
             Lessons
           </Text>
           <View style={styles.lessonsList}>
             {lessons.map((lesson, index) => {
               const progress = progressByLessonId.get(lesson.id);
+              const completed = progress?.completedTeachings ?? 0;
+              const total = progress?.totalTeachings ?? (lesson.numberOfItems || 0);
               const preview = lessonOutcomes[lesson.id] ?? lesson.description ?? null;
+              const statusLabel =
+                total <= 0 || completed === 0
+                  ? 'Not started'
+                  : completed >= total
+                    ? 'Completed'
+                    : 'In progress';
+              const progressLabel = total > 0 ? `${completed} of ${total}` : '0 of 0';
+              const durationMin = lesson.numberOfItems ? Math.ceil(lesson.numberOfItems * 1.5) : 5;
 
               const handleLessonPress = () => {
                 const sessionId = makeSessionId('learn');
@@ -459,65 +513,53 @@ export default function CourseDetail() {
               };
 
               const handleLessonPressIn = () => {
-                // Start preloading the session plan when user presses down
                 preloadSessionPlan(lesson.id).catch((error) => {
-                  // Silently fail - preloading is best effort
-                  console.debug('Preload failed (non-critical):', error);
+                  Logger.debug('Preload failed (non-critical)', { error });
                 });
               };
 
-              return (
-              <Pressable
-                key={lesson.id}
-                accessibilityRole="button"
-                accessibilityLabel={`Open lesson ${lesson.title}`}
-                accessibilityHint="Starts a session for this lesson"
-                style={[styles.lessonCard, { backgroundColor: appTheme.colors.card, borderColor: appTheme.colors.border }]}
-                onPress={handleLessonPress}
-                onPressIn={handleLessonPressIn}
-              >
-                <View style={styles.lessonCardContent}>
-                  <View style={styles.lessonCardLeft}>
-                    <LinearGradient
-                      colors={[appTheme.colors.primary + '22', appTheme.colors.primary + '10']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={[styles.lessonNumber, { borderColor: appTheme.colors.primary + '33' }]}
-                      accessible={false}
-                    >
-                      <Text style={[styles.lessonNumberText, { color: appTheme.colors.primary }]}>
-                        {index + 1}
-                      </Text>
-                    </LinearGradient>
-                    <View style={styles.lessonCardText}>
-                      <Text style={[styles.lessonTitle, { color: appTheme.colors.text }]}>
-                        {lesson.title}
-                      </Text>
-                      <View style={styles.lessonMetaRow}>
-                        <LessonMicroProgress
-                          completed={progress?.completedTeachings ?? 0}
-                          total={progress?.totalTeachings ?? (lesson.numberOfItems || 0)}
-                        />
-                      </View>
-                      {preview ? (
-                        <Text style={[styles.lessonDescription, { color: appTheme.colors.mutedText }]} numberOfLines={1}>
-                          {preview}
-                        </Text>
-                      ) : null}
-                    </View>
+              const metaRow = (
+                <View style={styles.lessonMetaRow}>
+                  <View style={styles.lessonStatusPill}>
+                    <View style={styles.lessonStatusDot} />
+                    <Text style={styles.lessonMetaText}>{statusLabel}</Text>
                   </View>
-                  <View style={styles.lessonCardRight}>
-                    <Ionicons name="chevron-forward" size={20} color={appTheme.colors.mutedText} accessible={false} importantForAccessibility="no" />
-                  </View>
+                  <MetaRow text={progressLabel} icon="document-text-outline" textColor={theme.colors.mutedText} />
+                  <MetaRow text={`~${durationMin} min`} icon="time-outline" textColor={theme.colors.mutedText} />
                 </View>
-              </Pressable>
+              );
+              const leftIcon = (
+                <LinearGradient
+                  colors={[MODULE_COVER.blue, MODULE_COVER.blueDark]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.lessonNumberBadge}
+                >
+                  <Text style={styles.lessonNumberText}>{index + 1}</Text>
+                </LinearGradient>
+              );
+              return (
+                <TappableCard
+                  key={lesson.id}
+                  title={lesson.title}
+                  subtitle={preview ?? undefined}
+                  leftIcon={leftIcon}
+                  metaRow={metaRow}
+                  onPress={() => {
+                    preloadSessionPlan(lesson.id).catch(() => {});
+                    handleLessonPress();
+                  }}
+                  accessibilityLabel={`Open lesson ${lesson.title}`}
+                  accessibilityHint="Starts a session for this lesson"
+                  style={styles.lessonCardSpacing}
+                />
               );
             })}
           </View>
         </View>
       ) : (
         <View style={styles.emptyState}>
-          <Text style={[styles.emptyStateText, { color: appTheme.colors.mutedText }]}>
+          <Text style={[styles.emptyStateText, { color: theme.colors.mutedText }]}>
             No lessons available yet
           </Text>
         </View>
@@ -539,8 +581,237 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xl,
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 96,
+  },
+  navBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  navButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navButtonMenu: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.6)',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  navButtonPressed: {
+    backgroundColor: '#F1F5F9',
+  },
+  modulePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: MODULE_COVER.pillBg,
+    borderWidth: 1,
+    borderColor: MODULE_COVER.pillBorder,
+    borderRadius: 999,
+    marginBottom: 12,
+  },
+  modulePillText: {
+    fontFamily: theme.typography.semiBold,
+    fontSize: 11,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    color: MODULE_COVER.blue,
+  },
+  moduleTitle: {
+    fontFamily: theme.typography.bold,
+    fontSize: 40,
+    letterSpacing: -1,
+    lineHeight: 42,
+    color: MODULE_COVER.title,
+    marginBottom: 12,
+  },
+  progressBlock: {
+    marginBottom: 20,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  progressLabel: {
+    fontFamily: theme.typography.medium,
+    fontSize: 14,
+    color: MODULE_COVER.muted,
+  },
+  progressPercent: {
+    fontFamily: theme.typography.bold,
+    fontSize: 14,
+    color: MODULE_COVER.blue,
+  },
+  progressBarBg: {
+    height: 8,
+    backgroundColor: MODULE_COVER.progressBg,
+    borderRadius: 4,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: MODULE_COVER.progressBorder,
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: MODULE_COVER.blue,
+    borderRadius: 4,
+  },
+  summaryCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+    alignItems: 'center',
+  },
+  summaryIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  metaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  metaPillText: {
+    fontFamily: theme.typography.semiBold,
+    fontSize: 13,
+    color: MODULE_COVER.metaText,
+  },
+  summaryDescription: {
+    fontFamily: theme.typography.regular,
+    fontSize: 14,
+    lineHeight: 22,
+    color: MODULE_COVER.mutedDesc,
+    textAlign: 'center',
+    maxWidth: 280,
+  },
+  primaryCtaWrap: {
+    width: '100%',
+    marginBottom: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: MODULE_COVER.blue,
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  primaryCtaGradient: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  primaryCtaContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  primaryCtaLabel: {
+    fontFamily: theme.typography.bold,
+    fontSize: 16,
+    color: '#FFFFFF',
+  },
+  primaryCtaSubtitle: {
+    fontFamily: theme.typography.medium,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 4,
+  },
+  secondaryCta: {
+    width: '100%',
+    paddingVertical: 14,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: MODULE_COVER.secondaryBorder,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  secondaryCtaText: {
+    fontFamily: theme.typography.semiBold,
+    fontSize: 15,
+    color: MODULE_COVER.title,
+  },
+  tipCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: theme.spacing.lg,
+  },
+  tipIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: MODULE_COVER.blue,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  tipTextWrap: {
+    flex: 1,
+  },
+  tipTitle: {
+    fontFamily: theme.typography.bold,
+    fontSize: 14,
+    color: MODULE_COVER.title,
+    marginBottom: 2,
+  },
+  tipDescription: {
+    fontFamily: theme.typography.regular,
+    fontSize: 13,
+    color: MODULE_COVER.mutedDesc,
+    lineHeight: 20,
   },
   errorContainer: {
     flex: 1,
@@ -548,173 +819,115 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: theme.spacing.xl,
   },
-  headerSection: {
-    alignItems: 'center',
-    marginBottom: theme.spacing.lg,
-  },
-  iconContainer: {
-    width: 88,
-    height: 88,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  title: {
+  lessonsSectionTitle: {
     fontFamily: theme.typography.bold,
-    fontSize: 28,
-    marginBottom: theme.spacing.md,
-    textAlign: 'center',
-  },
-  infoPillsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.sm,
-  },
-  infoPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  infoPillText: {
-    fontFamily: theme.typography.regular,
-    fontSize: 15,
-  },
-  subtitle: {
-    fontFamily: theme.typography.regular,
-    fontSize: 16,
-    lineHeight: 24,
-    textAlign: 'center',
-    paddingHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.xl,
-  },
-  primaryActionSection: {
-    width: '100%',
-    marginBottom: theme.spacing.xl,
-    gap: theme.spacing.sm,
-  },
-  primaryCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: theme.radius.md,
-    paddingVertical: 16,
-    width: '100%',
-    minHeight: 52,
-    gap: theme.spacing.sm,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
-  },
-  primaryCtaText: {
-    fontFamily: theme.typography.semiBold,
-    fontSize: 16,
-  },
-  primaryCtaIcon: {
-    marginRight: -4,
-  },
-  primaryCtaHelper: {
-    fontFamily: theme.typography.regular,
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  recommendationPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: 10,
-    borderRadius: 999,
-    borderWidth: 1,
-    alignSelf: 'center',
-    maxWidth: '100%',
-  },
-  recommendationLabel: {
-    fontFamily: theme.typography.semiBold,
-    fontSize: 12,
-  },
-  recommendationTitle: {
-    fontFamily: theme.typography.semiBold,
-    fontSize: 12,
-    maxWidth: 220,
-  },
-  sectionTitle: {
-    fontFamily: theme.typography.bold,
-    fontSize: 18,
-    marginBottom: theme.spacing.md,
+    fontSize: 24,
+    color: MODULE_COVER.title,
+    marginBottom: 16,
   },
   lessonsSection: {
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.xl,
   },
   lessonsList: {
-    gap: theme.spacing.md,
+    gap: 12,
+  },
+  lessonCardSpacing: {
+    marginBottom: 12,
   },
   lessonCard: {
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
-    borderWidth: StyleSheet.hairlineWidth,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: MODULE_COVER.cardBorder,
     shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 7 },
-    elevation: 4,
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  lessonCardPressed: {
+    opacity: 0.96,
   },
   lessonCardContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 16,
   },
-  lessonCardLeft: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    flex: 1,
-    gap: theme.spacing.md,
+  lessonNumberWrap: {
+    flexShrink: 0,
   },
-  lessonNumber: {
-    width: 40,
-    height: 40,
+  lessonNumberBadge: {
+    width: 64,
+    height: 64,
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
   },
   lessonNumberText: {
     fontFamily: theme.typography.bold,
-    fontSize: 16,
+    fontSize: 28,
+    color: '#FFFFFF',
   },
-  lessonCardText: {
+  lessonCardBody: {
     flex: 1,
+    minWidth: 0,
   },
   lessonTitle: {
-    fontFamily: theme.typography.semiBold,
+    fontFamily: theme.typography.bold,
     fontSize: 16,
-  },
-  lessonMetaRow: {
-    marginTop: 6,
+    color: MODULE_COVER.title,
+    marginBottom: 8,
   },
   lessonDescription: {
     fontFamily: theme.typography.regular,
     fontSize: 14,
-    marginTop: 6,
+    color: MODULE_COVER.mutedDesc,
+    lineHeight: 20,
+    marginBottom: 10,
   },
-  lessonCardRight: {
+  lessonMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: theme.spacing.sm,
+    flexWrap: 'wrap',
+    gap: 12,
   },
-  lessonStats: {
-    fontFamily: theme.typography.regular,
+  lessonStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    backgroundColor: MODULE_COVER.metaBg,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: MODULE_COVER.metaBorder,
+  },
+  lessonStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#94A3B8',
+  },
+  lessonMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  lessonMetaText: {
+    fontFamily: theme.typography.semiBold,
     fontSize: 12,
+    color: MODULE_COVER.mutedDesc,
+  },
+  lessonChevronWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: MODULE_COVER.metaBg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
   },
   emptyState: {
     padding: theme.spacing.xl,

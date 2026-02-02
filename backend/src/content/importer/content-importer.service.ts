@@ -21,6 +21,7 @@ import {
 } from './slug-to-id';
 import { join } from 'path';
 import { Prisma } from '@prisma/client';
+import { LoggerService } from '../../common/logger';
 
 export interface ImportStats {
   modulesCreated: number;
@@ -37,6 +38,8 @@ export interface ImportStats {
 
 @Injectable()
 export class ContentImporterService {
+  private readonly logger = new LoggerService(ContentImporterService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   /**
@@ -80,7 +83,9 @@ export class ContentImporterService {
         } catch (error) {
           const message = `Failed to import module ${modulePath}: ${error instanceof Error ? error.message : String(error)}`;
           stats.errors.push(message);
-          console.error(message);
+          this.logger.logError('Failed to import module', error, {
+            modulePath,
+          });
         }
       }
 
@@ -153,13 +158,15 @@ export class ContentImporterService {
         } catch (error) {
           const message = `Failed to import lesson ${lessonPath}: ${error instanceof Error ? error.message : String(error)}`;
           stats.errors.push(message);
-          console.error(message);
+          this.logger.logError('Failed to import lesson', error, {
+            lessonPath,
+          });
         }
       }
     } catch (error) {
       const message = `Import failed: ${error instanceof Error ? error.message : String(error)}`;
       stats.errors.push(message);
-      console.error(message);
+      this.logger.logError('Import failed', error, { contentDir });
     }
 
     return stats;

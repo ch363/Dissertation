@@ -5,18 +5,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 
 export type LoadingScreenProps = {
-  /** Main message, e.g. "Verifying your email..." */
   title: string;
-  /** Optional supporting text, e.g. "Please wait while we confirm your account" */
   subtitle?: string;
-  /** If true, wrap in SafeAreaView. Default true. */
   safeArea?: boolean;
 };
 
-/**
- * Full-screen loading state: centered primary spinner, bold title, muted subtitle.
- * No system blur; matches the branded "Verifying your email..." style.
- */
 export function LoadingScreen({ title, subtitle, safeArea = true }: LoadingScreenProps) {
   const { theme } = useAppTheme();
 

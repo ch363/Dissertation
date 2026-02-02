@@ -1,142 +1,182 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 
-import { OUTER_CARD_RADIUS, softShadow } from './homeStyles';
-
+import { StaticCard, TappableCard } from '@/components/ui';
+import {
+  cardGapBetweenRows,
+  iconContainerRadius,
+  iconContainerSize,
+} from './homeStyles';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
+const DAILY_GOAL_MINUTES = 10;
+
 type Props = {
-  dueReviewCount: number;
   minutesToday: number;
+  completedItemsToday: number;
+  accuracyToday?: number | null;
+  onSuggestLearn?: () => void;
+  style?: ViewStyle;
 };
 
-/** Gradient background for "Reviews due" icon box. Uses theme primary (blue card blue). */
-function getReviewsIconGradient(primaryHex: string, isDark: boolean): [string, string] {
-  if (isDark) return [`${primaryHex}22`, `${primaryHex}18`];
-  return [`${primaryHex}22`, `${primaryHex}18`];
-}
-
-/** Gradient background for "Time studied" icon box. */
 function getTimeIconGradient(isDark: boolean): [string, string] {
   if (isDark) return ['#26D4BA22', '#26D4BA18'];
   return ['#12BFA122', '#12BFA118'];
 }
 
-/** Gradient background for header strip. */
-function getHeaderGradient(isDark: boolean): [string, string] {
-  if (isDark) return ['#172435', '#0E141B'];
-  return ['#F4F8FF', '#FFFFFF'];
+function getItemsIconGradient(primaryHex: string, isDark: boolean): [string, string] {
+  if (isDark) return [`${primaryHex}22`, `${primaryHex}18`];
+  return [`${primaryHex}22`, `${primaryHex}18`];
 }
 
-export function HomeTodayAtAGlance({ dueReviewCount, minutesToday }: Props) {
+export const HomeTodayAtAGlance = React.memo(function HomeTodayAtAGlance({
+  minutesToday,
+  completedItemsToday,
+  accuracyToday,
+  onSuggestLearn,
+  style,
+}: Props) {
   const { theme, isDark } = useAppTheme();
-  const reviewValue = dueReviewCount === 0 ? 'None' : `${dueReviewCount} ${dueReviewCount === 1 ? 'review' : 'reviews'} due`;
-
-  const [reviewGradStart, reviewGradEnd] = getReviewsIconGradient(theme.colors.primary, isDark);
   const [timeGradStart, timeGradEnd] = getTimeIconGradient(isDark);
-  const [headerGradStart, headerGradEnd] = getHeaderGradient(isDark);
+  const [itemsGradStart, itemsGradEnd] = getItemsIconGradient(theme.colors.primary, isDark);
+  const isAllZero = minutesToday === 0 && completedItemsToday === 0;
 
-  return (
-    <View style={styles.section}>
-      <View
-        style={[
-          styles.cardOuter,
-          {
-            backgroundColor: theme.colors.card,
-            borderColor: theme.colors.border,
-          },
-        ]}
-      >
+  if (isAllZero) {
+    return (
+      <TappableCard
+        overline="TODAY'S PROGRESS"
+        title="Learn something new today"
+        subtitle="5-minute lesson"
+        leftIcon="time-outline"
+        onPress={onSuggestLearn ?? (() => {})}
+        accessibilityLabel="Today's progress. Learn something new today, 5-minute lesson."
+        accessibilityHint="Opens the Learn tab"
+        variant="default"
+        style={style}
+      />
+    );
+  }
+
+  const content = (
+    <View style={styles.rows}>
+      <View style={styles.row}>
         <LinearGradient
-          colors={[headerGradStart, headerGradEnd]}
+          colors={[timeGradStart, timeGradEnd]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.headerStrip}
+          style={styles.iconBox}
         >
-          <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Today's Progress</Text>
+          <Ionicons
+            name="time-outline"
+            size={18}
+            color={theme.colors.secondary}
+            accessible={false}
+            importantForAccessibility="no"
+          />
         </LinearGradient>
-        <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-        <View style={styles.contentSection}>
-          <View style={styles.row}>
-            <LinearGradient
-              colors={[reviewGradStart, reviewGradEnd]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.iconBox}
-            >
-              <Ionicons
-                name={dueReviewCount === 0 ? 'locate-outline' : 'refresh'}
-                size={20}
-                color={theme.colors.primary}
-                accessible={false}
-                importantForAccessibility="no"
-              />
-            </LinearGradient>
-            <View style={styles.rowContent}>
-              <Text style={[styles.rowLabel, { color: theme.colors.mutedText }]}>Reviews due</Text>
-              <Text style={[styles.rowValue, { color: theme.colors.text }]}>{reviewValue}</Text>
-            </View>
-          </View>
-          <View style={styles.row}>
-            <LinearGradient
-              colors={[timeGradStart, timeGradEnd]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.iconBox}
-            >
-              <Ionicons
-                name="time-outline"
-                size={20}
-                color={theme.colors.secondary}
-                accessible={false}
-                importantForAccessibility="no"
-              />
-            </LinearGradient>
-            <View style={styles.rowContent}>
-              <Text style={[styles.rowLabel, { color: theme.colors.mutedText }]}> Time studied today</Text>
-              <Text style={[styles.rowValue, { color: theme.colors.text }]}>
-                {minutesToday} {minutesToday === 1 ? 'minute' : 'minutes'}
-              </Text>
-            </View>
-          </View>
+        <View style={styles.rowContent}>
+          <Text
+            style={[styles.rowLabel, { color: theme.colors.mutedText }]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            maxFontSizeMultiplier={1.3}
+          >
+            Time studied
+          </Text>
+          <Text
+            style={[styles.rowValue, { color: theme.colors.text }]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            maxFontSizeMultiplier={1.3}
+          >
+            {minutesToday}/{DAILY_GOAL_MINUTES} min
+          </Text>
         </View>
       </View>
+      <View style={styles.row}>
+        <LinearGradient
+          colors={[itemsGradStart, itemsGradEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.iconBox}
+        >
+          <Ionicons
+            name="checkmark-done-outline"
+            size={18}
+            color={theme.colors.primary}
+            accessible={false}
+            importantForAccessibility="no"
+          />
+        </LinearGradient>
+        <View style={styles.rowContent}>
+          <Text
+            style={[styles.rowLabel, { color: theme.colors.mutedText }]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            maxFontSizeMultiplier={1.3}
+          >
+            Completed
+          </Text>
+          <Text
+            style={[styles.rowValue, { color: theme.colors.text }]}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            maxFontSizeMultiplier={1.3}
+          >
+            {completedItemsToday} {completedItemsToday === 1 ? 'item' : 'items'}
+          </Text>
+        </View>
+      </View>
+      {typeof accuracyToday === 'number' ? (
+        <View style={styles.row}>
+          <View style={[styles.iconBox, { backgroundColor: theme.colors.border }]}>
+            <Ionicons
+              name="stats-chart-outline"
+              size={18}
+              color={theme.colors.primary}
+              accessible={false}
+              importantForAccessibility="no"
+            />
+          </View>
+          <View style={styles.rowContent}>
+            <Text
+              style={[styles.rowLabel, { color: theme.colors.mutedText }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              maxFontSizeMultiplier={1.3}
+            >
+              Accuracy today
+            </Text>
+            <Text
+              style={[styles.rowValue, { color: theme.colors.text }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              maxFontSizeMultiplier={1.3}
+            >
+              {accuracyToday}%
+            </Text>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
-}
+
+  return (
+    <StaticCard title="Today's Progress" titleVariant="subtle" style={style}>
+      <View style={styles.contentSection}>{content}      </View>
+    </StaticCard>
+  );
+});
 
 const styles = StyleSheet.create({
-  section: {
-    gap: 0,
-  },
-  cardOuter: {
-    borderRadius: OUTER_CARD_RADIUS,
-    borderWidth: 1,
-    overflow: 'hidden',
-    ...softShadow,
-  },
-  headerStrip: {
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 18,
-  },
-  divider: {
-    height: 1,
-    width: '100%',
-  },
-  sectionTitle: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 17,
-    letterSpacing: -0.3,
-  },
   contentSection: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
-    gap: 20,
+    gap: cardGapBetweenRows,
+  },
+  rows: {
+    gap: cardGapBetweenRows,
   },
   row: {
     flexDirection: 'row',
@@ -144,9 +184,9 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   iconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: iconContainerSize,
+    height: iconContainerSize,
+    borderRadius: iconContainerRadius,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000000',
@@ -157,6 +197,7 @@ const styles = StyleSheet.create({
   },
   rowContent: {
     flex: 1,
+    minWidth: 0,
     gap: 3,
   },
   rowLabel: {

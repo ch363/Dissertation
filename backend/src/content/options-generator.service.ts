@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { LoggerService } from '../common/logger';
 
 /**
  * Service to generate contextual multiple choice options
@@ -7,6 +8,8 @@ import { PrismaService } from '../prisma/prisma.service';
  */
 @Injectable()
 export class OptionsGeneratorService {
+  private readonly logger = new LoggerService(OptionsGeneratorService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   /**
@@ -137,8 +140,13 @@ export class OptionsGeneratorService {
 
     // Final safety check - if we still don't have 3, use placeholder options
     if (selectedDistractors.length < 3) {
-      console.warn(
-        `Warning: Only generated ${selectedDistractors.length} distractors for answer "${correctAnswer}". Using fallback options.`,
+      this.logger.logWarn(
+        'Only generated insufficient distractors, using fallback options',
+        {
+          distractorsCount: selectedDistractors.length,
+          correctAnswer,
+          lessonId,
+        },
       );
       // Use generic fallback options
       const fallbacks = isLearningToUser

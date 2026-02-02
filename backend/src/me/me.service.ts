@@ -1,14 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { DELIVERY_METHOD } from '@prisma/client';
 import { createClient } from '@supabase/supabase-js';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { ProgressService } from '../progress/progress.service';
 import { ResetProgressDto } from '../progress/dto/reset-progress.dto';
+import { isMissingColumnOrSchemaMismatchError } from '../common/utils/prisma-error.util';
+import { getEndOfLocalDayUtc } from '../common/utils/date.util';
+import { LoggerService } from '../common/logger';
 
 @Injectable()
 export class MeService {
   private supabaseAdmin: ReturnType<typeof createClient> | null = null;
+  private readonly logger = new LoggerService(MeService.name);
 
   constructor(
     private prisma: PrismaService,
@@ -16,7 +21,6 @@ export class MeService {
     private progressService: ProgressService,
     private configService: ConfigService,
   ) {
-    // Initialize Supabase admin client for accessing user metadata
     const supabaseUrl = this.configService.get<string>('supabase.url');
     const serviceRoleKey = this.configService.get<string>(
       'supabase.serviceRoleKey',
@@ -31,54 +35,11 @@ export class MeService {
     }
   }
 
-  /**
-   * Some environments may run against a database that hasn't been migrated yet.
-   * When newer columns (e.g. nextReviewDue/lastRevisedAt) are missing, Prisma can throw
-   * errors like "The column `(not available)` does not exist in the current database."
-   * In those cases, we fall back to safe defaults rather than 500'ing core endpoints.
-   */
-  private isMissingColumnOrSchemaMismatchError(error: any): boolean {
-    const message = String(error?.message ?? '');
-    return (
-      message.includes('does not exist in the current database') ||
-      message.includes('does not exist') ||
-      message.includes('(not available)')
-    );
-  }
-
-  private getEndOfLocalDayUtc(now: Date, tzOffsetMinutes?: number): Date {
-    if (!Number.isFinite(tzOffsetMinutes)) return now;
-    // Guardrail: ignore clearly invalid offsets (outside common -14h..+14h range)
-    if (tzOffsetMinutes! < -14 * 60 || tzOffsetMinutes! > 14 * 60) return now;
-
-    const offsetMs = tzOffsetMinutes! * 60_000;
-    // Shift "now" into the user's local timeline.
-    const localNow = new Date(now.getTime() - offsetMs);
-    // Compute end-of-day in that shifted timeline using UTC getters (so it's timezone-agnostic).
-    const endOfLocalDayShiftedUtc = new Date(
-      Date.UTC(
-        localNow.getUTCFullYear(),
-        localNow.getUTCMonth(),
-        localNow.getUTCDate(),
-        23,
-        59,
-        59,
-        999,
-      ),
-    );
-    // Shift back to real UTC.
-    return new Date(endOfLocalDayShiftedUtc.getTime() + offsetMs);
-  }
-
   async getMe(userId: string) {
-    // Provision user on first request
     const user = await this.usersService.upsertUser(userId);
-
-    // Compute displayName with priority: DB name → auth metadata name → email extraction → "User"
     let displayName = user.name;
 
     if (!displayName || displayName.trim() === '') {
-      // Try to get name from Supabase auth metadata
       if (this.supabaseAdmin) {
         try {
           const { data: authUser, error } =
@@ -87,21 +48,18 @@ export class MeService {
             const authMetadataName = (authUser.user.user_metadata as any)?.name;
             if (authMetadataName && authMetadataName.trim()) {
               displayName = authMetadataName.trim();
-              // Auto-sync to database if found in auth but not in DB
               try {
                 await this.usersService.updateUser(userId, {
                   name: displayName || undefined,
                 });
-                user.name = displayName; // Update local object
+                user.name = displayName;
               } catch (syncError) {
-                // Log but don't fail - name will still be returned
-                console.warn(
-                  'Failed to sync name from auth metadata to DB:',
-                  syncError,
+                this.logger.logWarn(
+                  'Failed to sync name from auth metadata to DB',
+                  { error: String(syncError) },
                 );
               }
             } else {
-              // Fallback to email (extract name part)
               const email = authUser.user.email;
               if (email) {
                 const emailName = email.split('@')[0];
@@ -112,22 +70,17 @@ export class MeService {
               }
             }
           } else {
-            // Could not fetch auth user, fallback to email extraction from user.email if available
-            // Or just use "User"
             displayName = 'User';
           }
         } catch (error) {
-          // If Supabase admin call fails, fallback to "User"
-          console.warn('Failed to fetch user metadata from Supabase:', error);
+          this.logger.logWarn('Failed to fetch user metadata from Supabase', { error: String(error) });
           displayName = 'User';
         }
       } else {
-        // No Supabase admin client available, fallback to "User"
         displayName = 'User';
       }
     }
 
-    // Return user with computed displayName
     return {
       ...user,
       displayName: displayName || 'User',
@@ -136,9 +89,22 @@ export class MeService {
 
   async getDashboard(userId: string, tzOffsetMinutes?: number) {
     const now = new Date();
-    const dueCutoff = this.getEndOfLocalDayUtc(now, tzOffsetMinutes);
+    const dashboardData = await this.fetchDashboardData(userId, now, tzOffsetMinutes);
+    const streakInfo = await this.calculateStreakInfo(userId);
+    const xpProgress = await this.calculateXPProgress(userId, now, dashboardData);
+    
+    return this.buildDashboardResponse(dashboardData, streakInfo, xpProgress);
+  }
 
-    // Count deduped due reviews (latest per question where nextReviewDue <= end-of-day local)
+  private async fetchDashboardData(
+    userId: string,
+    now: Date,
+    tzOffsetMinutes?: number,
+  ) {
+    const dueCutoff = getEndOfLocalDayUtc(now, tzOffsetMinutes);
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
     let dueReviews: Array<{ questionId: string; createdAt: Date }> = [];
     try {
       dueReviews = await this.prisma.userQuestionPerformance.findMany({
@@ -157,15 +123,13 @@ export class MeService {
           createdAt: true,
         },
       });
-    } catch (error: any) {
-      if (!this.isMissingColumnOrSchemaMismatchError(error)) {
+    } catch (error: unknown) {
+      if (!isMissingColumnOrSchemaMismatchError(error)) {
         throw error;
       }
-      // DB hasn't been migrated yet; due review calculation is unavailable.
       dueReviews = [];
     }
 
-    // Dedup by questionId - keep only the latest per question
     const questionIdSet = new Set<string>();
     const dedupedDueReviews = dueReviews.filter((review) => {
       if (questionIdSet.has(review.questionId)) {
@@ -175,14 +139,10 @@ export class MeService {
       return true;
     });
 
-    const dueReviewCount = dedupedDueReviews.length;
-
-    // Count active lessons
     const activeLessonCount = await this.prisma.userLesson.count({
       where: { userId },
     });
 
-    // Get XP total - sum of UserKnowledgeLevelProgress.value
     const xpProgress = await this.prisma.userKnowledgeLevelProgress.aggregate({
       where: { userId },
       _sum: {
@@ -190,12 +150,77 @@ export class MeService {
       },
     });
 
-    const xpTotal = xpProgress._sum.value || 0;
+    const recentPerformances = await this.prisma.userQuestionPerformance.findMany({
+      where: {
+        userId,
+        createdAt: {
+          gte: thirtyDaysAgo,
+        },
+        percentageAccuracy: {
+          not: null,
+        },
+      },
+      select: {
+        percentageAccuracy: true,
+      },
+    });
 
-    // Calculate streak using progress service
+    const accuracyPerformances = await this.prisma.userQuestionPerformance.findMany({
+      where: {
+        userId,
+        createdAt: { gte: thirtyDaysAgo },
+      },
+      select: { deliveryMethod: true, score: true },
+    });
+
+    const grammaticalMethods: DELIVERY_METHOD[] = [
+      DELIVERY_METHOD.TEXT_TRANSLATION,
+      DELIVERY_METHOD.SPEECH_TO_TEXT,
+      DELIVERY_METHOD.TEXT_TO_SPEECH,
+    ];
+    const grammaticalPerformances = await this.prisma.userQuestionPerformance.findMany({
+      where: {
+        userId,
+        createdAt: { gte: thirtyDaysAgo },
+        deliveryMethod: { in: grammaticalMethods },
+        percentageAccuracy: { not: null },
+      },
+      select: { deliveryMethod: true, percentageAccuracy: true },
+    });
+
+    const studyTimePerformances = await this.prisma.userQuestionPerformance.findMany({
+      where: {
+        userId,
+        createdAt: {
+          gte: thirtyDaysAgo,
+        },
+      },
+      select: {
+        timeToComplete: true,
+      },
+    });
+
+    return {
+      dueReviewCount: dedupedDueReviews.length,
+      activeLessonCount,
+      xpTotal: xpProgress._sum.value || 0,
+      recentPerformances,
+      accuracyPerformances,
+      grammaticalPerformances,
+      studyTimePerformances,
+    };
+  }
+
+  private async calculateStreakInfo(userId: string) {
     const streak = await this.progressService.calculateStreak(userId);
+    return { streak };
+  }
 
-    // Calculate weekly XP (last 7 days)
+  private async calculateXPProgress(
+    userId: string,
+    now: Date,
+    dashboardData: Awaited<ReturnType<typeof this.fetchDashboardData>>,
+  ) {
     const weekAgo = new Date(now);
     weekAgo.setDate(weekAgo.getDate() - 7);
     
@@ -213,7 +238,6 @@ export class MeService {
 
     const weeklyXP = weeklyXpProgress._sum.value || 0;
 
-    // Calculate previous week XP (8-14 days ago) for comparison
     const twoWeeksAgo = new Date(now);
     twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
 
@@ -232,67 +256,113 @@ export class MeService {
 
     const previousWeekXP = previousWeekXpProgress._sum.value || 0;
 
-    // Calculate weekly XP change percentage
     let weeklyXPChange = 0;
     if (previousWeekXP > 0) {
       weeklyXPChange = Math.round(((weeklyXP - previousWeekXP) / previousWeekXP) * 100);
     } else if (weeklyXP > 0) {
-      weeklyXPChange = 100; // If there was no XP last week but there is this week, show 100% increase
+      weeklyXPChange = 100;
     }
-
-    // Calculate accuracy percentage based on grammatical correctness (last 30 days)
-    const thirtyDaysAgo = new Date(now);
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const recentPerformances = await this.prisma.userQuestionPerformance.findMany({
-      where: {
-        userId,
-        createdAt: {
-          gte: thirtyDaysAgo,
-        },
-        percentageAccuracy: {
-          not: null, // Only include attempts that have grammatical accuracy scores
-        },
-      },
-      select: {
-        percentageAccuracy: true,
-      },
-    });
 
     let accuracyPercentage = 0;
-    if (recentPerformances.length > 0) {
-      const totalAccuracy = recentPerformances.reduce((sum, perf) => sum + (perf.percentageAccuracy || 0), 0);
-      accuracyPercentage = Math.round(totalAccuracy / recentPerformances.length);
+    if (dashboardData.recentPerformances.length > 0) {
+      const totalAccuracy = dashboardData.recentPerformances.reduce(
+        (sum, perf) => sum + (perf.percentageAccuracy || 0),
+        0,
+      );
+      accuracyPercentage = Math.round(totalAccuracy / dashboardData.recentPerformances.length);
     }
 
-    // Calculate total study time (last 30 days, in minutes)
-    const studyTimePerformances = await this.prisma.userQuestionPerformance.findMany({
-      where: {
-        userId,
-        createdAt: {
-          gte: thirtyDaysAgo,
-        },
-      },
-      select: {
-        timeToComplete: true,
-      },
-    });
+    const passThreshold = 50;
+    const accuracyByDeliveryMethod: Record<string, number> = {};
+    const methodCounts = new Map<string, { pass: number; total: number }>();
+    
+    for (const p of dashboardData.accuracyPerformances) {
+      const key = p.deliveryMethod;
+      const current = methodCounts.get(key) ?? { pass: 0, total: 0 };
+      current.total += 1;
+      if (p.score >= passThreshold) current.pass += 1;
+      methodCounts.set(key, current);
+    }
+    
+    for (const method of Object.values(DELIVERY_METHOD)) {
+      const stats = methodCounts.get(method);
+      accuracyByDeliveryMethod[method] =
+        stats && stats.total > 0
+          ? Math.round((stats.pass / stats.total) * 100)
+          : 0;
+    }
 
-    const totalStudyTimeMs = studyTimePerformances.reduce((sum, perf) => {
+    const grammaticalMethods: DELIVERY_METHOD[] = [
+      DELIVERY_METHOD.TEXT_TRANSLATION,
+      DELIVERY_METHOD.SPEECH_TO_TEXT,
+      DELIVERY_METHOD.TEXT_TO_SPEECH,
+    ];
+    const grammaticalByMethod = new Map<string, number[]>();
+    
+    for (const p of dashboardData.grammaticalPerformances) {
+      const acc = p.percentageAccuracy ?? 0;
+      const list = grammaticalByMethod.get(p.deliveryMethod) ?? [];
+      list.push(acc);
+      grammaticalByMethod.set(p.deliveryMethod, list);
+    }
+    
+    const grammaticalAccuracyByDeliveryMethod: Record<string, number> = {};
+    for (const method of grammaticalMethods) {
+      const values = grammaticalByMethod.get(method) ?? [];
+      grammaticalAccuracyByDeliveryMethod[method] =
+        values.length > 0
+          ? Math.round(values.reduce((s, v) => s + v, 0) / values.length)
+          : 0;
+    }
+
+    const totalStudyTimeMs = dashboardData.studyTimePerformances.reduce((sum, perf) => {
       return sum + (perf.timeToComplete || 0);
     }, 0);
 
     const studyTimeMinutes = Math.round(totalStudyTimeMs / (1000 * 60));
 
+    const performancesWithTime = dashboardData.studyTimePerformances.filter(
+      (p) => p.timeToComplete != null && p.timeToComplete > 0,
+    );
+    const defaultMinutesPerCard = 0.5;
+    const avgMsPerCard =
+      performancesWithTime.length > 0
+        ? totalStudyTimeMs / performancesWithTime.length
+        : defaultMinutesPerCard * 60 * 1000;
+    const avgMinutesPerCard = avgMsPerCard / (60 * 1000);
+    const estimatedReviewMinutes = Math.max(
+      1,
+      Math.ceil(dashboardData.dueReviewCount * avgMinutesPerCard),
+    );
+
     return {
-      dueReviewCount,
-      activeLessonCount,
-      xpTotal,
-      streak,
       weeklyXP,
       weeklyXPChange,
       accuracyPercentage,
+      accuracyByDeliveryMethod,
+      grammaticalAccuracyByDeliveryMethod,
       studyTimeMinutes,
+      estimatedReviewMinutes,
+    };
+  }
+
+  private buildDashboardResponse(
+    dashboardData: Awaited<ReturnType<typeof this.fetchDashboardData>>,
+    streakInfo: { streak: any },
+    xpProgress: Awaited<ReturnType<typeof this.calculateXPProgress>>,
+  ) {
+    return {
+      dueReviewCount: dashboardData.dueReviewCount,
+      estimatedReviewMinutes: xpProgress.estimatedReviewMinutes,
+      activeLessonCount: dashboardData.activeLessonCount,
+      xpTotal: dashboardData.xpTotal,
+      streak: streakInfo.streak,
+      weeklyXP: xpProgress.weeklyXP,
+      weeklyXPChange: xpProgress.weeklyXPChange,
+      accuracyPercentage: xpProgress.accuracyPercentage,
+      accuracyByDeliveryMethod: xpProgress.accuracyByDeliveryMethod,
+      grammaticalAccuracyByDeliveryMethod: xpProgress.grammaticalAccuracyByDeliveryMethod,
+      studyTimeMinutes: xpProgress.studyTimeMinutes,
     };
   }
 
@@ -306,9 +376,10 @@ export class MeService {
     const endOfToday = new Date(startOfToday);
     endOfToday.setDate(endOfToday.getDate() + 1);
 
-    // Get all question performances from today
-    // Use lastRevisedAt if available, otherwise createdAt
-    let todayPerformances: Array<{ timeToComplete: number | null }> = [];
+    let todayPerformances: Array<{
+      timeToComplete: number | null;
+      percentageAccuracy: number | null;
+    }> = [];
     try {
       todayPerformances = await this.prisma.userQuestionPerformance.findMany({
         where: {
@@ -331,13 +402,13 @@ export class MeService {
         },
         select: {
           timeToComplete: true,
+          percentageAccuracy: true,
         },
       });
-    } catch (error: any) {
-      if (!this.isMissingColumnOrSchemaMismatchError(error)) {
+    } catch (error: unknown) {
+      if (!isMissingColumnOrSchemaMismatchError(error)) {
         throw error;
       }
-      // Fallback for older DB schema: only use createdAt for "today"
       try {
         todayPerformances = await this.prisma.userQuestionPerformance.findMany({
           where: {
@@ -349,25 +420,39 @@ export class MeService {
           },
           select: {
             timeToComplete: true,
+            percentageAccuracy: true,
           },
         });
-      } catch (fallbackError: any) {
-        if (!this.isMissingColumnOrSchemaMismatchError(fallbackError)) {
+      } catch (fallbackError: unknown) {
+        if (!isMissingColumnOrSchemaMismatchError(fallbackError)) {
           throw fallbackError;
         }
         todayPerformances = [];
       }
     }
 
-    // Sum up timeToComplete in milliseconds, convert to minutes
     const totalMs = todayPerformances.reduce((sum, perf) => {
       return sum + (perf.timeToComplete || 0);
     }, 0);
 
     const minutesToday = Math.round(totalMs / (1000 * 60));
+    const completedItemsToday = todayPerformances.length;
+
+    const withAccuracy = todayPerformances.filter(
+      (p) => p.percentageAccuracy != null,
+    );
+    const accuracyToday =
+      withAccuracy.length > 0
+        ? Math.round(
+            withAccuracy.reduce((s, p) => s + (p.percentageAccuracy ?? 0), 0) /
+              withAccuracy.length,
+          )
+        : undefined;
 
     return {
       minutesToday,
+      completedItemsToday,
+      ...(accuracyToday !== undefined && { accuracyToday }),
     };
   }
 
@@ -390,7 +475,6 @@ export class MeService {
 
     const now = new Date();
 
-    // Get all teachings for these lessons to count totals
     const lessonIds = userLessons.map((ul) => ul.lessonId);
     const teachings = await this.prisma.teaching.findMany({
       where: {
@@ -408,7 +492,6 @@ export class MeService {
       teachingsByLessonId.set(teaching.lessonId, existing);
     });
 
-    // Get due reviews for questions in these lessons
     const questionIds = teachings.flatMap((t) => t.questions.map((q) => q.id));
     let dueReviews: Array<{ questionId: string; createdAt: Date }> = [];
     try {
@@ -429,15 +512,13 @@ export class MeService {
           createdAt: true,
         },
       });
-    } catch (error: any) {
-      if (!this.isMissingColumnOrSchemaMismatchError(error)) {
+    } catch (error: unknown) {
+      if (!isMissingColumnOrSchemaMismatchError(error)) {
         throw error;
       }
-      // DB hasn't been migrated yet; due review calculation is unavailable.
       dueReviews = [];
     }
 
-    // Dedup by questionId per lesson
     const dueReviewsByQuestionId = new Map<string, (typeof dueReviews)[0]>();
     dueReviews.forEach((review) => {
       const existing = dueReviewsByQuestionId.get(review.questionId);
@@ -446,7 +527,6 @@ export class MeService {
       }
     });
 
-    // Map question IDs to lesson IDs
     const questionToLessonId = new Map<string, string>();
     teachings.forEach((teaching) => {
       teaching.questions.forEach((q) => {
@@ -454,7 +534,6 @@ export class MeService {
       });
     });
 
-    // Count due reviews per lesson
     const dueCountByLessonId = new Map<string, number>();
     dueReviewsByQuestionId.forEach((review) => {
       const lessonId = questionToLessonId.get(review.questionId);
@@ -515,7 +594,6 @@ export class MeService {
       },
     });
 
-    // Group by skill tag and count mastered (score >= 0.8) vs total
     const skillStats = new Map<string, { mastered: number; total: number }>();
     
     performances.forEach((perf) => {
@@ -526,14 +604,12 @@ export class MeService {
         }
         const stats = skillStats.get(tag)!;
         stats.total++;
-        // Consider mastered if score >= 0.8
         if (perf.score && perf.score >= 0.8) {
           stats.mastered++;
         }
       });
     });
 
-    // Merge mastery records with skill stats
     return masteryRecords.map((record) => {
       const stats = skillStats.get(record.skillTag) || { mastered: 0, total: 0 };
       return {
@@ -549,8 +625,6 @@ export class MeService {
   }
 
   async getRecent(userId: string) {
-    // Get most recently accessed lesson that is partially completed
-    // First, get all user lessons with their teachings count
     const userLessons = await this.prisma.userLesson.findMany({
       where: { userId },
       orderBy: { updatedAt: 'desc' },
@@ -573,12 +647,9 @@ export class MeService {
       },
     });
 
-    // Find the first lesson that is partially completed
-    // Calculate actual completed count for each lesson to ensure accuracy
     let recentLesson: (typeof userLessons)[0] | null = null;
     for (const ul of userLessons) {
       const totalTeachings = ul.lesson.teachings.length;
-      // Calculate actual completed count from UserTeachingCompleted
       const actualCompletedCount =
         await this.prisma.userTeachingCompleted.count({
           where: {
@@ -594,7 +665,6 @@ export class MeService {
       }
     }
 
-    // Get most recently completed teaching
     const recentTeaching = await this.prisma.userTeachingCompleted.findFirst({
       where: { userId },
       orderBy: { createdAt: 'desc' },
@@ -618,7 +688,6 @@ export class MeService {
       },
     });
 
-    // Get most recently attempted question
     let recentQuestion: null | {
       lastRevisedAt?: Date | null;
       nextReviewDue?: Date | null;
@@ -664,12 +733,11 @@ export class MeService {
           },
         },
       });
-    } catch (error: any) {
-      if (!this.isMissingColumnOrSchemaMismatchError(error)) {
+    } catch (error: unknown) {
+      if (!isMissingColumnOrSchemaMismatchError(error)) {
         throw error;
       }
 
-      // Fallback for older DB schema: avoid selecting/orderBy missing SRS fields.
       const fallback = await this.prisma.userQuestionPerformance.findFirst({
         where: { userId },
         orderBy: { createdAt: 'desc' },
@@ -711,8 +779,6 @@ export class MeService {
         : null;
     }
 
-    // Calculate actual completed teachings count from UserTeachingCompleted
-    // to ensure accuracy (the counter might be out of sync)
     let actualCompletedTeachings = 0;
     if (recentLesson) {
       const completedTeachings = await this.prisma.userTeachingCompleted.count({
@@ -738,7 +804,7 @@ export class MeService {
             lastAccessedAt: recentLesson.updatedAt,
             completedTeachings: actualCompletedTeachings,
             totalTeachings: recentLesson.lesson.teachings.length,
-            dueReviewCount: 0, // Will be calculated if needed elsewhere
+            dueReviewCount: 0,
           }
         : null,
       recentTeaching: recentTeaching
@@ -778,7 +844,6 @@ export class MeService {
   }
 
   async uploadAvatar(userId: string, avatarUrl: string) {
-    // Update user's avatarUrl
     await this.usersService.updateUser(userId, {
       avatarUrl,
     });
@@ -790,17 +855,13 @@ export class MeService {
   }
 
   async deleteAccount(userId: string) {
-    // Delete all user data in a transaction
-    // Note: Cascade deletes should handle related records, but we'll be explicit
     return this.prisma.$transaction(async (tx) => {
-      // Delete all progress records (cascade should handle, but being explicit)
       await tx.userLesson.deleteMany({ where: { userId } });
       await tx.userTeachingCompleted.deleteMany({ where: { userId } });
       await tx.userQuestionPerformance.deleteMany({ where: { userId } });
       await tx.userKnowledgeLevelProgress.deleteMany({ where: { userId } });
       await tx.userDeliveryMethodScore.deleteMany({ where: { userId } });
 
-      // Delete the user record itself
       await tx.user.delete({
         where: { id: userId },
       });

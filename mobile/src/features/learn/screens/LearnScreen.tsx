@@ -5,147 +5,109 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { ScrollView } from '@/components/ui';
+import { ScrollView, StaticCard } from '@/components/ui';
 
-import { DiscoverCarousel } from '@/components/learn/DiscoverCarousel';
 import { LearnHeader } from '@/components/learn/LearnHeader';
+import { SuggestedForYouSection } from '@/components/learn/SuggestedForYouSection';
 import { LearnScreenSkeleton } from '@/features/learn/components/LearnScreenSkeleton';
 import { LearningPathCarousel } from '@/components/learn/LearningPathCarousel';
 import { ReviewSection } from '@/components/learn/ReviewSection';
-import { getSuggestions } from '@/services/api/learn';
+import { getSuggestions, type ModuleSuggestion } from '@/services/api/learn';
 import { getCachedLearnScreenData, preloadLearnScreenData } from '@/services/api/learn-screen-cache';
 import { getDashboard } from '@/services/api/profile';
 import { getLessons, getModules } from '@/services/api/modules';
 import { getUserLessons } from '@/services/api/progress';
 import { buildLearningPathItems, type LearningPathItem } from '@/features/learn/utils/buildLearningPathItems';
-import type { DiscoverItem } from '@/features/learn/types';
 import { routeBuilders, routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
-import { makeSessionId } from '@/features/session/sessionBuilder';
+import { useAsyncData } from '@/hooks/useAsyncData';
 
 export default function LearnScreen() {
   const { theme } = useAppTheme();
   const router = useRouter();
-  const [discoverItems, setDiscoverItems] = useState<DiscoverItem[]>([]);
-  const [learningPathItems, setLearningPathItems] = useState<LearningPathItem[]>([]);
-  const [dueReviewCount, setDueReviewCount] = useState<number>(0);
-  const [loading, setLoading] = useState(true);
   const hasLoadedOnceRef = useRef(false);
 
-  const loadData = useCallback(async () => {
-    // Check for cached data first - if available, use it immediately without showing loading
-    const cached = getCachedLearnScreenData();
-    let modules, lessons, userProgress, dashboard, suggestions;
+  const { data, loading, reload } = useAsyncData<{
+    learningPathItems: LearningPathItem[];
+    dueReviewCount: number;
+    estimatedReviewMinutes: number | null;
+    suggestedModule: ModuleSuggestion | null;
+  }>(
+    'LearnScreen',
+    async () => {
+      const cached = getCachedLearnScreenData();
+      let modules, lessons, userProgress, dashboard, suggestions;
 
-    if (cached) {
-      // Use cached data for instant load - don't show loading spinner
-      modules = cached.modules;
-      lessons = cached.lessons;
-      userProgress = cached.userProgress;
-      dashboard = cached.dashboard;
-      suggestions = cached.suggestions;
-    } else {
-      // No cache available, show loading and fetch fresh data
-      setLoading(true);
-      [modules, lessons, userProgress, dashboard, suggestions] = await Promise.all([
-        getModules().catch(() => []),
-        getLessons().catch(() => []),
-        getUserLessons().catch(() => []),
-        getDashboard().catch(() => ({ streak: 0, dueReviewCount: 0, activeLessonCount: 0, xpTotal: 0 })),
-        getSuggestions({ limit: 8 }).catch(() => ({ lessons: [], modules: [] })),
-      ]);
-    }
+      if (cached) {
+        modules = cached.modules;
+        lessons = cached.lessons;
+        userProgress = cached.userProgress;
+        dashboard = cached.dashboard;
+        suggestions = cached.suggestions;
+        
+        preloadLearnScreenData().catch(() => {});
+      } else {
+        [modules, lessons, userProgress, dashboard, suggestions] = await Promise.all([
+          getModules().catch(() => []),
+          getLessons().catch(() => []),
+          getUserLessons().catch(() => []),
+          getDashboard().catch(() => ({ streak: 0, dueReviewCount: 0, activeLessonCount: 0, xpTotal: 0, estimatedReviewMinutes: 0 })),
+          getSuggestions({ limit: 8 }).catch(() => ({ lessons: [], modules: [] })),
+        ]);
+      }
 
-    try {
+      const learningPathItems = buildLearningPathItems({
+        modules,
+        lessons,
+        userProgress,
+        maxSegments: 8,
+      });
 
-      setDueReviewCount(dashboard.dueReviewCount || 0);
-      setLearningPathItems(
-        buildLearningPathItems({
-          modules,
-          lessons,
-          userProgress,
-          maxSegments: 8,
-        }),
-      );
-
-      const existingLessonIds = new Set(lessons.map((l) => l.id));
       const existingModuleIds = new Set(modules.map((m) => m.id));
 
-      // Transform suggestions to DiscoverItem[]
-      const discoverCards: DiscoverItem[] = [];
-      // Theme-aware backgrounds: subtle tint over current theme background.
-      const backgroundColors = [
-        `${theme.colors.primary}18`,
-        `${theme.colors.secondary}18`,
-        `${theme.colors.primary}12`,
-        `${theme.colors.secondary}12`,
-        `${theme.colors.primary}0F`,
-        `${theme.colors.secondary}0F`,
-      ];
-      
-      // Add lesson suggestions
-      suggestions.lessons
-        .filter((lessonSuggestion) => existingLessonIds.has(lessonSuggestion.lesson.id))
-        .forEach((lessonSuggestion, index) => {
-        discoverCards.push({
-          kind: 'lesson',
-          id: lessonSuggestion.lesson.id,
-          title: lessonSuggestion.lesson.title,
-          subtitle: lessonSuggestion.reason || 'Continue your learning journey',
-          background: backgroundColors[index % backgroundColors.length],
-          route: routeBuilders.lessonStart(lessonSuggestion.lesson.id),
-          imageUrl: lessonSuggestion.lesson.imageUrl,
-          ctaLabel: 'Start lesson',
-        });
-      });
-
-      // Add module suggestions
-      suggestions.modules
-        .filter((moduleSuggestion) => existingModuleIds.has(moduleSuggestion.module.id))
-        .forEach((moduleSuggestion, index) => {
-        discoverCards.push({
-          kind: 'module',
-          id: moduleSuggestion.module.id,
-          title: moduleSuggestion.module.title,
-          subtitle: moduleSuggestion.reason || 'Explore new content',
-          background: backgroundColors[(suggestions.lessons.length + index) % backgroundColors.length],
-          route: routeBuilders.courseDetail(moduleSuggestion.module.id),
-          imageUrl: moduleSuggestion.module.imageUrl,
-          ctaLabel: 'View course',
-        });
-      });
-
-      setDiscoverItems(discoverCards);
-      setLoading(false);
-
-      // If we used cached data, refresh in the background for next time
-      if (cached) {
-        preloadLearnScreenData().catch(() => {
-          // Silently fail - background refresh is best effort
-        });
+      const validModuleSuggestions = suggestions.modules.filter((ms) =>
+        existingModuleIds.has(ms.module.id),
+      );
+      let featuredModuleSuggestion: ModuleSuggestion | null = validModuleSuggestions[0] ?? null;
+      if (featuredModuleSuggestion == null && modules.length > 0) {
+        const first = modules[0];
+        featuredModuleSuggestion = {
+          module: { id: first.id, title: first.title, imageUrl: first.imageUrl ?? null },
+          reason: 'A great place to continue',
+        };
       }
-    } catch (error) {
-      console.error('Error loading learn screen data:', error);
-      // Gracefully handle errors - don't block UI
-      setLoading(false);
-    } finally {
-      hasLoadedOnceRef.current = true;
-    }
-  }, [theme.colors.primary, theme.colors.secondary]);
 
-  // Load on focus only when we have no data yet or cache is expired (avoids slow refetch every tab switch)
+      return {
+        learningPathItems,
+        dueReviewCount: dashboard.dueReviewCount || 0,
+        estimatedReviewMinutes:
+          dashboard.estimatedReviewMinutes != null && dashboard.estimatedReviewMinutes > 0
+            ? dashboard.estimatedReviewMinutes
+            : null,
+        suggestedModule: featuredModuleSuggestion,
+      };
+    },
+    []
+  );
+
+  const learningPathItems = data?.learningPathItems ?? [];
+  const dueReviewCount = data?.dueReviewCount ?? 0;
+  const estimatedReviewMinutes = data?.estimatedReviewMinutes ?? null;
+  const suggestedModule = data?.suggestedModule ?? null;
+
   useFocusEffect(
     useCallback(() => {
+      if (loading) return;
       const cached = getCachedLearnScreenData();
       const needLoad = !hasLoadedOnceRef.current || !cached;
       if (needLoad) {
-        loadData();
+        hasLoadedOnceRef.current = true;
+        reload();
       } else if (cached) {
-        // Optional: refresh in background without blocking
         preloadLearnScreenData().catch(() => {});
       }
-    }, [loadData])
+    }, [reload, loading])
   );
 
   if (loading) {
@@ -160,40 +122,49 @@ export default function LearnScreen() {
         style={{ backgroundColor: theme.colors.background }}
       >
         <LearnHeader />
-        <View style={[styles.sectionBlock, styles.firstSection, { backgroundColor: theme.colors.card + '18' }]}>
-          <LearningPathCarousel
-            items={learningPathItems}
-            onPressItem={(route: string) => router.push(route)}
-          />
-        </View>
-        <View style={[styles.sectionBlock, { backgroundColor: theme.colors.card + '18' }]}>
-          <ReviewSection
-            dueCount={dueReviewCount}
-            onStart={() => router.push({ pathname: routes.tabs.review, params: { from: 'learn' } })}
-          />
-        </View>
-        {discoverItems.length > 0 && (
-          <View style={[styles.sectionBlock, { backgroundColor: theme.colors.card + '18' }]}>
-            <DiscoverCarousel
-              items={discoverItems}
-              onPressItem={(item) => {
-                if (item.kind === 'lesson') {
-                  const sessionId = makeSessionId('learn');
-                  router.push({
-                    pathname: routeBuilders.sessionDetail(sessionId),
-                    params: { lessonId: item.id, kind: 'learn' },
-                  });
-                  return;
-                }
-
-                router.push(item.route);
-              }}
+        {dueReviewCount > 0 ? (
+          <>
+            <StaticCard style={[styles.sectionBlock, styles.firstSection]}>
+              <ReviewSection
+                dueCount={dueReviewCount}
+                estimatedReviewMinutes={estimatedReviewMinutes}
+                onStart={() => router.push({ pathname: routes.tabs.review, params: { from: 'learn' } })}
+              />
+            </StaticCard>
+            <StaticCard style={styles.sectionBlock}>
+              <LearningPathCarousel
+                items={learningPathItems}
+                onPressItem={(route: string) => router.push(route)}
+              />
+            </StaticCard>
+          </>
+        ) : (
+          <>
+            <StaticCard style={[styles.sectionBlock, styles.firstSection]}>
+              <LearningPathCarousel
+                items={learningPathItems}
+                onPressItem={(route: string) => router.push(route)}
+              />
+            </StaticCard>
+            <StaticCard style={styles.sectionBlock}>
+              <ReviewSection
+                dueCount={dueReviewCount}
+                estimatedReviewMinutes={estimatedReviewMinutes}
+                onStart={() => router.push({ pathname: routes.tabs.review, params: { from: 'learn' } })}
+              />
+            </StaticCard>
+          </>
+        )}
+        {suggestedModule != null && (
+          <StaticCard style={styles.sectionBlock}>
+            <SuggestedForYouSection
+              suggestion={suggestedModule}
+              onPress={() => router.push(routeBuilders.courseDetail(suggestedModule.module.id))}
             />
-          </View>
+          </StaticCard>
         )}
 
-        {/* All Modules Section */}
-        <View style={[styles.sectionBlock, styles.allModulesSection, { backgroundColor: theme.colors.card + '18' }]}>
+        <StaticCard style={[styles.sectionBlock, styles.allModulesSection]}>
           <View style={styles.allModulesHeader}>
             <View style={styles.allModulesHeaderLeft}>
               <Text style={[styles.allModulesTitle, { color: theme.colors.text }]}>
@@ -203,17 +174,6 @@ export default function LearnScreen() {
                 <Text style={styles.allModulesBadgeText}>Catalog</Text>
               </View>
             </View>
-            <Pressable
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="View all modules"
-              onPress={() => router.push(routes.course.list)}
-              style={styles.allModulesViewAll}
-            >
-              <Text style={[styles.allModulesViewAllText, { color: theme.colors.primary }]}>
-                View
-              </Text>
-            </Pressable>
           </View>
           <Text style={[styles.allModulesSubtitle, { color: theme.colors.mutedText }]}>
             Explore every course and find your next lesson
@@ -249,7 +209,7 @@ export default function LearnScreen() {
               </View>
             </LinearGradient>
           </Pressable>
-        </View>
+        </StaticCard>
       </ScrollView>
     </SafeAreaView>
   );
@@ -279,7 +239,6 @@ const styles = StyleSheet.create({
   allModulesHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
   allModulesHeaderLeft: {
     flexDirection: 'row',
@@ -301,15 +260,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: baseTheme.typography.bold,
     color: '#264FD4',
-  },
-  allModulesViewAll: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  allModulesViewAllText: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 15,
   },
   allModulesSubtitle: {
     fontFamily: baseTheme.typography.regular,

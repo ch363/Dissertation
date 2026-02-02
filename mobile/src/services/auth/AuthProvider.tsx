@@ -3,6 +3,9 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 
 import { getMyProfile, type Profile } from '@/services/api/profile';
 import { getSupabaseClient } from '@/services/supabase/client';
+import { createLogger } from '@/services/logging';
+
+const logger = createLogger('AuthProvider');
 
 type AuthCtx = {
   session: Session | null;
@@ -27,8 +30,7 @@ async function loadProfile(): Promise<Profile | null> {
   try {
     return await getMyProfile();
   } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error('AuthProvider profile load failed', e);
+    logger.error('Profile load failed', e);
     return null;
   }
 }

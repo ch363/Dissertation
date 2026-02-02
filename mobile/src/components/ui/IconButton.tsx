@@ -38,7 +38,6 @@ export function IconButton({
       hitSlop={hitSlop}
       style={[styles.base, style]}
     >
-      {/* Icon content is decorative; label lives on the button itself */}
       <View accessible={false} importantForAccessibility="no">
         {children}
       </View>

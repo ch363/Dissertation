@@ -35,29 +35,21 @@ export class MeController {
   ) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get current user (provisioning endpoint)' })
-  @ApiResponse({ status: 200, description: 'User retrieved or created' })
+  @ApiOperation({ summary: 'Provisioning endpoint' })
   async getMe(@User() userId: string) {
-    // Provision user on first request
     return this.meService.getMe(userId);
   }
 
   @Get('profile')
-  @ApiOperation({ summary: 'Get user profile (alias for GET /me)' })
-  @ApiResponse({ status: 200, description: 'Profile retrieved' })
+  @ApiOperation({ summary: 'Alias for GET /me' })
   async getProfile(@User() userId: string) {
     return this.meService.getMe(userId);
   }
 
   @Post('profile/ensure')
-  @ApiOperation({
-    summary: 'Ensure profile exists (provisioning with optional name)',
-  })
-  @ApiResponse({ status: 200, description: 'Profile ensured' })
+  @ApiOperation({ summary: 'Provisioning with optional name' })
   async ensureProfile(@User() userId: string, @Body() dto: EnsureProfileDto) {
-    // First ensure user exists (provisioning)
     const user = await this.meService.getMe(userId);
-    // Update name if provided and different (already sanitized by DTO)
     if (dto.name && dto.name !== user.name) {
       return this.usersService.updateUser(userId, { name: dto.name });
     }
@@ -65,16 +57,11 @@ export class MeController {
   }
 
   @Patch()
-  @ApiOperation({ summary: 'Update user preferences' })
-  @ApiResponse({ status: 200, description: 'User updated successfully' })
   async updateMe(@User() userId: string, @Body() updateDto: UpdateUserDto) {
     return this.usersService.updateUser(userId, updateDto);
   }
 
   @Get('dashboard')
-  @ApiOperation({ summary: 'Get user dashboard statistics' })
-  @ApiQuery({ name: 'tzOffsetMinutes', type: 'number', required: false })
-  @ApiResponse({ status: 200, description: 'Dashboard data retrieved' })
   async getDashboard(
     @User() userId: string,
     @Query('tzOffsetMinutes') tzOffsetMinutes?: string,
@@ -84,38 +71,27 @@ export class MeController {
   }
 
   @Get('stats')
-  @ApiOperation({ summary: 'Get user statistics (minutes studied today)' })
-  @ApiResponse({ status: 200, description: 'User statistics retrieved' })
   async getStats(@User() userId: string) {
     return this.meService.getStats(userId);
   }
 
   @Get('lessons')
-  @ApiOperation({ summary: "Get user's started lessons with progress" })
-  @ApiResponse({ status: 200, description: 'User lessons retrieved' })
   async getMyLessons(@User() userId: string) {
     return this.meService.getMyLessons(userId);
   }
 
   @Get('recent')
-  @ApiOperation({
-    summary: 'Get recent activity - continue where you left off',
-  })
-  @ApiResponse({ status: 200, description: 'Recent activity retrieved' })
+  @ApiOperation({ summary: 'Continue where you left off' })
   async getRecent(@User() userId: string) {
     return this.meService.getRecent(userId);
   }
 
   @Get('mastery')
-  @ApiOperation({ summary: 'Get all skill mastery levels for user' })
-  @ApiResponse({ status: 200, description: 'Mastery data retrieved' })
   async getAllMastery(@User() userId: string) {
     return this.meService.getAllMastery(userId);
   }
 
   @Post('reset')
-  @ApiOperation({ summary: 'Reset all user progress (or scoped)' })
-  @ApiResponse({ status: 200, description: 'Progress reset successfully' })
   async resetProgress(
     @User() userId: string,
     @Body() resetDto: ResetProgressDto,
@@ -124,20 +100,12 @@ export class MeController {
   }
 
   @Delete()
-  @ApiOperation({ summary: 'Delete user account and all associated data' })
-  @ApiResponse({
-    status: 200,
-    description: 'Account deletion requested/processed',
-  })
   async deleteAccount(@User() userId: string) {
     return this.meService.deleteAccount(userId);
   }
 
   @Post('avatar')
-  @ApiOperation({ summary: 'Upload avatar image' })
-  @ApiResponse({ status: 200, description: 'Avatar uploaded successfully' })
   async uploadAvatar(@User() userId: string, @Body() dto: UploadAvatarDto) {
-    // Security: avatarUrl is validated and sanitized by UploadAvatarDto
     return this.usersService.updateUser(userId, { avatarUrl: dto.avatarUrl });
   }
 }

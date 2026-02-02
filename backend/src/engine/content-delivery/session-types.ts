@@ -1,31 +1,20 @@
 import { DELIVERY_METHOD } from '@prisma/client';
 
-/**
- * Session plan types for structured learning sessions.
- * These types support teach-then-test, interleaving, and adaptive modality selection.
- */
-
 export type SessionKind = 'learn' | 'review' | 'mixed';
 
 export type StepType = 'teach' | 'practice' | 'recap';
 
-/**
- * Teaching step item - introduces new content
- */
 export interface TeachStepItem {
   type: 'teach';
   teachingId: string;
   lessonId: string;
-  phrase: string; // learningLanguageString
-  translation: string; // userLanguageString
+  phrase: string;
+  translation: string;
   emoji?: string;
   tip?: string;
   knowledgeLevel?: string;
 }
 
-/**
- * Practice step item - question/practice exercise
- */
 export interface PracticeStepItem {
   type: 'practice';
   questionId: string;
@@ -33,20 +22,16 @@ export interface PracticeStepItem {
   lessonId: string;
   prompt?: string;
   deliveryMethod: DELIVERY_METHOD;
-  // Delivery method specific fields
-  options?: Array<{ id: string; label: string }>; // For MULTIPLE_CHOICE
-  correctOptionId?: string; // For MULTIPLE_CHOICE
-  text?: string; // For FILL_BLANK
-  answer?: string; // For FILL_BLANK, TEXT_TRANSLATION
-  hint?: string; // For FILL_BLANK, TEXT_TRANSLATION
-  source?: string; // For TEXT_TRANSLATION
-  sourceText?: string; // For MULTIPLE_CHOICE (translation MCQ)
-  translation?: string; // For TEXT_TO_SPEECH (userLanguageString for display)
+  options?: Array<{ id: string; label: string }>;
+  correctOptionId?: string;
+  text?: string;
+  answer?: string;
+  hint?: string;
+  source?: string;
+  sourceText?: string;
+  translation?: string;
 }
 
-/**
- * Recap step item - session summary and feedback
- */
 export interface RecapStepItem {
   type: 'recap';
   summary: {
@@ -61,25 +46,15 @@ export interface RecapStepItem {
 
 export type StepItem = TeachStepItem | PracticeStepItem | RecapStepItem;
 
-/**
- * A single step in a learning session
- */
 export interface SessionStep {
   stepNumber: number;
   type: StepType;
   item: StepItem;
   estimatedTimeSec: number;
-  deliveryMethod?: DELIVERY_METHOD; // For practice steps
-  /**
-   * Optional explanation for why this step was selected.
-   * Intended for “Why am I seeing this?” UI and research instrumentation.
-   */
+  deliveryMethod?: DELIVERY_METHOD;
   rationale?: string;
 }
 
-/**
- * Session metadata with statistics and estimates
- */
 export interface SessionMetadata {
   totalEstimatedTimeSec: number;
   totalSteps: number;
@@ -89,13 +64,10 @@ export interface SessionMetadata {
   potentialXp: number;
   dueReviewsIncluded: number;
   newItemsIncluded: number;
-  topicsCovered: string[]; // Teaching/lesson IDs covered
+  topicsCovered: string[];
   deliveryMethodsUsed: DELIVERY_METHOD[];
 }
 
-/**
- * Complete session plan with ordered steps
- */
 export interface SessionPlanDto {
   id: string;
   kind: SessionKind;
@@ -106,20 +78,14 @@ export interface SessionPlanDto {
   createdAt: Date;
 }
 
-/**
- * Context for creating a session plan
- */
 export interface SessionContext {
   mode: 'learn' | 'review' | 'mixed';
-  timeBudgetSec?: number; // e.g., 300 (5 min), 600 (10 min), 900 (15 min)
+  timeBudgetSec?: number;
   lessonId?: string;
   moduleId?: string;
-  theme?: string; // Optional topic filter
+  theme?: string;
 }
 
-/**
- * User's average time per item type (for adaptive time estimation)
- */
 export interface UserTimeAverages {
   avgTimePerTeachSec: number;
   avgTimePerPracticeSec: number;

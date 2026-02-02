@@ -1,11 +1,3 @@
-/**
- * Candidate Service
- *
- * Single source of truth for gathering review and new content candidates.
- * Used by ContentDeliveryService and SessionPlanService to ensure consistent
- * candidate metadata (skillTags, difficulty, estimatedMastery, exerciseType).
- */
-
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DELIVERY_METHOD } from '@prisma/client';
@@ -25,11 +17,6 @@ export class CandidateService {
     private difficultyCalculator: DifficultyCalculator,
   ) {}
 
-  /**
-   * Get review candidates (items that are due for review).
-   * Supports filtering by lessonId or moduleId.
-   * Includes all enhanced metadata: skillTags, difficulty, estimatedMastery, exerciseType.
-   */
   async getReviewCandidates(
     userId: string,
     options: CandidateOptions = {},
@@ -202,11 +189,6 @@ export class CandidateService {
     return candidates;
   }
 
-  /**
-   * Get new candidates (items not yet seen by user).
-   * Supports filtering by lessonId or moduleId.
-   * prioritizedSkills is accepted for API compatibility (ranking is done by consumers).
-   */
   async getNewCandidates(
     userId: string,
     options: CandidateOptions = {},
@@ -299,7 +281,6 @@ export class CandidateService {
     return candidates;
   }
 
-  /** Public for use by SessionPlanService.getTeachingCandidates. */
   extractSkillTags(item: { skillTags?: Array<{ name: string }> }): string[] {
     if (item.skillTags && Array.isArray(item.skillTags)) {
       return item.skillTags

@@ -8,6 +8,9 @@ import {
   ModuleContent,
   LessonContent,
 } from './content.schema';
+import { LoggerService } from '../../common/logger';
+
+const logger = new LoggerService('ContentValidator');
 
 export interface ValidationError {
   file: string;
@@ -25,7 +28,10 @@ export function parseYamlFile<T>(filePath: string, schema: z.ZodSchema<T>): T {
     const data = yaml.load(content, {
       filename: filePath,
       onWarning: (warning) => {
-        console.warn(`YAML warning in ${filePath}:`, warning.message);
+        logger.logWarn('YAML warning during parsing', {
+          filePath,
+          message: warning.message,
+        });
       },
     });
 
@@ -139,9 +145,10 @@ export function findContentFiles(contentDir: string): {
       }
     } catch (error) {
       // Skip directories that can't be read
-      console.warn(
-        `Warning: Could not read directory ${dir}: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      logger.logWarn('Could not read directory during content file search', {
+        directory: dir,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 

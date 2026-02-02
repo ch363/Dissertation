@@ -74,7 +74,6 @@ export class PronunciationService {
       speechConfigObj?.defaultLocale ?? process.env.AZURE_SPEECH_DEFAULT_LOCALE;
 
     if (!azureKey || !azureRegion) {
-      // Should be prevented by env validation, but keep a safe runtime check.
       throw new ServiceUnavailableException('Speech service is not configured');
     }
 
@@ -102,12 +101,11 @@ export class PronunciationService {
       audioConfig,
     );
 
-    // Pronunciation Assessment configuration
     const paConfig = new SpeechSDK.PronunciationAssessmentConfig(
       referenceText,
       SpeechSDK.PronunciationAssessmentGradingSystem.HundredMark,
       SpeechSDK.PronunciationAssessmentGranularity.Phoneme,
-      true, // enable miscue
+      true,
     );
     paConfig.applyTo(recognizer);
 
@@ -131,7 +129,6 @@ export class PronunciationService {
           `Speech canceled: reason=${details.reason} code=${details.ErrorCode} details=${details.errorDetails}`,
         );
 
-        // Treat auth/config as 503, everything else as 400.
         if (
           details.ErrorCode ===
             SpeechSDK.CancellationErrorCode.AuthenticationFailure ||
@@ -207,7 +204,6 @@ export class PronunciationService {
       throw new ServiceUnavailableException('Pronunciation assessment failed');
     } finally {
       recognizer.close();
-      // AudioConfig doesn't expose close; GC will handle stream lifecycle.
     }
   }
 
@@ -215,10 +211,8 @@ export class PronunciationService {
     audioBytes: Buffer,
     container: ReturnType<typeof detectAudioContainer>,
   ): SpeechSDK.AudioConfig {
-    // Prefer WAV input when present; otherwise fall back to raw PCM stream.
     if (container === 'wav') {
-      // The Speech SDK's WAV parser is brittle with some chunk layouts.
-      // We parse WAV ourselves (tolerates chunk re-ordering) and stream raw PCM.
+      // Parse WAV ourselves: SDK's parser is brittle with chunk re-ordering
       try {
         const parsed = parseWavPcm(audioBytes);
         const streamFormat = SpeechSDK.AudioStreamFormat.getWaveFormatPCM(
@@ -241,13 +235,11 @@ export class PronunciationService {
     }
 
     if (!looksLikeRawPcm16le(audioBytes)) {
-      // Known container but not WAV: we don't transcode server-side (no ffmpeg dependency).
       throw new BadRequestException(
         `Unsupported audio container "${container}" for pronunciation assessment. Please send WAV (RIFF/WAVE PCM) audio.`,
       );
     }
 
-    // Raw PCM fallback: assume 16kHz, 16-bit, mono, little-endian.
     const sampleRateHz = 16000;
     const bitsPerSample = 16;
     const channels = 1;
@@ -269,7 +261,6 @@ export class PronunciationService {
       channels,
     );
     const pushStream = SpeechSDK.AudioInputStream.createPushStream(streamFormat);
-    // Ensure we pass a plain ArrayBuffer (not SharedArrayBuffer).
     const arrayBuffer = Uint8Array.from(audioBytes).buffer;
     pushStream.write(arrayBuffer);
     pushStream.close();

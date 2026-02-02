@@ -35,7 +35,6 @@ export class PronunciationController {
       locale: dto.locale,
     });
 
-    // Ensure we return the public contract only (no internal fields).
     return {
       locale: result.locale,
       referenceText: result.referenceText,

@@ -1,19 +1,8 @@
-/**
- * Content delivery policy: ranking, interleaving, modality selection, time/count, teach-then-test.
- * Pure functions with no dependencies on NestJS or Prisma.
- */
-
 import { DELIVERY_METHOD } from '@prisma/client';
 import { classifyDifficulty } from './difficulty-calculator.service';
 import { DeliveryCandidate } from './types';
 import { UserTimeAverages } from './session-types';
 
-// --- Ranking ---
-
-/**
- * Rank candidates by their priority score.
- * Higher score = higher priority.
- */
 export function rankCandidates(
   candidates: DeliveryCandidate[],
   prioritizedSkills: string[] = [],
@@ -65,8 +54,6 @@ function calculatePriorityScore(
   return basePriority;
 }
 
-// --- Interleaving ---
-
 export interface InterleavingOptions {
   maxSameTypeInRow?: number;
   requireModalityCoverage?: boolean;
@@ -74,9 +61,6 @@ export interface InterleavingOptions {
   consecutiveErrors?: number;
 }
 
-/**
- * Interleaving composer: applies constraint-based rules to ensure variety.
- */
 export function composeWithInterleaving(
   candidates: DeliveryCandidate[],
   options: InterleavingOptions = {},
@@ -352,11 +336,6 @@ export function composeWithInterleaving(
   return composed;
 }
 
-// --- Time / count (from session-planning) ---
-
-/**
- * Calculate how many items can fit in the time budget.
- */
 export function calculateItemCount(
   timeBudgetSec: number,
   avgTimePerItem: number,
@@ -371,9 +350,6 @@ export function calculateItemCount(
   return Math.max(1, Math.min(count, 50));
 }
 
-/**
- * Interleave items across groups to ensure variety.
- */
 export function interleaveItems<T>(
   items: T[],
   getGroupKey: (item: T) => string,
@@ -402,10 +378,6 @@ export function interleaveItems<T>(
   return interleaved;
 }
 
-/**
- * Select adaptive modality (delivery method) for an item.
- * Favors methods that the user performs best on; allows exploration.
- */
 export function selectModality(
   item: DeliveryCandidate,
   availableMethods: DELIVERY_METHOD[],
@@ -455,9 +427,6 @@ export function selectModality(
   }
 }
 
-/**
- * Group items by topic (teaching or lesson).
- */
 export function groupByTopic(
   items: DeliveryCandidate[],
 ): Map<string, DeliveryCandidate[]> {
@@ -474,9 +443,6 @@ export function groupByTopic(
   return groups;
 }
 
-/**
- * Estimate time for an item based on user history.
- */
 export function estimateTime(
   item: DeliveryCandidate,
   userHistory: UserTimeAverages,
@@ -496,9 +462,6 @@ export function estimateTime(
   return userHistory.avgTimePerPracticeSec || 60;
 }
 
-/**
- * Arrange items in teach-then-test sequence.
- */
 export function planTeachThenTest(
   teachings: DeliveryCandidate[],
   questions: DeliveryCandidate[],
@@ -530,9 +493,6 @@ export function planTeachThenTest(
   return sequence;
 }
 
-/**
- * Default time averages when user history is unavailable.
- */
 export function getDefaultTimeAverages(): UserTimeAverages {
   return {
     avgTimePerTeachSec: 30,
@@ -549,9 +509,6 @@ export function getDefaultTimeAverages(): UserTimeAverages {
   };
 }
 
-/**
- * Mix items by delivery method to ensure variety.
- */
 export function mixByDeliveryMethod(
   items: DeliveryCandidate[],
 ): DeliveryCandidate[] {

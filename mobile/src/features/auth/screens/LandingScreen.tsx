@@ -12,7 +12,7 @@ import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme } from '@/services/theme/tokens';
 
 export default function LandingScreen() {
-  const { theme: appTheme } = useAppTheme();
+  const { theme } = useAppTheme();
   const { session, loading } = useAuth();
 
   useEffect(() => {
@@ -38,11 +38,11 @@ export default function LandingScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: appTheme.colors.background }]}>
-      <View style={[styles.container, { backgroundColor: appTheme.colors.background }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" accessible={false} />
-        <Text style={[styles.title, { color: appTheme.colors.text }]} accessibilityRole="header">Fluentia</Text>
-        <Text style={[styles.subtitle, { color: appTheme.colors.mutedText }]}>Personalised learning, one step at a time.</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]} accessibilityRole="header">Fluentia</Text>
+        <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>Personalised learning, one step at a time.</Text>
 
         <View style={styles.buttons}>
           <Button title="Get Started" onPress={goSignUp} accessibilityHint="Creates a new account" />

@@ -9,19 +9,16 @@ export function useReducedMotion() {
 
     AccessibilityInfo.isReduceMotionEnabled?.()
       .then((enabled) => {
-        if (mounted) setReducedMotion(!!enabled);
+        if (mounted)         setReducedMotion(!!enabled);
       })
       .catch(() => {});
 
-    // RN versions differ: sometimes returns subscription with remove(), sometimes not.
-    // @ts-ignore - version compatibility
     const sub = AccessibilityInfo.addEventListener?.('reduceMotionChanged', (enabled: boolean) => {
       setReducedMotion(!!enabled);
     });
 
     return () => {
       mounted = false;
-      // @ts-ignore - version compatibility
       sub?.remove?.();
     };
   }, []);

@@ -4,13 +4,14 @@ import React, { useCallback } from 'react';
 import { FlatList, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { LoadingRow } from '@/components/ui';
+import { LoadingRow, TappableCard } from '@/components/ui';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 import { getLessons, getLessonTeachings, type Lesson } from '@/services/api/modules';
 import { getUserLessons, type UserLessonProgress } from '@/services/api/progress';
 import { LessonMicroProgress } from '@/components/learn/LessonMicroProgress';
 import { buildLessonOutcome } from '@/features/learn/utils/lessonOutcome';
+import { useAsyncData } from '@/hooks/useAsyncData';
 
 type LessonFilter = 'all' | 'not_started' | 'in_progress' | 'completed';
 
@@ -31,15 +32,29 @@ function getStatus(completed: number, total: number): Exclude<LessonFilter, 'all
 export default function LessonListScreen() {
   const { theme, isDark } = useAppTheme();
   const router = useRouter();
-  const [lessons, setLessons] = React.useState<Lesson[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [userProgress, setUserProgress] = React.useState<UserLessonProgress[]>([]);
   const [lessonOutcomes, setLessonOutcomes] = React.useState<Record<string, string>>({});
   const outcomeRequestsRef = React.useRef(new Set<string>());
   const [searchQuery, setSearchQuery] = React.useState('');
   const [filter, setFilter] = React.useState<LessonFilter>('all');
   const [filterOpen, setFilterOpen] = React.useState(false);
+
+  const { data, loading, error, reload } = useAsyncData<{
+    lessons: Lesson[];
+    userProgress: UserLessonProgress[];
+  }>(
+    'LessonListScreen',
+    async () => {
+      const [lessonsData, progressData] = await Promise.all([
+        getLessons(),
+        getUserLessons().catch(() => [] as UserLessonProgress[]),
+      ]);
+      return { lessons: lessonsData, userProgress: progressData };
+    },
+    []
+  );
+
+  const lessons = data?.lessons ?? [];
+  const userProgress = data?.userProgress ?? [];
 
   const preloadLessonOutcomes = useCallback(async (lessonsData: Lesson[]) => {
     const missing = lessonsData
@@ -73,31 +88,16 @@ export default function LessonListScreen() {
     missing.forEach((id) => outcomeRequestsRef.current.delete(id));
   }, [lessonOutcomes]);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [lessonsData, progressData] = await Promise.all([
-        getLessons(),
-        getUserLessons().catch(() => [] as UserLessonProgress[]), // Gracefully handle if no progress
-      ]);
-      setLessons(lessonsData);
-      setUserProgress(progressData);
-      // Best-effort: populate motivating “what you'll learn” lines for cards.
-      void preloadLessonOutcomes(lessonsData);
-    } catch (err: any) {
-      console.error('Failed to load lessons:', err);
-      setError(err?.message || 'Failed to load lessons');
-    } finally {
-      setLoading(false);
+  React.useEffect(() => {
+    if (lessons.length > 0) {
+      void preloadLessonOutcomes(lessons);
     }
-  }, [preloadLessonOutcomes]);
+  }, [lessons, preloadLessonOutcomes]);
 
-  // Refresh data when screen comes into focus (e.g., returning from a session)
   useFocusEffect(
     useCallback(() => {
-      loadData();
-    }, [loadData])
+      reload();
+    }, [reload])
   );
 
   const progressByLessonId = React.useMemo(() => {
@@ -136,60 +136,28 @@ export default function LessonListScreen() {
     const status = getStatus(completed, total);
     const isCompleted = status === 'completed';
     const preview = lessonOutcomes[item.id] ?? item.description ?? null;
-    const accentColor =
-      status === 'completed'
-        ? theme.colors.secondary
-        : status === 'in_progress'
-          ? theme.colors.primary
-          : theme.colors.border;
-    const accentBorderColor = status === 'not_started' ? theme.colors.border : `${accentColor}${isDark ? '55' : '33'}`;
-    const accentLeftColor = status === 'not_started' ? theme.colors.border : `${accentColor}${isDark ? '99' : '66'}`;
+    const metaRow = (
+      <View style={styles.progressRow} accessibilityLabel="Lesson progress">
+        <LessonMicroProgress completed={completed} total={total} />
+        {isCompleted ? (
+          <Ionicons name="checkmark-circle" size={16} color={theme.colors.secondary} accessible={false} importantForAccessibility="no" />
+        ) : null}
+      </View>
+    );
     return (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${item.title}${status === 'completed' ? ', completed' : status === 'in_progress' ? ', in progress' : ''}`}
-        accessibilityHint="Opens lesson details"
-        accessibilityState={{ disabled: locked }}
+      <TappableCard
+        title={item.title}
+        subtitle={preview ?? undefined}
+        leftIcon={locked ? 'lock-closed' : undefined}
+        metaRow={metaRow}
         onPress={() => {
           if (locked) return;
           router.push(`/(tabs)/learn/${item.id}`);
         }}
-        disabled={locked}
-        style={({ pressed }) => [
-          styles.card,
-          {
-            backgroundColor: theme.colors.card,
-            borderColor: accentBorderColor,
-            borderLeftWidth: status === 'not_started' ? 1 : 4,
-            borderLeftColor: accentLeftColor,
-            opacity: locked ? 0.55 : pressed ? 0.9 : 1,
-          },
-        ]}
-      >
-        <View style={styles.cardHeader}>
-          <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={1}>
-            {item.title}
-          </Text>
-          {locked ? (
-            <Ionicons name="lock-closed" size={16} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
-          ) : (
-            <Ionicons name="chevron-forward" size={16} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
-          )}
-        </View>
-
-        <View style={styles.progressRow} accessibilityLabel="Lesson progress">
-          <LessonMicroProgress completed={completed} total={total} />
-          {isCompleted ? (
-            <Ionicons name="checkmark-circle" size={16} color={theme.colors.secondary} accessible={false} importantForAccessibility="no" />
-          ) : null}
-        </View>
-
-        {preview ? (
-          <Text style={[styles.subtitle, { color: theme.colors.mutedText }]} numberOfLines={2}>
-            {preview}
-          </Text>
-        ) : null}
-      </Pressable>
+        accessibilityLabel={`${item.title}${status === 'completed' ? ', completed' : status === 'in_progress' ? ', in progress' : ''}`}
+        accessibilityHint="Opens lesson details"
+        style={locked ? styles.cardDisabled : styles.cardSpacing}
+      />
     );
   };
 
@@ -455,6 +423,13 @@ const styles = StyleSheet.create({
   countText: {
     fontFamily: baseTheme.typography.regular,
     fontSize: 13,
+  },
+  cardSpacing: {
+    marginBottom: baseTheme.spacing.sm,
+  },
+  cardDisabled: {
+    opacity: 0.55,
+    marginBottom: baseTheme.spacing.sm,
   },
   card: {
     borderRadius: 16,

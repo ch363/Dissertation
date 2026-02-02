@@ -7,16 +7,37 @@ export default function MotivationGoals() {
   const { answers, setAnswerAndSave } = useOnboarding();
 
   const options = [
-    { key: 'travel', icon: 'airplane-outline', label: 'For travel' },
-    { key: 'family', icon: 'people-outline', label: 'To connect with family/friends' },
-    { key: 'study', icon: 'school-outline', label: 'For study/career' },
-    { key: 'fun', icon: 'game-controller-outline', label: 'For fun/personal growth' },
+    { 
+      key: 'travel', 
+      icon: 'airplane-outline', 
+      label: 'For travel',
+      description: 'Explore new places and cultures'
+    },
+    { 
+      key: 'family', 
+      icon: 'people-outline', 
+      label: 'To connect with family/friends',
+      description: 'Stay in touch with loved ones'
+    },
+    { 
+      key: 'study', 
+      icon: 'school-outline', 
+      label: 'For study/career',
+      description: 'Advance your professional goals'
+    },
+    { 
+      key: 'fun', 
+      icon: 'game-controller-outline', 
+      label: 'For fun/personal growth',
+      description: 'Learn something new for yourself'
+    },
   ];
 
   return (
     <OptionQuestion
       step={1}
-      title="Motivation & Goals"
+      title="What brings you here?"
+      subtitle="Help us tailor your experience to match your goals"
       options={options}
       selected={answers.motivation?.key}
       onChange={(next) => {

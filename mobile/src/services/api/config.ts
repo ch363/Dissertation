@@ -1,14 +1,21 @@
 import Constants from 'expo-constants';
 
-function readExtra(): Record<string, any> {
+interface ExpoExtra {
+  EXPO_PUBLIC_API_URL?: string;
+  EXPO_PUBLIC_BACKEND_URL?: string;
+  apiUrl?: string;
+  [key: string]: unknown;
+}
+
+function readExtra(): ExpoExtra {
   return (
-    (Constants?.expoConfig?.extra as Record<string, any> | undefined) ||
-    ((Constants as any)?.manifest?.extra as Record<string, any> | undefined) ||
+    (Constants?.expoConfig?.extra as ExpoExtra | undefined) ||
+    (Constants?.manifest?.extra as ExpoExtra | undefined) ||
     {}
   );
 }
 
-function resolveApiUrl(extra: Record<string, any>, override?: string): string {
+function resolveApiUrl(extra: ExpoExtra, override?: string): string {
   return (
     override ||
     process.env.EXPO_PUBLIC_API_URL ||

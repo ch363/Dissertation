@@ -7,6 +7,9 @@ import { resolvePostAuthDestination } from '@/features/auth/flows/resolvePostAut
 import { routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
+import { createLogger } from '@/services/logging';
+
+const logger = createLogger('GlobalError');
 
 export default function GlobalError() {
   const router = useRouter();
@@ -26,7 +29,7 @@ export default function GlobalError() {
         router.replace(routes.auth.signIn);
       }
     } catch (err) {
-      console.error('GlobalError: Error checking onboarding', err);
+      logger.error('Error checking onboarding', err);
       // On error, default to onboarding to be safe
       router.replace('/(onboarding)/welcome');
     } finally {

@@ -1,16 +1,19 @@
 import { router, useLocalSearchParams, Stack } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { LoadingRow } from '@/components/ui';
+import { Button, LoadingRow, StaticCard } from '@/components/ui';
 import { routeBuilders, routes } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 import { CardKind, SessionPlan } from '@/types/session';
 import { getCachedSessionPlan } from '@/services/api/session-plan-cache';
 import { getLesson, getLessonTeachings, getModuleLessons, type Teaching, type Lesson, type Module } from '@/services/api/modules';
 import { getUserLessons, type UserLessonProgress } from '@/services/api/progress';
+import { createLogger } from '@/services/logging';
+
+const Logger = createLogger('SessionSummaryScreen');
 
 export default function SessionSummaryScreen() {
   const params = useLocalSearchParams<{
@@ -34,7 +37,6 @@ export default function SessionSummaryScreen() {
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [moduleHasRemainingLessons, setModuleHasRemainingLessons] = useState<boolean | null>(null);
 
-  // Get the session plan from cache to extract teachings
   const sessionPlan = useMemo(() => {
     if (lessonId && kind === 'learn') {
       return getCachedSessionPlan({
@@ -46,7 +48,6 @@ export default function SessionSummaryScreen() {
     return null;
   }, [lessonId, kind, planMode, timeBudgetSec]);
 
-  // Extract teachings from cached session plan first
   const cachedTeachings = useMemo(() => {
     if (!sessionPlan) return [];
     return sessionPlan.cards
@@ -68,7 +69,6 @@ export default function SessionSummaryScreen() {
       }>;
   }, [sessionPlan]);
 
-  // Fetch lesson data to get the title
   useEffect(() => {
     const fetchLesson = async () => {
       if (lessonId && kind === 'learn') {
@@ -76,8 +76,7 @@ export default function SessionSummaryScreen() {
           const lessonData = await getLesson(lessonId);
           setLesson(lessonData);
         } catch (error) {
-          console.error('Failed to load lesson:', error);
-          // Continue without lesson title - not critical
+          Logger.error('Failed to load lesson', error);
         }
       }
     };
@@ -85,8 +84,6 @@ export default function SessionSummaryScreen() {
     fetchLesson();
   }, [lessonId, kind]);
 
-  // Determine whether the parent module still has incomplete lessons.
-  // If the module is fully complete, the secondary CTA should return to Learn hub instead.
   useEffect(() => {
     const moduleId = lesson?.moduleId;
     if (!moduleId || kind !== 'learn') {
@@ -126,12 +123,9 @@ export default function SessionSummaryScreen() {
     };
   }, [lesson?.moduleId, kind]);
 
-  // Fetch teachings from API if we have a lessonId and no cached teachings
   useEffect(() => {
     const fetchTeachings = async () => {
-      // If we have cached teachings, use those
       if (cachedTeachings.length > 0) {
-        // Convert cached format to Teaching format for display
         const convertedTeachings: Teaching[] = cachedTeachings.map((t, idx) => ({
           id: `cached-${idx}`,
           knowledgeLevel: 'beginner',
@@ -155,8 +149,7 @@ export default function SessionSummaryScreen() {
           const teachingsData = await getLessonTeachings(lessonId);
           setTeachings(teachingsData);
         } catch (error) {
-          console.error('Failed to load lesson teachings:', error);
-          // Continue without teachings - not critical
+          Logger.error('Failed to load lesson teachings', error);
         } finally {
           setLoadingTeachings(false);
         }
@@ -201,14 +194,13 @@ export default function SessionSummaryScreen() {
 
   const showBackToModule = kind === 'learn' && moduleHasRemainingLessons === true;
 
-  // Determine header title
   const headerTitle = lesson?.title || (kind === 'review' ? 'Review Summary' : 'Lesson Summary');
 
   return (
     <SafeAreaView style={styles.safe}>
       <Stack.Screen options={{ title: headerTitle }} />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.card}>
+        <StaticCard style={styles.card}>
           <View style={styles.header}>
             <Ionicons name="checkmark-circle" size={36} color={theme.colors.primary} />
             <Text style={styles.title}>You completed this lesson!</Text>
@@ -259,16 +251,15 @@ export default function SessionSummaryScreen() {
           )}
 
           <View style={styles.actions}>
-            <Pressable style={styles.primary} onPress={handleBackToHome}>
-              <Text style={styles.primaryLabel}>Back to home</Text>
-            </Pressable>
-            <Pressable style={styles.secondary} onPress={showBackToModule ? handleBackToModule : handleReturnTo}>
-              <Text style={styles.secondaryLabel}>
-                {showBackToModule ? 'Back to module' : kind === 'review' ? 'Back to review' : 'Back to learn'}
-              </Text>
-            </Pressable>
+            <Button title="Back to home" onPress={handleBackToHome} accessibilityHint="Returns to home" />
+            <Button
+              title={showBackToModule ? 'Back to module' : kind === 'review' ? 'Back to review' : 'Back to learn'}
+              onPress={showBackToModule ? handleBackToModule : handleReturnTo}
+              variant="secondary"
+              accessibilityHint={showBackToModule ? 'Returns to course' : 'Returns to learn or review'}
+            />
           </View>
-        </View>
+        </StaticCard>
       </ScrollView>
     </SafeAreaView>
   );

@@ -22,10 +22,6 @@ export interface SessionDefaults {
 export class OnboardingPreferencesService {
   constructor(private prisma: PrismaService) {}
 
-  /**
-   * Get normalized onboarding preferences for a user.
-   * All users must have onboarding data.
-   */
   async getOnboardingPreferences(
     userId: string,
   ): Promise<OnboardingPreferences> {
@@ -53,17 +49,12 @@ export class OnboardingPreferencesService {
     };
   }
 
-  /**
-   * Get initial delivery method scores based on learning styles and experience.
-   * Returns a map of delivery method to initial score (0-1).
-   */
   async getInitialDeliveryMethodScores(
     userId: string,
   ): Promise<Map<DELIVERY_METHOD, number>> {
     const preferences = await this.getOnboardingPreferences(userId);
     const scores = new Map<DELIVERY_METHOD, number>();
 
-    // Default neutral score for all methods
     const defaultScore = 0.5;
     for (const method of Object.values(DELIVERY_METHOD)) {
       scores.set(method, defaultScore);
@@ -71,7 +62,6 @@ export class OnboardingPreferencesService {
 
     const { learningStyles, experience } = preferences;
 
-    // Learning style to delivery method mapping
     const learningStyleMap: Record<string, DELIVERY_METHOD[]> = {
       visual: [DELIVERY_METHOD.FLASHCARD, DELIVERY_METHOD.MULTIPLE_CHOICE],
       auditory: [DELIVERY_METHOD.TEXT_TO_SPEECH, DELIVERY_METHOD.SPEECH_TO_TEXT],
@@ -80,20 +70,16 @@ export class OnboardingPreferencesService {
       writing: [DELIVERY_METHOD.FILL_BLANK, DELIVERY_METHOD.TEXT_TRANSLATION],
     };
 
-    // Apply learning style preferences
     if (learningStyles && learningStyles.length > 0) {
       for (const style of learningStyles) {
         const styleLower = style.toLowerCase();
         const preferredMethods = learningStyleMap[styleLower] || [];
 
-        // Boost scores for preferred methods (0.6-0.7 range)
         for (const method of preferredMethods) {
           const currentScore = scores.get(method) || defaultScore;
           scores.set(method, Math.max(currentScore, 0.65));
         }
 
-        // Slightly reduce scores for non-preferred methods (0.4-0.5 range)
-        // Only if user has specific learning style preferences
         if (preferredMethods.length > 0) {
           for (const method of Object.values(DELIVERY_METHOD)) {
             if (!preferredMethods.includes(method)) {
@@ -105,18 +91,17 @@ export class OnboardingPreferencesService {
       }
     }
 
-    // Experience level adjustment
     if (experience) {
       const experienceLower = experience.toLowerCase();
       let adjustment = 0;
 
       if (experienceLower.includes('beginner') || experienceLower.includes('new')) {
-        adjustment = -0.1; // Slightly lower scores for beginners
+        adjustment = -0.1;
       } else if (
         experienceLower.includes('advanced') ||
         experienceLower.includes('expert')
       ) {
-        adjustment = +0.1; // Slightly higher scores for advanced users
+        adjustment = +0.1;
       }
 
       if (adjustment !== 0) {
@@ -130,57 +115,46 @@ export class OnboardingPreferencesService {
     return scores;
   }
 
-  /**
-   * Get BKT parameters adjusted for user's experience level.
-   * Returns null if experience level doesn't require adjustment (uses defaults).
-   */
   async getInitialBktParameters(userId: string): Promise<BktParameters | null> {
     const preferences = await this.getOnboardingPreferences(userId);
 
     if (!preferences.experience) {
-      return null; // Use defaults if no experience specified
+      return null;
     }
 
     const experienceLower = preferences.experience.toLowerCase();
 
-    // Beginner: Higher prior (assume less prior knowledge), lower learn rate
     if (experienceLower.includes('beginner') || experienceLower.includes('new')) {
       return {
-        prior: 0.4, // 40% initial knowledge (higher uncertainty)
-        learn: 0.15, // 15% learning rate (slower learning)
-        guess: 0.2, // 20% guess rate (same as default)
-        slip: 0.1, // 10% slip rate (same as default)
+        prior: 0.4,
+        learn: 0.15,
+        guess: 0.2,
+        slip: 0.1,
       };
     }
 
-    // Advanced: Lower prior (assume more prior knowledge), higher learn rate
     if (experienceLower.includes('advanced') || experienceLower.includes('expert')) {
       return {
-        prior: 0.2, // 20% initial knowledge (lower uncertainty)
-        learn: 0.25, // 25% learning rate (faster learning)
-        guess: 0.2, // 20% guess rate (same as default)
-        slip: 0.1, // 10% slip rate (same as default)
+        prior: 0.2,
+        learn: 0.25,
+        guess: 0.2,
+        slip: 0.1,
       };
     }
 
-    // Intermediate: Use defaults (return null to use defaults)
     return null;
   }
 
-  /**
-   * Get session defaults from onboarding preferences.
-   */
   async getSessionDefaults(userId: string): Promise<SessionDefaults> {
     const preferences = await this.getOnboardingPreferences(userId);
 
-    // Convert session minutes to seconds
     const timeBudgetSec = preferences.sessionMinutes
       ? preferences.sessionMinutes * 60
       : null;
 
     return {
       timeBudgetSec,
-      mode: null, // Mode preference not captured in onboarding yet
+      mode: null,
     };
   }
 }

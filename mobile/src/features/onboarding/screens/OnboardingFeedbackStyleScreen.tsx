@@ -7,9 +7,24 @@ export default function FeedbackStyle() {
   const { answers, setAnswerAndSave } = useOnboarding();
 
   const options = [
-    { key: 'gentle', icon: 'sunny-outline', label: 'Gentle encouragement' },
-    { key: 'direct', icon: 'compass-outline', label: 'Direct and corrective' },
-    { key: 'detailed', icon: 'search-outline', label: 'Detailed explanations' },
+    { 
+      key: 'gentle', 
+      icon: 'sunny-outline', 
+      label: 'Gentle encouragement',
+      description: 'Positive reinforcement to build confidence'
+    },
+    { 
+      key: 'direct', 
+      icon: 'compass-outline', 
+      label: 'Direct and corrective',
+      description: 'Straightforward feedback to fix mistakes quickly'
+    },
+    { 
+      key: 'detailed', 
+      icon: 'search-outline', 
+      label: 'Detailed explanations',
+      description: 'In-depth guidance to understand why'
+    },
   ];
 
   return (

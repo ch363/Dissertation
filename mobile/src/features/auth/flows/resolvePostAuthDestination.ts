@@ -1,6 +1,9 @@
 import { hasOnboarding } from '@/services/api/onboarding';
 import { ensureProfileSeed } from '@/services/api/profile';
 import { routes } from '@/services/navigation/routes';
+import { createLogger } from '@/services/logging';
+
+const Logger = createLogger('ResolvePostAuthDestination');
 
 /**
  * Centralized post-auth flow resolution.
@@ -15,7 +18,7 @@ export async function resolvePostAuthDestination(userId: string): Promise<string
     
     // Check if user has completed onboarding
     const onboardingDone = await hasOnboarding(userId);
-    console.log('resolvePostAuthDestination:', { userId, onboardingDone });
+    Logger.info('resolvePostAuthDestination', { userId, onboardingDone });
     
     // Users who completed onboarding should go to home
     if (onboardingDone) {
@@ -26,7 +29,7 @@ export async function resolvePostAuthDestination(userId: string): Promise<string
     return routes.onboarding.welcome;
   } catch (err) {
     // On error, send to onboarding so user must complete setup
-    console.error('resolvePostAuthDestination: Error', err);
+    Logger.error('resolvePostAuthDestination: Error', err);
     return routes.onboarding.welcome;
   }
 }
@@ -44,7 +47,7 @@ export async function resolvePostLoginDestination(_userId: string): Promise<stri
     return routes.tabs.home;
   } catch (err) {
     // If there's an error, default to home
-    console.error('resolvePostLoginDestination: Error', err);
+    Logger.error('resolvePostLoginDestination: Error', err);
     return routes.tabs.home;
   }
 }

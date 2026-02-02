@@ -6,12 +6,12 @@ import { getSupabaseRedirectUrl } from '@/services/env/supabaseConfig';
 import { apiClient } from './client';
 import { routes } from '@/services/navigation/routes';
 import { ensureProfileSeed } from './profile';
+import { createLogger } from '@/services/logging';
+
+const Logger = createLogger('AuthAPI');
 
 type SignUpResult = { user: User | null; session: Session | null };
 
-/**
- * Sign in with email and password
- */
 export async function signInWithEmailPassword(
   email: string,
   password: string,
@@ -22,9 +22,6 @@ export async function signInWithEmailPassword(
   return { session: data.session };
 }
 
-/**
- * Sign up with email and password
- */
 export async function signUpWithEmail(
   name: string | null,
   email: string,
@@ -46,18 +43,12 @@ export async function signUpWithEmail(
   return { user: data.user, session: data.session };
 }
 
-/**
- * Sign out current user
- */
 export async function signOut(): Promise<void> {
   const supabase = getSupabaseClient();
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }
 
-/**
- * Get current authenticated user
- */
 export async function getCurrentUser(): Promise<User | null> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase.auth.getUser();
@@ -65,9 +56,6 @@ export async function getCurrentUser(): Promise<User | null> {
   return data.user;
 }
 
-/**
- * Get current session
- */
 export async function getSession(): Promise<Session | null> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase.auth.getSession();
@@ -75,9 +63,6 @@ export async function getSession(): Promise<Session | null> {
   return data.session;
 }
 
-/**
- * Send password reset email
- */
 export async function sendPasswordReset(email: string, redirectUrl?: string): Promise<void> {
   const supabase = getSupabaseClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -86,9 +71,6 @@ export async function sendPasswordReset(email: string, redirectUrl?: string): Pr
   if (error) throw error;
 }
 
-/**
- * Resend confirmation email
- */
 export async function resendConfirmationEmail(email: string): Promise<void> {
   const supabase = getSupabaseClient();
   const { error } = await supabase.auth.resend({
@@ -101,9 +83,6 @@ export async function resendConfirmationEmail(email: string): Promise<void> {
   if (error) throw error;
 }
 
-/**
- * Update user password
- */
 export async function updatePassword(newPassword: string): Promise<{ user: User | null }> {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase.auth.updateUser({
@@ -113,9 +92,6 @@ export async function updatePassword(newPassword: string): Promise<{ user: User 
   return { user: data.user };
 }
 
-/**
- * Set session from email link (for email confirmation and password reset)
- */
 export async function setSessionFromEmailLink(
   accessToken: string,
   refreshToken: string,
@@ -131,47 +107,31 @@ export async function setSessionFromEmailLink(
   }
 }
 
-/**
- * Resolve post-authentication destination
- * Checks onboarding status and routes accordingly
- */
 export async function resolvePostAuthDestination(userId: string): Promise<string> {
   try {
-    // Ensure profile exists (and sync name from auth metadata if possible)
     await ensureProfileSeed();
     
-    // Check if user has completed onboarding via backend
     const hasOnboarding = await apiClient.get<{ hasOnboarding: boolean }>('/onboarding/has');
     
-    console.log('resolvePostAuthDestination:', { userId, hasOnboarding: hasOnboarding.hasOnboarding });
+    Logger.info('resolvePostAuthDestination', { userId, hasOnboarding: hasOnboarding.hasOnboarding });
     
-    // Users who completed onboarding should go to home
     if (hasOnboarding.hasOnboarding) {
       return routes.tabs.home;
     }
     
-    // Users who haven't completed onboarding must go to onboarding
     return routes.onboarding.welcome;
   } catch (err) {
-    // On error, send to onboarding so user can complete setup
-    console.error('resolvePostAuthDestination: Error', err);
+    Logger.error('resolvePostAuthDestination: Error', err);
     return routes.onboarding.welcome;
   }
 }
 
-/**
- * Resolve post-login destination
- * Always routes to home, skipping onboarding check
- */
 export async function resolvePostLoginDestination(_userId: string): Promise<string> {
   try {
-    // Ensure profile exists (and sync name from auth metadata if possible)
     await ensureProfileSeed();
-    // Login always goes to home - existing users should not see onboarding again
     return routes.tabs.home;
   } catch (err) {
-    // If there's an error, default to home
-    console.error('resolvePostLoginDestination: Error', err);
+    Logger.error('resolvePostLoginDestination: Error', err);
     return routes.tabs.home;
   }
 }

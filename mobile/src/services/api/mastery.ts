@@ -10,9 +10,6 @@ export interface SkillMastery {
   lastUpdated: string;
 }
 
-/**
- * Get all skill mastery levels for the current user
- */
 export async function getAllMastery(): Promise<SkillMastery[]> {
   return apiClient.get<SkillMastery[]>('/me/mastery');
 }

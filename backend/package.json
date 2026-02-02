@@ -26,9 +26,7 @@
     "prisma:reset": "prisma generate && prisma db push --force-reset && npm run seed",
     "prisma:studio": "prisma studio",
     "seed": "node prisma/seed.js",
-    "prisma:seed": "prisma db seed",
-    "content:validate": "ts-node scripts/import-content.ts validate",
-    "content:import": "ts-node scripts/import-content.ts import"
+    "prisma:seed": "prisma db seed"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

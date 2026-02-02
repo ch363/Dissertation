@@ -4,55 +4,40 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { LoadingScreen, ScrollView } from '@/components/ui';
+import { Button, LoadingScreen, ScrollView, StaticCard } from '@/components/ui';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 import { getLesson, getLessonTeachings, type Lesson, type Teaching } from '@/services/api/modules';
 import { routes } from '@/services/navigation/routes';
+import { useAsyncData } from '@/hooks/useAsyncData';
 
 export default function LessonOverviewScreen() {
   const { lessonId } = useLocalSearchParams<{ lessonId?: string }>();
   const { theme } = useAppTheme();
   const router = useRouter();
 
-  const [lesson, setLesson] = React.useState<Lesson | null>(null);
-  const [teachings, setTeachings] = React.useState<Teaching[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    const loadLesson = async () => {
+  const { data, loading, error } = useAsyncData<{ lesson: Lesson; teachings: Teaching[] }>(
+    'LessonOverviewScreen',
+    async () => {
       if (!lessonId) {
-        setError('Lesson ID is required');
-        setLoading(false);
-        return;
+        throw new Error('Lesson ID is required');
       }
+      const [lessonData, teachingsData] = await Promise.all([
+        getLesson(lessonId),
+        getLessonTeachings(lessonId).catch(() => [] as Teaching[]),
+      ]);
+      return { lesson: lessonData, teachings: teachingsData };
+    },
+    [lessonId]
+  );
 
-      setLoading(true);
-      setError(null);
-      try {
-        const [lessonData, teachingsData] = await Promise.all([
-          getLesson(lessonId),
-          getLessonTeachings(lessonId).catch(() => [] as Teaching[]),
-        ]);
-        setLesson(lessonData);
-        setTeachings(teachingsData);
-      } catch (err: any) {
-        console.error('Failed to load lesson:', err);
-        setError(err?.message || 'Failed to load lesson');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadLesson();
-  }, [lessonId]);
+  const lesson = data?.lesson ?? null;
+  const teachings = data?.teachings ?? [];
 
   const locked = false; // Remove locking for now
 
   const handleStart = () => {
     if (!lessonId) return;
-    // TODO: Replace with new API business layer navigation
     router.push(`/(tabs)/learn/${lessonId}/start`);
   };
 
@@ -112,8 +97,7 @@ export default function LessonOverviewScreen() {
         }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.hero}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>{lesson.title}</Text>
+        <StaticCard title={lesson.title} titleVariant="subtle" compact>
           {lesson.description ? (
             <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
               {lesson.description}
@@ -126,38 +110,23 @@ export default function LessonOverviewScreen() {
               </Text>
             </View>
           ) : null}
-        </View>
+        </StaticCard>
 
         {teachings.length > 0 ? (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
-              What you&apos;ll learn
-            </Text>
+          <StaticCard title="What you'll learn" titleVariant="subtle" compact>
             <Text style={[styles.infoText, { color: theme.colors.mutedText }]}>
               {teachings.length} phrase{teachings.length !== 1 ? 's' : ''} to master
             </Text>
-          </View>
+          </StaticCard>
         ) : null}
 
-        <Pressable
-          accessibilityRole="button"
+        <Button
+          title={locked ? 'Locked' : 'Start Lesson'}
+          onPress={handleStart}
+          disabled={locked}
           accessibilityLabel={locked ? 'Start lesson, locked' : 'Start lesson'}
           accessibilityHint={locked ? 'Complete the previous lesson to unlock' : 'Starts this lesson'}
-          accessibilityState={{ disabled: locked }}
-          onPress={locked ? undefined : handleStart}
-          style={[
-            styles.startButton,
-            {
-              backgroundColor: locked ? theme.colors.border : theme.colors.primary,
-              borderColor: theme.colors.border,
-            },
-          ]}
-          disabled={locked}
-        >
-          <Text style={[styles.startLabel, { color: locked ? theme.colors.mutedText : '#fff' }]}>
-            {locked ? 'Locked' : 'Start Lesson'}
-          </Text>
-        </Pressable>
+        />
       </ScrollView>
     </SafeAreaView>
   );

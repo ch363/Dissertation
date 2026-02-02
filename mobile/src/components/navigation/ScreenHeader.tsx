@@ -76,7 +76,13 @@ export function ScreenHeader({
 
           {/* Right Actions */}
           <View style={styles.rightActions}>
-            {showHelp && <HelpButton />}
+            {showHelp && (
+              <HelpButton
+                variant="elevated"
+                accessibilityLabel={`Help, ${title}`}
+                accessibilityHint="Opens help information"
+              />
+            )}
             {showHome && (
               <Pressable
                 accessibilityRole="button"

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 
-import { LoadingRow, ScrollView } from '@/components/ui';
+import { LoadingRow, ScrollView, TappableCard } from '@/components/ui';
 import { ScreenHeader } from '@/components/navigation';
 import { makeSessionId } from '@/features/session/sessionBuilder';
 import { routeBuilders, routes } from '@/services/navigation/routes';
@@ -19,10 +19,11 @@ import { getDashboard, type DashboardData } from '@/services/api/profile';
 import { getDueReviewsLatest, type DueReviewLatest } from '@/services/api/progress';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
+import { useAsyncData } from '@/hooks/useAsyncData';
 
 function formatDueCount(n: number) {
-  if (n === 0) return 'No cards due for review';
-  return `${n} ${n === 1 ? 'card' : 'cards'} due today`;
+  if (n === 0) return 'No reviews due today';
+  return `${n} ${n === 1 ? 'review' : 'reviews'} due today`;
 }
 
 function safeText(s?: string | null) {
@@ -46,39 +47,32 @@ const DUE_ITEM_CARD_COLORS = [
 
 export default function ReviewOverviewScreen() {
   const { theme } = useAppTheme();
-  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-  const [due, setDue] = useState<DueReviewLatest[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
+  
+  const { data, loading, reload } = useAsyncData<{
+    dashboard: DashboardData | null;
+    due: DueReviewLatest[];
+  }>(
+    'ReviewOverviewScreen',
+    async () => {
       const [dashboardRes, dueItems] = await Promise.all([
         getDashboard(),
         getDueReviewsLatest().catch(() => []),
       ]);
-      setDashboard(dashboardRes ?? null);
-      setDue(dueItems || []);
-    } catch (error) {
-      console.error('Failed to fetch review data:', error);
-      setDashboard(null);
-      setDue([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return {
+        dashboard: dashboardRes ?? null,
+        due: dueItems || [],
+      };
+    },
+    []
+  );
+
+  const dashboard = data?.dashboard ?? null;
+  const due = data?.due ?? [];
 
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
-      void (async () => {
-        if (cancelled) return;
-        await load();
-      })();
-      return () => {
-        cancelled = true;
-      };
-    }, [load]),
+      reload();
+    }, [reload])
   );
 
   const handleStartReview = () => {
@@ -92,7 +86,6 @@ export default function ReviewOverviewScreen() {
   const dueReviewCount = dashboard?.dueReviewCount ?? 0;
   const streak = dashboard?.streak ?? 0;
   const xpTotal = dashboard?.xpTotal ?? 0;
-  // Accuracy not yet provided by dashboard API; show placeholder until backend supports it
   const accuracyDisplay = '—';
 
   return (
@@ -137,7 +130,7 @@ export default function ReviewOverviewScreen() {
               <Text style={styles.statValue}>
                 {loading ? '—' : accuracyDisplay}
               </Text>
-              <Text style={styles.statLabel}>Accuracy</Text>
+              <Text style={styles.statLabel}>Accuracy (30d)</Text>
             </LinearGradient>
           </View>
 
@@ -229,47 +222,18 @@ export default function ReviewOverviewScreen() {
                 const translation = safeText(r.question?.teaching?.userLanguageString);
                 const lessonTitle = safeText(r.question?.teaching?.lesson?.title);
                 const category = lessonTitle ?? 'Review';
-                const colors = DUE_ITEM_CARD_COLORS[index % DUE_ITEM_CARD_COLORS.length];
 
                 return (
-                  <Pressable
+                  <TappableCard
                     key={r.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Review item: ${phrase ?? 'card'}`}
+                    title={phrase ?? `Question ${r.questionId}`}
+                    subtitle={translation}
+                    overline={category}
                     onPress={handleStartReview}
-                    style={({ pressed }) => [
-                      styles.dueItemCard,
-                      {
-                        backgroundColor: colors.bg,
-                        borderColor: colors.border,
-                        opacity: pressed ? 0.92 : 1,
-                      },
-                    ]}
-                  >
-                    <View style={styles.dueItemInner}>
-                      <View style={styles.dueItemTextBlock}>
-                        <Text style={[styles.itemPhrase, { color: theme.colors.text }]} numberOfLines={1}>
-                          {phrase ?? `Question ${r.questionId}`}
-                        </Text>
-                        {!!translation && (
-                          <Text style={[styles.itemTranslation, { color: theme.colors.mutedText }]} numberOfLines={1}>
-                            {translation}
-                          </Text>
-                        )}
-                        <View style={[styles.categoryPill, { backgroundColor: 'rgba(255,255,255,0.85)', borderColor: colors.border }]}>
-                          <Text style={[styles.categoryPillText, { color: colors.accent }]} numberOfLines={1}>
-                            {category}
-                          </Text>
-                        </View>
-                      </View>
-                      <Ionicons
-                        name="chevron-forward"
-                        size={20}
-                        color={theme.colors.mutedText}
-                        style={styles.dueItemChevron}
-                      />
-                    </View>
-                  </Pressable>
+                    accessibilityLabel={`Review item: ${phrase ?? 'card'}`}
+                    accessibilityHint="Starts review session"
+                    style={styles.dueItemCardSpacing}
+                  />
                 );
               })}
             </View>
@@ -469,6 +433,7 @@ const styles = StyleSheet.create({
     marginTop: baseTheme.spacing.sm,
     gap: 12,
   },
+  dueItemCardSpacing: {},
   dueItemCard: {
     borderWidth: 1,
     borderRadius: 20,

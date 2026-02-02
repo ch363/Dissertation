@@ -7,6 +7,9 @@ import { theme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
 import { MultipleChoiceCard as MultipleChoiceCardType } from '@/types/session';
 import { announce } from '@/utils/a11y';
+import { createLogger } from '@/services/logging';
+
+const logger = createLogger('MultipleChoiceCard');
 
 type Props = {
   card: MultipleChoiceCardType;
@@ -72,7 +75,7 @@ export function MultipleChoiceCard({
       const estimatedDuration = Math.max(2000, card.sourceText.length * 150);
       setTimeout(() => setIsPlaying(false), estimatedDuration);
     } catch (error) {
-      console.error('Failed to play audio:', error);
+      logger.error('Failed to play audio', error);
       setIsPlaying(false);
     }
   };
@@ -90,7 +93,7 @@ export function MultipleChoiceCard({
       await SafeSpeech.speak(label, { language: 'it-IT', rate });
     } catch (error) {
       // Best-effort: never block selection due to TTS.
-      console.debug('Failed to speak option (non-critical):', error);
+      logger.debug('Failed to speak option (non-critical)', error);
     }
   };
 

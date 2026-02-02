@@ -2,7 +2,6 @@ import { apiClient } from './client';
 import type { DeliveryMethod } from '@/features/session/delivery-methods';
 
 export interface QuestionAttemptDto {
-  // Delivery method used for this attempt (used for scoring/personalisation)
   deliveryMethod?: DeliveryMethod | string;
   score: number;
   timeToComplete?: number;
@@ -61,16 +60,10 @@ export interface DueReviewLatest extends DueReview {
   };
 }
 
-/**
- * Start or update lesson engagement
- */
 export async function startLesson(lessonId: string) {
   return apiClient.post(`/progress/lessons/${lessonId}/start`);
 }
 
-/**
- * Get user's lesson progress
- */
 export async function getUserLessons(): Promise<UserLessonProgress[]> {
   const tzOffsetMinutes = new Date().getTimezoneOffset();
   const params = new URLSearchParams();
@@ -81,21 +74,15 @@ export async function getUserLessons(): Promise<UserLessonProgress[]> {
   return apiClient.get<UserLessonProgress[]>(`/progress/lessons${query ? `?${query}` : ''}`);
 }
 
-/**
- * Mark teaching as completed
- */
 export async function completeTeaching(teachingId: string) {
   return apiClient.post(`/progress/teachings/${teachingId}/complete`);
 }
 
 export interface QuestionAttemptResponse {
   awardedXp: number;
-  [key: string]: any; // Allow other fields from backend response
+  [key: string]: any;
 }
 
-/**
- * Record question attempt
- */
 export async function recordQuestionAttempt(
   questionId: string,
   attempt: QuestionAttemptDto,
@@ -103,23 +90,14 @@ export async function recordQuestionAttempt(
   return apiClient.post<QuestionAttemptResponse>(`/progress/questions/${questionId}/attempt`, attempt);
 }
 
-/**
- * Get all due reviews
- */
 export async function getDueReviews(): Promise<DueReview[]> {
   return apiClient.get<DueReview[]>('/progress/reviews/due');
 }
 
-/**
- * Get deduped due reviews (latest per question)
- */
 export async function getDueReviewsLatest(): Promise<DueReviewLatest[]> {
   return apiClient.get<DueReviewLatest[]>('/progress/reviews/due/latest');
 }
 
-/**
- * Update delivery method preference score
- */
 export async function updateDeliveryMethodScore(
   method: string,
   score: DeliveryMethodScoreDto,
@@ -127,9 +105,6 @@ export async function updateDeliveryMethodScore(
   return apiClient.post(`/progress/delivery-method/${method}/score`, score);
 }
 
-/**
- * Record XP/knowledge level progress
- */
 export async function recordKnowledgeLevelProgress(
   progress: KnowledgeLevelProgressDto,
 ) {
@@ -146,10 +121,6 @@ export interface ProgressSummary {
   dueReviewCount: number;
 }
 
-/**
- * Get progress summary for user
- * Returns XP, streak, completed lessons/modules, and due review count
- */
 export async function getProgressSummary(userId: string | null): Promise<ProgressSummary> {
   const tzOffsetMinutes = new Date().getTimezoneOffset();
   const params = new URLSearchParams();
@@ -160,10 +131,6 @@ export async function getProgressSummary(userId: string | null): Promise<Progres
   return apiClient.get<ProgressSummary>(`/progress/summary${query ? `?${query}` : ''}`);
 }
 
-/**
- * Mark module as completed
- * Accepts module ID (UUID) or slug (title)
- */
 export async function markModuleCompleted(moduleIdOrSlug: string): Promise<void> {
   await apiClient.post(`/progress/modules/${encodeURIComponent(moduleIdOrSlug)}/complete`);
 }
@@ -186,10 +153,6 @@ export interface PronunciationResponse {
   score: number;
 }
 
-/**
- * Validate user answer and get score
- * Returns isCorrect, score, and optional feedback
- */
 export async function validateAnswer(
   questionId: string,
   answer: string,
@@ -204,10 +167,6 @@ export async function validateAnswer(
   );
 }
 
-/**
- * Validate pronunciation from audio recording
- * Returns pronunciation score, transcription, and word-by-word analysis
- */
 export async function validatePronunciation(
   questionId: string,
   audioBase64: string,

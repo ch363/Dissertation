@@ -10,7 +10,6 @@ export class SupabaseStrategy extends PassportStrategy(Strategy, 'supabase') {
   private supabase;
 
   constructor(private jwtService: SupabaseJwtService) {
-    // Validate configuration
     jwtService.validateConfig();
 
     const jwtSecret = jwtService.getJwtSecret();
@@ -28,14 +27,12 @@ export class SupabaseStrategy extends PassportStrategy(Strategy, 'supabase') {
   }
 
   async validate(payload: JwtPayload): Promise<{ id: string }> {
-    // Extract user ID from 'sub' claim (Supabase standard)
     const userId = payload.sub;
 
     if (!userId) {
       throw new UnauthorizedException('Invalid token: missing user ID');
     }
 
-    // Return user object that will be attached to request
     return { id: userId };
   }
 }

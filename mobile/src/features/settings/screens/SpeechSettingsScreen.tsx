@@ -7,7 +7,7 @@ import { View, Text, StyleSheet, Switch, Pressable } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/components/navigation/ScreenHeader';
-import { ScrollView, SurfaceCard } from '@/components/ui';
+import { ScrollView, StaticCard } from '@/components/ui';
 import { routes } from '@/services/navigation/routes';
 import {
   useAppTheme,
@@ -18,7 +18,6 @@ import {
 } from '@/services/preferences/settings-facade';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
-// Match Settings screen: iOS-style accent gradients and layout tokens
 const ICON_GRADIENTS = {
   blue: ['#5AC8FA', '#007AFF'] as const,
   purple: ['#BF5AF2', '#8E44AD'] as const,
@@ -268,9 +267,7 @@ export default function SpeechSettings() {
     router.replace(routes.tabs.settings.root);
   }, [navigation]);
 
-  // TODO: When voice picker is implemented, navigate to it and pass back selected voice name for subtitle.
   const handleVoicePress = useCallback(() => {
-    // router.push(routes.tabs.settings.voicePicker);
   }, []);
 
   return (
@@ -291,7 +288,7 @@ export default function SpeechSettings() {
       >
         {/* Playback: TTS on/off, speed. */}
         <Section title="PLAYBACK" color={theme.colors.mutedText}>
-          <SurfaceCard style={styles.card}>
+          <StaticCard style={styles.card}>
             <SettingToggleRow
               icon={<Ionicons name="chatbubble-outline" size={18} color="#FFFFFF" />}
               iconColors={ICON_GRADIENTS.blue}
@@ -320,12 +317,12 @@ export default function SpeechSettings() {
               accessibilityLabel="Speech speed"
               accessibilityValueText={`${Math.round(rate * 100)} percent`}
             />
-          </SurfaceCard>
+          </StaticCard>
         </Section>
 
         {/* Voice: voice selection, language, pitch, etc. — extend by adding more rows. */}
         <Section title="VOICE" color={theme.colors.mutedText}>
-          <SurfaceCard style={styles.card}>
+          <StaticCard style={styles.card}>
             <SettingNavRow
               icon={<Ionicons name="person-circle-outline" size={18} color="#FFFFFF" />}
               iconColors={ICON_GRADIENTS.purple}
@@ -338,7 +335,7 @@ export default function SpeechSettings() {
             {/* Future: add rows for Language, Pitch, Accent, etc. */}
             {/* <View style={[styles.divider, { backgroundColor: theme.colors.border }]} /> */}
             {/* <SettingNavRow ... label="Language" subtitle="..." onPress={...} /> */}
-          </SurfaceCard>
+          </StaticCard>
         </Section>
       </ScrollView>
     </SafeAreaView>
@@ -355,8 +352,6 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: 0,
-    borderRadius: CARD_RADIUS,
-    borderWidth: 1,
     overflow: 'hidden',
   },
   settingRow: {

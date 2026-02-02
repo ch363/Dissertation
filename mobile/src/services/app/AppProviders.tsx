@@ -10,6 +10,9 @@ import { AuthProvider, useAuth } from '@/services/auth/AuthProvider';
 import { RouteGuard } from '@/services/navigation/RouteGuard';
 import { ThemeProvider } from '@/services/theme/ThemeProvider';
 import { preloadSpeech, warmupTts } from '@/services/tts';
+import { createLogger } from '@/services/logging';
+
+const Logger = createLogger('AppProviders');
 
 type Props = {
   children: React.ReactNode;
@@ -21,7 +24,7 @@ function PreloadManager({ children }: Props) {
   // Clear session plan cache on app startup to ensure fresh data
   useEffect(() => {
     clearSessionPlanCache();
-    console.log('Session plan cache cleared on app startup');
+    Logger.info('Session plan cache cleared on app startup');
   }, []);
 
   // Preload and warmup TTS module when app starts - do it immediately
@@ -31,15 +34,15 @@ function PreloadManager({ children }: Props) {
       try {
         // First, preload the module
         await preloadSpeech();
-        console.log('TTS module preloaded at app startup');
+        Logger.info('TTS module preloaded at app startup');
         
         // Then warmup the audio system by doing a test speak
         // This initializes the native audio device and eliminates first-click delay
         await new Promise(resolve => setTimeout(resolve, 200)); // Small delay after preload
         await warmupTts();
-        console.log('TTS warmed up successfully at app startup - ready for first click');
+        Logger.info('TTS warmed up successfully at app startup - ready for first click');
       } catch (error) {
-        console.warn('Failed to initialize TTS at app startup:', error);
+        Logger.warn('Failed to initialize TTS at app startup', { error });
         // Continue anyway - TTS will initialize on first use
       }
     };
@@ -57,13 +60,13 @@ function PreloadManager({ children }: Props) {
       // Preload both Learn and Profile screens in parallel
       Promise.all([
         preloadLearnScreenData().catch((error) => {
-          console.warn('Failed to preload Learn screen data (non-critical):', error);
+          Logger.warn('Failed to preload Learn screen data (non-critical)', { error });
         }),
         preloadProfileScreenData(profile?.id || null).catch((error) => {
-          console.warn('Failed to preload Profile screen data (non-critical):', error);
+          Logger.warn('Failed to preload Profile screen data (non-critical)', { error });
         }),
       ]).then(() => {
-        console.log('All tab screens preloaded successfully');
+        Logger.info('All tab screens preloaded successfully');
       });
     }
   }, [user, authLoading, profile?.id]);

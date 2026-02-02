@@ -7,6 +7,9 @@ import { getCachedProfileScreenData, preloadProfileScreenData } from '@/services
 import { getProgressSummary, type ProgressSummary } from '@/services/api/progress';
 import { getAllMastery, type SkillMastery } from '@/services/api/mastery';
 import { getAvatarUri } from '@/services/cache/avatar-cache';
+import { createLogger } from '@/services/logging';
+
+const logger = createLogger('useProfileData');
 
 const XP_PER_LEVEL = 500;
 
@@ -80,7 +83,7 @@ export function useProfileData() {
         getDashboard(),
         getRecentActivity(),
         getAllMastery().catch((error) => {
-          console.error('Error loading mastery data:', error);
+          logger.error('Error loading mastery data', error as Error);
           return [];
         }),
       ]);
@@ -100,7 +103,6 @@ export function useProfileData() {
       setMastery(masteryData);
       setLoading(false);
       setRefreshing(false);
-      // Paint immediately; resolve avatar in background so cached loads feel instant
       const profileForAvatar = profile;
       if (profileForAvatar?.avatarUrl) {
         const avatarUrlToUse = profileForAvatar.avatarUrl;
@@ -117,7 +119,7 @@ export function useProfileData() {
         preloadProfileScreenData(profile.id).catch(() => {});
       }
     } catch (error) {
-      console.error('Error loading profile data:', error);
+      logger.error('Error loading profile data', error as Error);
       setLoading(false);
       setRefreshing(false);
     }
@@ -161,7 +163,7 @@ export function useProfileData() {
       }
       setIsEditing(false);
     } catch (error) {
-      console.error('Error saving profile:', error);
+      logger.error('Error saving profile', error as Error);
       Alert.alert('Error', 'Failed to save profile. Please try again.');
     } finally {
       setSaving(false);
@@ -188,7 +190,7 @@ export function useProfileData() {
           const cachedPath = await cacheAvatarFile(uri, profileId);
           setEditAvatarUrl(cachedPath);
         } catch (cacheError) {
-          console.error('Error caching avatar:', cacheError);
+          logger.error('Error caching avatar', cacheError as Error);
           setEditAvatarUrl(uri);
         }
         try {
@@ -197,12 +199,12 @@ export function useProfileData() {
           const avatarUri = await getAvatarUri(profileId, uploadedUrl);
           setAvatarUrl(avatarUri);
         } catch (uploadError) {
-          console.error('Error uploading avatar:', uploadError);
+          logger.error('Error uploading avatar', uploadError as Error);
           Alert.alert('Upload Error', 'Failed to upload avatar. The image is cached locally. Please try again later.');
         }
       }
     } catch (error) {
-      console.error('Error picking image:', error);
+      logger.error('Error picking image', error as Error);
       Alert.alert('Error', 'Failed to pick image. Please try again.');
     }
   }, [profileId]);

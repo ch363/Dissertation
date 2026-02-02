@@ -14,6 +14,9 @@ export type HomeNextAction =
       moduleTitle?: string;
       progressLabel?: string;
       estTime?: string;
+      /** For Focus card: "X lessons left • Y% complete" and progress bar. */
+      completedTeachings: number;
+      totalTeachings: number;
       statusMessage: string;
     }
   | {
@@ -53,6 +56,8 @@ export function selectHomeNextAction(args: {
         moduleTitle: recent.lesson.module.title,
         progressLabel: `${recent.completedTeachings}/${totalTeachings} complete`,
         estTime: `${minutesAway} min`,
+        completedTeachings: recent.completedTeachings,
+        totalTeachings,
         statusMessage: 'Pick up where you left off',
       };
     }

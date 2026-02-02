@@ -6,20 +6,20 @@ import { ScrollView } from '@/components/ui';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
-const SKELETON_COLOR = '#E6ECF5';
-
 function SkeletonBar({
   width,
   height = 14,
   borderRadius = 8,
   style,
   animatedOpacity,
+  skeletonColor,
 }: {
   width: number | string;
   height?: number;
   borderRadius?: number;
   style?: object;
   animatedOpacity: Animated.Value;
+  skeletonColor: string;
 }) {
   return (
     <Animated.View
@@ -28,7 +28,7 @@ function SkeletonBar({
           width,
           height,
           borderRadius,
-          backgroundColor: SKELETON_COLOR,
+          backgroundColor: skeletonColor,
           opacity: animatedOpacity,
         },
         style,
@@ -40,6 +40,7 @@ function SkeletonBar({
 export function ProfileScreenSkeleton() {
   const { theme } = useAppTheme();
   const pulse = useRef(new Animated.Value(0.4)).current;
+  const skeletonColor = theme.colors.border;
 
   useEffect(() => {
     const animation = Animated.loop(
@@ -66,18 +67,25 @@ export function ProfileScreenSkeleton() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
-        {/* Header area (gradient placeholder) */}
+        {/* Header area — name, level, XP + weekly stats skeleton */}
         <View style={[styles.headerCard, { borderColor: theme.colors.border }]}>
           <View style={styles.headerRow}>
-            <Animated.View style={[styles.avatarCircle, { backgroundColor: SKELETON_COLOR, opacity: pulse }]} />
+            <Animated.View style={[styles.avatarCircle, { backgroundColor: skeletonColor, opacity: pulse }]} />
             <View style={styles.headerInfo}>
-              <SkeletonBar width={120} height={22} borderRadius={10} animatedOpacity={pulse} />
-              <SkeletonBar width={80} height={14} animatedOpacity={pulse} style={{ marginTop: 8 }} />
+              <SkeletonBar width={120} height={22} borderRadius={10} animatedOpacity={pulse} skeletonColor={skeletonColor} />
+              <View style={styles.headerStatsRow}>
+                <SkeletonBar width={60} height={14} animatedOpacity={pulse} style={{ marginTop: 8 }} skeletonColor={skeletonColor} />
+                <SkeletonBar width={48} height={14} animatedOpacity={pulse} style={{ marginTop: 8 }} skeletonColor={skeletonColor} />
+              </View>
             </View>
           </View>
-          <View style={styles.weeklyRow}>
-            <SkeletonBar width={70} height={14} animatedOpacity={pulse} />
-            <SkeletonBar width={50} height={14} animatedOpacity={pulse} />
+          {/* XP / Weekly stats skeleton — mirrors "This Week" block */}
+          <View style={[styles.weeklyBlock, { borderTopColor: theme.colors.border + '40' }]}>
+            <View style={styles.weeklyRow}>
+              <SkeletonBar width={72} height={14} animatedOpacity={pulse} skeletonColor={skeletonColor} />
+              <SkeletonBar width={56} height={16} animatedOpacity={pulse} skeletonColor={skeletonColor} />
+            </View>
+            <SkeletonBar width="90%" height={11} animatedOpacity={pulse} style={{ marginTop: 6 }} skeletonColor={skeletonColor} />
           </View>
         </View>
 
@@ -85,9 +93,9 @@ export function ProfileScreenSkeleton() {
         <View style={styles.statsRow}>
           {[1, 2, 3].map((i) => (
             <View key={i} style={[styles.statCard, { borderColor: theme.colors.border }]}>
-              <Animated.View style={[styles.statIcon, { backgroundColor: SKELETON_COLOR, opacity: pulse }]} />
-              <SkeletonBar width={32} height={20} animatedOpacity={pulse} style={{ marginTop: 8 }} />
-              <SkeletonBar width={60} height={12} animatedOpacity={pulse} style={{ marginTop: 4 }} />
+              <Animated.View style={[styles.statIcon, { backgroundColor: skeletonColor, opacity: pulse }]} />
+              <SkeletonBar width={32} height={20} animatedOpacity={pulse} style={{ marginTop: 8 }} skeletonColor={skeletonColor} />
+              <SkeletonBar width={60} height={12} animatedOpacity={pulse} style={{ marginTop: 4 }} skeletonColor={skeletonColor} />
             </View>
           ))}
         </View>
@@ -95,32 +103,32 @@ export function ProfileScreenSkeleton() {
         {/* Level progress section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <SkeletonBar width={120} height={18} animatedOpacity={pulse} />
-            <SkeletonBar width={60} height={14} animatedOpacity={pulse} />
+            <SkeletonBar width={120} height={18} animatedOpacity={pulse} skeletonColor={skeletonColor} />
+            <SkeletonBar width={60} height={14} animatedOpacity={pulse} skeletonColor={skeletonColor} />
           </View>
           <View style={[styles.levelRow, { borderColor: theme.colors.border }]}>
-            <SkeletonBar width={100} height={18} animatedOpacity={pulse} />
-            <SkeletonBar width={80} height={14} animatedOpacity={pulse} />
+            <SkeletonBar width={100} height={18} animatedOpacity={pulse} skeletonColor={skeletonColor} />
+            <SkeletonBar width={80} height={14} animatedOpacity={pulse} skeletonColor={skeletonColor} />
           </View>
-          <Animated.View style={[styles.progressBar, { backgroundColor: SKELETON_COLOR, opacity: pulse }]} />
+          <Animated.View style={[styles.progressBar, { backgroundColor: skeletonColor, opacity: pulse }]} />
         </View>
 
         {/* Skills / Activity section placeholder */}
         <View style={styles.section}>
-          <SkeletonBar width={100} height={18} animatedOpacity={pulse} />
+          <SkeletonBar width={100} height={18} animatedOpacity={pulse} skeletonColor={skeletonColor} />
           <View style={[styles.listCard, { borderColor: theme.colors.border }]}>
             <View style={styles.listRow}>
-              <Animated.View style={[styles.listIcon, { backgroundColor: SKELETON_COLOR, opacity: pulse }]} />
+              <Animated.View style={[styles.listIcon, { backgroundColor: skeletonColor, opacity: pulse }]} />
               <View style={{ flex: 1, gap: baseTheme.spacing.xs }}>
-                <SkeletonBar width="80%" height={16} animatedOpacity={pulse} />
-                <SkeletonBar width="50%" height={12} animatedOpacity={pulse} />
+                <SkeletonBar width="80%" height={16} animatedOpacity={pulse} skeletonColor={skeletonColor} />
+                <SkeletonBar width="50%" height={12} animatedOpacity={pulse} skeletonColor={skeletonColor} />
               </View>
             </View>
             <View style={styles.listRow}>
-              <Animated.View style={[styles.listIcon, { backgroundColor: SKELETON_COLOR, opacity: pulse }]} />
+              <Animated.View style={[styles.listIcon, { backgroundColor: skeletonColor, opacity: pulse }]} />
               <View style={{ flex: 1, gap: baseTheme.spacing.xs }}>
-                <SkeletonBar width="70%" height={16} animatedOpacity={pulse} />
-                <SkeletonBar width="40%" height={12} animatedOpacity={pulse} />
+                <SkeletonBar width="70%" height={16} animatedOpacity={pulse} skeletonColor={skeletonColor} />
+                <SkeletonBar width="40%" height={12} animatedOpacity={pulse} skeletonColor={skeletonColor} />
               </View>
             </View>
           </View>
@@ -157,6 +165,17 @@ const styles = StyleSheet.create({
   },
   headerInfo: {
     flex: 1,
+  },
+  headerStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  weeklyBlock: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.06)',
   },
   weeklyRow: {
     flexDirection: 'row',

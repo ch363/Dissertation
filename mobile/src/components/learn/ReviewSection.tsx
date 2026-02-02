@@ -3,33 +3,35 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { ScrollView } from '@/components/ui';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
+import {
+  estimateReviewMinutes,
+  formatReviewMinutesRange,
+  formatReviewMinutesRangeFromEstimate,
+} from '@/features/home/utils/estimateReviewMinutes';
 
 type Props = {
   dueCount: number;
+  estimatedReviewMinutes?: number | null;
   onStart?: () => void;
 };
 
-export function ReviewSection({ dueCount, onStart }: Props) {
+export function ReviewSection({ dueCount, estimatedReviewMinutes: fromDashboard, onStart }: Props) {
   const { theme } = useAppTheme();
+  const minutes =
+    fromDashboard != null && fromDashboard > 0 ? fromDashboard : estimateReviewMinutes(dueCount);
+  const isQuickSession = fromDashboard == null || fromDashboard <= 0;
+  const timeStr = isQuickSession
+    ? formatReviewMinutesRange(dueCount)
+    : formatReviewMinutesRangeFromEstimate(minutes);
+  const timeCopy = isQuickSession ? `${timeStr} (adaptive, may vary)` : timeStr;
 
   return (
     <View style={styles.section}>
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>Review</Text>
-          {dueCount > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{dueCount}</Text>
-            </View>
-          )}
-        </View>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Review</Text>
       </View>
-      <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
-        Strengthen what you&apos;ve already learned
-      </Text>
       <View style={styles.cardWrapper}>
         <Pressable
           onPress={dueCount > 0 ? onStart : undefined}
@@ -37,39 +39,28 @@ export function ReviewSection({ dueCount, onStart }: Props) {
           style={({ pressed }) => [
             styles.card,
             {
-              backgroundColor: '#FFFFFF',
+              backgroundColor: theme.colors.card,
               opacity: dueCount === 0 ? 0.6 : pressed ? 0.95 : 1,
               transform: [{ scale: pressed ? 0.98 : 1 }],
+              borderColor: theme.colors.border,
             },
           ]}
         >
-          <View style={styles.cardHeader}>
-            <View style={[styles.iconContainer, dueCount > 0 ? styles.iconRed : styles.iconGray]}>
-              <Ionicons name="time-outline" size={24} color={dueCount > 0 ? '#DC2626' : '#9CA3AF'} />
+          <View style={styles.cardRow}>
+            <View style={[styles.iconWrap, { backgroundColor: theme.colors.primary + '14' }]}>
+              <Ionicons name="time-outline" size={18} color={theme.colors.primary} />
             </View>
-            <View style={styles.cardHeaderText}>
-              <Text style={[styles.cardTitle, { color: theme.colors.text }]}>Due for Review</Text>
-              <Text style={[styles.cardSubtitle, { color: theme.colors.mutedText }]}>
-                {dueCount === 0 ? 'No cards due today' : `${dueCount} ${dueCount === 1 ? 'card' : 'cards'} due today`}
+            {dueCount > 0 ? (
+              <Text style={[styles.oneLine, { color: theme.colors.text }]} numberOfLines={1}>
+                <Text style={styles.oneLineBold}>{dueCount} due today</Text>
+                <Text style={{ color: theme.colors.mutedText }}> · {timeCopy}</Text>
               </Text>
-            </View>
+            ) : (
+              <Text style={[styles.oneLine, { color: theme.colors.mutedText }]}>
+                No reviews due · Check back later
+              </Text>
+            )}
           </View>
-          
-          {dueCount > 0 && (
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: theme.colors.text }]}>{dueCount}</Text>
-                <Text style={[styles.statLabel, { color: theme.colors.mutedText }]}>Cards</Text>
-              </View>
-              <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: theme.colors.text }]}>
-                  ~{Math.max(1, Math.ceil(dueCount * 1.5))}m
-                </Text>
-                <Text style={[styles.statLabel, { color: theme.colors.mutedText }]}>Time</Text>
-              </View>
-            </View>
-          )}
 
           <Pressable
             accessibilityRole="button"
@@ -100,125 +91,68 @@ export function ReviewSection({ dueCount, onStart }: Props) {
 
 const styles = StyleSheet.create({
   section: {
-    marginTop: 16,
-    gap: 6,
+    marginTop: 12,
+    gap: 0,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
+    marginBottom: 8,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  title: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 20,
-    letterSpacing: -0.3,
-  },
-  badge: {
-    backgroundColor: '#FEF2F2',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontFamily: baseTheme.typography.bold,
-    color: '#DC2626',
-  },
-  subtitle: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 15,
-    paddingHorizontal: 20,
-    marginBottom: 12,
+  sectionTitle: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 17,
+    letterSpacing: -0.2,
   },
   cardWrapper: {
     paddingHorizontal: 20,
   },
   card: {
-    borderRadius: 24,
-    padding: 24,
+    borderRadius: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    gap: 12,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    gap: 20,
   },
-  cardHeader: {
+  cardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 10,
   },
-  iconContainer: {
-    borderRadius: 12,
-    padding: 12,
-    width: 48,
-    height: 48,
+  iconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 9,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  iconRed: {
-    backgroundColor: '#FEF2F2',
-  },
-  iconGray: {
-    backgroundColor: '#F8FAFC',
-  },
-  cardHeaderText: {
+  oneLine: {
     flex: 1,
-  },
-  cardTitle: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 18,
-    letterSpacing: -0.2,
-    marginBottom: 4,
-  },
-  cardSubtitle: {
     fontFamily: baseTheme.typography.regular,
     fontSize: 15,
+    lineHeight: 22,
   },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    padding: 16,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 24,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontFamily: baseTheme.typography.medium,
-    fontSize: 12,
-  },
-  divider: {
-    width: 1,
-    height: 40,
+  oneLineBold: {
+    fontFamily: baseTheme.typography.semiBold,
   },
   ctaButton: {
-    borderRadius: 16,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   ctaGradient: {
-    paddingVertical: 16,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ctaLabel: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 17,
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 16,
     color: '#FFFFFF',
   },
 });

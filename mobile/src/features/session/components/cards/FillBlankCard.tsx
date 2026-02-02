@@ -7,6 +7,9 @@ import { theme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
 import { FillBlankCard as FillBlankCardType } from '@/types/session';
 import { announce } from '@/utils/a11y';
+import { createLogger } from '@/services/logging';
+
+const logger = createLogger('FillBlankCard');
 
 type Props = {
   card: FillBlankCardType;
@@ -40,10 +43,10 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
           await new Promise(resolve => setTimeout(resolve, 100));
           
           // Speak the selected word
-          console.log('FillBlankCard: Speaking selected word:', selectedAnswer);
+          logger.info('Speaking selected word', { selectedAnswer });
           await SafeSpeech.speak(selectedAnswer, { language: 'it-IT', rate });
         } catch (error) {
-          console.error('FillBlankCard: Failed to speak selected word:', error);
+          logger.error('Failed to speak selected word', error as Error);
         }
       }
       
@@ -62,7 +65,7 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
 
   const handlePlayAudio = async () => {
     if (!card.text) {
-      console.warn('FillBlankCard: No text available for audio');
+      logger.warn('No text available for audio');
       return;
     }
     
@@ -74,7 +77,7 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
     try {
       const enabled = await getTtsEnabled();
       if (!enabled) {
-        console.warn('FillBlankCard: TTS is disabled');
+        logger.warn('TTS is disabled');
         return;
       }
       setIsPlaying(true);
@@ -87,17 +90,17 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
       // Remove the blank marker and speak the sentence naturally
       const textToSpeak = card.text.replace(/___/g, ' ').trim() || '';
       if (!textToSpeak) {
-        console.warn('FillBlankCard: No text to speak after processing');
+        logger.warn('No text to speak after processing');
         setIsPlaying(false);
         return;
       }
-      console.log('FillBlankCard: Speaking text:', textToSpeak);
+      logger.info('Speaking text', { textToSpeak });
       await SafeSpeech.speak(textToSpeak, { language: 'it-IT', rate });
       // Estimate duration: ~150ms per character, minimum 2 seconds
       const estimatedDuration = Math.max(textToSpeak.length * 150, 2000);
       setTimeout(() => setIsPlaying(false), estimatedDuration);
     } catch (error) {
-      console.error('FillBlankCard: Failed to play audio:', error);
+      logger.error('Failed to play audio', error as Error);
       setIsPlaying(false);
     }
   };

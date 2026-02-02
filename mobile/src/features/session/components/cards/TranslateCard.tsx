@@ -8,6 +8,9 @@ import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { theme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
 import { TranslateCard as TranslateCardType } from '@/types/session';
+import { createLogger } from '@/services/logging';
+
+const Logger = createLogger('TranslateCard');
 
 type Props = {
   card: TranslateCardType;
@@ -75,7 +78,7 @@ export function TranslateCard({
       const estimatedDuration = Math.max(2000, textToSpeak.length * 150);
       setTimeout(() => setIsPlaying(false), estimatedDuration);
     } catch (error) {
-      console.error('Failed to play audio:', error);
+      Logger.error('Failed to play audio', error);
       setIsPlaying(false);
     }
   };
@@ -189,7 +192,7 @@ export function TranslateCard({
                     selectedRating === 0 && styles.ratingButtonSelected,
                   ]}
                   onPress={() => {
-                    console.log('Rating button pressed: Hard (0)');
+                    Logger.info('Rating button pressed: Hard (0)');
                     onRating?.(0);
                   }}
                 >
@@ -206,7 +209,7 @@ export function TranslateCard({
                     selectedRating === 2.5 && styles.ratingButtonSelected,
                   ]}
                   onPress={() => {
-                    console.log('Rating button pressed: Good (2.5)');
+                    Logger.info('Rating button pressed: Good (2.5)');
                     onRating?.(2.5);
                   }}
                 >
@@ -223,7 +226,7 @@ export function TranslateCard({
                     selectedRating === 5 && styles.ratingButtonSelected,
                   ]}
                   onPress={() => {
-                    console.log('Rating button pressed: Easy (5)');
+                    Logger.info('Rating button pressed: Easy (5)');
                     onRating?.(5);
                   }}
                 >

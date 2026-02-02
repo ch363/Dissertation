@@ -7,6 +7,9 @@ import { resolvePostAuthDestination } from '@/features/auth/flows/resolvePostAut
 import { useAuth } from '@/services/auth/AuthProvider';
 import { isPublicRootSegment, routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { createLogger } from '@/services/logging';
+
+const Logger = createLogger('RouteGuard');
 
 export function RouteGuard({ children }: { children: React.ReactNode }) {
   const { session, loading, error } = useAuth();
@@ -63,12 +66,12 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
                     const dest = await resolvePostAuthDestination(session.user.id);
                     if (dest) router.replace(dest);
                   } catch (retryErr) {
-                    console.error('RouteGuard: Retry navigation failed', retryErr);
+                    Logger.error('Retry navigation failed', retryErr);
                     redirectingRef.current = false;
                   }
                 }, 300);
               } else {
-                console.error('RouteGuard: Error redirecting from index', err);
+                Logger.error('Error redirecting from index', err);
                 redirectingRef.current = false;
               }
             } finally {
@@ -106,11 +109,11 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
                     }
                   });
                 } catch (retryErr) {
-                  console.error('RouteGuard: Retry failed', retryErr);
+                  Logger.error('Retry failed', retryErr);
                 }
               }, 300);
             } else {
-              console.error('RouteGuard: Error resolving post-auth destination', err);
+              Logger.error('Error resolving post-auth destination', err);
             }
           } finally {
             // Reset redirect flag after a short delay to allow navigation to complete

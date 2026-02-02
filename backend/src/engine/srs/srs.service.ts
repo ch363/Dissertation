@@ -1,13 +1,3 @@
-/**
- * SRS (Spaced Repetition System) Service
- *
- * This service manages spaced repetition scheduling using the FSRS algorithm.
- * SRS state is stored directly in UserQuestionPerformance (append-only).
- *
- * This is a SERVICE LAYER, not middleware. It's called by ProgressService
- * after recording an attempt. It does NOT handle HTTP requests directly.
- */
-
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -24,15 +14,6 @@ import { AttemptFeatures } from './types';
 export class SrsService {
   constructor(private prisma: PrismaService) {}
 
-  /**
-   * Calculate SRS state for a question attempt.
-   * Returns the state that should be stored in UserQuestionPerformance.
-   *
-   * @param userId User ID
-   * @param questionId Question ID
-   * @param result Attempt result
-   * @returns SRS state to store in the new UserQuestionPerformance row
-   */
   async calculateQuestionState(
     userId: string,
     questionId: string,
@@ -45,9 +26,8 @@ export class SrsService {
     difficulty?: number;
   }> {
     const now = new Date();
-    const minIntervalDays = 5 / (24 * 60); // 5 minutes
+    const minIntervalDays = 5 / (24 * 60);
 
-    // Get previous SRS state from latest UserQuestionPerformance row
     const previousAttempt = await this.prisma.userQuestionPerformance.findFirst(
       {
         where: {
@@ -67,7 +47,6 @@ export class SrsService {
       },
     );
 
-    // Get all historical attempts for this user/question for parameter optimization
     const allAttempts = await this.prisma.userQuestionPerformance.findMany({
       where: {
         userId,
@@ -88,7 +67,6 @@ export class SrsService {
       },
     });
 
-    // Get all user's historical data for parameter optimization
     const allUserAttempts = await this.prisma.userQuestionPerformance.findMany({
       where: {
         userId,
@@ -96,7 +74,7 @@ export class SrsService {
       orderBy: {
         createdAt: 'asc',
       },
-      take: 1000, // Limit to prevent performance issues
+      take: 1000,
       select: {
         createdAt: true,
         lastRevisedAt: true,
@@ -109,7 +87,6 @@ export class SrsService {
       },
     });
 
-    // Convert to ReviewRecord format for optimizer
     const reviewRecords: ReviewRecord[] = allUserAttempts.map((attempt) => ({
       createdAt: attempt.createdAt,
       lastRevisedAt: attempt.lastRevisedAt,
@@ -121,19 +98,15 @@ export class SrsService {
       repetitions: attempt.repetitions,
     }));
 
-    // Get optimized parameters for user (or use defaults)
     const params: FsrsParameters = getOptimizedParametersForUser(reviewRecords);
 
-    // Build current FSRS state
     let currentState: FsrsState | null = null;
 
     if (previousAttempt) {
-      // Check if we have FSRS state (stability/difficulty)
       if (
         previousAttempt.stability != null &&
         previousAttempt.difficulty != null
       ) {
-        // We have FSRS state
         currentState = {
           stability: previousAttempt.stability,
           difficulty: previousAttempt.difficulty,
@@ -143,13 +116,10 @@ export class SrsService {
       }
     }
 
-    // Convert attempt result to grade (0-5)
     const grade = attemptToGrade(result);
 
-    // Calculate new state using FSRS
     const newState = calculateFsrs(currentState, grade, now, params);
 
-    // Validate all returned values to prevent database errors
     const validatedStability =
       isFinite(newState.stability) && newState.stability > 0
         ? Math.max(0.1, Math.min(365, newState.stability))
@@ -184,7 +154,6 @@ export class SrsService {
     ) {
       validatedNextDue = newState.nextDue;
     } else {
-      // Fallback: set to 1 day from now
       validatedNextDue = new Date(now);
       validatedNextDue.setDate(validatedNextDue.getDate() + 1);
     }

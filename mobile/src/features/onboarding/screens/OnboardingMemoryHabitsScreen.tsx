@@ -7,10 +7,30 @@ export default function MemoryHabits() {
   const { answers, setAnswerAndSave } = useOnboarding();
 
   const options = [
-    { key: 'spaced', icon: 'calendar-outline', label: 'Spaced repetition (flashcards, reviews)' },
-    { key: 'mnemonics', icon: 'bulb-outline', label: 'Mnemonics & stories' },
-    { key: 'immersion', icon: 'globe-outline', label: 'Context & immersion' },
-    { key: 'writing', icon: 'create-outline', label: 'Rewriting and note-taking' },
+    { 
+      key: 'spaced', 
+      icon: 'calendar-outline', 
+      label: 'Spaced repetition (flashcards, reviews)',
+      description: 'Regular reviews over time for lasting memory'
+    },
+    { 
+      key: 'mnemonics', 
+      icon: 'bulb-outline', 
+      label: 'Mnemonics & stories',
+      description: 'Creative associations and memorable narratives'
+    },
+    { 
+      key: 'immersion', 
+      icon: 'globe-outline', 
+      label: 'Context & immersion',
+      description: 'Real-world situations and practical use'
+    },
+    { 
+      key: 'writing', 
+      icon: 'create-outline', 
+      label: 'Rewriting and note-taking',
+      description: 'Active engagement through writing'
+    },
   ];
 
   return (

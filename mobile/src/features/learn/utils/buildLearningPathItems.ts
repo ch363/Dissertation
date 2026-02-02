@@ -11,6 +11,7 @@ export type LearningPathItem = {
   totalLessons: number;
   completedSegments: number;
   totalSegments: number;
+  estimatedMinutes?: number;
   ctaLabel?: string;
   route: string;
   imageUrl?: string;
@@ -60,14 +61,7 @@ export function buildLearningPathItems(args: {
     moduleCompletion.set(mod.id, { completed, completedLessons, totalLessons });
   }
 
-  // Simple gate: module i unlocks when all previous modules completed.
-  const unlockedByIndex = sortedModules.map((m, idx) => {
-    if (idx === 0) return true;
-    for (let j = 0; j < idx; j++) {
-      if (!moduleCompletion.get(sortedModules[j].id)?.completed) return false;
-    }
-    return true;
-  });
+  const unlockedByIndex = sortedModules.map(() => true);
 
   return sortedModules.map((mod, idx) => {
     const completion = moduleCompletion.get(mod.id) ?? { completed: false, completedLessons: 0, totalLessons: 0 };
@@ -78,17 +72,23 @@ export function buildLearningPathItems(args: {
     const ratio = completion.totalLessons > 0 ? completion.completedLessons / completion.totalLessons : 0;
     const completedSegments = completion.totalLessons > 0 ? clamp(Math.round(ratio * totalSegments), 0, totalSegments) : 0;
 
-    const lockedBy = idx > 0 ? sortedModules[idx - 1]?.title : undefined;
-    const subtitle =
-      status === 'locked'
-        ? lockedBy
-          ? `Locked by completing ${lockedBy}`
-          : 'Locked'
-        : completion.totalLessons > 0
-          ? `${completion.completedLessons}/${completion.totalLessons} completed`
-          : 'No lessons yet';
+    const moduleLessonsForEst = lessonsByModuleId.get(mod.id) ?? [];
+    const totalItems = moduleLessonsForEst.reduce((sum, l) => sum + (l.numberOfItems ?? 0), 0);
+    const MIN_EST_MINUTES = 3;
+    const MAX_EST_MINUTES = 15;
+    const rawMinutes = Math.ceil(totalItems * 0.5);
+    const estimatedMinutes = totalItems > 0 ? clamp(rawMinutes, MIN_EST_MINUTES, MAX_EST_MINUTES) : undefined;
 
-    const ctaLabel = status === 'locked' ? undefined : completion.completed ? 'View' : 'Continue';
+    const subtitle = completion.totalLessons > 0
+      ? `${completion.completedLessons}/${completion.totalLessons} completed`
+      : 'No lessons yet';
+
+    const ctaLabel =
+      completion.completedLessons === 0
+        ? `Start ${mod.title}`
+        : completion.completed
+          ? `Review ${mod.title}`
+          : `Continue ${mod.title}`;
 
     return {
       id: mod.id,
@@ -99,6 +99,7 @@ export function buildLearningPathItems(args: {
       totalLessons: completion.totalLessons,
       completedSegments,
       totalSegments,
+      estimatedMinutes,
       ctaLabel,
       route: routeBuilders.courseDetail(mod.id),
       imageUrl: mod.imageUrl,

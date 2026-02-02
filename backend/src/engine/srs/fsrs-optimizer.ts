@@ -1,10 +1,3 @@
-/**
- * FSRS Parameter Optimizer
- *
- * Optimizes FSRS parameters (w0-w16) based on user's historical performance data.
- * Uses gradient descent to minimize prediction error between actual and predicted retention.
- */
-
 import {
   FsrsParameters,
   DEFAULT_FSRS_PARAMETERS,
@@ -31,18 +24,11 @@ export interface OptimizationResult {
   iterations: number;
 }
 
-/**
- * Calculate prediction error for a set of parameters
- *
- * @param records Historical review records
- * @param params FSRS parameters to test
- * @returns Mean squared error between predicted and actual outcomes
- */
 export function calculatePredictionError(
   records: ReviewRecord[],
   params: FsrsParameters,
 ): number {
-  if (records.length < 2) return 0; // Need at least 2 reviews to calculate error
+  if (records.length < 2) return 0;
 
   let totalError = 0;
   let errorCount = 0;
@@ -51,10 +37,9 @@ export function calculatePredictionError(
 
   for (let i = 0; i < records.length; i++) {
     const record = records[i];
-    const grade = scoreToGrade(record.score); // Convert score (0-100) to grade (0-5)
+    const grade = scoreToGrade(record.score);
 
     if (i === 0) {
-      // First review: initialize state
       currentState = {
         stability: record.stability || 0,
         difficulty: record.difficulty || 0,
@@ -64,14 +49,12 @@ export function calculatePredictionError(
       continue;
     }
 
-    // Calculate elapsed time since last review
     const previousRecord = records[i - 1];
     const elapsedMs =
       record.createdAt.getTime() - previousRecord.createdAt.getTime();
     const elapsedDays = elapsedMs / (1000 * 60 * 60 * 24);
 
     if (currentState && elapsedDays > 0) {
-      // Predict what the interval should have been
       const predictedResult = calculateFsrs(
         currentState,
         grade,
@@ -79,18 +62,15 @@ export function calculatePredictionError(
         params,
       );
 
-      // Compare predicted interval with actual interval
       const actualInterval = record.intervalDays || 1;
       const predictedInterval = predictedResult.intervalDays;
 
-      // Calculate error (normalized)
       const intervalError =
         Math.abs(predictedInterval - actualInterval) /
         Math.max(actualInterval, 1);
       totalError += intervalError;
       errorCount++;
 
-      // Update state for next iteration
       currentState = {
         stability: predictedResult.stability,
         difficulty: predictedResult.difficulty,
@@ -103,16 +83,6 @@ export function calculatePredictionError(
   return errorCount > 0 ? totalError / errorCount : 0;
 }
 
-/**
- * Optimize FSRS parameters using gradient descent
- *
- * @param records Historical review records
- * @param initialParams Starting parameters (default: DEFAULT_FSRS_PARAMETERS)
- * @param maxIterations Maximum optimization iterations
- * @param learningRate Learning rate for gradient descent
- * @param minError Minimum error threshold to stop early
- * @returns Optimized parameters and error metrics
- */
 export function optimizeParameters(
   records: ReviewRecord[],
   initialParams: FsrsParameters = DEFAULT_FSRS_PARAMETERS,
@@ -121,7 +91,6 @@ export function optimizeParameters(
   minError: number = 0.001,
 ): OptimizationResult {
   if (records.length < 10) {
-    // Not enough data for optimization, return defaults
     return {
       parameters: initialParams,
       error: 0,
@@ -134,7 +103,6 @@ export function optimizeParameters(
   let bestParams = { ...currentParams };
   let bestError = currentError;
 
-  // Parameter bounds to prevent unrealistic values
   const bounds: Record<keyof FsrsParameters, { min: number; max: number }> = {
     w0: { min: 0.1, max: 2.0 },
     w1: { min: 0.5, max: 3.0 },
@@ -157,10 +125,9 @@ export function optimizeParameters(
 
   for (let iteration = 0; iteration < maxIterations; iteration++) {
     if (currentError < minError) {
-      break; // Good enough
+      break;
     }
 
-    // Calculate gradients using finite differences
     const gradients: Partial<FsrsParameters> = {};
     const stepSize = 0.001;
 
@@ -170,20 +137,16 @@ export function optimizeParameters(
       const paramValue = currentParams[key];
       const bound = bounds[key];
 
-      // Forward difference
       const testParams = { ...currentParams };
       testParams[key] = Math.min(bound.max, paramValue + stepSize);
       const errorForward = calculatePredictionError(records, testParams);
 
-      // Backward difference
       testParams[key] = Math.max(bound.min, paramValue - stepSize);
       const errorBackward = calculatePredictionError(records, testParams);
 
-      // Gradient approximation
       gradients[key] = (errorForward - errorBackward) / (2 * stepSize);
     }
 
-    // Update parameters using gradient descent
     let improved = false;
     for (const key of Object.keys(currentParams) as Array<
       keyof FsrsParameters
@@ -194,17 +157,14 @@ export function optimizeParameters(
       currentParams[key] = Math.max(bound.min, Math.min(bound.max, newValue));
     }
 
-    // Recalculate error
     currentError = calculatePredictionError(records, currentParams);
 
-    // Keep track of best parameters
     if (currentError < bestError) {
       bestError = currentError;
       bestParams = { ...currentParams };
       improved = true;
     }
 
-    // If no improvement, reduce learning rate
     if (!improved && iteration > 5) {
       learningRate *= 0.9;
     }
@@ -217,23 +177,13 @@ export function optimizeParameters(
   };
 }
 
-/**
- * Get optimized parameters for a user based on their historical performance
- * This is a simplified version that optimizes per-user, not per-question
- *
- * @param allRecords All historical records for a user across all questions
- * @returns Optimized parameters or defaults if insufficient data
- */
 export function getOptimizedParametersForUser(
   allRecords: ReviewRecord[],
 ): FsrsParameters {
   if (allRecords.length < 20) {
-    // Not enough data, return defaults
     return DEFAULT_FSRS_PARAMETERS;
   }
 
-  // Group records by question to analyze patterns
-  // For now, use all records together for user-level optimization
   const result = optimizeParameters(
     allRecords,
     DEFAULT_FSRS_PARAMETERS,

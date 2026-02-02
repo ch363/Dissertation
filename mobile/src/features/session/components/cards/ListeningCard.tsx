@@ -13,6 +13,9 @@ import { ListeningCard as ListeningCardType, PronunciationResult } from '@/types
 import * as SpeechRecognition from '@/services/speech-recognition';
 import { announce } from '@/utils/a11y';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { createLogger } from '@/services/logging';
+
+const logger = createLogger('ListeningCard');
 
 // Lazy load FileSystem to avoid native module errors
 // This is completely optional - if FileSystem isn't available, we just skip file size checking
@@ -145,7 +148,7 @@ export function ListeningCard({
       const estimatedDuration = Math.max(2000, textToSpeak.length * 150);
       setTimeout(() => setIsPlaying(false), estimatedDuration);
     } catch (error) {
-      console.error('Failed to play audio:', error);
+      logger.error('Failed to play audio', error as Error);
       announce('Failed to play audio.');
       setIsPlaying(false);
     }
@@ -160,7 +163,7 @@ export function ListeningCard({
       await new Promise(resolve => setTimeout(resolve, 100));
       await SafeSpeech.speak(word, { language: 'it-IT', rate });
     } catch (error) {
-      console.error('Failed to play word audio:', error);
+      logger.error('Failed to play word audio', error as Error);
       announce('Failed to play word audio.');
     }
   };
@@ -169,11 +172,11 @@ export function ListeningCard({
   useEffect(() => {
     return () => {
       if (recordingRef.current) {
-        recordingRef.current.stopAndUnloadAsync().catch(console.error);
+        recordingRef.current.stopAndUnloadAsync().catch((err) => logger.error('Failed to stop recording on cleanup', err as Error));
         recordingRef.current = null;
       }
       if (playbackSoundRef.current) {
-        playbackSoundRef.current.unloadAsync().catch(console.error);
+        playbackSoundRef.current.unloadAsync().catch((err) => logger.error('Failed to unload playback sound on cleanup', err as Error));
         playbackSoundRef.current = null;
       }
     };
@@ -188,11 +191,11 @@ export function ListeningCard({
     setRecordingDuration(null);
     setIsPlayingRecording(false);
     if (recordingRef.current) {
-      recordingRef.current.stopAndUnloadAsync().catch(console.error);
+      recordingRef.current.stopAndUnloadAsync().catch((err) => logger.error('Failed to stop recording on card change', err as Error));
       recordingRef.current = null;
     }
     if (playbackSoundRef.current) {
-      playbackSoundRef.current.unloadAsync().catch(console.error);
+      playbackSoundRef.current.unloadAsync().catch((err) => logger.error('Failed to unload playback sound on card change', err as Error));
       playbackSoundRef.current = null;
     }
   }, [card.id]);
@@ -210,9 +213,9 @@ export function ListeningCard({
 
       // Warn if on iOS Simulator
       if (isIOSSimulator) {
-        console.warn('⚠️ Running on iOS Simulator - microphone input may not work properly.');
-        console.warn('💡 To enable: System Settings → Privacy → Microphone → Allow Xcode/Simulator');
-        console.warn('💡 Simulator menu: I/O → Audio Input → Select "Built-in Microphone"');
+        logger.warn('Running on iOS Simulator - microphone input may not work properly');
+        logger.warn('To enable: System Settings → Privacy → Microphone → Allow Xcode/Simulator');
+        logger.warn('Simulator menu: I/O → Audio Input → Select "Built-in Microphone"');
       }
 
       // First, ensure any existing recording is cleaned up
@@ -275,9 +278,9 @@ export function ListeningCard({
       setHasRecorded(false);
       setRecordedAudioUri(null);
       announce('Recording started');
-      console.log('✅ Recording started successfully');
+      logger.info('Recording started successfully');
     } catch (error: any) {
-      console.error('Failed to start recording:', error);
+      logger.error('Failed to start recording', error as Error);
       
       // Provide user-friendly error message
       let errorMessage = 'Failed to start recording. Please try again.';
@@ -348,7 +351,7 @@ export function ListeningCard({
         playsInSilentModeIOS: false,
       });
 
-      console.log('✅ Recording saved:', { 
+      logger.info('Recording saved', { 
         uri, 
         duration: duration ? `${duration.toFixed(1)}s` : 'unknown',
         fileSize: fileSize ? `${(fileSize / 1024).toFixed(2)} KB` : 'unknown',
@@ -357,7 +360,7 @@ export function ListeningCard({
 
       // Warn if on iOS Simulator and file size is suspiciously small
       if (isIOSSimulator && fileSize !== null && fileSize < 1000) {
-        console.warn('⚠️ iOS Simulator detected: Recording may not work properly. File size is very small:', fileSize, 'bytes');
+        logger.warn('iOS Simulator detected: Recording may not work properly. File size is very small', { fileSize });
       }
 
       setRecordedAudioUri(uri);
@@ -367,11 +370,11 @@ export function ListeningCard({
       recordingRef.current = null;
       announce('Recording stopped');
     } catch (error: any) {
-      console.error('Failed to stop recording:', error);
+      logger.error('Failed to stop recording', error as Error);
       setRecordingError(error?.message || 'Failed to stop recording.');
       setIsRecording(false);
       if (recordingRef.current) {
-        recordingRef.current.stopAndUnloadAsync().catch(console.error);
+        recordingRef.current.stopAndUnloadAsync().catch((err) => logger.error('Failed to stop recording on cleanup', err as Error));
         recordingRef.current = null;
       }
     }
@@ -401,7 +404,7 @@ export function ListeningCard({
         playbackSoundRef.current = null;
       }
 
-      console.log('🔊 Attempting to play recording:', recordedAudioUri);
+      logger.info('Attempting to play recording', { recordedAudioUri });
 
       // Load and play the recording
       const { sound } = await Audio.Sound.createAsync(
@@ -415,11 +418,12 @@ export function ListeningCard({
       sound.setOnPlaybackStatusUpdate((status) => {
         if (!status.isLoaded) {
           // Handle error status
-          if ('error' in status) {
-            console.error('❌ Playback error:', status.error);
+          if ('error' in status && status.error) {
+            const playbackError = typeof status.error === 'string' ? new Error(status.error) : (status.error as Error);
+            logger.error('Playback error', playbackError);
             setIsPlayingRecording(false);
             setRecordingError('Failed to play recording. The file may be empty or corrupted.');
-            sound.unloadAsync().catch(console.error);
+            sound.unloadAsync().catch((err) => logger.error('Failed to unload sound on playback error', err as Error));
             playbackSoundRef.current = null;
           }
           return;
@@ -427,15 +431,15 @@ export function ListeningCard({
         
         // Handle success status
         if (status.didJustFinish) {
-          console.log('✅ Playback finished');
+          logger.info('Playback finished');
           announce('Playback finished');
           setIsPlayingRecording(false);
-          sound.unloadAsync().catch(console.error);
+          sound.unloadAsync().catch((err) => logger.error('Failed to unload sound after playback', err as Error));
           playbackSoundRef.current = null;
         }
       });
     } catch (error: any) {
-      console.error('❌ Failed to play recording:', error);
+      logger.error('Failed to play recording', error as Error);
       setIsPlayingRecording(false);
       const errorMsg = error?.message || 'Failed to play back recording.';
       setRecordingError(errorMsg);

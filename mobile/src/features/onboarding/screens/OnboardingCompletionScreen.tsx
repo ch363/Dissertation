@@ -11,6 +11,9 @@ import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvide
 import { routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme } from '@/services/theme/tokens';
+import { createLogger } from '@/services/logging';
+
+const logger = createLogger('OnboardingCompletion');
 
 type StepRequirement = {
   key: string;
@@ -68,24 +71,20 @@ const REQUIRED_STEPS: StepRequirement[] = [
 ];
 
 export default function OnboardingCompletion() {
-  const { theme: appTheme } = useAppTheme();
+  const { theme } = useAppTheme();
   const { answers, reset } = useOnboarding();
   const [saving, setSaving] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
 
-  // Redirect to welcome if user somehow accessed this screen without any answers
-  // Skip redirect if we've already saved and are navigating away
-  // Note: All onboarding fields are optional, so skipped steps are valid
   useEffect(() => {
-    if (hasSaved) return; // Don't redirect after successful save
+    if (hasSaved) return;
     
     const hasAnswers = !!answers && Object.keys(answers).length > 0;
     if (!hasAnswers) {
-      console.warn('OnboardingCompletion: No answers found, redirecting to welcome');
+      logger.warn('No answers found, redirecting to welcome');
       router.replace('/(onboarding)/welcome');
       return;
     }
-    // Removed validation for incomplete steps - all fields are optional, skipped steps are valid
   }, [answers, hasSaved]);
 
   async function saveWithRetry(
@@ -99,7 +98,7 @@ export default function OnboardingCompletion() {
         return;
       } catch (e: any) {
         lastError = e;
-        console.warn(`OnboardingCompletion: Save attempt ${attempt}/${maxAttempts} failed`, e?.message);
+        logger.warn(`Save attempt ${attempt}/${maxAttempts} failed`, { error: e?.message });
         if (attempt < maxAttempts) {
           await new Promise((r) => setTimeout(r, 1000 * attempt));
         }
@@ -116,9 +115,8 @@ export default function OnboardingCompletion() {
         throw new Error('No user found. Please sign in again.');
       }
 
-      // All onboarding fields are optional - skipped steps are valid
       await saveWithRetry(user.id);
-      console.log('OnboardingCompletion: Successfully saved onboarding');
+      logger.info('Successfully saved onboarding');
 
       setHasSaved(true);
       reset();
@@ -126,14 +124,14 @@ export default function OnboardingCompletion() {
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       try {
-        console.log('OnboardingCompletion: Navigating to home');
+        logger.info('Navigating to home');
         router.replace(routes.tabs.home);
       } catch (navError: any) {
-        console.error('OnboardingCompletion: Navigation error', navError);
+        logger.error('Navigation error', navError as Error);
         router.replace('/');
       }
     } catch (e: any) {
-      console.error('OnboardingCompletion: Error saving onboarding', e);
+      logger.error('Error saving onboarding', e as Error);
       const message =
         e?.message ||
         'Could not save. Check your connection and that the backend is running.';
@@ -157,8 +155,6 @@ export default function OnboardingCompletion() {
     }
   }
 
-  // Don't render if no answers (will redirect in useEffect)
-  // Unless we've already saved, in which case we're navigating away
   const hasAnswers = answers && Object.keys(answers).length > 0;
   if (!hasAnswers && !hasSaved) {
     return (
@@ -171,11 +167,11 @@ export default function OnboardingCompletion() {
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: appTheme.colors.background }]}>
-      <View style={[styles.container, { backgroundColor: appTheme.colors.background }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" />
-        <Text style={[styles.headline, { color: appTheme.colors.text }]}>Thanks for completing the setup</Text>
-      <Text style={[styles.subtext, { color: appTheme.colors.mutedText }]}>
+        <Text style={[styles.headline, { color: theme.colors.text }]}>Thanks for completing the setup</Text>
+      <Text style={[styles.subtext, { color: theme.colors.mutedText }]}>
         We’ll use your answers to tailor Fluentia to your goals and learning style.
       </Text>
       {saving ? (

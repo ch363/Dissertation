@@ -7,11 +7,6 @@ import { routes } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 
 export default function LandingScreen() {
-  // For unauthenticated users, show the landing page (sign up/sign in buttons)
-  // For authenticated users, RouteGuard will handle redirecting to home
-  // We don't navigate here to avoid "navigate before mounting" errors
-  // The RouteGuard component handles all authenticated user redirects
-
   const goSignUp = () => router.push(routes.auth.signUp);
   const goSignIn = () => router.push(routes.auth.signIn);
 

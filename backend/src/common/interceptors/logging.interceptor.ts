@@ -21,10 +21,8 @@ export class LoggingInterceptor implements NestInterceptor {
     const ip = request.ip || request.connection.remoteAddress;
     const startTime = Date.now();
 
-    // Log request
     this.logger.log(`${method} ${url} - ${ip} - ${userAgent}`);
 
-    // Log request body (excluding sensitive data)
     if (Object.keys(body || {}).length > 0) {
       const sanitizedBody = this.sanitizeBody(body);
       this.logger.debug(`Request body: ${JSON.stringify(sanitizedBody)}`);

@@ -1,16 +1,3 @@
-/**
- * Mastery Service
- *
- * Implements Bayesian Knowledge Tracing (BKT) to track the probability
- * that a user knows each skill.
- *
- * BKT Parameters:
- * - Prior (P(L0)): Initial probability of knowing the skill
- * - Learn (P(T)): Probability of learning the skill after a practice opportunity
- * - Guess (P(G)): Probability of answering correctly when skill is not known
- * - Slip (P(S)): Probability of answering incorrectly when skill is known
- */
-
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OnboardingPreferencesService } from '../../onboarding/onboarding-preferences.service';
@@ -34,10 +21,10 @@ export interface SkillMastery {
 @Injectable()
 export class MasteryService {
   private readonly DEFAULT_PARAMETERS: BktParameters = {
-    prior: 0.3, // 30% initial knowledge probability
-    learn: 0.2, // 20% chance of learning per practice
-    guess: 0.2, // 20% chance of guessing correctly
-    slip: 0.1, // 10% chance of making a mistake when known
+    prior: 0.3,
+    learn: 0.2,
+    guess: 0.2,
+    slip: 0.1,
   };
 
   constructor(
@@ -45,29 +32,11 @@ export class MasteryService {
     private onboardingPreferences: OnboardingPreferencesService,
   ) {}
 
-  /**
-   * Update mastery probability for a skill using BKT algorithm.
-   *
-   * BKT Update Formula:
-   * If correct:
-   *   P(L|correct) = (P(L) * (1 - P(S))) / (P(L) * (1 - P(S)) + (1 - P(L)) * P(G))
-   *   P(L|next) = P(L|correct) + (1 - P(L|correct)) * P(T)
-   *
-   * If incorrect:
-   *   P(L|incorrect) = (P(L) * P(S)) / (P(L) * P(S) + (1 - P(L)) * (1 - P(G)))
-   *   P(L|next) = P(L|incorrect)
-   *
-   * @param userId User ID
-   * @param skillTag Skill tag identifier
-   * @param isCorrect Whether the user answered correctly
-   * @returns Updated mastery probability
-   */
   async updateMastery(
     userId: string,
     skillTag: string,
     isCorrect: boolean,
   ): Promise<number> {
-    // Get or initialize mastery record
     let mastery = await this.getMasteryRecord(userId, skillTag);
 
     if (!mastery) {
@@ -79,27 +48,21 @@ export class MasteryService {
     let newMasteryProbability: number;
 
     if (isCorrect) {
-      // P(L|correct) = (P(L) * (1 - P(S))) / (P(L) * (1 - P(S)) + (1 - P(L)) * P(G))
       const numerator = masteryProbability * (1 - slip);
       const denominator = numerator + (1 - masteryProbability) * guess;
       const pLGivenCorrect = numerator / denominator;
 
-      // P(L|next) = P(L|correct) + (1 - P(L|correct)) * P(T)
       newMasteryProbability = pLGivenCorrect + (1 - pLGivenCorrect) * learn;
     } else {
-      // P(L|incorrect) = (P(L) * P(S)) / (P(L) * P(S) + (1 - P(L)) * (1 - P(G)))
       const numerator = masteryProbability * slip;
       const denominator = numerator + (1 - masteryProbability) * (1 - guess);
       const pLGivenIncorrect = numerator / denominator;
 
-      // P(L|next) = P(L|incorrect)
       newMasteryProbability = pLGivenIncorrect;
     }
 
-    // Clamp to [0, 1]
     newMasteryProbability = Math.max(0, Math.min(1, newMasteryProbability));
 
-    // Update database
     await this.prisma.userSkillMastery.update({
       where: {
         userId_skillTag: {
@@ -115,26 +78,11 @@ export class MasteryService {
     return newMasteryProbability;
   }
 
-  /**
-   * Get current mastery probability for a skill.
-   * Returns the Prior if no record exists.
-   *
-   * @param userId User ID
-   * @param skillTag Skill tag identifier
-   * @returns Mastery probability (0.0 to 1.0)
-   */
   async getMastery(userId: string, skillTag: string): Promise<number> {
     const mastery = await this.getMasteryRecord(userId, skillTag);
     return mastery?.masteryProbability ?? this.DEFAULT_PARAMETERS.prior;
   }
 
-  /**
-   * Get full mastery record including BKT parameters.
-   *
-   * @param userId User ID
-   * @param skillTag Skill tag identifier
-   * @returns Mastery record or null if not found
-   */
   async getMasteryRecord(
     userId: string,
     skillTag: string,
@@ -162,13 +110,6 @@ export class MasteryService {
     };
   }
 
-  /**
-   * Get all skills with mastery below the threshold.
-   *
-   * @param userId User ID
-   * @param threshold Mastery threshold (default: 0.5)
-   * @returns Array of skill tags with low mastery
-   */
   async getLowMasterySkills(
     userId: string,
     threshold: number = 0.5,
@@ -188,21 +129,11 @@ export class MasteryService {
     return records.map((r) => r.skillTag);
   }
 
-  /**
-   * Initialize mastery record with default BKT parameters.
-   * Uses onboarding-based parameters if available and no custom parameters provided.
-   *
-   * @param userId User ID
-   * @param skillTag Skill tag identifier
-   * @param parameters Optional custom BKT parameters
-   * @returns Created mastery record
-   */
   async initializeMastery(
     userId: string,
     skillTag: string,
     parameters?: Partial<BktParameters>,
   ): Promise<SkillMastery> {
-    // Use custom parameters if provided, otherwise try onboarding-based, otherwise defaults
     let baseParams = this.DEFAULT_PARAMETERS;
     if (!parameters) {
       const onboardingParams =
@@ -246,13 +177,6 @@ export class MasteryService {
     };
   }
 
-  /**
-   * Get mastery for multiple skills at once.
-   *
-   * @param userId User ID
-   * @param skillTags Array of skill tag identifiers
-   * @returns Map of skillTag -> mastery probability
-   */
   async getMasteries(
     userId: string,
     skillTags: string[],
@@ -269,7 +193,6 @@ export class MasteryService {
     const map = new Map<string, number>();
     const defaultPrior = this.DEFAULT_PARAMETERS.prior;
 
-    // Initialize all requested skills
     for (const skillTag of skillTags) {
       const record = records.find((r) => r.skillTag === skillTag);
       map.set(skillTag, record?.masteryProbability ?? defaultPrior);

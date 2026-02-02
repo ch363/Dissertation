@@ -1,22 +1,29 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { IconButton } from '@/components/ui/IconButton';
+import { routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 
 type Props = {
-  /** Use for dark headers (e.g. gradient) so the icon is visible */
   iconColor?: string;
-  /** If provided, this runs instead of the default help alert (e.g. navigate to Help screen) */
   onPress?: () => void;
-  /** Elevated: subtle circle, border and shadow for a refined, high-end look */
   variant?: 'default' | 'elevated';
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 };
 
 const ELEVATED_SIZE = 40;
 
-export function HelpButton({ iconColor, onPress: onPressOverride, variant = 'default' }: Props) {
+export function HelpButton({
+  iconColor,
+  onPress: onPressOverride,
+  variant = 'default',
+  accessibilityLabel: a11yLabel,
+  accessibilityHint: a11yHint,
+}: Props) {
   const { theme } = useAppTheme();
   const isElevated = variant === 'elevated';
   const color =
@@ -27,11 +34,7 @@ export function HelpButton({ iconColor, onPress: onPressOverride, variant = 'def
       onPressOverride();
       return;
     }
-    Alert.alert(
-      'Help',
-      'Need a hand? You can adjust your preferences in Settings, or explore Learn to continue your journey.',
-      [{ text: 'Got it', style: 'default' }],
-    );
+    router.push(routes.tabs.settings.help);
   };
 
   const icon = (
@@ -58,8 +61,8 @@ export function HelpButton({ iconColor, onPress: onPressOverride, variant = 'def
       >
         <IconButton
           onPress={onPress}
-          accessibilityLabel="Help"
-          accessibilityHint="Opens help information"
+          accessibilityLabel={a11yLabel ?? 'Help'}
+          accessibilityHint={a11yHint ?? 'Opens help information'}
           style={styles.elevatedButton}
           hitSlop={8}
         >
@@ -72,8 +75,8 @@ export function HelpButton({ iconColor, onPress: onPressOverride, variant = 'def
   return (
     <IconButton
       onPress={onPress}
-      accessibilityLabel="Help"
-      accessibilityHint="Opens help information"
+      accessibilityLabel={a11yLabel ?? 'Help'}
+      accessibilityHint={a11yHint ?? 'Opens help information'}
       style={styles.button}
       hitSlop={8}
     >

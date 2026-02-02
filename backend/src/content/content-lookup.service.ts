@@ -2,48 +2,30 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { DELIVERY_METHOD } from '@prisma/client';
 import { OptionsGeneratorService } from './options-generator.service';
+import { LoggerService } from '../common/logger';
 
-/**
- * Service to look up question data from database
- * Uses Teaching relationship to get userLanguageString and learningLanguageString
- * Generates MCQ options dynamically using OptionsGeneratorService
- */
 @Injectable()
 export class ContentLookupService {
+  private readonly logger = new LoggerService(ContentLookupService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly optionsGenerator: OptionsGeneratorService,
   ) {}
 
-  /**
-   * Determine translation direction based on question ID
-   * Uses a hash of the question ID to ensure consistency - same question always has same direction
-   * @param questionId The question ID to determine direction for
-   * @returns true if translating from learning language to user language, false otherwise
-   */
   private determineTranslationDirection(questionId: string): boolean {
-    // Use a simple hash of the question ID to determine direction
-    // This ensures consistency - same question always has same direction
     const hash = questionId
       .split('')
       .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return hash % 2 === 0; // Even hash = learning to user, odd = user to learning
+    return hash % 2 === 0;
   }
 
-  /**
-   * Detect if text is likely Italian or English
-   * Uses heuristics: Italian-specific characters and common Italian words
-   * @param text The text to analyze
-   * @returns true if text appears to be Italian, false if English
-   */
   private isLikelyItalian(text: string): boolean {
     if (!text) return false;
     const lowerText = text.toLowerCase().trim();
 
-    // Check for Italian-specific characters (à, è, é, ì, í, î, ò, ó, ù, ú)
     const hasItalianChars = /[àèéìíîòóùú]/.test(text);
 
-    // Check for common Italian words
     const commonItalianWords = [
       'ciao',
       'grazie',
@@ -75,12 +57,6 @@ export class ContentLookupService {
     return hasItalianChars || isCommonItalian;
   }
 
-  /**
-   * Check if options are in the same language as sourceText
-   * @param sourceText The source text to translate
-   * @param options Array of option labels
-   * @returns true if options appear to be in the same language as sourceText
-   */
   private areOptionsInSameLanguage(
     sourceText: string,
     options: string[],
@@ -89,7 +65,6 @@ export class ContentLookupService {
 
     const sourceIsItalian = this.isLikelyItalian(sourceText);
 
-    // Check if majority of options are in the same language as source
     let sameLanguageCount = 0;
     for (const option of options) {
       const optionIsItalian = this.isLikelyItalian(option);
@@ -98,32 +73,14 @@ export class ContentLookupService {
       }
     }
 
-    // If more than half the options are in the same language as source, consider it a match
     return sameLanguageCount > options.length / 2;
   }
 
-  /**
-   * Get question data by question ID
-   * Uses Teaching relationship instead of questionData JSON
-   */
-  async getQuestionData(
+  private async fetchQuestionRecord(
     questionId: string,
-    lessonId: string,
     deliveryMethod: DELIVERY_METHOD,
-  ): Promise<{
-    options?: Array<{ id: string; label: string }>;
-    correctOptionId?: string;
-    text?: string;
-    answer?: string;
-    hint?: string;
-    audioUrl?: string;
-    source?: string;
-    sourceText?: string; // For translation MCQ
-    explanation?: string;
-    prompt?: string;
-    skillTags?: string[];
-  } | null> {
-    const [question, variant] = await Promise.all([
+  ) {
+    return Promise.all([
       this.prisma.question.findUnique({
         where: { id: questionId },
         select: {
@@ -160,6 +117,384 @@ export class ContentLookupService {
         },
       }),
     ]);
+  }
+
+  private determineAnswerDirection(
+    questionId: string,
+    teaching: { userLanguageString: string; learningLanguageString: string },
+  ): { isLearningToUser: boolean; sourceText: string; correctAnswer: string } {
+    const isLearningToUser = this.determineTranslationDirection(questionId);
+    const sourceText = isLearningToUser
+      ? teaching.learningLanguageString
+      : teaching.userLanguageString;
+    const correctAnswer = isLearningToUser
+      ? teaching.userLanguageString
+      : teaching.learningLanguageString;
+
+    return { isLearningToUser, sourceText, correctAnswer };
+  }
+
+  private buildQuestionPrompt(
+    deliveryMethod: DELIVERY_METHOD,
+    variantData: any,
+    context: {
+      sourceText?: string;
+      source?: string;
+    },
+  ): string {
+    const customPrompt =
+      typeof variantData?.prompt === 'string' && variantData.prompt.length > 0
+        ? variantData.prompt
+        : undefined;
+
+    if (customPrompt) {
+      return customPrompt;
+    }
+
+    switch (deliveryMethod) {
+      case DELIVERY_METHOD.MULTIPLE_CHOICE:
+        return context.sourceText
+          ? `How do you say '${context.sourceText}'?`
+          : 'Select the correct translation';
+
+      case DELIVERY_METHOD.TEXT_TRANSLATION:
+      case DELIVERY_METHOD.FLASHCARD:
+        return context.source
+          ? `Translate '${context.source}' to English`
+          : 'Translate to English';
+
+      case DELIVERY_METHOD.FILL_BLANK:
+        return 'Complete the sentence';
+
+      case DELIVERY_METHOD.SPEECH_TO_TEXT:
+      case DELIVERY_METHOD.TEXT_TO_SPEECH:
+        return 'Listen and type what you hear';
+
+      default:
+        return 'Answer the question';
+    }
+  }
+
+  private async generateMCQOptions(
+    questionId: string,
+    lessonId: string,
+    variantData: any,
+    direction: { isLearningToUser: boolean; sourceText: string; correctAnswer: string },
+  ): Promise<{
+    options: Array<{ id: string; label: string }>;
+    correctOptionId: string;
+    explanation?: string;
+  } | null> {
+    const { isLearningToUser, sourceText, correctAnswer } = direction;
+
+    const variantOptions: Array<{ id: string; label: string; isCorrect?: boolean }> | undefined =
+      Array.isArray(variantData?.options) ? variantData.options : undefined;
+
+    if (variantOptions && variantOptions.length > 0) {
+      const labels = variantOptions.map((o) => o.label);
+      if (!this.areOptionsInSameLanguage(sourceText || '', labels)) {
+        const correctOption = variantOptions.find((o) => o.isCorrect);
+        return {
+          options: variantOptions.map((o) => ({ id: o.id, label: o.label })),
+          correctOptionId: correctOption?.id ?? variantOptions[0].id,
+          explanation:
+            typeof variantData?.explanation === 'string'
+              ? variantData.explanation
+              : undefined,
+        };
+      } else {
+        this.logger.logWarn(
+          `MULTIPLE_CHOICE question ${questionId} has options in same language as sourceText. Regenerating options dynamically.`,
+          { sourceText, labels },
+        );
+      }
+    }
+
+    if (!correctAnswer) {
+      this.handleQuestionErrors(
+        'MISSING_CORRECT_ANSWER',
+        questionId,
+        `Missing correct answer. Teaching data incomplete.`,
+      );
+      return null;
+    }
+
+    try {
+      const generatedOptions = await this.optionsGenerator.generateOptions(
+        correctAnswer,
+        lessonId,
+        isLearningToUser,
+      );
+
+      if (generatedOptions?.options?.length > 0) {
+        return {
+          options: generatedOptions.options.map((opt) => ({
+            id: opt.id,
+            label: opt.label,
+          })),
+          correctOptionId: generatedOptions.correctOptionId,
+        };
+      }
+
+      return await this.createFallbackMCQOptions(
+        questionId,
+        lessonId,
+        correctAnswer,
+        isLearningToUser,
+      );
+    } catch (error) {
+      this.handleQuestionErrors(
+        'MCQ_GENERATION_FAILED',
+        questionId,
+        'Error generating MCQ options',
+        error,
+      );
+      return await this.createFallbackMCQOptions(
+        questionId,
+        lessonId,
+        correctAnswer,
+        isLearningToUser,
+      );
+    }
+  }
+
+  private async createFallbackMCQOptions(
+    questionId: string,
+    lessonId: string,
+    correctAnswer: string,
+    isLearningToUser: boolean,
+  ): Promise<{
+    options: Array<{ id: string; label: string }>;
+    correctOptionId: string;
+  }> {
+    const fallbackOptions: string[] = [correctAnswer];
+
+    try {
+      const lesson = await this.prisma.lesson.findUnique({
+        where: { id: lessonId },
+        include: {
+          teachings: {
+            select: {
+              userLanguageString: true,
+              learningLanguageString: true,
+            },
+          },
+        },
+      });
+
+      if (lesson) {
+        for (const t of lesson.teachings) {
+          const candidate = isLearningToUser
+            ? t.userLanguageString
+            : t.learningLanguageString;
+          if (
+            candidate &&
+            candidate.toLowerCase() !== correctAnswer.toLowerCase() &&
+            !fallbackOptions.some((opt) => opt.toLowerCase() === candidate.toLowerCase())
+          ) {
+            fallbackOptions.push(candidate);
+            if (fallbackOptions.length >= 4) break;
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.logError(`Error fetching lesson teachings for fallback`, { error });
+    }
+
+    const commonWords = isLearningToUser
+      ? ['Yes', 'No', 'Hello', 'Goodbye']
+      : ['Sì', 'No', 'Ciao', 'Arrivederci'];
+
+    for (const word of commonWords) {
+      if (fallbackOptions.length >= 4) break;
+      if (
+        word.toLowerCase() !== correctAnswer.toLowerCase() &&
+        !fallbackOptions.includes(word)
+      ) {
+        fallbackOptions.push(word);
+      }
+    }
+
+    while (fallbackOptions.length < 4) {
+      fallbackOptions.push(isLearningToUser ? 'Option' : 'Opzione');
+    }
+
+    const shuffled = fallbackOptions.sort(() => Math.random() - 0.5);
+    const correctIdx = shuffled.findIndex(
+      (l) => l.toLowerCase() === correctAnswer.toLowerCase(),
+    );
+
+    return {
+      options: shuffled.map((label, idx) => ({
+        id: `opt${idx + 1}`,
+        label,
+      })),
+      correctOptionId: `opt${correctIdx !== -1 ? correctIdx + 1 : 1}`,
+    };
+  }
+
+  private async buildQuestionOptions(
+    questionId: string,
+    lessonId: string,
+    blankAnswer: string,
+  ): Promise<Array<{ id: string; label: string }>> {
+    try {
+      const generatedOptions = await this.optionsGenerator.generateOptions(
+        blankAnswer,
+        lessonId,
+        false,
+      );
+
+      if (generatedOptions?.options?.length > 0) {
+        return generatedOptions.options.map((opt) => ({
+          id: opt.id,
+          label: opt.label,
+        }));
+      }
+
+      return await this.createFallbackFillBlankOptions(
+        lessonId,
+        blankAnswer,
+      );
+    } catch (error) {
+      this.handleQuestionErrors(
+        'FILL_BLANK_OPTIONS_FAILED',
+        questionId,
+        'Error generating fill-blank options',
+        error,
+      );
+      return this.createMinimalFillBlankOptions(blankAnswer);
+    }
+  }
+
+  private async createFallbackFillBlankOptions(
+    lessonId: string,
+    blankAnswer: string,
+  ): Promise<Array<{ id: string; label: string }>> {
+    const fallbackOptions: string[] = [blankAnswer];
+
+    try {
+      const lesson = await this.prisma.lesson.findUnique({
+        where: { id: lessonId },
+        include: {
+          teachings: {
+            select: {
+              learningLanguageString: true,
+            },
+          },
+        },
+      });
+
+      if (lesson) {
+        for (const t of lesson.teachings) {
+          if (t.learningLanguageString) {
+            const words = t.learningLanguageString.split(' ');
+            for (const word of words) {
+              if (
+                word.toLowerCase() !== blankAnswer.toLowerCase() &&
+                !fallbackOptions.some(
+                  (opt) => opt.toLowerCase() === word.toLowerCase(),
+                )
+              ) {
+                fallbackOptions.push(word);
+                if (fallbackOptions.length >= 4) break;
+              }
+            }
+            if (fallbackOptions.length >= 4) break;
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.logError('Error creating fallback fill-blank options', { error });
+    }
+
+    const commonWords = ['Sì', 'No', 'Ciao', 'Grazie', 'Per', 'Mille', 'Molto', 'Bene'];
+    for (const word of commonWords) {
+      if (fallbackOptions.length >= 4) break;
+      if (
+        word.toLowerCase() !== blankAnswer.toLowerCase() &&
+        !fallbackOptions.some((opt) => opt.toLowerCase() === word.toLowerCase())
+      ) {
+        fallbackOptions.push(word);
+      }
+    }
+
+    const shuffled = fallbackOptions.sort(() => Math.random() - 0.5);
+    return shuffled.map((label, idx) => ({
+      id: `opt${idx + 1}`,
+      label,
+    }));
+  }
+
+  private createMinimalFillBlankOptions(
+    blankAnswer: string,
+  ): Array<{ id: string; label: string }> {
+    return [
+      { id: 'opt1', label: blankAnswer },
+      { id: 'opt2', label: 'Sì' },
+      { id: 'opt3', label: 'No' },
+      { id: 'opt4', label: 'Ciao' },
+    ];
+  }
+
+  private formatQuestionResponse(
+    result: any,
+    teaching: any,
+    question: any,
+  ): any {
+    const questionTagNames = question.skillTags?.map((tag) => tag.name) || [];
+    const teachingTagNames = teaching.skillTags?.map((tag) => tag.name) || [];
+    result.skillTags = Array.from(
+      new Set([...questionTagNames, ...teachingTagNames]),
+    );
+
+    if (!result.hint && teaching.tip) {
+      result.hint = teaching.tip;
+    }
+
+    return result;
+  }
+
+  private handleQuestionErrors(
+    errorType: string,
+    questionId: string,
+    message: string,
+    error?: any,
+  ): void {
+    const errorContext = {
+      errorType,
+      questionId,
+      timestamp: new Date().toISOString(),
+    };
+
+    this.logger.logError(`[${errorType}] ${message}`, {
+      ...errorContext,
+      error,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+  }
+
+  async getQuestionData(
+    questionId: string,
+    lessonId: string,
+    deliveryMethod: DELIVERY_METHOD,
+  ): Promise<{
+    options?: Array<{ id: string; label: string }>;
+    correctOptionId?: string;
+    text?: string;
+    answer?: string;
+    hint?: string;
+    audioUrl?: string;
+    source?: string;
+    sourceText?: string;
+    explanation?: string;
+    prompt?: string;
+    skillTags?: string[];
+  } | null> {
+    const [question, variant] = await this.fetchQuestionRecord(
+      questionId,
+      deliveryMethod,
+    );
 
     if (!question || !question.teaching) {
       return null;
@@ -169,468 +504,135 @@ export class ContentLookupService {
     const variantData = (variant?.data ?? undefined) as any | undefined;
     const result: any = {};
 
-    // Use tip from teaching as hint
-    result.hint = teaching.tip || undefined;
-
-    // Extract skill tags from both question and teaching, deduplicate
-    const questionTagNames = question.skillTags?.map((tag) => tag.name) || [];
-    const teachingTagNames = teaching.skillTags?.map((tag) => tag.name) || [];
-    result.skillTags = Array.from(
-      new Set([...questionTagNames, ...teachingTagNames]),
-    );
-
-    // Determine answer and source based on delivery method
     switch (deliveryMethod) {
-      case DELIVERY_METHOD.MULTIPLE_CHOICE:
-        // Determine source text for translation MCQ (consistent per question)
-        // For MCQ, determine direction: learning->user or user->learning
-        const isLearningToUser = this.determineTranslationDirection(questionId);
-        const sourceText = isLearningToUser
-          ? teaching.learningLanguageString
-          : teaching.userLanguageString;
+      case DELIVERY_METHOD.MULTIPLE_CHOICE: {
+        const direction = this.determineAnswerDirection(questionId, teaching);
 
-        // Prefer QuestionVariant.data options when present
-        const variantOptions:
-          | Array<{ id: string; label: string; isCorrect?: boolean }>
-          | undefined = Array.isArray(variantData?.options)
-          ? variantData.options
-          : undefined;
+        const mcqResult = await this.generateMCQOptions(
+          questionId,
+          lessonId,
+          variantData,
+          direction,
+        );
 
-        if (variantOptions && variantOptions.length > 0) {
-          const labels = variantOptions.map((o) => o.label);
-          // If options look like they are in the same language as source, fall back to dynamic generation
-          if (!this.areOptionsInSameLanguage(sourceText || '', labels)) {
-            result.options = variantOptions.map((o) => ({
-              id: o.id,
-              label: o.label,
-            }));
-            const correct = variantOptions.find((o) => o.isCorrect);
-            result.correctOptionId = correct?.id ?? variantOptions[0].id;
-            result.sourceText = sourceText;
-            result.prompt =
-              typeof variantData?.prompt === 'string' &&
-              variantData.prompt.length > 0
-                ? variantData.prompt
-                : sourceText
-                  ? `How do you say '${sourceText}'?`
-                  : undefined;
-            if (typeof variantData?.explanation === 'string') {
-              result.explanation = variantData.explanation;
-            }
-            break;
-          } else {
-            console.warn(
-              `MULTIPLE_CHOICE question ${questionId} has options in same language as sourceText. Regenerating options dynamically.`,
-              { sourceText, labels },
-            );
-          }
+        if (!mcqResult) {
+          return null;
         }
 
-        // Generate options dynamically (either no DB options, or DB options were in wrong language)
-        // Fallback: Generate options dynamically (for backwards compatibility)
-        if (!result.options) {
-          const correctAnswer = isLearningToUser
-            ? teaching.userLanguageString
-            : teaching.learningLanguageString;
-
-          // Validate that we have required data
-          if (!correctAnswer) {
-            console.error(
-              `MULTIPLE_CHOICE question ${questionId} missing correct answer. Teaching:`,
-              {
-                userLanguageString: teaching.userLanguageString,
-                learningLanguageString: teaching.learningLanguageString,
-                isLearningToUser,
-              },
-            );
-            // Return null to indicate failure
-            return null;
-          }
-
-          // Generate options dynamically
-          try {
-            const generatedOptions =
-              await this.optionsGenerator.generateOptions(
-                correctAnswer,
-                lessonId,
-                isLearningToUser,
-              );
-
-            if (
-              !generatedOptions ||
-              !generatedOptions.options ||
-              generatedOptions.options.length === 0
-            ) {
-              console.error(
-                `Failed to generate options for question ${questionId}. Correct answer: ${correctAnswer}, Lesson ID: ${lessonId}`,
-              );
-              // Fallback: create options from other teachings in the lesson
-              const lesson = await this.prisma.lesson.findUnique({
-                where: { id: lessonId },
-                include: {
-                  teachings: {
-                    select: {
-                      userLanguageString: true,
-                      learningLanguageString: true,
-                    },
-                  },
-                },
-              });
-
-              const fallbackOptions: string[] = [correctAnswer];
-              if (lesson) {
-                for (const t of lesson.teachings) {
-                  const candidate = isLearningToUser
-                    ? t.userLanguageString
-                    : t.learningLanguageString;
-                  if (
-                    candidate &&
-                    candidate.toLowerCase() !== correctAnswer.toLowerCase()
-                  ) {
-                    fallbackOptions.push(candidate);
-                    if (fallbackOptions.length >= 4) break;
-                  }
-                }
-              }
-
-              // Pad with common words if needed
-              const commonWords = isLearningToUser
-                ? ['Yes', 'No', 'Hello', 'Goodbye']
-                : ['Sì', 'No', 'Ciao', 'Arrivederci'];
-              for (const word of commonWords) {
-                if (fallbackOptions.length >= 4) break;
-                if (
-                  word.toLowerCase() !== correctAnswer.toLowerCase() &&
-                  !fallbackOptions.includes(word)
-                ) {
-                  fallbackOptions.push(word);
-                }
-              }
-
-              // Shuffle and create options
-              const shuffled = fallbackOptions.sort(() => Math.random() - 0.5);
-              result.options = shuffled.map((label, idx) => ({
-                id: `opt${idx + 1}`,
-                label,
-              }));
-              const correctIdx = shuffled.findIndex((l) => l === correctAnswer);
-              result.correctOptionId = `opt${correctIdx + 1}`;
-            } else {
-              result.options = generatedOptions.options.map((opt) => ({
-                id: opt.id,
-                label: opt.label,
-              }));
-              result.correctOptionId = generatedOptions.correctOptionId;
-            }
-            result.sourceText = sourceText;
-            result.prompt = `How do you say '${sourceText}'?`;
-          } catch (error) {
-            console.error(
-              `Error generating options for question ${questionId}:`,
-              error,
-            );
-            if (error instanceof Error) {
-              console.error('Error stack:', error.stack);
-            }
-            // Fallback: create options from other teachings in the lesson
-            try {
-              const lesson = await this.prisma.lesson.findUnique({
-                where: { id: lessonId },
-                include: {
-                  teachings: {
-                    select: {
-                      userLanguageString: true,
-                      learningLanguageString: true,
-                    },
-                  },
-                },
-              });
-
-              const fallbackOptions: string[] = [correctAnswer];
-              if (lesson) {
-                for (const t of lesson.teachings) {
-                  const candidate = isLearningToUser
-                    ? t.userLanguageString
-                    : t.learningLanguageString;
-                  if (
-                    candidate &&
-                    candidate.toLowerCase() !== correctAnswer.toLowerCase()
-                  ) {
-                    fallbackOptions.push(candidate);
-                    if (fallbackOptions.length >= 4) break;
-                  }
-                }
-              }
-
-              // Pad with common words if needed
-              const commonWords = isLearningToUser
-                ? ['Yes', 'No', 'Hello', 'Goodbye']
-                : ['Sì', 'No', 'Ciao', 'Arrivederci'];
-              for (const word of commonWords) {
-                if (fallbackOptions.length >= 4) break;
-                if (
-                  word.toLowerCase() !== correctAnswer.toLowerCase() &&
-                  !fallbackOptions.includes(word)
-                ) {
-                  fallbackOptions.push(word);
-                }
-              }
-
-              // Shuffle and create options
-              const shuffled = fallbackOptions.sort(() => Math.random() - 0.5);
-              result.options = shuffled.map((label, idx) => ({
-                id: `opt${idx + 1}`,
-                label,
-              }));
-              const correctIdx = shuffled.findIndex((l) => l === correctAnswer);
-              result.correctOptionId = `opt${correctIdx + 1}`;
-            } catch (fallbackError) {
-              console.error(
-                'Fallback options generation also failed:',
-                fallbackError,
-              );
-              // Last resort: minimal options
-              result.options = [
-                { id: 'opt1', label: correctAnswer },
-                { id: 'opt2', label: isLearningToUser ? 'Yes' : 'Sì' },
-                { id: 'opt3', label: isLearningToUser ? 'No' : 'No' },
-                { id: 'opt4', label: isLearningToUser ? 'Hello' : 'Ciao' },
-              ];
-              result.correctOptionId = 'opt1';
-            }
-            result.sourceText = sourceText || undefined;
-            result.prompt = sourceText
-              ? `How do you say '${sourceText}'?`
-              : undefined;
-          }
+        result.options = mcqResult.options;
+        result.correctOptionId = mcqResult.correctOptionId;
+        result.sourceText = direction.sourceText;
+        if (mcqResult.explanation) {
+          result.explanation = mcqResult.explanation;
         }
 
-        // Final validation: ensure we always have options and correctOptionId
-        if (
-          !result.options ||
-          result.options.length === 0 ||
-          !result.correctOptionId
-        ) {
-          console.error(
-            `MULTIPLE_CHOICE question ${questionId} failed to generate valid options. Result:`,
-            {
-              hasOptions: !!result.options,
-              optionsLength: result.options?.length,
-              hasCorrectOptionId: !!result.correctOptionId,
-            },
+        result.prompt = this.buildQuestionPrompt(
+          deliveryMethod,
+          variantData,
+          { sourceText: direction.sourceText },
+        );
+
+        if (!result.options || result.options.length === 0 || !result.correctOptionId) {
+          this.handleQuestionErrors(
+            'MCQ_VALIDATION_FAILED',
+            questionId,
+            'Failed final validation for MCQ options',
           );
-          // Last resort: ensure we have at least minimal options
-          if (!result.options || result.options.length === 0) {
-            const correctAnswer = isLearningToUser
-              ? teaching.userLanguageString
-              : teaching.learningLanguageString;
-            result.options = [
-              { id: 'opt1', label: correctAnswer || 'Option 1' },
-              { id: 'opt2', label: isLearningToUser ? 'Yes' : 'Sì' },
-              { id: 'opt3', label: isLearningToUser ? 'No' : 'No' },
-              { id: 'opt4', label: isLearningToUser ? 'Hello' : 'Ciao' },
-            ];
-          }
-          if (!result.correctOptionId) {
-            result.correctOptionId = 'opt1';
-          }
+          const correctAnswer = direction.correctAnswer;
+          result.options = [
+            { id: 'opt1', label: correctAnswer || 'Option 1' },
+            { id: 'opt2', label: direction.isLearningToUser ? 'Yes' : 'Sì' },
+            { id: 'opt3', label: direction.isLearningToUser ? 'No' : 'No' },
+            { id: 'opt4', label: direction.isLearningToUser ? 'Hello' : 'Ciao' },
+          ];
+          result.correctOptionId = 'opt1';
         }
         break;
+      }
 
       case DELIVERY_METHOD.TEXT_TRANSLATION:
-      case DELIVERY_METHOD.FLASHCARD:
+      case DELIVERY_METHOD.FLASHCARD: {
         result.source = variantData?.source ?? teaching.learningLanguageString;
         result.answer = variantData?.answer ?? teaching.userLanguageString;
-        result.hint = variantData?.hint ?? result.hint;
-        result.prompt =
-          typeof variantData?.prompt === 'string' &&
-          variantData.prompt.length > 0
-            ? variantData.prompt
-            : `Translate '${result.source}' to English`;
+        result.hint = variantData?.hint ?? teaching.tip;
+        result.prompt = this.buildQuestionPrompt(
+          deliveryMethod,
+          variantData,
+          { source: result.source },
+        );
         break;
+      }
 
-      case DELIVERY_METHOD.FILL_BLANK:
-        // Prefer variant payload if provided
+      case DELIVERY_METHOD.FILL_BLANK: {
         if (variantData?.text && variantData?.answer) {
           result.text = variantData.text;
           result.answer = variantData.answer;
-          result.hint = variantData?.hint ?? result.hint;
-          result.prompt =
-            typeof variantData?.prompt === 'string' &&
-            variantData.prompt.length > 0
-              ? variantData.prompt
-              : 'Complete the sentence';
+          result.hint = variantData?.hint ?? teaching.tip;
+          result.prompt = this.buildQuestionPrompt(
+            deliveryMethod,
+            variantData,
+            {},
+          );
 
-          // Generate options for tap-to-fill UI (mobile expects options for FILL_BLANK)
           const blankAnswer = String(result.answer);
-          try {
-            const generatedOptions =
-              await this.optionsGenerator.generateOptions(
-                blankAnswer,
-                lessonId,
-                false, // Fill blank uses learning language
-              );
-            if (generatedOptions?.options?.length) {
-              result.options = generatedOptions.options.map((opt) => ({
-                id: opt.id,
-                label: opt.label,
-              }));
-            }
-          } catch (error) {
-            console.error(
-              `Error generating fill-blank options for question ${questionId} (variant payload):`,
-              error,
-            );
-          }
-
-          // Last resort: minimal options
-          if (!result.options || result.options.length === 0) {
-            result.options = [
-              { id: 'opt1', label: blankAnswer },
-              { id: 'opt2', label: 'Sì' },
-              { id: 'opt3', label: 'No' },
-              { id: 'opt4', label: 'Ciao' },
-            ];
-          }
-          break;
-        }
-
-        // Fill blank: create a sentence with blank, generate options
-        // For single words, create a simple sentence like "Grazie ___"
-        const learningPhrase = teaching.learningLanguageString.trim();
-        const answer = learningPhrase; // The word that fills the blank
-
-        // Create text with blank
-        // For single words, put blank before: "___ Grazie"
-        // For phrases, replace the last word with blank: "Grazie ___"
-        if (learningPhrase.includes(' ')) {
-          // Multi-word phrase: replace last word with blank
-          const words = learningPhrase.split(' ');
-          const lastWord = words[words.length - 1];
-          result.text = learningPhrase.replace(
-            new RegExp(
-              `\\s+${lastWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
-            ),
-            ' ___',
-          );
-          result.answer = lastWord; // Answer is the last word
-        } else {
-          // Single word: put blank before it so user selects the word
-          result.text = `___ ${learningPhrase}`;
-          result.answer = learningPhrase; // Answer is the word itself
-        }
-        result.prompt = `Complete the sentence`;
-
-        // Generate options for fill-blank (similar to multiple choice)
-        // Use the actual answer (word that fills the blank)
-        const blankAnswer = result.answer || answer;
-        try {
-          const generatedOptions = await this.optionsGenerator.generateOptions(
-            blankAnswer,
+          result.options = await this.buildQuestionOptions(
+            questionId,
             lessonId,
-            false, // Fill blank uses learning language
+            blankAnswer,
           );
 
-          if (
-            generatedOptions &&
-            generatedOptions.options &&
-            generatedOptions.options.length > 0
-          ) {
-            result.options = generatedOptions.options.map((opt) => ({
-              id: opt.id,
-              label: opt.label,
-            }));
-          } else {
-            // Fallback: create options from other teachings
-            const lesson = await this.prisma.lesson.findUnique({
-              where: { id: lessonId },
-              include: {
-                teachings: {
-                  select: {
-                    learningLanguageString: true,
-                  },
-                },
-              },
-            });
-
-            const fallbackOptions: string[] = [blankAnswer];
-            if (lesson) {
-              for (const t of lesson.teachings) {
-                if (t.learningLanguageString) {
-                  // For multi-word phrases, extract words as potential options
-                  const words = t.learningLanguageString.split(' ');
-                  for (const word of words) {
-                    if (
-                      word.toLowerCase() !== blankAnswer.toLowerCase() &&
-                      !fallbackOptions.some(
-                        (opt) => opt.toLowerCase() === word.toLowerCase(),
-                      )
-                    ) {
-                      fallbackOptions.push(word);
-                      if (fallbackOptions.length >= 4) break;
-                    }
-                  }
-                  if (fallbackOptions.length >= 4) break;
-                }
-              }
-            }
-
-            // Pad with common words if needed
-            const commonWords = [
-              'Sì',
-              'No',
-              'Ciao',
-              'Grazie',
-              'Per',
-              'Mille',
-              'Molto',
-              'Bene',
-            ];
-            for (const word of commonWords) {
-              if (fallbackOptions.length >= 4) break;
-              if (
-                word.toLowerCase() !== blankAnswer.toLowerCase() &&
-                !fallbackOptions.some(
-                  (opt) => opt.toLowerCase() === word.toLowerCase(),
-                )
-              ) {
-                fallbackOptions.push(word);
-              }
-            }
-
-            // Shuffle and create options
-            const shuffled = fallbackOptions.sort(() => Math.random() - 0.5);
-            result.options = shuffled.map((label, idx) => ({
-              id: `opt${idx + 1}`,
-              label,
-            }));
+          if (!result.options || result.options.length === 0) {
+            result.options = this.createMinimalFillBlankOptions(blankAnswer);
           }
-        } catch (error) {
-          console.error(
-            `Error generating fill-blank options for question ${questionId}:`,
-            error,
+        } else {
+          const learningPhrase = teaching.learningLanguageString.trim();
+
+          if (learningPhrase.includes(' ')) {
+            const words = learningPhrase.split(' ');
+            const lastWord = words[words.length - 1];
+            result.text = learningPhrase.replace(
+              new RegExp(
+                `\\s+${lastWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`,
+              ),
+              ' ___',
+            );
+            result.answer = lastWord;
+          } else {
+            result.text = `___ ${learningPhrase}`;
+            result.answer = learningPhrase;
+          }
+
+          result.prompt = this.buildQuestionPrompt(
+            deliveryMethod,
+            variantData,
+            {},
           );
-          // Last resort: minimal options
-          result.options = [
-            { id: 'opt1', label: blankAnswer },
-            { id: 'opt2', label: 'Sì' },
-            { id: 'opt3', label: 'No' },
-            { id: 'opt4', label: 'Ciao' },
-          ];
+
+          result.options = await this.buildQuestionOptions(
+            questionId,
+            lessonId,
+            result.answer,
+          );
+
+          if (!result.options || result.options.length === 0) {
+            result.options = this.createMinimalFillBlankOptions(result.answer);
+          }
         }
         break;
+      }
 
       case DELIVERY_METHOD.SPEECH_TO_TEXT:
-      case DELIVERY_METHOD.TEXT_TO_SPEECH:
+      case DELIVERY_METHOD.TEXT_TO_SPEECH: {
         result.answer = variantData?.answer ?? teaching.learningLanguageString;
-        result.prompt =
-          typeof variantData?.prompt === 'string' &&
-          variantData.prompt.length > 0
-            ? variantData.prompt
-            : `Listen and type what you hear`;
+        result.prompt = this.buildQuestionPrompt(
+          deliveryMethod,
+          variantData,
+          {},
+        );
         break;
+      }
     }
 
-    return result;
+    return this.formatQuestionResponse(result, teaching, question);
   }
 }

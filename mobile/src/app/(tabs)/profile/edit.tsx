@@ -32,8 +32,10 @@ import {
 import type { SessionDefaultMode } from '@/services/preferences';
 import type { OnboardingAnswers } from '@/types/onboarding';
 import { routes } from '@/services/navigation/routes';
+import { createLogger } from '@/services/logging';
 
-// Onboarding option sets (same as onboarding screens)
+const logger = createLogger('EditProfileScreen');
+
 const MOTIVATION_OPTIONS = [
   { key: 'travel', label: 'For travel' },
   { key: 'family', label: 'Family & friends' },
@@ -89,14 +91,52 @@ const MODE_OPTIONS: { value: SessionDefaultMode; label: string }[] = [
   { value: 'mixed', label: 'Mixed' },
 ];
 
+/** Build raw answers from backend response: supports submission.raw, flat answers, or preferences */
+function getRawAnswersFromResponse(answers: Record<string, unknown>): Record<string, unknown> | null {
+  if (!answers || typeof answers !== 'object') return null;
+  const raw = answers.raw;
+  if (raw && typeof raw === 'object') return raw as Record<string, unknown>;
+  if (
+    'motivation' in answers ||
+    'learningStyles' in answers ||
+    'difficulty' in answers ||
+    'experience' in answers
+  ) {
+    return answers;
+  }
+  const prefs = answers.preferences;
+  if (prefs && typeof prefs === 'object') {
+    const p = prefs as Record<string, unknown>;
+    return {
+      motivation: typeof p.goal === 'string' && p.goal ? { key: p.goal } : undefined,
+      learningStyles: Array.isArray(p.learningStyles) ? p.learningStyles : undefined,
+      memoryHabit: typeof p.memoryHabit === 'string' ? p.memoryHabit : undefined,
+      difficulty: typeof p.difficulty === 'string' ? p.difficulty : undefined,
+      gamification: typeof p.gamification === 'string' ? p.gamification : undefined,
+      feedback: typeof p.feedback === 'string' ? p.feedback : undefined,
+      sessionStyle: typeof p.sessionStyle === 'string' ? p.sessionStyle : undefined,
+      tone: typeof p.tone === 'string' ? p.tone : undefined,
+      experience: typeof p.experience === 'string' ? p.experience : undefined,
+    };
+  }
+  return null;
+}
+
 function normalizeAnswers(raw: Record<string, unknown> | null | undefined): OnboardingAnswers {
   if (!raw || typeof raw !== 'object') return {};
   const a = raw as Record<string, unknown>;
+  let motivation: OnboardingAnswers['motivation'];
+  if (a.motivation && typeof a.motivation === 'object' && a.motivation !== null && 'key' in a.motivation) {
+    motivation = { key: String((a.motivation as { key: unknown }).key), otherText: undefined };
+  } else if (typeof a.motivation === 'string' && a.motivation) {
+    motivation = { key: a.motivation, otherText: undefined };
+  } else if (typeof a.goal === 'string' && a.goal) {
+    motivation = { key: a.goal, otherText: undefined };
+  } else {
+    motivation = undefined;
+  }
   return {
-    motivation:
-      a.motivation && typeof a.motivation === 'object' && a.motivation !== null && 'key' in a.motivation
-        ? { key: String((a.motivation as { key: unknown }).key), otherText: undefined }
-        : undefined,
+    motivation,
     learningStyles: Array.isArray(a.learningStyles) ? a.learningStyles.map(String) : undefined,
     memoryHabit: typeof a.memoryHabit === 'string' ? a.memoryHabit : undefined,
     difficulty: typeof a.difficulty === 'string' ? a.difficulty : undefined,
@@ -124,13 +164,16 @@ export default function EditProfileScreen() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [profileRes, onboardingRes, adaptivityVal, modeVal, budgetVal] = await Promise.all([
+      const results = await Promise.allSettled([
         getMyProfile(),
-        getOnboarding().catch(() => null),
+        getOnboarding(),
         getAdaptivityEnabled(),
         getSessionDefaultMode(),
         getSessionDefaultTimeBudgetSec(),
       ]);
+      const [profileRes, onboardingRes, adaptivityVal, modeVal, budgetVal] = results.map((r) =>
+        r.status === 'fulfilled' ? r.value : null,
+      );
       if (profileRes) {
         setProfileId(profileRes.id);
         setName(profileRes.displayName || profileRes.name || '');
@@ -150,11 +193,12 @@ export default function EditProfileScreen() {
         }
       }
       if (onboardingRes?.answers) {
-        setOnboarding(normalizeAnswers(onboardingRes.answers as Record<string, unknown>));
+        const raw = getRawAnswersFromResponse(onboardingRes.answers as Record<string, unknown>);
+        if (raw) setOnboarding(normalizeAnswers(raw));
       }
-      setAdaptivity(adaptivityVal);
-      setSessionMode(modeVal);
-      setTimeBudgetSec(budgetVal);
+      if (adaptivityVal != null) setAdaptivity(adaptivityVal);
+      if (modeVal != null) setSessionMode(modeVal);
+      if (budgetVal != null) setTimeBudgetSec(budgetVal);
     } finally {
       setLoading(false);
     }
@@ -179,7 +223,7 @@ export default function EditProfileScreen() {
       await setSessionDefaultTimeBudgetSec(timeBudgetSec);
       router.replace(routes.tabs.profile.index);
     } catch (e) {
-      console.error(e);
+      logger.error('Failed to save profile', e);
       Alert.alert('Error', 'Failed to save. Please try again.');
     } finally {
       setSaving(false);
@@ -576,14 +620,14 @@ function SelectRow({
                 borderRadius: baseTheme.radius.sm,
                 backgroundColor: isSelected ? theme.colors.primary : theme.colors.background,
                 borderWidth: 1,
-                borderColor: theme.colors.border,
+                borderColor: isSelected ? theme.colors.primary : theme.colors.border,
               }}
             >
               <Text
                 style={{
                   fontSize: 13,
                   fontFamily: baseTheme.typography.medium,
-                  color: isSelected ? '#fff' : theme.colors.text,
+                  color: isSelected ? theme.colors.onPrimary : theme.colors.text,
                 }}
               >
                 {opt.label}
@@ -635,14 +679,14 @@ function SelectRowMulti({
                 borderRadius: baseTheme.radius.sm,
                 backgroundColor: isSelected ? theme.colors.primary : theme.colors.background,
                 borderWidth: 1,
-                borderColor: theme.colors.border,
+                borderColor: isSelected ? theme.colors.primary : theme.colors.border,
               }}
             >
               <Text
                 style={{
                   fontSize: 13,
                   fontFamily: baseTheme.typography.medium,
-                  color: isSelected ? '#fff' : theme.colors.text,
+                  color: isSelected ? theme.colors.onPrimary : theme.colors.text,
                 }}
               >
                 {opt.label}

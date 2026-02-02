@@ -3,8 +3,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SaveOnboardingDto, OnboardingResponseDto } from './dto/onboarding.dto';
 import { DELIVERY_METHOD } from '@prisma/client';
 import { OnboardingPreferencesService } from './onboarding-preferences.service';
+import { LoggerService } from '../common/logger';
 
-// Business logic constants (moved from frontend)
 const DIFFICULTY_WEIGHTS: Record<string, number> = {
   easy: 0.25,
   balanced: 0.5,
@@ -68,10 +68,6 @@ interface OnboardingSubmission {
   savedAt: string;
 }
 
-/**
- * Build onboarding submission from raw answers
- * This business logic was moved from frontend to backend
- */
 function buildOnboardingSubmission(
   answers: OnboardingAnswers,
 ): OnboardingSubmission {
@@ -118,6 +114,8 @@ function buildOnboardingSubmission(
 
 @Injectable()
 export class OnboardingService {
+  private readonly logger = new LoggerService(OnboardingService.name);
+
   constructor(
     private prisma: PrismaService,
     private preferencesService: OnboardingPreferencesService,
@@ -127,13 +125,9 @@ export class OnboardingService {
     userId: string,
     dto: SaveOnboardingDto,
   ): Promise<OnboardingResponseDto> {
-    // Accept raw OnboardingAnswers and process them server-side
     const rawAnswers = dto.answers as OnboardingAnswers;
-
-    // Build complete submission with computed fields
     const submission = buildOnboardingSubmission(rawAnswers);
 
-    // Store processed submission in database
     const onboarding = await this.prisma.onboardingAnswer.upsert({
       where: { userId },
       update: {
@@ -146,8 +140,6 @@ export class OnboardingService {
       },
     });
 
-    // Initialize delivery method scores from onboarding preferences
-    // Only initialize if user doesn't have existing scores (to preserve performance data)
     await this.initializeDeliveryMethodScores(userId);
 
     return {
@@ -158,16 +150,11 @@ export class OnboardingService {
     };
   }
 
-  /**
-   * Initialize delivery method scores from onboarding preferences.
-   * Only creates scores for methods that don't already exist (preserves performance data).
-   */
   private async initializeDeliveryMethodScores(userId: string): Promise<void> {
     try {
       const initialScores =
         await this.preferencesService.getInitialDeliveryMethodScores(userId);
 
-      // Get existing scores to avoid overwriting performance data
       const existingScores = await this.prisma.userDeliveryMethodScore.findMany({
         where: { userId },
         select: { deliveryMethod: true },
@@ -177,7 +164,6 @@ export class OnboardingService {
         existingScores.map((s) => s.deliveryMethod),
       );
 
-      // Create scores only for methods that don't exist yet
       const scoresToCreate = Array.from(initialScores.entries())
         .filter(([method]) => !existingMethods.has(method))
         .map(([deliveryMethod, score]) => ({
@@ -193,10 +179,10 @@ export class OnboardingService {
         });
       }
     } catch (error) {
-      // Log error but don't fail onboarding save
-      console.error(
-        `Failed to initialize delivery method scores for user ${userId}:`,
+      this.logger.logError(
+        'Failed to initialize delivery method scores',
         error,
+        { userId },
       );
     }
   }

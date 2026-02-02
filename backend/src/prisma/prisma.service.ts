@@ -25,7 +25,6 @@ export class PrismaService
   };
 
   constructor(private configService: ConfigService) {
-    // Extract config values before calling super()
     const nodeEnv = configService.get<string>('server.nodeEnv', 'development');
     const connectionString = configService.get<string>('database.url') || '';
     if (!connectionString) {
@@ -52,10 +51,8 @@ export class PrismaService
 
     const pool = new Pool({
       connectionString,
-      // Force SSL configuration - this overrides sslmode in connection string
       ssl: sslConfig,
-      // Additional connection options
-      max: poolCfg.max ?? 20, // Maximum number of clients in the pool
+      max: poolCfg.max ?? 20,
       idleTimeoutMillis: poolCfg.idleTimeoutMillis ?? 30000,
       connectionTimeoutMillis: poolCfg.connectionTimeoutMillis ?? 10000,
     });
@@ -64,7 +61,6 @@ export class PrismaService
     super({ adapter });
     this.pool = pool;
 
-    // Store for health/debug and logging (no secrets should ever be logged).
     this.connectionString = connectionString;
     this.sslRejectUnauthorized = sslRejectUnauthorized;
     this.poolConfig = {
@@ -75,19 +71,14 @@ export class PrismaService
   }
 
   async onModuleInit() {
-    // Connect to the database when the module initializes
-    // In test environment, allow connection to fail gracefully
     try {
       await this.$connect();
-      // Force an actual round-trip so DB connectivity issues fail fast at startup
       await this.$queryRaw`SELECT 1`;
     } catch (error) {
-      // In test environment, log but don't fail app initialization
-      // This allows auth tests to run even without a database
+      // Allow test environment to start without DB
       if (process.env.NODE_ENV === 'test') {
-        console.warn(
-          'Database connection failed in test environment:',
-          error.message,
+        this.logger.warn(
+          `Database connection failed in test environment: ${error.message}`,
         );
       } else {
         this.logger.error(
@@ -113,9 +104,7 @@ export class PrismaService
       host = url.hostname || undefined;
       port = url.port ? parseInt(url.port, 10) : undefined;
       database = url.pathname?.replace(/^\//, '') || undefined;
-    } catch {
-      // If DATABASE_URL isn't a valid URL (should be), just omit parsed parts.
-    }
+    } catch {}
 
     const isSupabasePooler = host?.includes('pooler.supabase.com');
     const hasPgBouncerHint =
@@ -144,20 +133,14 @@ export class PrismaService
   }
 
   async onModuleDestroy() {
-    // Disconnect from the database when the module is destroyed
     try {
       await this.$disconnect();
-    } catch (error) {
-      // Ignore disconnect errors (might already be disconnected)
-    }
+    } catch (error) {}
 
-    // Close the connection pool
     if (this.pool) {
       try {
         await this.pool.end();
-      } catch (error) {
-        // Ignore pool end errors
-      }
+      } catch (error) {}
       this.pool = null;
     }
   }

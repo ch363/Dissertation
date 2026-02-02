@@ -1,11 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Lesson } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateLessonDto } from './dto/create-lesson.dto';
-import { UpdateLessonDto } from './dto/update-lesson.dto';
+import { BaseCrudService } from '../common/services/base-crud.service';
 
 @Injectable()
-export class LessonsService {
-  constructor(private prisma: PrismaService) {}
+export class LessonsService extends BaseCrudService<Lesson> {
+  constructor(prisma: PrismaService) {
+    super(prisma, 'lesson', 'Lesson');
+  }
 
   async findAll(moduleId?: string) {
     const where = moduleId ? { moduleId } : {};
@@ -43,56 +45,6 @@ export class LessonsService {
     return lesson;
   }
 
-  async create(createDto: CreateLessonDto) {
-    // Authorization: Admin access required. Authorization is enforced at the Controller level via @UseGuards(SupabaseJwtGuard).
-    // TODO: Implement admin role check in Controller guard (see lessons.controller.ts)
-    return this.prisma.lesson.create({
-      data: createDto,
-      include: {
-        module: {
-          select: {
-            id: true,
-            title: true,
-          },
-        },
-      },
-    });
-  }
-
-  async update(id: string, updateDto: UpdateLessonDto) {
-    // Authorization: Admin access required. Authorization is enforced at the Controller level via @UseGuards(SupabaseJwtGuard).
-    // TODO: Implement admin role check in Controller guard (see lessons.controller.ts)
-    try {
-      return await this.prisma.lesson.update({
-        where: { id },
-        data: updateDto,
-        include: {
-          module: {
-            select: {
-              id: true,
-              title: true,
-            },
-          },
-        },
-      });
-    } catch (error) {
-      throw new NotFoundException(`Lesson with ID ${id} not found`);
-    }
-  }
-
-  async remove(id: string) {
-    // Authorization: Admin access required. Authorization is enforced at the Controller level via @UseGuards(SupabaseJwtGuard).
-    // TODO: Implement admin role check in Controller guard (see lessons.controller.ts)
-    // Cascade delete is handled by Prisma schema
-    try {
-      return await this.prisma.lesson.delete({
-        where: { id },
-      });
-    } catch (error) {
-      throw new NotFoundException(`Lesson with ID ${id} not found`);
-    }
-  }
-
   async findTeachings(lessonId: string) {
     const lesson = await this.prisma.lesson.findUnique({
       where: { id: lessonId },
@@ -111,9 +63,6 @@ export class LessonsService {
   }
 
   async findRecommended(userId?: string) {
-    // Return recommended lessons
-    // Algorithm: lessons with teachings matching user's knowledge level, or most popular
-    // For now, return lessons with most teachings (as a proxy for popularity/completeness)
     const lessons = await this.prisma.lesson.findMany({
       include: {
         module: {
@@ -133,7 +82,6 @@ export class LessonsService {
       take: 10,
     });
 
-    // If userId provided, prioritize lessons matching user's knowledge level
     if (userId) {
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
@@ -141,7 +89,6 @@ export class LessonsService {
       });
 
       if (user?.knowledgeLevel) {
-        // Sort by number of teachings matching user's level
         lessons.sort((a, b) => {
           const aMatches = a.teachings.filter(
             (t) => t.knowledgeLevel === user.knowledgeLevel,

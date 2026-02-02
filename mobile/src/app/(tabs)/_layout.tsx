@@ -9,12 +9,13 @@ import { useAuth } from '@/services/auth/AuthProvider';
 import { routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
+import { CustomTabBarProps, Route, TabIconName } from '@/types/navigation.types';
 
-function CustomTabBar({ state, descriptors, navigation }: any) {
+function CustomTabBar({ state, descriptors, navigation }: CustomTabBarProps) {
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
   const allowed = new Set(['home/index', 'learn', 'learn/index', 'profile']);
-  const visibleRoutes = state.routes.filter((route: any) => allowed.has(route.name));
+  const visibleRoutes = state.routes.filter((route: Route) => allowed.has(route.name));
   const focusedKey = state.routes?.[state.index]?.key;
   const currentRouteName = state.routes?.[state.index]?.name ?? '';
 
@@ -24,7 +25,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
     return routes.tabs.home;
   };
 
-  const iconNameForRoute = (route: any) => {
+  const iconNameForRoute = (route: Route): TabIconName => {
     const rn: string = String(route.name ?? '');
     if (rn.includes('learn')) return 'book';
     if (rn.includes('profile')) return 'person';
@@ -36,9 +37,9 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
       style={[
         styles.tabBarWrapper,
         {
-          backgroundColor: '#FFFFFF',
-          shadowColor: '#000000',
-          paddingBottom: insets.bottom, // paint safe area with white
+          backgroundColor: theme.colors.card,
+          shadowColor: theme.colors.border,
+          paddingBottom: insets.bottom,
         },
       ]}
     >
@@ -46,11 +47,11 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         style={[
           styles.tabBar,
           {
-            backgroundColor: '#FFFFFF',
+            backgroundColor: theme.colors.card,
           },
         ]}
       >
-        {visibleRoutes.map((route: any, idx: number) => {
+        {visibleRoutes.map((route: Route, idx: number) => {
           const isFocused =
             route.key === focusedKey || (currentRouteName === 'settings' && route.name === 'profile');
           const onPress = () => {
@@ -64,7 +65,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
             if (event.defaultPrevented) return;
             // If the tab is already focused and its nested navigator is already at its root,
             // do nothing (avoids a redundant navigation animation / screen re-mount).
-            const nestedStateIndex = (route as any)?.state?.index;
+            const nestedStateIndex = route.state?.index;
             const isAtTabRoot = nestedStateIndex === undefined || nestedStateIndex === 0;
             if (isFocused && isAtTabRoot) return;
             // Always jump to the tab's root route so deep stacks can't "trap" users.

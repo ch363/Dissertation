@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { LoadingRow } from '@/components/ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ import { makeSessionId } from '@/features/session/sessionBuilder';
 import { routeBuilders, routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
+import { useAsyncData } from '@/hooks/useAsyncData';
 
 type LessonGroup = {
   lessonId: string;
@@ -34,37 +35,16 @@ function safeTitle(s?: string | null, fallback: string = 'Unknown') {
 
 export default function ProfileReviewsScreen() {
   const { theme } = useAppTheme();
-  const [due, setDue] = useState<DueReviewLatest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await getDueReviewsLatest();
-        if (!cancelled) setDue(data || []);
-      } catch (e: any) {
-        console.error('Failed to load due reviews:', e);
-        if (!cancelled) setError(e?.message || 'Failed to load due reviews');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data: due, loading, error } = useAsyncData<DueReviewLatest[]>(
+    'ProfileReviewsScreen',
+    async () => await getDueReviewsLatest(),
+    []
+  );
 
   const grouped: ModuleGroup[] = useMemo(() => {
     const moduleMap = new Map<string, { title: string; lessonMap: Map<string, LessonGroup> }>();
 
-    for (const r of due || []) {
+    for (const r of due ?? []) {
       const lesson = r.question?.teaching?.lesson;
       const module = lesson?.module;
 
@@ -126,7 +106,7 @@ export default function ProfileReviewsScreen() {
     });
   };
 
-  const totalDue = due?.length || 0;
+  const totalDue = due?.length ?? 0;
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>

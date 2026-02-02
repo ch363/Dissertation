@@ -7,9 +7,24 @@ export default function Gamification() {
   const { answers, setAnswerAndSave } = useOnboarding();
 
   const options = [
-    { key: 'light', icon: 'star-outline', label: 'Light gamification (streaks, stars)' },
-    { key: 'none', icon: 'close-circle-outline', label: 'No gamification' },
-    { key: 'full', icon: 'trophy-outline', label: 'Lots of challenges & rewards' },
+    { 
+      key: 'light', 
+      icon: 'star-outline', 
+      label: 'Light gamification (streaks, stars)',
+      description: 'Simple progress tracking to stay motivated'
+    },
+    { 
+      key: 'none', 
+      icon: 'close-circle-outline', 
+      label: 'No gamification',
+      description: 'Pure learning without game elements'
+    },
+    { 
+      key: 'full', 
+      icon: 'trophy-outline', 
+      label: 'Lots of challenges & rewards',
+      description: 'Complete game experience with achievements'
+    },
   ];
 
   return (

@@ -18,6 +18,11 @@ import {
 import { DELIVERY_METHOD, Prisma } from '@prisma/client';
 import { SrsService } from '../engine/srs/srs.service';
 import { XpService } from '../engine/scoring/xp.service';
+import { isMissingColumnOrSchemaMismatchError } from '../common/utils/prisma-error.util';
+import { getEndOfLocalDayUtc } from '../common/utils/date.util';
+import { normalizeTitle } from '../common/utils/string.util';
+import { isValidUuid } from '../common/utils/sanitize.util';
+import { LoggerService } from '../common/logger';
 import { ContentLookupService } from '../content/content-lookup.service';
 import { MasteryService } from '../engine/mastery/mastery.service';
 import { SessionPlanCacheService } from '../engine/content-delivery/session-plan-cache.service';
@@ -27,6 +32,8 @@ import { OnboardingPreferencesService } from '../onboarding/onboarding-preferenc
 
 @Injectable()
 export class ProgressService {
+  private readonly logger = new LoggerService(ProgressService.name);
+
   constructor(
     private prisma: PrismaService,
     private srsService: SrsService,
@@ -38,43 +45,7 @@ export class ProgressService {
     private onboardingPreferences: OnboardingPreferencesService,
   ) {}
 
-  /**
-   * Some environments may run against a database that hasn't been migrated yet.
-   * When newer columns (e.g. nextReviewDue/lastRevisedAt) are missing, Prisma can throw
-   * errors like "The column `(not available)` does not exist in the current database."
-   * In those cases, we fall back to safe defaults rather than 500'ing core endpoints.
-   */
-  private isMissingColumnOrSchemaMismatchError(error: any): boolean {
-    const message = String(error?.message ?? '');
-    return (
-      message.includes('does not exist in the current database') ||
-      message.includes('does not exist') ||
-      message.includes('(not available)')
-    );
-  }
-
-  private getEndOfLocalDayUtc(now: Date, tzOffsetMinutes?: number): Date {
-    if (!Number.isFinite(tzOffsetMinutes)) return now;
-    if (tzOffsetMinutes! < -14 * 60 || tzOffsetMinutes! > 14 * 60) return now;
-
-    const offsetMs = tzOffsetMinutes! * 60_000;
-    const localNow = new Date(now.getTime() - offsetMs);
-    const endOfLocalDayShiftedUtc = new Date(
-      Date.UTC(
-        localNow.getUTCFullYear(),
-        localNow.getUTCMonth(),
-        localNow.getUTCDate(),
-        23,
-        59,
-        59,
-        999,
-      ),
-    );
-    return new Date(endOfLocalDayShiftedUtc.getTime() + offsetMs);
-  }
-
   async startLesson(userId: string, lessonId: string) {
-    // Upsert UserLesson idempotently
     return this.prisma.userLesson.upsert({
       where: {
         userId_lessonId: {
@@ -127,9 +98,6 @@ export class ProgressService {
 
     const lessonIds = userLessons.map((ul) => ul.lessonId);
 
-    // Load teachings for these lessons (and questions for due review aggregation).
-    // Note: We intentionally compute counts from source-of-truth tables so the UI
-    // doesn't get stuck on stale denormalized counters (e.g. completedTeachings).
     const teachings = await this.prisma.teaching.findMany({
       where: {
         lessonId: { in: lessonIds },
@@ -160,7 +128,6 @@ export class ProgressService {
       }
     }
 
-    // Compute completed teachings per lesson from UserTeachingCompleted (source of truth).
     const teachingIds = teachings.map((t) => t.id);
     const completedRows =
       teachingIds.length > 0
@@ -183,9 +150,8 @@ export class ProgressService {
       completedTeachingsByLessonId.set(lessonId, set);
     }
 
-    // Compute due review counts per lesson (deduped by questionId).
     const now = new Date();
-    const dueCutoff = this.getEndOfLocalDayUtc(now, tzOffsetMinutes);
+    const dueCutoff = getEndOfLocalDayUtc(now, tzOffsetMinutes);
     const questionIds = teachings.flatMap((t) => t.questions.map((q) => q.id));
     let dueReviews: Array<{ questionId: string; createdAt: Date }> = [];
     if (questionIds.length > 0) {
@@ -203,10 +169,9 @@ export class ProgressService {
           select: { questionId: true, createdAt: true },
         });
       } catch (error: any) {
-        if (!this.isMissingColumnOrSchemaMismatchError(error)) {
+        if (!isMissingColumnOrSchemaMismatchError(error)) {
           throw error;
         }
-        // DB hasn't been migrated yet; due review calculation is unavailable.
         dueReviews = [];
       }
     }
@@ -246,9 +211,7 @@ export class ProgressService {
   }
 
   async completeTeaching(userId: string, teachingId: string) {
-    // Transaction: create UserTeachingCompleted if not exists, then increment counter
     return this.prisma.$transaction(async (tx) => {
-      // Get teaching to find lessonId
       const teaching = await tx.teaching.findUnique({
         where: { id: teachingId },
         select: { lessonId: true },
@@ -258,7 +221,6 @@ export class ProgressService {
         throw new NotFoundException(`Teaching with ID ${teachingId} not found`);
       }
 
-      // Check if already completed (to avoid transaction abort on duplicate key)
       const existing = await tx.userTeachingCompleted.findUnique({
         where: {
           userId_teachingId: {
@@ -270,7 +232,6 @@ export class ProgressService {
 
       let wasNewlyCompleted = false;
       if (!existing) {
-        // Create UserTeachingCompleted if it doesn't exist
         await tx.userTeachingCompleted.create({
           data: {
             userId,
@@ -280,7 +241,6 @@ export class ProgressService {
         wasNewlyCompleted = true;
       }
 
-      // If newly completed, increment UserLesson.completedTeachings
       if (wasNewlyCompleted) {
         await tx.userLesson.updateMany({
           where: {
@@ -295,7 +255,6 @@ export class ProgressService {
         });
       }
 
-      // Return updated UserLesson
       const userLesson = await tx.userLesson.findUnique({
         where: {
           userId_lessonId: {
@@ -313,8 +272,6 @@ export class ProgressService {
         },
       });
 
-      // Invalidate session plan cache when teaching is completed
-      // This ensures future session plans reflect the user's progress
       if (wasNewlyCompleted) {
         this.sessionPlanCache.invalidate(userId);
       }
@@ -331,7 +288,6 @@ export class ProgressService {
     questionId: string,
     attemptDto: QuestionAttemptDto,
   ) {
-    // Verify question exists and load teaching with lesson for skill extraction
     const question = await this.prisma.question.findUnique({
       where: { id: questionId },
       include: {
@@ -363,9 +319,8 @@ export class ProgressService {
     }
 
     const now = new Date();
-    const isCorrect = attemptDto.score >= 80; // Threshold for "correct"
+    const isCorrect = attemptDto.score >= 80;
 
-    // Calculate SRS state using FSRS algorithm
     const srsState = await this.srsService.calculateQuestionState(
       userId,
       questionId,
@@ -376,7 +331,6 @@ export class ProgressService {
       },
     );
 
-    // Record attempt in UserQuestionPerformance (append-only) with SRS state
     const performance = await this.prisma.userQuestionPerformance.create({
       data: {
         userId,
@@ -409,7 +363,6 @@ export class ProgressService {
       },
     });
 
-    // Update mastery for associated skill tags using BKT
     try {
       const skillTags = extractSkillTags(question);
       const lowMasterySkills: string[] = [];
@@ -421,52 +374,39 @@ export class ProgressService {
           isCorrect,
         );
 
-        // Check if mastery dropped below 0.5
         if (newMastery < 0.5) {
           lowMasterySkills.push(skillTag);
         }
       }
 
-      // Signal ContentDeliveryService to prioritize 'New' teachings for low mastery skills
-      // This is done implicitly - ContentDeliveryService will check for low mastery skills
-      // when creating session plans (see ContentDeliveryService enhancement)
       if (lowMasterySkills.length > 0) {
-        // Log for debugging/monitoring
-        console.log(
-          `User ${userId} has low mastery (<0.5) for skills: ${lowMasterySkills.join(', ')}`,
+        this.logger.logInfo(
+          'User has low mastery skills',
+          { userId, skills: lowMasterySkills, threshold: 0.5 },
         );
       }
     } catch (error) {
-      // Log but don't fail - mastery tracking is non-critical
-      console.error('Error updating mastery:', error);
+      this.logger.logError('Error updating mastery', error, { userId });
     }
 
-    // Award XP using engine
     const awardedXp = await this.xpService.award(userId, {
       type: 'attempt',
       correct: isCorrect,
       timeMs: attemptDto.timeToComplete || 0,
     });
 
-    // Record knowledge level progress (append-only log of XP gains)
     if (awardedXp > 0) {
       try {
         await this.recordKnowledgeLevelProgress(userId, {
           value: awardedXp,
         });
       } catch (error) {
-        // Log but don't fail - progress recording is non-critical
-        console.error('Error recording knowledge level progress:', error);
+        this.logger.logError('Error recording knowledge level progress', error, { userId, xp: awardedXp });
       }
     }
 
-    // SRS state is stored directly in UserQuestionPerformance (no separate table needed)
-
-    // Invalidate session plan cache when question is attempted
-    // This ensures future session plans reflect the user's progress and updated review schedule
     this.sessionPlanCache.invalidate(userId);
 
-    // Return performance with XP info
     return {
       ...performance,
       awardedXp,
@@ -506,7 +446,6 @@ export class ProgressService {
   async getDueReviewsLatest(userId: string) {
     const now = new Date();
 
-    // Get all due reviews
     const allDueReviews = await this.prisma.userQuestionPerformance.findMany({
       where: {
         userId,
@@ -542,7 +481,6 @@ export class ProgressService {
       },
     });
 
-    // Dedup by questionId - keep only the most recent per question
     const questionIdMap = new Map<string, (typeof allDueReviews)[0]>();
     allDueReviews.forEach((review) => {
       const existing = questionIdMap.get(review.questionId);
@@ -559,7 +497,6 @@ export class ProgressService {
     method: DELIVERY_METHOD,
     scoreDto: DeliveryMethodScoreDto,
   ) {
-    // Upsert with score clamped to 0..1
     const existing = await this.prisma.userDeliveryMethodScore.findUnique({
       where: {
         userId_deliveryMethod: {
@@ -594,9 +531,7 @@ export class ProgressService {
     userId: string,
     progressDto: KnowledgeLevelProgressDto,
   ) {
-    // Transaction: insert progress row and increment User.knowledgePoints
     return this.prisma.$transaction(async (tx) => {
-      // Insert progress row (append-only)
       const progressRow = await tx.userKnowledgeLevelProgress.create({
         data: {
           userId,
@@ -604,7 +539,6 @@ export class ProgressService {
         },
       });
 
-      // Increment User.knowledgePoints
       const updatedUser = await tx.user.update({
         where: { id: userId },
         data: {
@@ -622,14 +556,11 @@ export class ProgressService {
   }
 
   async resetAllProgress(userId: string, options?: ResetProgressDto) {
-    // Transaction to reset all user progress
     return this.prisma.$transaction(async (tx) => {
-      // Delete all progress records
       await tx.userLesson.deleteMany({ where: { userId } });
       await tx.userTeachingCompleted.deleteMany({ where: { userId } });
       await tx.userQuestionPerformance.deleteMany({ where: { userId } });
 
-      // Optionally reset XP and knowledge points
       if (options?.includeXp) {
         await tx.userKnowledgeLevelProgress.deleteMany({ where: { userId } });
         await tx.user.update({
@@ -641,7 +572,6 @@ export class ProgressService {
         });
       }
 
-      // Optionally reset delivery method scores
       if (options?.includeDeliveryMethodScores) {
         await tx.userDeliveryMethodScore.deleteMany({ where: { userId } });
       }
@@ -656,7 +586,6 @@ export class ProgressService {
   }
 
   async resetLessonProgress(userId: string, lessonId: string) {
-    // Verify lesson exists
     const lesson = await this.prisma.lesson.findUnique({
       where: { id: lessonId },
       include: {
@@ -672,15 +601,12 @@ export class ProgressService {
       throw new NotFoundException(`Lesson with ID ${lessonId} not found`);
     }
 
-    // Get all question IDs in this lesson
     const questionIds = lesson.teachings.flatMap((t) =>
       t.questions.map((q) => q.id),
     );
     const teachingIds = lesson.teachings.map((t) => t.id);
 
-    // Transaction to reset lesson-specific progress
     return this.prisma.$transaction(async (tx) => {
-      // Delete UserLesson
       await tx.userLesson.deleteMany({
         where: {
           userId,
@@ -688,7 +614,6 @@ export class ProgressService {
         },
       });
 
-      // Delete completed teachings for this lesson
       await tx.userTeachingCompleted.deleteMany({
         where: {
           userId,
@@ -696,7 +621,6 @@ export class ProgressService {
         },
       });
 
-      // Delete question performance for questions in this lesson
       if (questionIds.length > 0) {
         await tx.userQuestionPerformance.deleteMany({
           where: {
@@ -714,7 +638,6 @@ export class ProgressService {
   }
 
   async resetQuestionProgress(userId: string, questionId: string) {
-    // Verify question exists
     const question = await this.prisma.question.findUnique({
       where: { id: questionId },
     });
@@ -723,9 +646,6 @@ export class ProgressService {
       throw new NotFoundException(`Question with ID ${questionId} not found`);
     }
 
-    // Delete all performance records for this question
-    // Note: This is append-only, so we delete all historical attempts
-    // In a production system, you might want to mark as "reset" instead of deleting
     await this.prisma.userQuestionPerformance.deleteMany({
       where: {
         userId,
@@ -742,7 +662,6 @@ export class ProgressService {
   async calculateStreak(userId: string): Promise<number> {
     const now = new Date();
 
-    // Get all UserQuestionPerformance entries for the user
     const performances = await this.prisma.userQuestionPerformance.findMany({
       where: { userId },
       select: {
@@ -754,12 +673,10 @@ export class ProgressService {
       },
     });
 
-    // If no activity, return 0
     if (performances.length === 0) {
       return 0;
     }
 
-    // Get the most recent activity timestamp (max of lastRevisedAt and createdAt)
     const mostRecentActivity = performances.reduce((latest, perf) => {
       const activityDate = perf.lastRevisedAt || perf.createdAt;
       if (!activityDate) return latest;
@@ -767,16 +684,13 @@ export class ProgressService {
       return perfDate > latest ? perfDate : latest;
     }, new Date(0));
 
-    // Calculate hours since last activity
     const hoursSinceLastActivity =
       (now.getTime() - mostRecentActivity.getTime()) / (1000 * 60 * 60);
 
-    // If more than 48 hours since last activity, streak is broken
     if (hoursSinceLastActivity > 48) {
       return 0;
     }
 
-    // Group activities by calendar day (using max of lastRevisedAt and createdAt)
     const activeDays = new Set<string>();
     performances.forEach((perf) => {
       const activityDate = perf.lastRevisedAt || perf.createdAt;
@@ -809,13 +723,11 @@ export class ProgressService {
       return 0;
     }
 
-    // Start counting from the most recent activity day
     const mostRecentDay = sortedDays[0];
-    let streak = 1; // Count the most recent day
+    let streak = 1;
     const expectedDate = new Date(mostRecentDay);
-    expectedDate.setUTCDate(expectedDate.getUTCDate() - 1); // Move to previous day
+    expectedDate.setUTCDate(expectedDate.getUTCDate() - 1);
 
-    // Count consecutive days working backwards
     for (let i = 1; i < sortedDays.length; i++) {
       const activeDay = sortedDays[i];
       const daysDiff = Math.floor(
@@ -823,14 +735,11 @@ export class ProgressService {
       );
 
       if (daysDiff === 0) {
-        // This is the expected consecutive day
         streak++;
         expectedDate.setUTCDate(expectedDate.getUTCDate() - 1);
       } else if (daysDiff > 0) {
-        // There's a gap - streak is broken
         break;
       }
-      // If daysDiff < 0, this day is before expected (shouldn't happen with sorted array), skip it
     }
 
     return streak;
@@ -839,7 +748,6 @@ export class ProgressService {
   async getProgressSummary(userId: string, tzOffsetMinutes?: number) {
     const now = new Date();
 
-    // Get XP total from user.knowledgePoints (updated by XpService)
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { knowledgePoints: true },
@@ -847,9 +755,8 @@ export class ProgressService {
 
     const xp = user?.knowledgePoints || 0;
 
-    const dueCutoff = this.getEndOfLocalDayUtc(now, tzOffsetMinutes);
+    const dueCutoff = getEndOfLocalDayUtc(now, tzOffsetMinutes);
 
-    // Count deduped due reviews (latest per question where nextReviewDue <= end-of-day local)
     let dueReviews: Array<{ questionId: string; createdAt: Date }> = [];
     try {
       dueReviews = await this.prisma.userQuestionPerformance.findMany({
@@ -869,13 +776,12 @@ export class ProgressService {
         },
       });
     } catch (error: any) {
-      if (!this.isMissingColumnOrSchemaMismatchError(error)) {
+      if (!isMissingColumnOrSchemaMismatchError(error)) {
         throw error;
       }
       dueReviews = [];
     }
 
-    // Dedup by questionId - keep only the latest per question
     const questionIdSet = new Set<string>();
     const dedupedDueReviews = dueReviews.filter((review) => {
       if (questionIdSet.has(review.questionId)) {
@@ -887,7 +793,6 @@ export class ProgressService {
 
     const dueReviewCount = dedupedDueReviews.length;
 
-    // Count completed lessons (lessons where all teachings are completed)
     const userLessons = await this.prisma.userLesson.findMany({
       where: { userId },
       include: {
@@ -904,7 +809,6 @@ export class ProgressService {
       },
     });
 
-    // Count lessons where completedTeachings equals total teachings
     const completedLessons = userLessons.filter(
       (ul) =>
         ul.completedTeachings >= ul.lesson.teachings.length &&
@@ -913,8 +817,6 @@ export class ProgressService {
 
     const totalLessons = await this.prisma.lesson.count();
 
-    // Count completed modules (modules where all lessons are completed)
-    // Get all modules and check which ones are fully completed
     const modules = await this.prisma.module.findMany({
       include: {
         lessons: {
@@ -932,7 +834,6 @@ export class ProgressService {
       const moduleLessons = module.lessons;
       if (moduleLessons.length === 0) continue;
 
-      // Check if all lessons in this module are completed
       const allLessonsCompleted = moduleLessons.every((lesson) => {
         const userLesson = userLessons.find((ul) => ul.lessonId === lesson.id);
         if (!userLesson) return false;
@@ -949,7 +850,6 @@ export class ProgressService {
 
     const totalModules = await this.prisma.module.count();
 
-    // Calculate streak using the new method
     const streak = await this.calculateStreak(userId);
 
     return {
@@ -964,14 +864,10 @@ export class ProgressService {
   }
 
   async markModuleCompleted(userId: string, moduleIdOrSlug: string) {
-    // Find module by ID or slug (title)
-    const isUuid =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        moduleIdOrSlug,
-      );
+    const uuidCheck = isValidUuid(moduleIdOrSlug);
 
     let module;
-    if (isUuid) {
+    if (uuidCheck) {
       module = await this.prisma.module.findUnique({
         where: { id: moduleIdOrSlug },
         include: {
@@ -985,14 +881,7 @@ export class ProgressService {
         },
       });
     } else {
-      // Find by title (case-insensitive, normalized)
-      const normalizedTitle = moduleIdOrSlug
-        .trim()
-        .split(' ')
-        .map(
-          (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
-        )
-        .join(' ');
+      const normalizedTitle = normalizeTitle(moduleIdOrSlug);
 
       module = await this.prisma.module.findFirst({
         where: {
@@ -1019,8 +908,6 @@ export class ProgressService {
       );
     }
 
-    // Mark all lessons in the module as completed
-    // For each lesson, mark all teachings as completed
     const results: Array<{
       lessonId: string;
       lessonTitle: string;
@@ -1030,7 +917,6 @@ export class ProgressService {
     for (const lesson of module.lessons) {
       const totalTeachings = lesson.teachings.length;
 
-      // Upsert UserLesson with completedTeachings = totalTeachings
       const userLesson = await this.prisma.userLesson.upsert({
         where: {
           userId_lessonId: {
@@ -1049,7 +935,6 @@ export class ProgressService {
         },
       });
 
-      // Mark all teachings as completed
       for (const teaching of lesson.teachings) {
         await this.prisma.userTeachingCompleted.upsert({
           where: {
@@ -1083,7 +968,6 @@ export class ProgressService {
   }
 
   async getRecentAttempts(userId: string, limit: number = 10) {
-    // Get recent question attempts for debugging/dev purposes
     return this.prisma.userQuestionPerformance.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
@@ -1111,10 +995,6 @@ export class ProgressService {
     });
   }
 
-  /**
-   * Normalize a string for answer comparison: lowercase, trim, strip to plain letters and spaces
-   * so punctuation/special chars (e.g. "..." or "?") do not cause false mismatches.
-   */
   private normalizeAnswerForComparison(s: string): string {
     return s
       .toLowerCase()
@@ -1124,18 +1004,15 @@ export class ProgressService {
       .trim();
   }
 
-  async validateAnswer(
-    userId: string,
+  private async validateInputFormat(
     questionId: string,
-    dto: ValidateAnswerDto,
-  ): Promise<ValidateAnswerResponseDto> {
-    // Ensure this question supports the requested delivery method.
-    // Session planning should only emit supported methods, but we validate defensively.
+    deliveryMethod: DELIVERY_METHOD,
+  ): Promise<any> {
     const variant = await this.prisma.questionVariant.findUnique({
       where: {
         questionId_deliveryMethod: {
           questionId,
-          deliveryMethod: dto.deliveryMethod,
+          deliveryMethod,
         },
       },
       select: {
@@ -1145,13 +1022,18 @@ export class ProgressService {
 
     if (!variant) {
       throw new BadRequestException(
-        `Question ${questionId} does not support ${dto.deliveryMethod} delivery method`,
+        `Question ${questionId} does not support ${deliveryMethod} delivery method`,
       );
     }
 
-    const variantData = (variant.data ?? undefined) as any | undefined;
+    return (variant.data ?? undefined) as any | undefined;
+  }
 
-    // Get question from DB (includes teachingId)
+  private async fetchAnswerData(
+    userId: string,
+    questionId: string,
+    deliveryMethod: DELIVERY_METHOD,
+  ) {
     const question = await this.prisma.question.findUnique({
       where: { id: questionId },
       include: {
@@ -1174,11 +1056,10 @@ export class ProgressService {
     const lessonId = question.teaching.lesson.id;
     const teaching = question.teaching;
 
-    // Get question data using Teaching relationship
     const questionData = await this.contentLookup.getQuestionData(
       questionId,
       lessonId,
-      dto.deliveryMethod,
+      deliveryMethod,
     );
 
     if (!questionData) {
@@ -1187,124 +1068,92 @@ export class ProgressService {
       );
     }
 
-    // Get feedback depth preference from onboarding
     const onboardingPrefs =
       await this.onboardingPreferences.getOnboardingPreferences(userId);
-    const feedbackDepth = onboardingPrefs.feedbackDepth ?? 0.6; // Default to direct if not specified
+    const feedbackDepth = onboardingPrefs.feedbackDepth ?? 0.6;
 
-    // Validate based on delivery method
-    let isCorrect = false;
-    let score = 0;
-    let feedback: string | undefined;
+    return {
+      question,
+      teaching,
+      questionData,
+      lessonId,
+      feedbackDepth,
+    };
+  }
 
-    if (dto.deliveryMethod === DELIVERY_METHOD.MULTIPLE_CHOICE) {
-      // For multiple choice, compare option ID
+  private compareAnswers(
+    deliveryMethod: DELIVERY_METHOD,
+    userAnswer: string,
+    questionData: any,
+    teaching: any,
+    variantData: any,
+  ): boolean {
+    if (deliveryMethod === DELIVERY_METHOD.MULTIPLE_CHOICE) {
       if (!questionData.correctOptionId) {
         throw new BadRequestException(
-          `Question ${questionId} does not support MULTIPLE_CHOICE delivery method`,
+          `Question does not support MULTIPLE_CHOICE delivery method`,
         );
       }
-      isCorrect = dto.answer === questionData.correctOptionId;
-      score = isCorrect ? 100 : 0;
-    } else if (
-      dto.deliveryMethod === DELIVERY_METHOD.TEXT_TRANSLATION ||
-      dto.deliveryMethod === DELIVERY_METHOD.FLASHCARD
+      return userAnswer === questionData.correctOptionId;
+    }
+
+    const normalizedUserAnswer = this.normalizeAnswerForComparison(userAnswer);
+    let correctAnswerSource: string;
+
+    if (
+      deliveryMethod === DELIVERY_METHOD.TEXT_TRANSLATION ||
+      deliveryMethod === DELIVERY_METHOD.FLASHCARD
     ) {
-      // Translation/Flashcard: validate against variant answer (preferred), fallback to teaching.userLanguageString.
-      const normalizedUserAnswer = this.normalizeAnswerForComparison(dto.answer);
-      const correctAnswerSource: string =
+      correctAnswerSource =
         typeof variantData?.answer === 'string' &&
         variantData.answer.trim().length > 0
           ? variantData.answer
           : teaching.userLanguageString;
-
-      const correctAnswers = correctAnswerSource
-        .toLowerCase()
-        .split('/')
-        .map((ans) => ans.trim())
-        .filter((ans) => ans.length > 0);
-
-      isCorrect = correctAnswers.some(
-        (correctAns) =>
-          this.normalizeAnswerForComparison(correctAns) === normalizedUserAnswer,
-      );
-      score = isCorrect ? 100 : 0;
-
-      // Apply feedback depth preference
-      feedback = this.buildFeedback(
-        isCorrect,
-        questionData.hint,
-        teaching,
-        feedbackDepth,
-      );
-    } else if (dto.deliveryMethod === DELIVERY_METHOD.FILL_BLANK) {
-      // Fill blank: compare against learningLanguageString
-      const normalizedUserAnswer = this.normalizeAnswerForComparison(dto.answer);
-      const correctAnswer = (
-        typeof variantData?.answer === 'string' &&
-        variantData.answer.trim().length > 0
-          ? variantData.answer
-          : teaching.learningLanguageString
-      )
-        .toLowerCase()
-        .trim();
-
-      const correctAnswers = correctAnswer
-        .split('/')
-        .map((ans) => ans.trim())
-        .filter((ans) => ans.length > 0);
-
-      isCorrect = correctAnswers.some(
-        (correctAns) =>
-          this.normalizeAnswerForComparison(correctAns) === normalizedUserAnswer,
-      );
-      score = isCorrect ? 100 : 0;
-
-      // Apply feedback depth preference
-      feedback = this.buildFeedback(
-        isCorrect,
-        questionData.hint,
-        teaching,
-        feedbackDepth,
-      );
     } else if (
-      dto.deliveryMethod === DELIVERY_METHOD.SPEECH_TO_TEXT ||
-      dto.deliveryMethod === DELIVERY_METHOD.TEXT_TO_SPEECH
+      deliveryMethod === DELIVERY_METHOD.FILL_BLANK ||
+      deliveryMethod === DELIVERY_METHOD.SPEECH_TO_TEXT ||
+      deliveryMethod === DELIVERY_METHOD.TEXT_TO_SPEECH
     ) {
-      // Listening (type what you hear): compare against learningLanguageString
-      const normalizedUserAnswer = this.normalizeAnswerForComparison(dto.answer);
-      const correctAnswer = (
+      correctAnswerSource =
         typeof variantData?.answer === 'string' &&
         variantData.answer.trim().length > 0
           ? variantData.answer
-          : teaching.learningLanguageString
-      )
-        .toLowerCase()
-        .trim();
-
-      const correctAnswers = correctAnswer
-        .split('/')
-        .map((ans) => ans.trim())
-        .filter((ans) => ans.length > 0);
-
-      isCorrect = correctAnswers.some(
-        (correctAns) =>
-          this.normalizeAnswerForComparison(correctAns) === normalizedUserAnswer,
-      );
-      score = isCorrect ? 100 : 0;
-
-      // Apply feedback depth preference
-      feedback = this.buildFeedback(
-        isCorrect,
-        questionData.hint,
-        teaching,
-        feedbackDepth,
-      );
+          : teaching.learningLanguageString;
     } else {
       throw new BadRequestException(
-        `Unsupported delivery method for validation: ${dto.deliveryMethod}`,
+        `Unsupported delivery method for validation: ${deliveryMethod}`,
       );
     }
+
+    const correctAnswers = correctAnswerSource
+      .toLowerCase()
+      .split('/')
+      .map((ans) => ans.trim())
+      .filter((ans) => ans.length > 0);
+
+    return correctAnswers.some(
+      (correctAns) =>
+        this.normalizeAnswerForComparison(correctAns) === normalizedUserAnswer,
+    );
+  }
+
+  private calculateAnswerScore(isCorrect: boolean): number{
+    return isCorrect ? 100 : 0;
+  }
+
+  private buildValidationResponse(
+    isCorrect: boolean,
+    score: number,
+    questionData: any,
+    teaching: any,
+    feedbackDepth: number,
+  ): ValidateAnswerResponseDto {
+    const feedback = this.buildFeedback(
+      isCorrect,
+      questionData.hint,
+      teaching,
+      feedbackDepth,
+    );
 
     return {
       isCorrect,
@@ -1313,25 +1162,48 @@ export class ProgressService {
     };
   }
 
-  /**
-   * Build feedback message based on feedback depth preference.
-   * @param isCorrect Whether the answer was correct
-   * @param hint Optional hint from question data
-   * @param teaching Teaching data for additional context
-   * @param feedbackDepth Feedback depth preference (0.3 = gentle, 0.6 = direct, 0.9 = detailed)
-   */
+  async validateAnswer(
+    userId: string,
+    questionId: string,
+    dto: ValidateAnswerDto,
+  ): Promise<ValidateAnswerResponseDto> {
+    const variantData = await this.validateInputFormat(
+      questionId,
+      dto.deliveryMethod,
+    );
+
+    const { question, teaching, questionData, feedbackDepth } =
+      await this.fetchAnswerData(userId, questionId, dto.deliveryMethod);
+
+    const isCorrect = this.compareAnswers(
+      dto.deliveryMethod,
+      dto.answer,
+      questionData,
+      teaching,
+      variantData,
+    );
+
+    const score = this.calculateAnswerScore(isCorrect);
+
+    return this.buildValidationResponse(
+      isCorrect,
+      score,
+      questionData,
+      teaching,
+      feedbackDepth,
+    );
+  }
+
   private buildFeedback(
     isCorrect: boolean,
     hint: string | undefined,
     teaching: any,
     feedbackDepth: number,
   ): string | undefined {
-    // Gentle (0.3): Minimal feedback, just correct/incorrect
     if (feedbackDepth < 0.45) {
-      return undefined; // No feedback for gentle preference
+      return undefined;
     }
 
-    // Direct (0.6): Moderate feedback with brief explanations
     if (feedbackDepth < 0.75) {
       if (!isCorrect && hint) {
         return hint;
@@ -1339,7 +1211,6 @@ export class ProgressService {
       return undefined;
     }
 
-    // Detailed (0.9): Comprehensive feedback with tips and examples
     if (!isCorrect) {
       let detailedFeedback = '';
       if (hint) {
@@ -1363,7 +1234,6 @@ export class ProgressService {
       return detailedFeedback || undefined;
     }
 
-    // For correct answers, provide encouragement in detailed mode
     if (isCorrect && feedbackDepth >= 0.75) {
       return 'Excellent!';
     }
@@ -1376,7 +1246,6 @@ export class ProgressService {
     questionId: string,
     dto: ValidatePronunciationDto,
   ): Promise<PronunciationResponseDto> {
-    // Verify question exists and is TEXT_TO_SPEECH type
     const [question, variant] = await Promise.all([
       this.prisma.question.findUnique({
         where: { id: questionId },
@@ -1424,15 +1293,12 @@ export class ProgressService {
         ? variantAnswer
         : question.teaching.learningLanguageString;
 
-    // For now, we only support speech-optimized uploads for pronunciation assessment.
-    // The backend accepts either WAV (RIFF/WAVE PCM) OR raw 16kHz mono PCM bytes (some clients omit the WAV container).
     if (dto.audioFormat !== 'wav') {
       throw new BadRequestException(
         'Only "wav" audioFormat is supported for pronunciation assessment',
       );
     }
 
-    // Run Azure Pronunciation Assessment (production implementation).
     const assessment = await this.pronunciationService.assess({
       audioBase64: dto.audioBase64,
       referenceText: expectedText,

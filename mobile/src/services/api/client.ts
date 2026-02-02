@@ -1,6 +1,9 @@
 import { getSupabaseClient } from '@/services/supabase/client';
 import { getApiUrl } from './config';
 import { ApiClientError, type ApiResponse } from './types';
+import { createLogger } from '@/services/logging';
+
+const logger = createLogger('ApiClient');
 
 class ApiClient {
   private baseUrl: string;
@@ -15,12 +18,12 @@ class ApiClient {
       const { data } = await supabase.auth.getSession();
       return data.session?.access_token || null;
     } catch (error) {
-      console.error('Failed to get auth token:', error);
+      logger.error('Failed to get auth token', error);
       return null;
     }
   }
 
-  private async request<T = any>(
+  private async request<T = unknown>(
     endpoint: string,
     options: RequestInit = {},
   ): Promise<T> {
@@ -54,11 +57,10 @@ class ApiClient {
         clearTimeout(timeoutId);
       }
 
-      // Handle non-JSON responses
       const contentType = response.headers.get('content-type');
       const isJson = contentType?.includes('application/json');
 
-      let data: any;
+      let data: unknown;
       if (isJson) {
         data = await response.json();
       } else {
@@ -66,9 +68,8 @@ class ApiClient {
         data = text ? { message: text } : {};
       }
 
-      // Debug logging for development
       if (process.env.NODE_ENV === 'development') {
-        console.log(`[API] ${options.method || 'GET'} ${endpoint}`, {
+        logger.debug(`[API] ${options.method || 'GET'} ${endpoint}`, {
           status: response.status,
           hasData: !!data,
           dataKeys: data && typeof data === 'object' ? Object.keys(data) : [],
@@ -76,10 +77,8 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        // Try to extract more detailed error information
         let errorMessage = data.message || data.error || `HTTP ${response.status}`;
         
-        // Handle Prisma errors
         if (data.message && typeof data.message === 'string') {
           if (data.message.includes('Unique constraint')) {
             errorMessage = `Database constraint error: ${data.message}`;
@@ -95,17 +94,11 @@ class ApiClient {
         );
       }
 
-      // Handle wrapped API responses (from TransformInterceptor)
-      // Backend wraps responses in { success: true, data: ... } format
-      // But some endpoints might return data directly, so check both formats
       if (data && typeof data === 'object') {
-        // Check if it's a wrapped response from TransformInterceptor
         if ('data' in data && 'success' in data) {
-          // If success is true, return the data
           if ((data as any).success === true) {
             return (data as any).data as T;
           }
-          // If success is false, it might be an error response
           if ((data as any).success === false && (data as any).message) {
             throw new ApiClientError(
               (data as any).message || 'Request failed',
@@ -114,9 +107,7 @@ class ApiClient {
             );
           }
         }
-        // If response has statusCode, it's an error response (shouldn't reach here due to !response.ok check)
         if ('statusCode' in data && 'error' in data) {
-          // This shouldn't happen, but handle it just in case
           throw new ApiClientError(
             data.message || data.error || 'Unknown error',
             data.statusCode || response.status,

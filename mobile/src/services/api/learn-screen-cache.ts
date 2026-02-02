@@ -2,6 +2,10 @@ import { getDashboard } from './profile';
 import { getSuggestions } from './learn';
 import { getLessons, getModules } from './modules';
 import { getUserLessons } from './progress';
+import { createLogger } from '@/services/logging';
+import { CacheManager } from '@/services/cache/cache-utils';
+
+const logger = createLogger('LearnScreenCache');
 
 export interface LearnScreenCacheData {
   modules: Awaited<ReturnType<typeof getModules>>;
@@ -9,30 +13,10 @@ export interface LearnScreenCacheData {
   userProgress: Awaited<ReturnType<typeof getUserLessons>>;
   dashboard: Awaited<ReturnType<typeof getDashboard>>;
   suggestions: Awaited<ReturnType<typeof getSuggestions>>;
-  timestamp: number;
 }
 
-/**
- * Simple cache for preloaded Learn screen data
- * Key: 'learn-screen', Value: { data, timestamp }
- */
-const cache = new Map<string, LearnScreenCacheData>();
+const cache = new CacheManager<LearnScreenCacheData>(5 * 60 * 1000);
 
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-/**
- * Check if cached data is still valid
- */
-function isCacheValid(cached: LearnScreenCacheData | undefined): boolean {
-  if (!cached) return false;
-  const age = Date.now() - cached.timestamp;
-  return age < CACHE_TTL;
-}
-
-/**
- * Preload Learn screen data in the background
- * This should be called after user authentication
- */
 export async function preloadLearnScreenData(): Promise<void> {
   try {
     const [modules, lessons, userProgress, dashboard, suggestions] = await Promise.all([
@@ -49,36 +33,21 @@ export async function preloadLearnScreenData(): Promise<void> {
       userProgress,
       dashboard,
       suggestions,
-      timestamp: Date.now(),
     });
   } catch (error) {
-    console.warn('Failed to preload Learn screen data (non-critical):', error);
-    // Silently fail - preloading is best effort
+    logger.warn('Failed to preload Learn screen data (non-critical)', error);
   }
 }
 
-/**
- * Get cached Learn screen data if available and valid
- */
 export function getCachedLearnScreenData(): LearnScreenCacheData | null {
-  const cached = cache.get('learn-screen');
-  if (isCacheValid(cached)) {
-    return cached;
-  }
-  return null;
+  return cache.get('learn-screen');
 }
 
-/**
- * Get cached modules only (e.g. for course list) if learn-screen cache is valid
- */
 export function getCachedModules(): LearnScreenCacheData['modules'] | null {
   const cached = getCachedLearnScreenData();
   return cached ? cached.modules : null;
 }
 
-/**
- * Clear the Learn screen cache
- */
 export function clearLearnScreenCache(): void {
   cache.clear();
 }

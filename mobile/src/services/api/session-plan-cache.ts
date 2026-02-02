@@ -6,20 +6,12 @@ import {
   getSessionDefaultMode,
   getSessionDefaultTimeBudgetSec,
 } from '@/services/preferences/settings-facade';
+import { createLogger } from '@/services/logging';
+import { CacheManager } from '@/services/cache/cache-utils';
 
-/**
- * Simple cache for preloaded session plans
- * Key: lessonId|mode|timeBudgetSec, Value: { plan, timestamp }
- */
-const cache = new Map<
-  string,
-  {
-    plan: SessionPlan;
-    timestamp: number;
-  }
->();
+const logger = createLogger('SessionPlanCache');
 
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const cache = new CacheManager<SessionPlan>(5 * 60 * 1000);
 
 export type SessionPlanCacheContext = {
   lessonId: string;
@@ -32,10 +24,6 @@ function makeCacheKey(ctx: SessionPlanCacheContext) {
   return `${ctx.lessonId}|${ctx.mode}|${budget}`;
 }
 
-/**
- * Preload a session plan for a lesson
- * This can be called when user presses down on a lesson card
- */
 export async function preloadSessionPlan(lessonId: string): Promise<void> {
   const [mode, timeBudgetSec] = await Promise.all([
     getSessionDefaultMode(),
@@ -44,9 +32,7 @@ export async function preloadSessionPlan(lessonId: string): Promise<void> {
 
   const key = makeCacheKey({ lessonId, mode, timeBudgetSec });
 
-  // Skip if already cached and fresh for this context
-  const cached = cache.get(key);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+  if (cache.has(key)) {
     return;
   }
 
@@ -62,53 +48,35 @@ export async function preloadSessionPlan(lessonId: string): Promise<void> {
     if (planData && planData.steps && Array.isArray(planData.steps) && planData.steps.length > 0) {
       const transformedPlan = transformSessionPlan(planData, sessionId);
       if (transformedPlan.cards.length > 0) {
-        cache.set(key, {
-          plan: transformedPlan,
-          timestamp: Date.now(),
-        });
+        cache.set(key, transformedPlan);
       }
     }
   } catch (error: any) {
     const msg = error?.message ?? String(error);
     const isTimeout = typeof msg === 'string' && msg.toLowerCase().includes('timeout');
-    console.warn(
+      logger.warn(
       isTimeout
         ? `Preload session plan timed out (best-effort, will load on demand).`
         : `Preload session plan failed (best-effort): ${msg}`,
+      error,
     );
-    // Don't throw - preloading is best effort
   }
 }
 
-/**
- * Get a cached session plan
- */
 export function getCachedSessionPlan(ctx: SessionPlanCacheContext): SessionPlan | null {
   const key = makeCacheKey(ctx);
-  const cached = cache.get(key);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.plan;
-  }
-  // Remove stale cache
-  if (cached) {
-    cache.delete(key);
-  }
-  return null;
+  return cache.get(key);
 }
 
-/**
- * Clear the cache (useful for testing or memory management)
- */
 export function clearSessionPlanCache(): void {
   cache.clear();
 }
 
-/**
- * Clear a specific lesson from cache
- */
 export function clearCachedSessionPlan(lessonId: string): void {
   const prefix = `${lessonId}|`;
   for (const key of cache.keys()) {
-    if (key.startsWith(prefix)) cache.delete(key);
+    if (key.startsWith(prefix)) {
+      cache.clear(key);
+    }
   }
 }

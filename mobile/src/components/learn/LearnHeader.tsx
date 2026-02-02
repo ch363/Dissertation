@@ -13,31 +13,33 @@ type Props = {
 
 export function LearnHeader({ onActionPress }: Props) {
   const { theme, isDark } = useAppTheme();
-  const gradientStart = isDark ? `${theme.colors.primary}18` : `${theme.colors.primary}0C`;
-  const gradientEnd = isDark ? `${theme.colors.primary}06` : `${theme.colors.primary}04`;
-  const accentBg = isDark ? `${theme.colors.primary}28` : `${theme.colors.primary}1A`;
+  const gradientStart = isDark ? `${theme.colors.primary}22` : `${theme.colors.primary}10`;
+  const gradientEnd = isDark ? `${theme.colors.primary}08` : `${theme.colors.primary}05`;
 
   return (
     <View style={styles.outer}>
       <LinearGradient
         colors={[gradientStart, gradientEnd, 'transparent']}
-        locations={[0, 0.6, 1]}
+        locations={[0, 0.5, 1]}
         style={styles.gradient}
       >
-        <View style={[styles.accentBar, { backgroundColor: theme.colors.primary }]} />
+        <View style={styles.accentGroup}>
+          <View style={[styles.accentBar, { backgroundColor: theme.colors.primary }]} />
+          <View style={[styles.accentDot, { backgroundColor: theme.colors.primary + '60' }]} />
+        </View>
         <View style={styles.content}>
           <View style={styles.textSection}>
-            <View style={[styles.labelRow, { backgroundColor: accentBg }]}>
-              <Ionicons name="school-outline" size={14} color={theme.colors.primary} />
-              <Text style={[styles.label, { color: theme.colors.primary }]}>Learning</Text>
-            </View>
             <Text style={[styles.title, { color: theme.colors.text }]}>Learn</Text>
             <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
               Explore lessons and track your progress
             </Text>
           </View>
           <View style={styles.headerActions}>
-            <HelpButton />
+            <HelpButton
+              variant="elevated"
+              accessibilityLabel="Help, learn screen tips"
+              accessibilityHint="Opens help information"
+            />
             {onActionPress && (
               <Pressable
                 onPress={onActionPress}
@@ -65,55 +67,53 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   gradient: {
-    paddingTop: 2,
-    paddingBottom: 8,
+    paddingTop: 8,
+    paddingBottom: 16,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
     overflow: 'hidden',
   },
-  accentBar: {
+  accentGroup: {
     position: 'absolute',
     top: 0,
     left: 20,
-    width: 24,
-    height: 2,
-    borderRadius: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  accentBar: {
+    width: 32,
+    height: 3,
+    borderRadius: 2,
+  },
+  accentDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
   },
   content: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
+    paddingTop: 4,
   },
   textSection: {
     flex: 1,
-    gap: 2,
-  },
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 5,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  label: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 11,
-    letterSpacing: 0.3,
+    gap: 4,
   },
   title: {
     fontFamily: baseTheme.typography.bold,
-    fontSize: 26,
-    letterSpacing: -0.5,
-    lineHeight: 32,
+    fontSize: 32,
+    letterSpacing: -0.8,
+    lineHeight: 38,
   },
   subtitle: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 14,
-    lineHeight: 20,
+    fontFamily: baseTheme.typography.medium,
+    fontSize: 15,
+    lineHeight: 22,
     maxWidth: 300,
+    opacity: 0.85,
   },
   headerActions: {
     flexDirection: 'row',

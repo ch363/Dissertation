@@ -10,12 +10,21 @@ jest.mock('expo-router', () => ({
   useFocusEffect: (cb: any) => cb(),
 }));
 
+const mockGetDashboard = jest.fn().mockResolvedValue({
+  streak: 0,
+  dueReviewCount: 0,
+  activeLessonCount: 0,
+  xpTotal: 0,
+  weeklyXP: 0,
+  weeklyXPChange: 0,
+  accuracyPercentage: 0,
+  studyTimeMinutes: 0,
+});
+
 jest.mock('@/services/api/profile', () => ({
   getMyProfile: jest.fn().mockResolvedValue({ name: 'Test User' }),
-  getDashboard: jest
-    .fn()
-    .mockResolvedValue({ streak: 0, dueReviewCount: 0, activeLessonCount: 0, xpTotal: 0 }),
-  getStats: jest.fn().mockResolvedValue({ minutesToday: 0 }),
+  getDashboard: mockGetDashboard,
+  getStats: jest.fn().mockResolvedValue({ minutesToday: 0, completedItemsToday: 0 }),
   getRecentActivity: jest.fn().mockResolvedValue({ recentLesson: null, recentTeaching: null, recentQuestion: null }),
 }));
 
@@ -30,6 +39,10 @@ jest.mock('@/services/api/learn', () => ({
     ],
     modules: [],
   }),
+}));
+
+jest.mock('@/services/api/mastery', () => ({
+  getAllMastery: jest.fn().mockResolvedValue([]),
 }));
 
 jest.mock('@/services/api/modules', () => ({
@@ -53,4 +66,5 @@ describe('HomeScreen', () => {
       .toJSON();
     expect(tree).toBeTruthy();
   });
+
 });

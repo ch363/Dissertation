@@ -14,36 +14,23 @@ function ascii(buf: Buffer, start: number, end: number): string {
 export function detectAudioContainer(bytes: Buffer): DetectedAudioContainer {
   if (!bytes || bytes.length < 4) return 'unknown';
 
-  // WAV: RIFF .... WAVE
   if (bytes.length >= 12) {
     const riff = ascii(bytes, 0, 4);
     const wave = ascii(bytes, 8, 12);
     if ((riff === 'RIFF' || riff === 'RIFX') && wave === 'WAVE') return 'wav';
   }
 
-  // CAF (Core Audio Format): 'caff'
   if (ascii(bytes, 0, 4) === 'caff') return 'caf';
-
-  // FLAC: 'fLaC'
   if (ascii(bytes, 0, 4) === 'fLaC') return 'flac';
-
-  // OGG: 'OggS'
   if (ascii(bytes, 0, 4) === 'OggS') return 'ogg';
-
-  // MP3: 'ID3' (tagged) or frame sync 0xFF 0xFB/0xF3/0xF2...
   if (ascii(bytes, 0, 3) === 'ID3') return 'mp3';
   if (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0) return 'mp3';
-
-  // MP4/M4A: '....ftyp'
   if (bytes.length >= 8 && ascii(bytes, 4, 8) === 'ftyp') return 'mp4';
 
   return 'unknown';
 }
 
 export function looksLikeRawPcm16le(bytes: Buffer): boolean {
-  // Heuristic: if it's not a known container, we assume it's raw PCM.
-  // This matches what happens when the client records linear PCM but the
-  // container/header is missing or stripped.
   return detectAudioContainer(bytes) === 'unknown';
 }
 
@@ -62,10 +49,6 @@ function readU16LE(buf: Buffer, offset: number): number {
   return buf.readUInt16LE(offset);
 }
 
-/**
- * Minimal WAV parser that tolerates chunk re-ordering (e.g. JUNK/LIST before fmt).
- * Only supports RIFF/WAVE PCM (format=1) and returns the raw PCM data bytes.
- */
 export function parseWavPcm(bytes: Buffer): ParsedWavPcm {
   if (!bytes || bytes.length < 12) {
     throw new Error('WAV too small');
@@ -105,7 +88,6 @@ export function parseWavPcm(bytes: Buffer): ParsedWavPcm {
       data = bytes.subarray(chunkDataStart, chunkDataEnd);
     }
 
-    // Chunks are padded to even sizes.
     offset = chunkDataEnd + (chunkSize % 2);
 
     if (fmt && data) break;
@@ -118,7 +100,6 @@ export function parseWavPcm(bytes: Buffer): ParsedWavPcm {
     throw new Error('WAV data chunk not found');
   }
 
-  // Only support PCM 16-bit for now.
   if (fmt.audioFormat !== 1) {
     throw new Error(`Unsupported WAV audioFormat=${fmt.audioFormat} (expected PCM=1)`);
   }

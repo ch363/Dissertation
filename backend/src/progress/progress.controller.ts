@@ -38,9 +38,6 @@ export class ProgressController {
   constructor(private readonly progressService: ProgressService) {}
 
   @Post('lessons/:lessonId/start')
-  @ApiOperation({ summary: 'Start or update lesson engagement' })
-  @ApiParam({ name: 'lessonId', type: 'string', format: 'uuid' })
-  @ApiResponse({ status: 200, description: 'Lesson started or updated' })
   async startLesson(
     @User() userId: string,
     @Param('lessonId') lessonId: string,
@@ -49,9 +46,6 @@ export class ProgressController {
   }
 
   @Get('lessons')
-  @ApiOperation({ summary: "Get user's lesson progress" })
-  @ApiQuery({ name: 'tzOffsetMinutes', type: 'number', required: false })
-  @ApiResponse({ status: 200, description: 'User lessons retrieved' })
   async getUserLessons(
     @User() userId: string,
     @Query('tzOffsetMinutes') tzOffsetMinutes?: string,
@@ -61,9 +55,6 @@ export class ProgressController {
   }
 
   @Post('teachings/:teachingId/complete')
-  @ApiOperation({ summary: 'Mark teaching as completed' })
-  @ApiParam({ name: 'teachingId', type: 'string', format: 'uuid' })
-  @ApiResponse({ status: 200, description: 'Teaching marked as completed' })
   async completeTeaching(
     @User() userId: string,
     @Param('teachingId') teachingId: string,
@@ -72,9 +63,7 @@ export class ProgressController {
   }
 
   @Post('questions/:questionId/attempt')
-  @ApiOperation({ summary: 'Record question attempt (append-only)' })
-  @ApiParam({ name: 'questionId', type: 'string', format: 'uuid' })
-  @ApiResponse({ status: 201, description: 'Question attempt recorded' })
+  @ApiOperation({ summary: 'Append-only' })
   async recordQuestionAttempt(
     @User() userId: string,
     @Param('questionId') questionId: string,
@@ -88,23 +77,17 @@ export class ProgressController {
   }
 
   @Get('reviews/due')
-  @ApiOperation({ summary: 'Get all due reviews' })
-  @ApiResponse({ status: 200, description: 'Due reviews retrieved' })
   async getDueReviews(@User() userId: string) {
     return this.progressService.getDueReviews(userId);
   }
 
   @Get('reviews/due/latest')
-  @ApiOperation({ summary: 'Get deduped due reviews (latest per question)' })
-  @ApiResponse({ status: 200, description: 'Deduped due reviews retrieved' })
+  @ApiOperation({ summary: 'Latest per question' })
   async getDueReviewsLatest(@User() userId: string) {
     return this.progressService.getDueReviewsLatest(userId);
   }
 
   @Post('delivery-method/:method/score')
-  @ApiOperation({ summary: 'Update delivery method preference score' })
-  @ApiParam({ name: 'method', enum: DELIVERY_METHOD })
-  @ApiResponse({ status: 200, description: 'Delivery method score updated' })
   async updateDeliveryMethodScore(
     @User() userId: string,
     @Param('method') method: DELIVERY_METHOD,
@@ -118,8 +101,6 @@ export class ProgressController {
   }
 
   @Post('knowledge-level-progress')
-  @ApiOperation({ summary: 'Record XP/knowledge level progress' })
-  @ApiResponse({ status: 201, description: 'Progress recorded' })
   async recordKnowledgeLevelProgress(
     @User() userId: string,
     @Body() progressDto: KnowledgeLevelProgressDto,
@@ -131,12 +112,6 @@ export class ProgressController {
   }
 
   @Post('lessons/:lessonId/reset')
-  @ApiOperation({ summary: 'Reset progress for a specific lesson' })
-  @ApiParam({ name: 'lessonId', type: 'string', format: 'uuid' })
-  @ApiResponse({
-    status: 200,
-    description: 'Lesson progress reset successfully',
-  })
   async resetLessonProgress(
     @User() userId: string,
     @Param('lessonId') lessonId: string,
@@ -145,15 +120,6 @@ export class ProgressController {
   }
 
   @Post('questions/:questionId/reset')
-  @ApiOperation({
-    summary:
-      'Reset progress for a specific question (e.g., "I already know this" or "start over")',
-  })
-  @ApiParam({ name: 'questionId', type: 'string', format: 'uuid' })
-  @ApiResponse({
-    status: 200,
-    description: 'Question progress reset successfully',
-  })
   async resetQuestionProgress(
     @User() userId: string,
     @Param('questionId') questionId: string,
@@ -162,12 +128,6 @@ export class ProgressController {
   }
 
   @Get('summary')
-  @ApiOperation({
-    summary:
-      'Get progress summary (XP, completed lessons, completed modules, streak, due review count)',
-  })
-  @ApiQuery({ name: 'tzOffsetMinutes', type: 'number', required: false })
-  @ApiResponse({ status: 200, description: 'Progress summary retrieved' })
   async getProgressSummary(
     @User() userId: string,
     @Query('tzOffsetMinutes') tzOffsetMinutes?: string,
@@ -177,16 +137,7 @@ export class ProgressController {
   }
 
   @Post('modules/:moduleIdOrSlug/complete')
-  @ApiOperation({
-    summary:
-      'Mark module as completed (marks all lessons in module as completed)',
-  })
-  @ApiParam({
-    name: 'moduleIdOrSlug',
-    type: 'string',
-    description: 'Module ID (UUID) or slug (title)',
-  })
-  @ApiResponse({ status: 200, description: 'Module marked as completed' })
+  @ApiOperation({ summary: 'Marks all lessons in module as completed' })
   async markModuleCompleted(
     @User() userId: string,
     @Param('moduleIdOrSlug') moduleIdOrSlug: string,
@@ -195,20 +146,12 @@ export class ProgressController {
   }
 
   @Get('attempts')
-  @ApiOperation({ summary: 'Get recent question attempts (for debugging/dev)' })
-  @ApiResponse({ status: 200, description: 'Recent attempts retrieved' })
+  @ApiOperation({ summary: 'For debugging/dev' })
   async getRecentAttempts(@User() userId: string) {
     return this.progressService.getRecentAttempts(userId);
   }
 
   @Post('questions/:questionId/validate')
-  @ApiOperation({ summary: 'Validate user answer and calculate score' })
-  @ApiParam({ name: 'questionId', type: 'string', format: 'uuid' })
-  @ApiResponse({
-    status: 200,
-    description: 'Answer validated',
-    type: ValidateAnswerResponseDto,
-  })
   async validateAnswer(
     @User() userId: string,
     @Param('questionId') questionId: string,
@@ -218,13 +161,6 @@ export class ProgressController {
   }
 
   @Post('questions/:questionId/pronunciation')
-  @ApiOperation({ summary: 'Validate pronunciation from audio recording' })
-  @ApiParam({ name: 'questionId', type: 'string', format: 'uuid' })
-  @ApiResponse({
-    status: 200,
-    description: 'Pronunciation validated',
-    type: PronunciationResponseDto,
-  })
   async validatePronunciation(
     @User() userId: string,
     @Param('questionId') questionId: string,

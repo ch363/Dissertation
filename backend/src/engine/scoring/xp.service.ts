@@ -1,13 +1,3 @@
-/**
- * XP (Experience Points) Service
- *
- * This service manages XP awards and tracking. XP is stored as events over time,
- * allowing for historical analysis and daily summaries.
- *
- * This is a SERVICE LAYER, not middleware. It's called by ProgressService
- * after recording an attempt. It does NOT handle HTTP requests directly.
- */
-
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -27,17 +17,9 @@ export interface XpSummary {
 export class XpService {
   constructor(private prisma: PrismaService) {}
 
-  /**
-   * Award XP for an event and return the amount awarded.
-   *
-   * @param userId User ID
-   * @param event Event that triggered XP
-   * @returns Amount of XP awarded
-   */
   async award(userId: string, event: XpEvent): Promise<number> {
     const xpAmount = this.calculateXp(event);
 
-    // Record XP event
     await this.prisma.xpEvent.create({
       data: {
         userId,
@@ -47,7 +29,6 @@ export class XpService {
       },
     });
 
-    // Update user's total knowledge points
     await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -60,13 +41,6 @@ export class XpService {
     return xpAmount;
   }
 
-  /**
-   * Get XP summary for a date range.
-   *
-   * @param userId User ID
-   * @param rangeDays Number of days to look back (default: 30)
-   * @returns Daily XP totals
-   */
   async getXpSummary(
     userId: string,
     rangeDays: number = 30,
@@ -86,11 +60,10 @@ export class XpService {
       },
     });
 
-    // Group by date
     const dailyMap = new Map<string, { totalXp: number; eventCount: number }>();
 
     for (const event of events) {
-      const dateKey = event.occurredAt.toISOString().split('T')[0]; // YYYY-MM-DD
+      const dateKey = event.occurredAt.toISOString().split('T')[0];
 
       const existing = dailyMap.get(dateKey) || { totalXp: 0, eventCount: 0 };
       existing.totalXp += event.amount;
@@ -98,7 +71,6 @@ export class XpService {
       dailyMap.set(dateKey, existing);
     }
 
-    // Convert to array
     const summaries: XpSummary[] = [];
     for (const [dateKey, data] of dailyMap.entries()) {
       summaries.push({
@@ -111,19 +83,13 @@ export class XpService {
     return summaries.sort((a, b) => a.date.getTime() - b.date.getTime());
   }
 
-  /**
-   * Calculate XP amount for an event.
-   */
   private calculateXp(event: XpEvent): number {
     if (event.type === 'attempt') {
-      // Base XP for attempting
       let xp = 5;
 
-      // Bonus for correct answer
       if (event.correct) {
         xp += 10;
 
-        // Speed bonus (faster = more XP, up to +5)
         if (event.timeMs < 5000) {
           xp += 5;
         } else if (event.timeMs < 10000) {
@@ -139,9 +105,6 @@ export class XpService {
     return 0;
   }
 
-  /**
-   * Get reason string for XP event.
-   */
   private getReason(event: XpEvent): string {
     if (event.type === 'attempt') {
       if (event.correct) {

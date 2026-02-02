@@ -8,6 +8,8 @@ export type Theme = {
     primary: string;
     /** Accent for icon/button on blue CTA cards */
     ctaCardAccent: string;
+    /** Profile header / top banner gradient (darker blue in dark mode) */
+    profileHeader: string;
     secondary: string;
     onPrimary: string;
     onSecondary: string;
@@ -55,6 +57,7 @@ export const lightTheme: Theme = {
     // WCAG AA: ensure contrast for links and primary buttons; matches blue CTA card
     primary: CTA_CARD_BLUE,
     ctaCardAccent: CTA_CARD_ACCENT,
+    profileHeader: CTA_CARD_BLUE,
     secondary: '#12BFA1',
     onPrimary: '#FFFFFF',
     // Secondary is bright; dark text provides accessible contrast
@@ -66,7 +69,8 @@ export const lightTheme: Theme = {
     success: '#2E7D32',
     error: '#D32F2F',
     text: '#0D1B2A',
-    mutedText: '#5B6C84',
+    // Darkened for WCAG AA and low-vision readability (≥4.5:1 on card/background)
+    mutedText: '#4A5A70',
     card: '#FFFFFF',
     border: '#E5EAF2',
   },
@@ -79,6 +83,8 @@ export const darkTheme: Theme = {
   colors: {
     primary: '#62A0FF',
     ctaCardAccent: '#6B8FED',
+    /** Darker blue for profile top card so it doesn’t compete with bright primary */
+    profileHeader: '#2E4A8F',
     secondary: '#26D4BA',
     // Primary is light in dark mode; use dark text for accessible contrast
     onPrimary: '#0E141B',
@@ -88,7 +94,8 @@ export const darkTheme: Theme = {
     success: '#30D158',
     error: '#FF453A',
     text: '#E6EEF8',
-    mutedText: '#9FB1C6',
+    // Slightly darker for clearer contrast on dark surfaces
+    mutedText: '#8A9FB8',
     card: '#172435',
     border: '#2A3A4F',
   },

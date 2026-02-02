@@ -7,7 +7,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenHeader } from '@/components/navigation/ScreenHeader';
-import { ScrollView, SurfaceCard } from '@/components/ui';
+import { ScrollView, StaticCard } from '@/components/ui';
 import { routes } from '@/services/navigation/routes';
 import {
   useAppTheme,
@@ -22,7 +22,6 @@ import { getLesson } from '@/services/api/modules';
 import type { SessionDefaultMode } from '@/services/preferences';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
-// Refined accent gradients for a premium settings feel
 const ICON_GRADIENTS = {
   primary: ['#5B7CF4', '#264FD4'] as const,
   blue: ['#5AC8FA', '#007AFF'] as const,
@@ -137,7 +136,6 @@ export default function SessionDefaultsScreen() {
     loadPrefs().catch(() => {});
   }, [loadPrefs]);
 
-  // Refresh when returning from lesson picker
   useFocusEffect(
     useCallback(() => {
       loadPrefs().catch(() => {});
@@ -230,7 +228,7 @@ export default function SessionDefaultsScreen() {
       >
         {/* Mode */}
         <Section title="MODE" color={theme.colors.mutedText}>
-          <SurfaceCard style={styles.card}>
+          <StaticCard style={styles.card}>
             <View style={styles.settingRow}>
               <SettingIconBox colors={ICON_GRADIENTS.primary}>
                 <Ionicons name="shuffle-outline" size={20} color="#FFFFFF" />
@@ -289,12 +287,12 @@ export default function SessionDefaultsScreen() {
                 This controls what the backend prioritizes when building session plans.
               </Text>
             )}
-          </SurfaceCard>
+          </StaticCard>
         </Section>
 
         {/* Time budget */}
         <Section title="TIME BUDGET" color={theme.colors.mutedText}>
-          <SurfaceCard style={styles.card}>
+          <StaticCard style={styles.card}>
             <View style={styles.settingRow}>
               <SettingIconBox colors={ICON_GRADIENTS.orange}>
                 <Ionicons name="time-outline" size={20} color="#FFFFFF" />
@@ -354,12 +352,40 @@ export default function SessionDefaultsScreen() {
                 </Text>
               </>
             )}
-          </SurfaceCard>
+          </StaticCard>
+        </Section>
+
+        {/* Learning preferences (onboarding-style) */}
+        <Section title="PREFERENCES" color={theme.colors.mutedText}>
+          <StaticCard style={styles.card}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Edit learning preferences"
+              onPress={() => router.push(routes.tabs.profile.edit)}
+              style={({ pressed }) => [styles.settingRow, pressed && styles.actionRowPressed]}
+            >
+              <SettingIconBox colors={ICON_GRADIENTS.blue}>
+                <Ionicons name="options-outline" size={20} color="#FFFFFF" />
+              </SettingIconBox>
+              <View style={styles.settingRowContent}>
+                <Text style={[styles.settingRowLabel, { color: theme.colors.text }]}>
+                  Learning preferences
+                </Text>
+                <Text style={[styles.settingRowSubtitle, { color: theme.colors.mutedText }]}>
+                  Motivation, learning style, difficulty, tone & more
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={theme.colors.mutedText} />
+            </Pressable>
+            <Text style={[styles.helper, { color: theme.colors.mutedText }, styles.helperPad]}>
+              These shape how content and sessions are tailored for you.
+            </Text>
+          </StaticCard>
         </Section>
 
         {/* Lesson filter */}
         <Section title="LESSON FILTER" color={theme.colors.mutedText}>
-          <SurfaceCard style={styles.card}>
+          <StaticCard style={styles.card}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Choose lesson filter"
@@ -397,7 +423,7 @@ export default function SessionDefaultsScreen() {
                 Pick a lesson to focus sessions on a specific lesson.
               </Text>
             )}
-          </SurfaceCard>
+          </StaticCard>
         </Section>
       </ScrollView>
     </SafeAreaView>
@@ -414,8 +440,6 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: 0,
-    borderRadius: CARD_RADIUS,
-    borderWidth: 1,
     overflow: 'hidden',
   },
   settingRow: {

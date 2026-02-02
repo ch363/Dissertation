@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { LoadingRow } from '@/components/ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { Card } from '@/components/profile/Card';
 import { getAllMastery, type SkillMastery } from '@/services/api/mastery';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
+import { useAsyncData } from '@/hooks/useAsyncData';
 
 function formatSkillName(tag: string): string {
   return tag
@@ -20,32 +21,11 @@ function formatSkillName(tag: string): string {
 
 export default function ProfileSkillsScreen() {
   const { theme } = useAppTheme();
-  const [mastery, setMastery] = useState<SkillMastery[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await getAllMastery();
-        if (!cancelled) setMastery(data || []);
-      } catch (e: any) {
-        console.error('Failed to load mastery:', e);
-        if (!cancelled) setError(e?.message || 'Failed to load mastery');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data: mastery, loading, error } = useAsyncData<SkillMastery[]>(
+    'ProfileSkillsScreen',
+    async () => await getAllMastery(),
+    []
+  );
 
   const lowest = useMemo(() => {
     return [...(mastery || [])]

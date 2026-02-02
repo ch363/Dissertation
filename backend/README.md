@@ -231,8 +231,6 @@ Content should be created directly in the database via:
 - Direct database queries
 - Admin API endpoints (if implemented)
 
-**Note:** The content importer script (`scripts/import-content.ts`) is deprecated. All content should be managed directly in the database.
-
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).

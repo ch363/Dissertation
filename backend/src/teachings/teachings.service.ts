@@ -1,11 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Teaching } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateTeachingDto } from './dto/create-teaching.dto';
-import { UpdateTeachingDto } from './dto/update-teaching.dto';
+import { BaseCrudService } from '../common/services/base-crud.service';
 
 @Injectable()
-export class TeachingsService {
-  constructor(private prisma: PrismaService) {}
+export class TeachingsService extends BaseCrudService<Teaching> {
+  constructor(prisma: PrismaService) {
+    super(prisma, 'teaching', 'Teaching');
+  }
 
   async findAll(lessonId?: string) {
     const where = lessonId ? { lessonId } : {};
@@ -41,56 +43,6 @@ export class TeachingsService {
     }
 
     return teaching;
-  }
-
-  async create(createDto: CreateTeachingDto) {
-    // Authorization: Admin access required. Authorization is enforced at the Controller level via @UseGuards(SupabaseJwtGuard).
-    // TODO: Implement admin role check in Controller guard (see teachings.controller.ts)
-    return this.prisma.teaching.create({
-      data: createDto,
-      include: {
-        lesson: {
-          select: {
-            id: true,
-            title: true,
-          },
-        },
-      },
-    });
-  }
-
-  async update(id: string, updateDto: UpdateTeachingDto) {
-    // Authorization: Admin access required. Authorization is enforced at the Controller level via @UseGuards(SupabaseJwtGuard).
-    // TODO: Implement admin role check in Controller guard (see teachings.controller.ts)
-    try {
-      return await this.prisma.teaching.update({
-        where: { id },
-        data: updateDto,
-        include: {
-          lesson: {
-            select: {
-              id: true,
-              title: true,
-            },
-          },
-        },
-      });
-    } catch (error) {
-      throw new NotFoundException(`Teaching with ID ${id} not found`);
-    }
-  }
-
-  async remove(id: string) {
-    // Authorization: Admin access required. Authorization is enforced at the Controller level via @UseGuards(SupabaseJwtGuard).
-    // TODO: Implement admin role check in Controller guard (see teachings.controller.ts)
-    // Cascade delete is handled by Prisma schema
-    try {
-      return await this.prisma.teaching.delete({
-        where: { id },
-      });
-    } catch (error) {
-      throw new NotFoundException(`Teaching with ID ${id} not found`);
-    }
   }
 
   async findQuestions(teachingId: string) {

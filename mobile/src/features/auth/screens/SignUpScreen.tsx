@@ -3,18 +3,21 @@ import { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button, ScrollView } from '@/components/ui';
+import { Button, ScrollView, StaticCard } from '@/components/ui';
 
 import { resolvePostAuthDestination, signUpWithEmail } from '@/services/api/auth';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme } from '@/services/theme/tokens';
 import { announce } from '@/utils/a11y';
+import { createLogger } from '@/services/logging';
+
+const logger = createLogger('SignUp');
 
 const emailRegex = /\S+@\S+\.\S+/;
 const MIN_PASSWORD = 8;
 
 export default function SignUp() {
-  const { theme: appTheme } = useAppTheme();
+  const { theme } = useAppTheme();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -49,15 +52,15 @@ export default function SignUp() {
       // If email confirmation is required, Supabase will not return a session.
       // In this case, Supabase should have sent a confirmation email.
       if (!session) {
-        console.log('SignUp: No session returned - email confirmation required');
+        logger.info('No session returned - email confirmation required');
         // Check if user was created (even without session)
         if (user) {
-          console.log('SignUp: User created, redirecting to verify-email screen');
+          logger.info('User created, redirecting to verify-email screen');
           router.replace({ pathname: '/verify-email', params: { email: trimmedEmail } });
           return;
         } else {
           // No user and no session - this shouldn't happen, but handle it
-          console.warn('SignUp: No session and no user returned');
+          logger.warn('No session and no user returned');
           setError('Account creation may require email confirmation. Please check your email.');
           return;
         }
@@ -66,15 +69,15 @@ export default function SignUp() {
       // Session exists - user is immediately authenticated (email confirmation disabled)
       const userId = session?.user?.id || user?.id;
       if (userId) {
-        console.log('SignUp: Session exists, resolving destination for user', userId);
+        logger.info('Session exists, resolving destination for user', { userId });
         const destination = await resolvePostAuthDestination(userId);
         router.replace(destination);
       } else {
-        console.warn('SignUp: Session exists but no user ID found');
+        logger.warn('Session exists but no user ID found');
         router.replace('/sign-in');
       }
     } catch (e: any) {
-      console.error('SignUp: Error during sign-up', e);
+      logger.error('Error during sign-up', e as Error);
       const errorMessage = e?.message ?? 'Unable to create your account.';
       setError(errorMessage);
       // If it's an email-related error, provide more context
@@ -91,27 +94,27 @@ export default function SignUp() {
   }, [error]);
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: appTheme.colors.background }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
       <ScrollView
-        contentContainerStyle={[styles.container, { backgroundColor: appTheme.colors.background }]}
+        contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.card, { backgroundColor: appTheme.colors.card, borderColor: appTheme.colors.border }]}>
+        <StaticCard style={styles.card}>
           <View style={styles.stepRow}>
-            <View style={[styles.stepDot, styles.stepDotActive, { backgroundColor: appTheme.colors.primary }]} />
-            <View style={[styles.stepDot, { backgroundColor: appTheme.colors.border }]} />
-            <View style={[styles.stepDot, { backgroundColor: appTheme.colors.border }]} />
+            <View style={[styles.stepDot, styles.stepDotActive, { backgroundColor: theme.colors.primary }]} />
+            <View style={[styles.stepDot, { backgroundColor: theme.colors.border }]} />
+            <View style={[styles.stepDot, { backgroundColor: theme.colors.border }]} />
           </View>
-          <Text style={[styles.labelSmall, { color: appTheme.colors.mutedText }]}>Step 1 of 3</Text>
-          <Text style={[styles.title, { color: appTheme.colors.text }]} accessibilityRole="header">Create your account</Text>
+          <Text style={[styles.labelSmall, { color: theme.colors.mutedText }]}>Step 1 of 3</Text>
+          <Text style={[styles.title, { color: theme.colors.text }]} accessibilityRole="header">Create your account</Text>
 
-          <Text style={[styles.inputLabel, { color: appTheme.colors.text }]}>Name</Text>
+          <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Name</Text>
           <TextInput
-            style={[styles.input, { backgroundColor: appTheme.colors.card, borderColor: appTheme.colors.border, color: appTheme.colors.text }]}
+            style={[styles.input, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, color: theme.colors.text }]}
             value={name}
             onChangeText={setName}
             placeholder="Your name"
-            placeholderTextColor={appTheme.colors.mutedText}
+            placeholderTextColor={theme.colors.mutedText}
             accessibilityLabel="Name"
             accessibilityHint="Enter your name"
             autoComplete="name"
@@ -120,16 +123,16 @@ export default function SignUp() {
             onSubmitEditing={() => emailRef.current?.focus()}
           />
 
-          <Text style={[styles.inputLabel, { color: appTheme.colors.text }]}>Email</Text>
+          <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Email</Text>
           <TextInput
             ref={emailRef}
-            style={[styles.input, { backgroundColor: appTheme.colors.card, borderColor: appTheme.colors.border, color: appTheme.colors.text }]}
+            style={[styles.input, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, color: theme.colors.text }]}
             value={email}
             onChangeText={setEmail}
             placeholder="you@example.com"
             keyboardType="email-address"
             autoCapitalize="none"
-            placeholderTextColor={appTheme.colors.mutedText}
+            placeholderTextColor={theme.colors.mutedText}
             accessibilityLabel="Email"
             accessibilityHint="Enter your email address"
             accessibilityState={{ invalid: !!emailError }}
@@ -139,20 +142,20 @@ export default function SignUp() {
             onSubmitEditing={() => passwordRef.current?.focus()}
           />
           {emailError ? (
-            <Text style={[styles.error, { color: appTheme.colors.error }]} accessibilityRole="alert">
+            <Text style={[styles.error, { color: theme.colors.error }]} accessibilityRole="alert">
               {emailError}
             </Text>
           ) : null}
 
-          <Text style={[styles.inputLabel, { color: appTheme.colors.text }]}>Password</Text>
+          <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Password</Text>
           <TextInput
             ref={passwordRef}
-            style={[styles.input, { backgroundColor: appTheme.colors.card, borderColor: appTheme.colors.border, color: appTheme.colors.text }]}
+            style={[styles.input, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, color: theme.colors.text }]}
             value={password}
             onChangeText={setPassword}
             placeholder={`Min. ${MIN_PASSWORD} characters`}
             secureTextEntry
-            placeholderTextColor={appTheme.colors.mutedText}
+            placeholderTextColor={theme.colors.mutedText}
             accessibilityLabel="Password"
             accessibilityHint="Create a password"
             accessibilityState={{ invalid: !!passwordError }}
@@ -167,15 +170,15 @@ export default function SignUp() {
             </Text>
           ) : null}
 
-          <Text style={[styles.inputLabel, { color: appTheme.colors.text }]}>Confirm password</Text>
+          <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Confirm password</Text>
           <TextInput
             ref={confirmRef}
-            style={[styles.input, { backgroundColor: appTheme.colors.card, borderColor: appTheme.colors.border, color: appTheme.colors.text }]}
+            style={[styles.input, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, color: theme.colors.text }]}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             placeholder="Confirm password"
             secureTextEntry
-            placeholderTextColor={appTheme.colors.mutedText}
+            placeholderTextColor={theme.colors.mutedText}
             accessibilityLabel="Confirm password"
             accessibilityHint="Re-enter your password to confirm"
             accessibilityState={{ invalid: !!confirmError }}
@@ -186,12 +189,12 @@ export default function SignUp() {
           />
 
           {confirmError ? (
-            <Text style={[styles.error, { color: appTheme.colors.error }]} accessibilityRole="alert">
+            <Text style={[styles.error, { color: theme.colors.error }]} accessibilityRole="alert">
               {confirmError}
             </Text>
           ) : null}
           {error ? (
-            <Text style={[styles.error, { color: appTheme.colors.error }]} accessibilityRole="alert">
+            <Text style={[styles.error, { color: theme.colors.error }]} accessibilityRole="alert">
               {error}
             </Text>
           ) : null}
@@ -204,10 +207,10 @@ export default function SignUp() {
             accessibilityHint="Creates your account"
           />
 
-          <Link href="/sign-in" style={[styles.link, { color: appTheme.colors.link }]}>
+          <Link href="/sign-in" style={[styles.link, { color: theme.colors.link }]}>
             Already have an account? Sign in
           </Link>
-        </View>
+        </StaticCard>
       </ScrollView>
     </SafeAreaView>
   );
