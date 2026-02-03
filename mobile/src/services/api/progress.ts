@@ -162,6 +162,8 @@ export interface ValidateAnswerResponse {
   isCorrect: boolean;
   score: number;
   feedback?: string;
+  /** Grammatical correctness 0–100 for text-input answers. */
+  grammaticalCorrectness?: number;
 }
 
 import type { PronunciationWordResult } from '@/types/session';

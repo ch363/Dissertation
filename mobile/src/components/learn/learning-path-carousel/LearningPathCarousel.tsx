@@ -81,12 +81,6 @@ export function LearningPathCarousel({ items, onPressItem }: Props) {
       <View style={styles.sectionHeader}>
         <View style={styles.headerContent}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Learning Path</Text>
-          <View style={[styles.countBadge, { backgroundColor: theme.colors.primary + '15' }]}>
-            <Ionicons name="book-outline" size={14} color={theme.colors.primary} />
-            <Text style={[styles.countText, { color: theme.colors.primary }]}>
-              {activeCount} active
-            </Text>
-          </View>
         </View>
         <Text style={[styles.sectionSubtitle, { color: theme.colors.mutedText }]}>
           Continue your Italian journey

@@ -130,7 +130,6 @@ describe('SessionPlanService', () => {
         skillTags: [{ name: 'greetings' }],
       };
 
-      // Prioritize a skill that exists on the item so rationale is stable.
       masteryService.getLowMasterySkills.mockResolvedValue(['greetings']);
 
       prisma.userTeachingCompleted.findMany.mockResolvedValue([]);
@@ -190,24 +189,6 @@ describe('SessionPlanService', () => {
       expect(teachSteps.length).toBeGreaterThan(0);
       expect(practiceSteps.length).toBeGreaterThan(0);
       expect(recapSteps.length).toBe(1);
-
-      // Rationale should exist for teach + practice, and be omitted for recap.
-      for (const step of plan.steps) {
-        if (step.type === 'recap') {
-          expect(step.rationale).toBeUndefined();
-        } else {
-          expect(step.rationale).toEqual(expect.any(String));
-          expect(step.rationale?.length).toBeGreaterThan(0);
-        }
-      }
-
-      // With low mastery skills mocked, rationale should be stable.
-      expect(teachSteps[0].rationale).toContain(
-        'Targets low mastery skill: greetings',
-      );
-      expect(practiceSteps[0].rationale).toContain(
-        'Targets low mastery skill: greetings',
-      );
 
       // Metadata should be populated
       expect(plan.metadata.totalSteps).toBe(plan.steps.length);
@@ -299,12 +280,6 @@ describe('SessionPlanService', () => {
       const recapSteps = plan.steps.filter((s) => s.type === 'recap');
       expect(practiceSteps.length).toBeGreaterThan(0);
       expect(recapSteps.length).toBe(1);
-
-      // Review steps should explain they're due reviews.
-      for (const s of practiceSteps) {
-        expect(s.rationale).toBe('Due review');
-      }
-      expect(recapSteps[0].rationale).toBeUndefined();
     });
 
     it('should create mixed session plan', async () => {
@@ -449,23 +424,6 @@ describe('SessionPlanService', () => {
 
       expect(plan.kind).toBe('mixed');
       expect(plan.steps.length).toBeGreaterThan(0);
-
-      // Rationale should exist for teach + practice, and be omitted for recap.
-      for (const step of plan.steps) {
-        if (step.type === 'recap') {
-          expect(step.rationale).toBeUndefined();
-        } else {
-          expect(step.rationale).toEqual(expect.any(String));
-          expect(step.rationale?.length).toBeGreaterThan(0);
-        }
-      }
-
-      expect(plan.steps.some((s) => s.rationale === 'Due review')).toBe(true);
-      expect(
-        plan.steps.some((s) =>
-          s.rationale?.includes('Targets low mastery skill: greetings'),
-        ),
-      ).toBe(true);
     });
 
     it('should handle empty candidates gracefully', async () => {
@@ -501,7 +459,6 @@ describe('SessionPlanService', () => {
       // Should still have recap step
       expect(plan.steps.length).toBe(1);
       expect(plan.steps[0].type).toBe('recap');
-      expect(plan.steps[0].rationale).toBeUndefined();
     });
   });
 });

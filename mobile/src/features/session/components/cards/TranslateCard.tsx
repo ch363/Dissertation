@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState, useEffect } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { IconButton } from '@/components/ui';
+import { SpeakerButton } from '@/components/ui';
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -20,6 +20,7 @@ type Props = {
   showHint?: boolean;
   showResult?: boolean;
   isCorrect?: boolean;
+  grammaticalCorrectness?: number | null;
   onCheckAnswer?: () => void;
   onRating?: (rating: number) => void;
   selectedRating?: number;
@@ -32,6 +33,7 @@ export function TranslateCard({
   showHint,
   showResult = false,
   isCorrect,
+  grammaticalCorrectness,
   onCheckAnswer,
   onRating,
   selectedRating,
@@ -41,14 +43,18 @@ export function TranslateCard({
   const [isPlaying, setIsPlaying] = useState(false);
   // For flashcards, start with front showing (not flipped) - user flips to see answer
   const [isFlipped, setIsFlipped] = useState(false);
+  // Once user has flipped to see the answer, show rating on unflipped side too when they flip back
+  const [hasRevealedAnswer, setHasRevealedAnswer] = useState(false);
   const [showHintState, setShowHintState] = useState(showHint || false);
   
   // Reset flip state when card changes
   useEffect(() => {
     setIsFlipped(false);
+    setHasRevealedAnswer(false);
   }, [card.id]);
   
   const handleFlip = () => {
+    if (!isFlipped) setHasRevealedAnswer(true);
     setIsFlipped(!isFlipped);
   };
 
@@ -90,30 +96,19 @@ export function TranslateCard({
   if (card.isFlashcard) {
     return (
       <View style={styles.container}>
-        <Text style={styles.directionLabel}>
-          {card.kind === 'translate_to_en' ? 'ITALIAN → ENGLISH' : 'ENGLISH → ITALIAN'}
-        </Text>
-
         {!isFlipped ? (
           // Front of card - Show source text (question)
           <>
             <View style={styles.flashcardFront}>
               <View style={styles.flashcardContent}>
                 <Text style={styles.flashcardWord}>{card.source}</Text>
-                <IconButton
+                <SpeakerButton
+                  size={44}
+                  isPlaying={isPlaying}
+                  onPress={handlePlaySourceAudio}
                   accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
                   accessibilityHint="Plays the word audio"
-                  onPress={handlePlaySourceAudio}
-                  style={styles.flashcardAudio}
-                >
-                  <Ionicons
-                    name={isPlaying ? 'pause' : 'volume-high'}
-                    size={32}
-                    color={theme.colors.primary}
-                    accessible={false}
-                    importantForAccessibility="no"
-                  />
-                </IconButton>
+                />
                 {card.grammar && (
                   <Text style={styles.flashcardGrammar}>{card.grammar}</Text>
                 )}
@@ -131,6 +126,66 @@ export function TranslateCard({
               <Ionicons name="swap-horizontal" size={20} color="#fff" accessible={false} importantForAccessibility="no" />
               <Text style={styles.flipButtonText}>Flip to see answer</Text>
             </Pressable>
+
+            {/* Rating Section on front once user has revealed answer and flipped back */}
+            {hasRevealedAnswer && (
+              <View style={styles.ratingCard}>
+                <Text style={styles.ratingTitle}>How well did you know this?</Text>
+                <View style={styles.ratingButtons}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Rate hard"
+                    accessibilityState={{ selected: selectedRating === 0 }}
+                    style={[
+                      styles.ratingButton,
+                      styles.ratingButtonHard,
+                      selectedRating === 0 && styles.ratingButtonSelected,
+                    ]}
+                    onPress={() => {
+                      Logger.info('Rating button pressed: Hard (0)');
+                      onRating?.(0);
+                    }}
+                  >
+                    <Ionicons name="thumbs-down" size={24} color="#dc3545" accessible={false} importantForAccessibility="no" />
+                    <Text style={[styles.ratingButtonText, styles.ratingButtonTextHard]}>Hard</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Rate good"
+                    accessibilityState={{ selected: selectedRating === 2.5 }}
+                    style={[
+                      styles.ratingButton,
+                      styles.ratingButtonGood,
+                      selectedRating === 2.5 && styles.ratingButtonSelected,
+                    ]}
+                    onPress={() => {
+                      Logger.info('Rating button pressed: Good (2.5)');
+                      onRating?.(2.5);
+                    }}
+                  >
+                    <Ionicons name="remove" size={24} color="#ffc107" accessible={false} importantForAccessibility="no" />
+                    <Text style={[styles.ratingButtonText, styles.ratingButtonTextGood]}>Good</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Rate easy"
+                    accessibilityState={{ selected: selectedRating === 5 }}
+                    style={[
+                      styles.ratingButton,
+                      styles.ratingButtonEasy,
+                      selectedRating === 5 && styles.ratingButtonSelected,
+                    ]}
+                    onPress={() => {
+                      Logger.info('Rating button pressed: Easy (5)');
+                      onRating?.(5);
+                    }}
+                  >
+                    <Ionicons name="thumbs-up" size={24} color="#28a745" accessible={false} importantForAccessibility="no" />
+                    <Text style={[styles.ratingButtonText, styles.ratingButtonTextEasy]}>Easy</Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
           </>
         ) : (
           // Back of card - Answer view with gradient and rating
@@ -144,20 +199,13 @@ export function TranslateCard({
               >
                 <View style={styles.flashcardAnswerHeader}>
                   <Text style={styles.flashcardAnswerText}>{card.expected}</Text>
-                  <IconButton
+                  <SpeakerButton
+                    size={36}
+                    isPlaying={isPlaying}
+                    onPress={handlePlaySourceAudio}
                     accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
                     accessibilityHint="Plays the answer audio"
-                    onPress={handlePlaySourceAudio}
-                    style={styles.flashcardAnswerAudio}
-                  >
-                    <Ionicons
-                      name={isPlaying ? 'pause' : 'volume-high'}
-                      size={24}
-                      color="#fff"
-                      accessible={false}
-                      importantForAccessibility="no"
-                    />
-                  </IconButton>
+                  />
                 </View>
                 <Text style={styles.flashcardOriginalWord}>{card.source}</Text>
                 {card.example && (
@@ -244,31 +292,29 @@ export function TranslateCard({
     );
   }
 
-  // Type Translation Mode (P30)
+  // Type Translation Mode (P30) – use backend prompt when specific, else direction label
+  const instruction =
+    card.prompt && card.prompt.trim() && card.prompt.toLowerCase() !== 'translate'
+      ? card.prompt.trim().toUpperCase()
+      : card.kind === 'translate_to_en'
+        ? 'TRANSLATE TO ENGLISH'
+        : 'TRANSLATE TO ITALIAN';
+
   return (
     <View style={styles.container}>
-      <Text style={styles.instruction}>
-        {card.kind === 'translate_to_en' ? 'TRANSLATE TO ENGLISH' : 'TRANSLATE TO ITALIAN'}
-      </Text>
+      <Text style={styles.instruction}>{instruction}</Text>
 
       {/* Source Text Card - Language String (e.g., "Ciao") */}
       <View style={styles.sourceCard}>
         <View style={styles.sourceTextContainer}>
           <Text style={styles.sourceText}>{card.source}</Text>
-          <IconButton
+          <SpeakerButton
+            size={40}
+            isPlaying={isPlaying}
+            onPress={handlePlaySourceAudio}
             accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
             accessibilityHint="Plays the phrase audio"
-            onPress={handlePlaySourceAudio}
-            style={styles.sourceSpeakerButton}
-          >
-            <Ionicons
-              name={isPlaying ? 'pause' : 'volume-high'}
-              size={18}
-              color={theme.colors.primary}
-              accessible={false}
-              importantForAccessibility="no"
-            />
-          </IconButton>
+          />
         </View>
       </View>
 
@@ -355,6 +401,11 @@ export function TranslateCard({
                 <Text style={styles.answerValue}>{card.expected}</Text>
               </View>
             </View>
+            {grammaticalCorrectness != null && (
+              <Text style={styles.grammarScore}>
+                Grammatical correctness: {grammaticalCorrectness}%
+              </Text>
+            )}
           </View>
 
           {isCorrect && (
@@ -374,14 +425,6 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
     gap: baseTheme.spacing.sm,
-  },
-  directionLabel: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 12,
-    color: '#28a745',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: baseTheme.spacing.xs,
   },
   instruction: {
     fontFamily: baseTheme.typography.bold,
@@ -427,9 +470,6 @@ const styles = StyleSheet.create({
     fontSize: 36,
     color: baseTheme.colors.text,
   },
-  flashcardAudio: {
-    padding: baseTheme.spacing.sm,
-  },
   flashcardGrammar: {
     fontFamily: baseTheme.typography.regular,
     fontSize: 14,
@@ -472,9 +512,6 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     paddingHorizontal: baseTheme.spacing.xs,
-  },
-  flashcardAnswerAudio: {
-    padding: baseTheme.spacing.xs,
   },
   flashcardOriginalWord: {
     fontFamily: baseTheme.typography.regular,
@@ -615,14 +652,6 @@ const styles = StyleSheet.create({
     color: baseTheme.colors.text,
     flex: 1,
   },
-  sourceSpeakerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: baseTheme.colors.primary + '15', // 15 = ~8% opacity
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   hintButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -729,6 +758,12 @@ const styles = StyleSheet.create({
     fontFamily: baseTheme.typography.regular,
     fontSize: 18,
     color: baseTheme.colors.text,
+  },
+  grammarScore: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 13,
+    color: baseTheme.colors.mutedText,
+    marginTop: baseTheme.spacing.sm,
   },
   answerContainer: {
     flexDirection: 'row',

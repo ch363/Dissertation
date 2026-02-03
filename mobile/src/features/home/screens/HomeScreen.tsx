@@ -359,7 +359,7 @@ export default function HomeScreen() {
     const sessionId = makeSessionId('learn');
     router.push({
       pathname: routeBuilders.sessionDetail(sessionId),
-      params: { lessonId: focusLessonId, kind: 'learn' },
+      params: { lessonId: focusLessonId, kind: 'learn', returnTo: routes.tabs.home },
     });
   }, [focusLessonId]);
 
@@ -376,7 +376,11 @@ export default function HomeScreen() {
     if (!nextAction) return;
 
     if (mode === 'review') {
-      router.push({ pathname: routes.tabs.review, params: { from: 'home' } });
+      const sessionId = makeSessionId('review');
+      router.push({
+        pathname: '/session/[sessionId]',
+        params: { sessionId, kind: 'review', returnTo: routes.tabs.review },
+      });
       return;
     }
 
@@ -384,7 +388,7 @@ export default function HomeScreen() {
       const sessionId = makeSessionId('learn');
       router.push({
         pathname: routeBuilders.sessionDetail(sessionId),
-        params: { lessonId: nextAction.lessonId, kind: 'learn' },
+        params: { lessonId: nextAction.lessonId, kind: 'learn', returnTo: routes.tabs.home },
       });
       return;
     }
@@ -393,7 +397,7 @@ export default function HomeScreen() {
       const sessionId = makeSessionId('learn');
       router.push({
         pathname: routeBuilders.sessionDetail(sessionId),
-        params: { lessonId: nextAction.lessonId, kind: 'learn' },
+        params: { lessonId: nextAction.lessonId, kind: 'learn', returnTo: routes.tabs.home },
       });
       return;
     }

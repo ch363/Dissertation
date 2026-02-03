@@ -185,8 +185,14 @@ export async function getDashboard(options?: { tzOffsetMinutes?: number }): Prom
   return apiClient.get<DashboardData>(`/me/dashboard${query ? `?${query}` : ''}`);
 }
 
-export async function getStats(): Promise<StatsData> {
-  return apiClient.get<StatsData>('/me/stats');
+export async function getStats(options?: { tzOffsetMinutes?: number }): Promise<StatsData> {
+  const tzOffsetMinutes = options?.tzOffsetMinutes ?? new Date().getTimezoneOffset();
+  const params = new URLSearchParams();
+  if (Number.isFinite(tzOffsetMinutes)) {
+    params.append('tzOffsetMinutes', String(tzOffsetMinutes));
+  }
+  const query = params.toString();
+  return apiClient.get<StatsData>(`/me/stats${query ? `?${query}` : ''}`);
 }
 
 export async function getRecentActivity(): Promise<RecentActivity> {

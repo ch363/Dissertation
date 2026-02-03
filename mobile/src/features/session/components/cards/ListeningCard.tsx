@@ -5,7 +5,7 @@ import { Audio } from 'expo-av';
 import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system';
 
-import { IconButton } from '@/components/ui';
+import { SpeakerButton } from '@/components/ui';
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -44,7 +44,9 @@ function getTipForWord(word: PronunciationWordResult): string {
     const weak = word.phonemes.filter((p) => p.accuracy < 80).map((p) => p.phoneme);
     return `Focus on these sounds: ${weak.join(', ')}. Listen to the model and try again.`;
   }
-  return 'Listen to the model and try again.';
+  // No error type or phoneme detail from Azure — use word and score so it's not generic
+  const scorePart = typeof word.score === 'number' ? `"${word.word}" scored ${word.score}%. ` : '';
+  return `${scorePart}Listen to the model and try to match the stress and sounds.`;
 }
 
 // Optional file size check - fails gracefully if native module unavailable.
@@ -68,6 +70,7 @@ type Props = {
   onAnswerChange?: (answer: string) => void;
   showResult?: boolean;
   isCorrect?: boolean;
+  grammaticalCorrectness?: number | null;
   onCheckAnswer?: (audioUri?: string) => void;
   onContinue?: () => void;
   pronunciationResult?: PronunciationResult | null;
@@ -81,6 +84,7 @@ export function ListeningCard({
   onAnswerChange,
   showResult = false,
   isCorrect,
+  grammaticalCorrectness,
   onCheckAnswer,
   onContinue,
   pronunciationResult,
@@ -574,16 +578,13 @@ export function ListeningCard({
                       </Text>
                     </View>
                     {isExpandable && (
-                      <Pressable
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          handlePlayWordAudio(word.word);
-                        }}
-                        style={styles.pronunciationWordSpeaker}
-                        accessibilityLabel={`Play ${word.word}`}
-                      >
-                        <Ionicons name="volume-high" size={18} color="#F97316" />
-                      </Pressable>
+                      <View style={styles.pronunciationWordSpeaker} pointerEvents="box-none">
+                        <SpeakerButton
+                          size={32}
+                          onPress={() => handlePlayWordAudio(word.word)}
+                          accessibilityLabel={`Play ${word.word}`}
+                        />
+                      </View>
                     )}
                   </View>
                 </>
@@ -662,21 +663,22 @@ export function ListeningCard({
     // ——— Screen 3: Input (Figma: Speak this phrase, record) ———
     return (
       <View style={styles.pronunciationContainer}>
-        <Text style={styles.pronunciationInstruction}>SPEAK THIS PHRASE</Text>
-        <Text style={styles.pronunciationPhrase}>{card.expected}</Text>
-        <Text style={styles.pronunciationTranslation}>
-          {card.translation ? `(${card.translation})` : ''}
-        </Text>
-        <Pressable
+        <Text style={styles.pronunciationInstruction}>Speak this phrase</Text>
+        <View style={styles.pronunciationPhraseBlock}>
+          <Text style={styles.pronunciationPhrase}>{card.expected}</Text>
+          {card.translation ? (
+            <Text style={styles.pronunciationTranslation}>({card.translation})</Text>
+          ) : null}
+        </View>
+        <SpeakerButton
+          size={64}
+          isPlaying={isPlaying}
           onPress={handlePlayAudio}
-          style={styles.pronunciationSpeakerButton}
           accessibilityLabel="Listen to pronunciation"
-        >
-          <Ionicons name="volume-high" size={28} color="#2563EB" />
-        </Pressable>
+        />
         <View style={styles.pronunciationTipBox}>
-          <Ionicons name="bulb-outline" size={18} color="#92400E" style={styles.pronunciationTipIcon} />
-          <Text style={styles.pronunciationTipText}>Tip: Find a quiet space for best results</Text>
+          <Ionicons name="bulb-outline" size={20} color={baseTheme.colors.mutedText} style={styles.pronunciationTipIcon} />
+          <Text style={styles.pronunciationTipText}>Find a quiet space for best results</Text>
         </View>
         <View style={styles.pronunciationRecordSection}>
           <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
@@ -694,7 +696,7 @@ export function ListeningCard({
               }}
               disabled={isPronunciationProcessing}
             >
-              <Ionicons name="mic" size={48} color="#fff" />
+              <Ionicons name="mic" size={44} color="#fff" />
             </Pressable>
           </Animated.View>
           <Text style={styles.pronunciationRecordHint}>Hold to record your pronunciation</Text>
@@ -744,18 +746,13 @@ export function ListeningCard({
         // Input Screen
         <>
           <View style={styles.audioCard}>
-            <IconButton
+            <SpeakerButton
+              size={72}
+              isPlaying={isPlaying}
+              onPress={handlePlayAudio}
               accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
               accessibilityHint="Plays the phrase audio"
-              onPress={handlePlayAudio}
-              style={styles.audioButtonLarge}
-            >
-              <Ionicons
-                name={isPlaying ? 'pause' : 'volume-high'}
-                size={40}
-                color="#fff"
-              />
-            </IconButton>
+            />
           </View>
 
           <View style={styles.inputCard}>
@@ -785,13 +782,12 @@ export function ListeningCard({
         // Result Screen
         <>
           <View style={styles.audioCard}>
-            <Pressable style={styles.audioButtonLarge} onPress={handlePlayAudio}>
-              <Ionicons
-                name={isPlaying ? 'pause' : 'volume-high'}
-                size={40}
-                color="#fff"
-              />
-            </Pressable>
+            <SpeakerButton
+              size={72}
+              isPlaying={isPlaying}
+              onPress={handlePlayAudio}
+              accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
+            />
           </View>
 
           <View style={[styles.resultCard, isCorrect ? styles.resultCardCorrect : styles.resultCardWrong]}>
@@ -810,15 +806,20 @@ export function ListeningCard({
                 <Text style={styles.answerLabel}>Correct answer</Text>
                 <View style={styles.answerContainer}>
                   <Text style={styles.answerText}>{card.expected}</Text>
-                  <Pressable
+                  <SpeakerButton
+                    size={36}
+                    isPlaying={isPlaying}
                     onPress={handlePlayAudio}
-                    style={styles.resultAudioButton}
-                  >
-                    <Ionicons name="volume-high" size={20} color={theme.colors.primary} />
-                  </Pressable>
+                    accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
+                  />
                 </View>
               </View>
             </View>
+            {grammaticalCorrectness != null && (
+              <Text style={styles.grammarScore}>
+                Grammatical correctness: {grammaticalCorrectness}%
+              </Text>
+            )}
           </View>
 
           {isCorrect && (
@@ -886,14 +887,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: baseTheme.colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  audioButtonLarge: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
     backgroundColor: baseTheme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1022,6 +1015,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: baseTheme.colors.text,
   },
+  grammarScore: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 13,
+    color: baseTheme.colors.mutedText,
+    marginTop: baseTheme.spacing.sm,
+  },
   answerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1032,9 +1031,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: baseTheme.colors.text,
     flexShrink: 1,
-  },
-  resultAudioButton: {
-    padding: baseTheme.spacing.xs,
   },
   score: {
     fontFamily: baseTheme.typography.bold,
@@ -1126,101 +1122,123 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0,
     alignItems: 'center',
-    paddingVertical: baseTheme.spacing.sm,
+    paddingVertical: baseTheme.spacing.lg,
+    paddingHorizontal: baseTheme.spacing.lg,
   },
   pronunciationInstruction: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 12,
-    color: '#0D9488',
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 13,
+    color: baseTheme.colors.link,
     textTransform: 'uppercase',
-    letterSpacing: 1.2,
-    marginBottom: baseTheme.spacing.md,
+    letterSpacing: 1.4,
+    marginBottom: baseTheme.spacing.xl,
+  },
+  pronunciationPhraseBlock: {
+    alignItems: 'center',
+    marginBottom: baseTheme.spacing.xl,
+    paddingHorizontal: baseTheme.spacing.md,
   },
   pronunciationPhrase: {
     fontFamily: baseTheme.typography.bold,
-    fontSize: 32,
+    fontSize: 34,
     color: baseTheme.colors.text,
     textAlign: 'center',
+    letterSpacing: 0.3,
     marginBottom: baseTheme.spacing.xs,
-    paddingHorizontal: baseTheme.spacing.md,
   },
   pronunciationTranslation: {
     fontFamily: baseTheme.typography.regular,
-    fontSize: 16,
+    fontSize: 15,
     color: baseTheme.colors.mutedText,
     textAlign: 'center',
-    marginBottom: baseTheme.spacing.md,
-  },
-  pronunciationSpeakerButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 12,
-    backgroundColor: '#DBEAFE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: baseTheme.spacing.md,
   },
   pronunciationTipBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginBottom: baseTheme.spacing.lg,
+    backgroundColor: '#F8FAFC',
+    borderRadius: baseTheme.radius.lg,
+    paddingVertical: baseTheme.spacing.md,
+    paddingHorizontal: baseTheme.spacing.lg,
+    marginTop: baseTheme.spacing.xl,
+    marginBottom: baseTheme.spacing.xl,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: baseTheme.colors.border,
   },
   pronunciationTipIcon: {
-    marginRight: 8,
+    marginRight: baseTheme.spacing.sm,
   },
   pronunciationTipText: {
     fontFamily: baseTheme.typography.regular,
     fontSize: 14,
-    color: '#92400E',
+    color: baseTheme.colors.mutedText,
     flex: 1,
   },
   pronunciationRecordSection: {
     alignItems: 'center',
-    marginBottom: baseTheme.spacing.md,
+    marginBottom: baseTheme.spacing.xl,
   },
   pronunciationRecordButton: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#F87171',
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    backgroundColor: '#DC2626',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: baseTheme.spacing.sm,
+    marginBottom: baseTheme.spacing.md,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+      },
+      android: { elevation: 6 },
+    }),
   },
   pronunciationRecordButtonActive: {
-    backgroundColor: '#EF4444',
+    backgroundColor: '#B91C1C',
+    ...Platform.select({
+      ios: {
+        shadowOpacity: 0.25,
+        shadowRadius: 14,
+      },
+      android: { elevation: 8 },
+    }),
   },
   pronunciationRecordHint: {
     fontFamily: baseTheme.typography.regular,
-    fontSize: 14,
+    fontSize: 13,
     color: baseTheme.colors.mutedText,
     textAlign: 'center',
   },
   pronunciationFooterButton: {
     width: '100%',
-    paddingVertical: 16,
-    borderRadius: 16,
-    backgroundColor: '#E5E7EB',
+    paddingVertical: baseTheme.spacing.lg,
+    borderRadius: baseTheme.radius.lg,
+    backgroundColor: baseTheme.colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 'auto',
   },
   pronunciationFooterButtonActive: {
-    backgroundColor: '#F97316',
+    backgroundColor: baseTheme.colors.primary,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.12,
+        shadowRadius: 8,
+      },
+      android: { elevation: 4 },
+    }),
   },
   pronunciationFooterButtonText: {
     fontFamily: baseTheme.typography.semiBold,
     fontSize: 16,
-    color: '#6B7280',
+    color: baseTheme.colors.mutedText,
   },
   pronunciationFooterButtonTextActive: {
-    color: '#fff',
+    color: baseTheme.colors.onPrimary,
   },
   // Loading screen
   pronunciationLoadingContent: {

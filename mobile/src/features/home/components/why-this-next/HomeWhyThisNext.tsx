@@ -1,7 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
 import {
+  AppState,
+  AppStateStatus,
   Animated,
+  Easing,
   Pressable,
   StyleSheet,
   Text,
@@ -9,14 +12,22 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
 const PROGRESS_BAR_HEIGHT = 6;
 const PROGRESS_BAR_RADIUS = PROGRESS_BAR_HEIGHT / 2;
-const ICON_SIZE = 52;
-const ICON_RADIUS = 14;
+const ICON_SIZE = 56;
+const ICON_RADIUS = 16;
 const BULLET_SIZE = 4;
+
+// Blue palette for Focus card (with shimmer)
+const FOCUS_ICON_GRADIENT = ['#3B82F6', '#2563EB', '#60A5FA'] as const;
+const FOCUS_CARD_BG_LIGHT = ['#EFF6FF', '#FFFFFF', '#F5F7FF'] as const;
+const FOCUS_OVERLAY = ['rgba(219, 234, 254, 0.4)', 'transparent', 'rgba(219, 234, 254, 0.4)'] as const;
+const FOCUS_DIVIDER = ['transparent', '#BFDBFE', 'transparent'] as const;
+const FOCUS_PROGRESS = ['#3B82F6', '#2563EB', '#60A5FA'] as const;
 
 type Props = {
   /** Concrete topic (e.g. "Focus: Travel"). */
@@ -54,6 +65,7 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
   whyAffordance: _whyAffordance,
 }: Props) {
   const { theme, isDark } = useAppTheme();
+  const reduceMotion = useReducedMotion();
   const useTopicAsTitle =
     typeof topic === 'string' && topic.startsWith('Focus: ');
   const hasLessonData = primaryLine != null && primaryLine !== '';
@@ -61,32 +73,37 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
   // Animated values
   const overlayOpacity = useRef(new Animated.Value(0.3)).current;
   const shimmerPosition = useRef(new Animated.Value(-1)).current;
+  const overlayLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+  const shimmerLoopRef = useRef<Animated.CompositeAnimation | null>(null);
 
-  useEffect(() => {
-    if (!useTopicAsTitle) return;
+  const startFocusAnimations = React.useCallback(() => {
+    overlayLoopRef.current?.stop();
+    shimmerLoopRef.current?.stop();
+    overlayOpacity.setValue(0.3);
+    shimmerPosition.setValue(-1);
 
-    // Animated overlay pulse - opacity from 0.3 to 0.6 to 0.3
-    Animated.loop(
+    overlayLoopRef.current = Animated.loop(
       Animated.sequence([
         Animated.timing(overlayOpacity, {
           toValue: 0.6,
           duration: 2000,
+          easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
         Animated.timing(overlayOpacity, {
           toValue: 0.3,
           duration: 2000,
+          easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
       ]),
-    ).start();
-
-    // Shimmer effect on icon - translateX from -100% to 200%
-    Animated.loop(
+    );
+    shimmerLoopRef.current = Animated.loop(
       Animated.sequence([
         Animated.timing(shimmerPosition, {
           toValue: 2,
           duration: 2000,
+          easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
         Animated.delay(1000),
@@ -96,8 +113,40 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
           useNativeDriver: true,
         }),
       ]),
-    ).start();
-  }, [useTopicAsTitle, overlayOpacity, shimmerPosition]);
+    );
+    overlayLoopRef.current.start();
+    shimmerLoopRef.current.start();
+  }, [overlayOpacity, shimmerPosition]);
+
+  const stopFocusAnimations = React.useCallback(() => {
+    overlayLoopRef.current?.stop();
+    shimmerLoopRef.current?.stop();
+    overlayLoopRef.current = null;
+    shimmerLoopRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (!useTopicAsTitle) return;
+
+    if (!reduceMotion) {
+      startFocusAnimations();
+    }
+    return () => {
+      stopFocusAnimations();
+    };
+  }, [useTopicAsTitle, reduceMotion, startFocusAnimations, stopFocusAnimations]);
+
+  // Restart shimmer/overlay when app comes back to foreground (they often don't resume otherwise)
+  useEffect(() => {
+    if (!useTopicAsTitle || reduceMotion) return;
+
+    const sub = AppState.addEventListener('change', (nextState: AppStateStatus) => {
+      if (nextState === 'active') {
+        startFocusAnimations();
+      }
+    });
+    return () => sub.remove();
+  }, [useTopicAsTitle, reduceMotion, startFocusAnimations]);
 
   const progressValue =
     typeof progressPercent === 'number' && progressPercent >= 0 && progressPercent <= 1
@@ -108,26 +157,26 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
   if (useTopicAsTitle) {
     const content = (
       <View style={styles.premiumContainer}>
-        {/* Base gradient background - much lighter, brighter gradient */}
+        {/* Base gradient: indigo-50 → white → purple-50 (matches web) */}
         <LinearGradient
-          colors={isDark ? [theme.colors.card, theme.colors.background, theme.colors.card] : ['#F5F7FF', '#FFFFFF', '#FBF9FF']}
+          colors={isDark ? [theme.colors.card, theme.colors.background, theme.colors.card] : [...FOCUS_CARD_BG_LIGHT]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.baseGradient}
         />
         
-        {/* Animated overlay gradient - very subtle */}
+        {/* Animated overlay: indigo-100/40 → transparent → purple-100/40, opacity 0.3 → 0.6 → 0.3 */}
         <Animated.View style={[styles.overlayGradient, { opacity: overlayOpacity }]}>
           <LinearGradient
-            colors={['rgba(219, 234, 254, 0.15)', 'transparent', 'rgba(219, 234, 254, 0.15)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+            colors={FOCUS_OVERLAY}
+            start={{ x: 0, y: 1 }}
+            end={{ x: 1, y: 0 }}
             style={StyleSheet.absoluteFill}
           />
         </Animated.View>
         
-        {/* Border with glow - blue-200 border */}
-        <View style={styles.glowBorder} />
+        {/* Border glow - indigo-200/60 */}
+        <View style={[styles.glowBorder, !isDark && styles.glowBorderLight]} />
 
         {/* Main content */}
         <View style={styles.premiumContent}>
@@ -135,13 +184,14 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
           <View style={styles.premiumHeader}>
             <View style={styles.iconWrapper}>
               <LinearGradient
-                colors={['#3B82F6', '#2563EB', '#60A5FA']}
+                colors={FOCUS_ICON_GRADIENT}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.premiumIconBox}
               >
-                {/* Shimmer effect - animates from left to right */}
+                {/* Shimmer: gradient from-transparent via-white/30 to-transparent, x: -100% → 200% (matches web) */}
                 <Animated.View
+                  pointerEvents="none"
                   style={[
                     styles.shimmer,
                     {
@@ -163,10 +213,9 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
                     style={styles.shimmerGradient}
                   />
                 </Animated.View>
-                
                 <Ionicons
                   name="sparkles"
-                  size={26}
+                  size={28}
                   color="#FFFFFF"
                   accessible={false}
                   importantForAccessibility="no"
@@ -187,9 +236,9 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
             </View>
           </View>
 
-          {/* Gradient divider */}
+          {/* Divider: transparent → indigo-200 → transparent */}
           <LinearGradient
-            colors={['transparent', '#93C5FD', 'transparent']}
+            colors={FOCUS_DIVIDER}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.premiumDivider}
@@ -249,7 +298,7 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
                       >
                         {progressValue > 0 ? (
                           <LinearGradient
-                            colors={['#3B82F6', '#2563EB', '#60A5FA']}
+                            colors={FOCUS_PROGRESS}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 0 }}
                             style={[
@@ -336,7 +385,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
-  // Border with glow effect
+  // Border with glow effect (blue)
   glowBorder: {
     position: 'absolute',
     top: 0,
@@ -345,12 +394,15 @@ const styles = StyleSheet.create({
     bottom: 0,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(147, 197, 253, 0.6)',
+    borderColor: 'rgba(59, 130, 246, 0.25)',
     shadowColor: '#2563EB',
     shadowOpacity: 0.12,
     shadowRadius: 32,
     shadowOffset: { width: 0, height: 8 },
     elevation: 8,
+  },
+  glowBorderLight: {
+    borderColor: 'rgba(191, 219, 254, 0.6)',
   },
   // Content
   premiumContent: {
@@ -384,9 +436,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
-    right: 0,
-    bottom: 0,
     width: ICON_SIZE,
+    height: ICON_SIZE,
   },
   shimmerGradient: {
     width: ICON_SIZE,

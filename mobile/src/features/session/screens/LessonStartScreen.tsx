@@ -1,6 +1,6 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -41,7 +41,7 @@ export default function LessonStartScreen() {
   const handleStart = () => {
     router.push({
       pathname: routeBuilders.sessionDetail(sessionId),
-      params: { lessonId, kind: 'learn' },
+      params: { lessonId, kind: 'learn', returnTo: routes.tabs.learn },
     });
   };
 
@@ -50,9 +50,19 @@ export default function LessonStartScreen() {
     router.replace(routes.tabs.learn);
   };
 
-  const handleHomePress = () => {
-    // Hard guarantee: always allow escape to home.
-    router.replace(routes.tabs.home);
+  const handleExitPress = () => {
+    Alert.alert(
+      'Leave lesson?',
+      'You haven’t started the session yet. Go back to learn?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: () => router.replace(routes.tabs.learn),
+        },
+      ]
+    );
   };
 
   if (loading) {
@@ -79,7 +89,7 @@ export default function LessonStartScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <Stack.Screen options={{ headerShown: false }} />
-      {/* Header with home button */}
+      {/* Header with exit button */}
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
@@ -93,12 +103,12 @@ export default function LessonStartScreen() {
         <Text style={styles.headerTitle}>Lesson</Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Home"
-          onPress={handleHomePress}
+          accessibilityLabel="Exit"
+          onPress={handleExitPress}
           hitSlop={10}
-          style={styles.homeButton}
+          style={styles.exitButton}
         >
-          <Ionicons name="home" size={22} color={theme.colors.mutedText} />
+          <Ionicons name="close" size={22} color={theme.colors.mutedText} />
         </Pressable>
       </View>
       
@@ -140,7 +150,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: theme.colors.text,
   },
-  homeButton: {
+  exitButton: {
     width: 36,
     height: 36,
     borderRadius: 18,

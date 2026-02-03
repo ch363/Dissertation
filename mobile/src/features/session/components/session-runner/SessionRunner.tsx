@@ -70,6 +70,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
   const [_audioRecordingUri, setAudioRecordingUri] = useState<string | null>(null);
   const [isPronunciationProcessing, setIsPronunciationProcessing] = useState(false);
   const [awardedXpByCard, setAwardedXpByCard] = useState<Map<string, number>>(new Map());
+  const [grammaticalCorrectness, setGrammaticalCorrectness] = useState<number | null>(null);
   const currentCard = plan.cards[index];
   const total = useMemo(() => plan.cards.length, [plan.cards]);
   const isSpeakListening =
@@ -96,10 +97,10 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
     } else {
       setCardStartTime(null);
     }
-    // Reset pronunciation result when card changes
+    // Reset pronunciation result and grammar when card changes
     setPronunciationResult(null);
     setAudioRecordingUri(null);
-    setShowRationale(false);
+    setGrammaticalCorrectness(null);
   }, [index, currentCard]);
 
   const isLast = index >= total - 1;
@@ -308,6 +309,9 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
 
       setIsCorrect(effectiveCorrect);
       setShowResult(true);
+      setGrammaticalCorrectness(
+        validationResult.grammaticalCorrectness ?? null,
+      );
 
       // Haptic feedback based on correctness
       if (effectiveCorrect) {
@@ -324,11 +328,14 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
       let awardedXp: number | undefined;
       if (!recordedAttempts.has(currentCard.id)) {
         try {
+          const percentageAccuracy =
+            validationResult.grammaticalCorrectness ??
+            (validationResult.isCorrect ? 100 : 0);
           const attemptResponse = await recordQuestionAttempt(questionId, {
             deliveryMethod,
             score: validationResult.score,
             timeToComplete,
-            percentageAccuracy: validationResult.isCorrect ? 100 : 0,
+            percentageAccuracy,
             attempts: attemptNumber,
           } as any);
           awardedXp = attemptResponse.awardedXp;
@@ -385,7 +392,10 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           const validationResult = await validateAnswer(questionId, answer, deliveryMethod);
           setIsCorrect(validationResult.isCorrect);
           setShowResult(true);
-          
+          setGrammaticalCorrectness(
+            validationResult.grammaticalCorrectness ?? null,
+          );
+
           // Haptic feedback immediately based on correctness
           if (validationResult.isCorrect) {
             triggerHaptic('light');
@@ -401,11 +411,14 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           let awardedXp: number | undefined;
           if (!recordedAttempts.has(currentCard.id)) {
             try {
+              const percentageAccuracy =
+                validationResult.grammaticalCorrectness ??
+                (validationResult.isCorrect ? 100 : 0);
               const attemptResponse = await recordQuestionAttempt(questionId, {
                 deliveryMethod,
                 score: validationResult.score,
                 timeToComplete,
-                percentageAccuracy: validationResult.isCorrect ? 100 : 0,
+                percentageAccuracy,
                 attempts: attemptNumber,
               } as any);
               awardedXp = attemptResponse.awardedXp;
@@ -665,6 +678,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           current={index + 1}
           total={total}
           onBackPress={handleBack}
+          returnTo={returnTo}
         />
 
       </View>
@@ -684,6 +698,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           onAnswerChange={handleAnswerChange}
           showResult={showResult}
           isCorrect={isCorrect}
+          grammaticalCorrectness={grammaticalCorrectness}
           onCheckAnswer={handleCheckAnswerWrapper}
           onContinue={isSpeakListening ? handleNext : undefined}
           onRating={(rating) => {

@@ -140,6 +140,8 @@ export class ContentLookupService {
     context: {
       sourceText?: string;
       source?: string;
+      /** When true, prompt says "to English"; when false, "to Italian". Used for TEXT_TRANSLATION/FLASHCARD. */
+      isToEnglish?: boolean;
     },
   ): string {
     const customPrompt =
@@ -158,10 +160,12 @@ export class ContentLookupService {
           : 'Select the correct translation';
 
       case DELIVERY_METHOD.TEXT_TRANSLATION:
-      case DELIVERY_METHOD.FLASHCARD:
+      case DELIVERY_METHOD.FLASHCARD: {
+        const target = context.isToEnglish === false ? 'Italian' : 'English';
         return context.source
-          ? `Translate '${context.source}' to English`
-          : 'Translate to English';
+          ? `Translate '${context.source}' to ${target}`
+          : `Translate to ${target}`;
+      }
 
       case DELIVERY_METHOD.FILL_BLANK:
         return 'Complete the sentence';
@@ -553,13 +557,15 @@ export class ContentLookupService {
       case DELIVERY_METHOD.TEXT_TRANSLATION:
       case DELIVERY_METHOD.FLASHCARD: {
         result.source = variantData?.source ?? teaching.learningLanguageString;
-        result.answer = variantData?.answer ?? teaching.userLanguageString;
+        const sourceIsItalian = this.isLikelyItalian(result.source);
+        result.answer =
+          variantData?.answer ??
+          (sourceIsItalian ? teaching.userLanguageString : teaching.learningLanguageString);
         result.hint = variantData?.hint ?? teaching.tip;
-        result.prompt = this.buildQuestionPrompt(
-          deliveryMethod,
-          variantData,
-          { source: result.source },
-        );
+        result.prompt = this.buildQuestionPrompt(deliveryMethod, variantData, {
+          source: result.source,
+          isToEnglish: sourceIsItalian,
+        });
         break;
       }
 

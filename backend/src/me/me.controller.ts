@@ -71,8 +71,13 @@ export class MeController {
   }
 
   @Get('stats')
-  async getStats(@User() userId: string) {
-    return this.meService.getStats(userId);
+  @ApiQuery({ name: 'tzOffsetMinutes', required: false, type: Number })
+  async getStats(
+    @User() userId: string,
+    @Query('tzOffsetMinutes') tzOffsetMinutes?: string,
+  ) {
+    const parsed = tzOffsetMinutes !== undefined ? Number(tzOffsetMinutes) : undefined;
+    return this.meService.getStats(userId, Number.isFinite(parsed) ? parsed : undefined);
   }
 
   @Get('lessons')

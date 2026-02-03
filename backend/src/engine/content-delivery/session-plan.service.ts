@@ -241,7 +241,6 @@ export class SessionPlanService {
             type: 'teach',
             item: stepItem,
             estimatedTimeSec: estimatedTime,
-            rationale: this.buildStepRationale(candidate, prioritizedSkills),
           });
         }
       } else if (candidate.kind === 'question') {
@@ -287,7 +286,6 @@ export class SessionPlanService {
               item: stepItem,
               estimatedTimeSec: estimatedTime,
               deliveryMethod: selectedMethod,
-              rationale: this.buildStepRationale(candidate, prioritizedSkills),
             });
           }
         }
@@ -717,61 +715,6 @@ export class SessionPlanService {
     const onboardingScores =
       await this.onboardingPreferences.getInitialDeliveryMethodScores(userId);
     return onboardingScores;
-  }
-
-  private pickPrioritizedSkill(
-    stepSkillTags: string[] | undefined,
-    prioritizedSkills: string[] = [],
-  ): string | undefined {
-    if (
-      !stepSkillTags ||
-      stepSkillTags.length === 0 ||
-      prioritizedSkills.length === 0
-    ) {
-      return undefined;
-    }
-
-    const prioritizedSet = new Set(prioritizedSkills);
-    return stepSkillTags.find((t) => prioritizedSet.has(t));
-  }
-
-  private buildStepRationale(
-    candidate: DeliveryCandidate,
-    prioritizedSkills: string[] = [],
-  ): string {
-    // Reviews
-    if (candidate.dueScore > 0) {
-      return 'Due review';
-    }
-
-    // Targeting low mastery skills (if skill tags are present)
-    const prioritizedTag = this.pickPrioritizedSkill(
-      candidate.skillTags,
-      prioritizedSkills,
-    );
-    if (prioritizedTag) {
-      return `Targets low mastery skill: ${prioritizedTag}`;
-    }
-
-    // Consolidation after errors
-    if (candidate.errorScore >= 2) {
-      return 'Consolidation after recent errors';
-    }
-
-    // Scaffolding: easy win
-    if (
-      typeof candidate.difficulty === 'number' &&
-      candidate.difficulty <= 0.2
-    ) {
-      return 'Scaffolding: quick win';
-    }
-
-    // New teaching content
-    if (candidate.kind === 'teaching') {
-      return 'Introducing new phrase';
-    }
-
-    return 'Next practice item';
   }
 
   private buildTitle(context: SessionContext): string{

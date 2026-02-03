@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { SpeakerButton } from '@/components/ui';
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -21,8 +22,6 @@ const logger = createLogger('MultipleChoiceCard');
 // Figma design tokens (from MultipleChoiceScreen – blue/indigo/slate/emerald)
 const FIGMA = {
   instruction: 'rgba(5, 150, 105, 0.8)', // emerald-600/80
-  audioGradient: ['#2563eb', '#4f46e5'] as const, // blue-600 → indigo-600
-  audioRing: 'rgba(96, 165, 250, 0.4)', // blue-400/40
   word: '#0f172a', // slate-900
   optionBorder: '#e2e8f0', // slate-200
   optionBorderHover: '#cbd5e1', // slate-300
@@ -153,30 +152,13 @@ export function MultipleChoiceCard({
       {card.sourceText && (
         <View style={styles.wordRow}>
           {showPromptSpeaker ? (
-            <Pressable
+            <SpeakerButton
+              size={48}
+              isPlaying={isPlaying}
               onPress={handlePlayAudio}
-              style={({ pressed }) => [
-                styles.audioButtonWrap,
-                isPlaying && styles.audioButtonPlaying,
-                pressed && styles.audioButtonPressed,
-              ]}
-              accessibilityRole="button"
               accessibilityLabel={isPlaying ? 'Pause audio' : 'Play pronunciation'}
-              accessibilityState={{ selected: isPlaying, busy: isPlaying }}
-            >
-              <LinearGradient
-                colors={FIGMA.audioGradient}
-                style={styles.audioButton}
-                start={{ x: 0, y: 1 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Ionicons
-                  name={isPlaying ? 'pause' : 'volume-high'}
-                  size={20}
-                  color={FIGMA.ctaText}
-                />
-              </LinearGradient>
-            </Pressable>
+              accessibilityHint="Plays the phrase audio"
+            />
           ) : null}
           <Text style={[styles.sourceText, { color: FIGMA.word }]}>{card.sourceText}</Text>
         </View>
@@ -311,7 +293,6 @@ const OPTION_PADDING_H = 24;
 const OPTION_PADDING_V = 16;
 const RADIUS_OPTION = 16;
 const RADIUS_CTA = 20;
-const AUDIO_SIZE = 48;
 const CTA_HEIGHT = 56;
 
 const styles = StyleSheet.create({
@@ -331,24 +312,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     marginBottom: 32,
-  },
-  audioButtonWrap: {
-    borderRadius: AUDIO_SIZE / 2,
-    overflow: 'hidden',
-  },
-  audioButtonPlaying: {
-    borderWidth: 4,
-    borderColor: FIGMA.audioRing,
-  },
-  audioButtonPressed: {
-    opacity: 0.9,
-  },
-  audioButton: {
-    width: AUDIO_SIZE,
-    height: AUDIO_SIZE,
-    borderRadius: AUDIO_SIZE / 2,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   sourceText: {
     fontFamily: baseTheme.typography.semiBold,

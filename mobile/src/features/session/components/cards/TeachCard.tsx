@@ -1,8 +1,9 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
+import { SpeakerButton } from '@/components/ui';
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -15,7 +16,6 @@ const logger = createLogger('TeachCard');
 // Professional App Redesign / Figma (LessonScreen) colours
 const CARD_GRADIENT = ['#eff6ff', '#e0e7ff', '#eff6ff'] as const;
 const CARD_BORDER = 'rgba(191, 219, 254, 0.5)';
-const SPEAKER_GRADIENT = ['#2563eb', '#4f46e5'] as const; // blue-600 to indigo-600
 const USAGE_CARD_BG = 'rgba(248, 250, 252, 0.8)';
 const USAGE_ICON_SLATE = '#94a3b8';
 
@@ -108,38 +108,15 @@ export function TeachCard({ card }: Props) {
             ) : null}
           </View>
 
-          {/* Audio button – 80px circle, gradient blue–indigo (Figma: w-20 h-20, ring when playing) */}
-          <View style={styles.speakerWrap}>
-            <Pressable
-              onPress={handleSpeak}
-              style={({ pressed }) => [
-                styles.speakerButton,
-                isSpeaking && styles.speakerButtonActive,
-                pressed && styles.speakerButtonPressed,
-              ]}
-              accessibilityLabel={isSpeaking ? 'Playing audio' : 'Play pronunciation'}
-              accessibilityRole="button"
-            >
-              <LinearGradient
-                colors={SPEAKER_GRADIENT}
-                style={StyleSheet.absoluteFill}
-              />
-              <View style={styles.speakerIconWrap}>
-                {isSpeaking ? (
-                  <Ionicons name="pause" size={32} color="#fff" />
-                ) : (
-                  <Ionicons name="volume-high" size={32} color="#fff" />
-                )}
-              </View>
-            </Pressable>
-            {showTapHint && !isSpeaking ? (
-              <View style={styles.tapHintPill}>
-                <Text style={[styles.tapHint, { color: theme.colors.mutedText }]}>
-                  Tap to listen
-                </Text>
-              </View>
-            ) : null}
-          </View>
+          {/* Audio button – 80px blue gradient circle (reusable SpeakerButton) */}
+          <SpeakerButton
+            size={80}
+            isPlaying={isSpeaking}
+            onPress={handleSpeak}
+            showTapHint={showTapHint}
+            tapHintText="Tap to listen"
+            accessibilityLabel={isSpeaking ? 'Playing audio' : 'Play pronunciation'}
+          />
         </View>
       </LinearGradient>
 
@@ -158,7 +135,6 @@ export function TeachCard({ card }: Props) {
 
 const CARD_RADIUS = 32;
 const USAGE_RADIUS = 24;
-const SPEAKER_SIZE = 80;
 
 const styles = StyleSheet.create({
   container: {
@@ -206,45 +182,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     textAlign: 'center',
     lineHeight: 24,
-  },
-  speakerWrap: {
-    alignItems: 'center',
-    position: 'relative',
-  },
-  speakerButton: {
-    width: SPEAKER_SIZE,
-    height: SPEAKER_SIZE,
-    borderRadius: SPEAKER_SIZE / 2,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-  },
-  speakerButtonActive: {
-    borderWidth: 4,
-    borderColor: 'rgba(96, 165, 250, 0.5)',
-  },
-  speakerButtonPressed: {
-    opacity: 0.9,
-  },
-  speakerIconWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tapHintPill: {
-    marginTop: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    alignSelf: 'center',
-  },
-  tapHint: {
-    fontFamily: baseTheme.typography.medium,
-    fontSize: 12,
   },
   usageNoteCard: {
     flexDirection: 'row',

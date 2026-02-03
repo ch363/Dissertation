@@ -52,7 +52,6 @@ export interface SessionStep {
   item: StepItem;
   estimatedTimeSec: number;
   deliveryMethod?: DELIVERY_METHOD;
-  rationale?: string;
 }
 
 export interface SessionMetadata {

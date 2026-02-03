@@ -13,6 +13,7 @@ import { MasteryService } from '../../engine/mastery/mastery.service';
 import { SessionPlanCacheService } from '../../engine/content-delivery/session-plan-cache.service';
 import { PronunciationService } from '../../speech/pronunciation/pronunciation.service';
 import { OnboardingPreferencesService } from '../../onboarding/onboarding-preferences.service';
+import { GrammarService } from '../../grammar/grammar.service';
 
 describe('ProgressService', () => {
   let service: ProgressService;
@@ -89,6 +90,10 @@ describe('ProgressService', () => {
     getInitialDeliveryMethodScores: jest.fn().mockResolvedValue(new Map()),
   };
 
+  const mockGrammarService = {
+    checkGrammar: jest.fn().mockResolvedValue(null),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -124,6 +129,10 @@ describe('ProgressService', () => {
         {
           provide: OnboardingPreferencesService,
           useValue: mockOnboardingPreferencesService,
+        },
+        {
+          provide: GrammarService,
+          useValue: mockGrammarService,
         },
       ],
     }).compile();

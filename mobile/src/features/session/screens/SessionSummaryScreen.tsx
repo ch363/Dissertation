@@ -333,7 +333,9 @@ export default function SessionSummaryScreen() {
                 <View style={styles.heroIconWrap}>
                   <Ionicons name="checkmark-circle" size={Math.round(48 * scale)} color={theme.colors.primary} />
                 </View>
-                <Text style={[styles.title, { fontSize: scaled.titleSize }]}>You completed this lesson!</Text>
+                <Text style={[styles.title, { fontSize: scaled.titleSize }]}>
+                  {kind === 'review' ? 'You completed this review!' : 'You completed this lesson!'}
+                </Text>
                 <Text style={[styles.subtitle, { fontSize: scaled.subtitleSize, lineHeight: scaled.subtitleLineHeight }]}>
                   {kind === 'review'
                     ? 'Great job on your review session!'
@@ -367,7 +369,9 @@ export default function SessionSummaryScreen() {
                 <View style={[styles.learnedSection, { gap: scaled.sectionGap }]}>
                   <View style={[styles.sectionHeader, { gap: scaled.sectionHeaderGap }]}>
                     <Ionicons name="book-outline" size={Math.round(18 * scale)} color={theme.colors.primary} />
-                    <Text style={[styles.learnedTitle, { fontSize: scaled.learnedTitleSize }]}>Teachings</Text>
+                    <Text style={[styles.learnedTitle, { fontSize: scaled.learnedTitleSize }]}>
+                      {kind === 'review' ? 'Phrases you reviewed' : 'What you learned'}
+                    </Text>
                   </View>
 
                   {loadingTeachings ? (

@@ -157,6 +157,29 @@ export class PronunciationService {
       const nBest0 = parsed?.NBest?.[0] ?? null;
       const overall = nBest0?.PronunciationAssessment ?? null;
 
+      // Log raw Azure word-level payload for debugging ErrorType / Phonemes
+      const wordsRaw = Array.isArray(nBest0?.Words) ? nBest0.Words : [];
+      if (wordsRaw.length > 0) {
+        const wordSummary = wordsRaw.map((w: any) => {
+          const pa = w?.PronunciationAssessment ?? w;
+          const phonemes = Array.isArray(w?.Phonemes) ? w.Phonemes : [];
+          return {
+            word: w?.Word ?? '(unknown)',
+            keys: typeof w === 'object' && w !== null ? Object.keys(w) : [],
+            errorType: pa?.ErrorType ?? w?.ErrorType ?? '(missing)',
+            phonemesCount: phonemes.length,
+            phonemeSample:
+              phonemes.length > 0
+                ? phonemes.slice(0, 2).map((p: any) => ({ p: p?.Phoneme, acc: p?.AccuracyScore }))
+                : undefined,
+          };
+        });
+        this.logger.log(
+          `PronunciationAssessment raw words: ref="${referenceText}" locale=${locale}`,
+        );
+        this.logger.log(JSON.stringify({ wordSummary }, null, 0));
+      }
+
       const recognizedText =
         (typeof nBest0?.Display === 'string' && nBest0.Display) ||
         (typeof nBest0?.DisplayText === 'string' && nBest0.DisplayText) ||
@@ -175,6 +198,20 @@ export class PronunciationService {
       };
 
       const words: PronunciationWordScore[] = this.extractWordsFromJson(nBest0);
+
+      if (words.length > 0) {
+        this.logger.log('PronunciationAssessment extracted words (sent to client)');
+        this.logger.log(
+          JSON.stringify({
+            words: words.map((w) => ({
+              word: w.word,
+              accuracy: w.accuracy,
+              errorType: w.errorType ?? '(none)',
+              phonemesCount: w.phonemes?.length ?? 0,
+            })),
+          }, null, 0),
+        );
+      }
 
       return {
         locale,

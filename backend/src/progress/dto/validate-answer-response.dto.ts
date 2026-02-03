@@ -20,4 +20,13 @@ export class ValidateAnswerResponseDto {
     example: 'Excellent! "Grazie" means "Thank you" in Italian.',
   })
   feedback?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Grammatical correctness 0–100 for text-input answers (translation, fill-blank, listening type)',
+    example: 85,
+    minimum: 0,
+    maximum: 100,
+  })
+  grammaticalCorrectness?: number;
 }

@@ -28,6 +28,7 @@ type Props = {
   onAnswerChange?: (answer: string) => void;
   showResult?: boolean;
   isCorrect?: boolean;
+  grammaticalCorrectness?: number | null;
   showHint?: boolean;
   onCheckAnswer?: (audioUri?: string) => void;
   onContinue?: () => void;
@@ -48,6 +49,7 @@ export function CardRenderer({
   onAnswerChange,
   showResult,
   isCorrect,
+  grammaticalCorrectness,
   showHint,
   onCheckAnswer,
   onContinue,
@@ -75,6 +77,7 @@ export function CardRenderer({
         onAnswerChange,
         showResult,
         isCorrect,
+        grammaticalCorrectness,
         showHint,
         onCheckAnswer,
         onContinue,
@@ -98,6 +101,7 @@ function renderCardByKind(
   onAnswerChange?: (answer: string) => void,
   showResult?: boolean,
   isCorrect?: boolean,
+  grammaticalCorrectness?: number | null,
   showHint?: boolean,
   onCheckAnswer?: (audioUri?: string) => void,
   onContinue?: () => void,
@@ -127,6 +131,7 @@ function renderCardByKind(
           onSelectAnswer={onSelectAnswer}
           showResult={showResult}
           isCorrect={isCorrect}
+          grammaticalCorrectness={grammaticalCorrectness}
         />
       );
     case CardKind.TranslateToEn:
@@ -139,6 +144,7 @@ function renderCardByKind(
           showHint={showHint}
           showResult={showResult}
           isCorrect={isCorrect}
+          grammaticalCorrectness={grammaticalCorrectness}
           onCheckAnswer={onCheckAnswer}
           onRating={onRating}
           selectedRating={selectedRating}
@@ -152,6 +158,7 @@ function renderCardByKind(
           onAnswerChange={onAnswerChange}
           showResult={showResult}
           isCorrect={isCorrect}
+          grammaticalCorrectness={grammaticalCorrectness}
           onCheckAnswer={onCheckAnswer}
           onContinue={onContinue}
           pronunciationResult={pronunciationResult}

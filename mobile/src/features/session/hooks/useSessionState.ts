@@ -29,8 +29,6 @@ export interface SessionState {
   setAwardedXpByCard: (xp: Map<string, number>) => void;
   cardStartTime: number | null;
   setCardStartTime: (time: number | null) => void;
-  showRationale: boolean;
-  setShowRationale: (show: boolean) => void;
   resetCardState: () => void;
   goToNextCard: () => void;
   goToPreviousCard: () => void;
@@ -50,7 +48,6 @@ export function useSessionState(totalCards: number, currentCard?: Card): Session
   const [recordedAttempts, setRecordedAttempts] = useState<Set<string>>(new Set());
   const [awardedXpByCard, setAwardedXpByCard] = useState<Map<string, number>>(new Map());
   const [cardStartTime, setCardStartTime] = useState<number | null>(null);
-  const [showRationale, setShowRationale] = useState(false);
 
   useEffect(() => {
     if (currentCard && currentCard.kind !== CardKind.Teach) {
@@ -69,7 +66,6 @@ export function useSessionState(totalCards: number, currentCard?: Card): Session
     setFlashcardRating(undefined);
     setPronunciationResult(null);
     setAudioRecordingUri(null);
-    setShowRationale(false);
   };
 
   const goToNextCard = () => {
@@ -113,8 +109,6 @@ export function useSessionState(totalCards: number, currentCard?: Card): Session
     setAwardedXpByCard,
     cardStartTime,
     setCardStartTime,
-    showRationale,
-    setShowRationale,
     resetCardState,
     goToNextCard,
     goToPreviousCard,

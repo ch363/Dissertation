@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { theme } from '@/services/theme/tokens';
 import { routes } from '@/services/navigation/routes';
@@ -11,17 +11,29 @@ type Props = {
   current: number; // 1-based
   total: number;
   onBackPress?: () => void;
+  /** Route to navigate to when user confirms exit (e.g. home, learn, or course detail). */
+  returnTo?: string;
 };
 
-export function LessonProgressHeader({ title, current, total, onBackPress }: Props) {
+export function LessonProgressHeader({ title, current, total, onBackPress, returnTo }: Props) {
   const progress = total > 0 ? Math.min(1, Math.max(0, current / total)) : 0;
 
-  const handleHomePress = () => {
-    // Dismiss all modals/stacks to reveal the home screen underneath
-    router.dismissAll();
-    // Navigate to home - this will slide the current screen right, revealing home underneath
-    // Using navigate instead of replace to get the stack animation
-    router.navigate(routes.tabs.home);
+  const handleExitPress = () => {
+    Alert.alert(
+      'Leave session?',
+      'Your progress in this session will not be saved. Are you sure you want to leave?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: () => {
+            const destination = (returnTo && returnTo.trim().length > 0) ? returnTo : routes.tabs.home;
+            router.replace(destination as Parameters<typeof router.replace>[0]);
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -41,15 +53,15 @@ export function LessonProgressHeader({ title, current, total, onBackPress }: Pro
           {title}
         </Text>
 
-        {/* Home button */}
+        {/* Exit session button */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Home"
-          onPress={handleHomePress}
+          accessibilityLabel="Exit session"
+          onPress={handleExitPress}
           hitSlop={10}
-          style={styles.homeButton}
+          style={styles.exitButton}
         >
-          <Ionicons name="home" size={22} color={theme.colors.mutedText} />
+          <Ionicons name="close" size={22} color={theme.colors.mutedText} />
         </Pressable>
       </View>
 
@@ -64,7 +76,8 @@ export function LessonProgressHeader({ title, current, total, onBackPress }: Pro
 
 const styles = StyleSheet.create({
   container: {
-    gap: theme.spacing.sm,
+    gap: theme.spacing.md,
+    paddingBottom: theme.spacing.xs,
   },
   titleRow: {
     flexDirection: 'row',
@@ -72,16 +85,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  homeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  exitButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -89,25 +102,26 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontFamily: theme.typography.semiBold,
-    fontSize: 18,
+    fontSize: 17,
     color: theme.colors.text,
-    paddingHorizontal: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
   },
   counterText: {
-    fontFamily: theme.typography.semiBold,
-    fontSize: 16,
+    fontFamily: theme.typography.medium,
+    fontSize: 14,
     color: theme.colors.mutedText,
     textAlign: 'center',
+    letterSpacing: 0.2,
   },
   progressTrack: {
-    height: 6,
+    height: 4,
     borderRadius: 999,
-    backgroundColor: '#E6E8EB',
+    backgroundColor: theme.colors.border,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
     borderRadius: 999,
-    backgroundColor: '#16A39A', // teal (figma-like)
+    backgroundColor: theme.colors.primary,
   },
 });

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { SpeakerButton } from '@/components/ui';
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -18,9 +19,10 @@ type Props = {
   onSelectAnswer?: (answer: string) => void;
   showResult?: boolean;
   isCorrect?: boolean;
+  grammaticalCorrectness?: number | null;
 };
 
-export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult, isCorrect }: Props) {
+export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult, isCorrect, grammaticalCorrectness }: Props) {
   const ctx = useAppTheme();
   const theme = ctx?.theme ?? baseTheme;
   const [isPlaying, setIsPlaying] = useState(false);
@@ -119,23 +121,16 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
       <View style={[styles.questionCard, { backgroundColor: theme.colors.card }]}>
         {/* Audio button - always show if text is available */}
         {(card.audioUrl || card.text) && (
-          <Pressable
-            style={styles.audioButton}
-            onPress={handlePlayAudio}
-            accessibilityRole="button"
-            accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
-            accessibilityHint="Plays the sentence audio"
-            accessibilityState={{ selected: isPlaying, busy: isPlaying }}
-          >
-            <Ionicons
-              name={isPlaying ? 'pause' : 'volume-high'}
-              size={20}
-              color={theme.colors.primary}
-              accessible={false}
-              importantForAccessibility="no"
+          <View style={styles.audioButton}>
+            <SpeakerButton
+              size={44}
+              isPlaying={isPlaying}
+              onPress={handlePlayAudio}
+              accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
+              accessibilityHint="Plays the sentence audio"
             />
             <Text style={[styles.audioLabel, { color: theme.colors.text }]}>Listen and complete</Text>
-          </Pressable>
+          </View>
         )}
 
         {/* Sentence with blank */}
@@ -185,6 +180,12 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
           {sentenceParts[1] && <Text style={[styles.sentenceText, { color: theme.colors.text }]}>{sentenceParts[1].trim()}</Text>}
         </View>
       </View>
+
+      {showResult && grammaticalCorrectness != null && (
+        <Text style={[styles.grammarScore, { color: theme.colors.mutedText }]}>
+          Grammatical correctness: {grammaticalCorrectness}%
+        </Text>
+      )}
 
       {/* Options Card */}
       {card.options && card.options.length > 0 && (
@@ -307,6 +308,11 @@ const styles = StyleSheet.create({
     fontFamily: baseTheme.typography.regular,
     fontSize: 18,
     lineHeight: 28,
+  },
+  grammarScore: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 13,
+    marginTop: baseTheme.spacing.xs,
   },
   blankField: {
     minWidth: 100,

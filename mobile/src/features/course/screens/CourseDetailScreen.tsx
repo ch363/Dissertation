@@ -27,9 +27,6 @@ const Logger = createLogger('CourseDetailScreen');
 const MODULE_COVER = {
   pillBg: '#EFF6FF',
   pillBorder: 'rgba(191, 219, 254, 0.3)',
-  blue: '#3B82F6',
-  blueLight: '#60A5FA',
-  blueDark: '#2563EB',
   title: '#0F172A',
   muted: '#475569',
   mutedDesc: '#64748B',
@@ -48,9 +45,6 @@ const MODULE_COVER = {
 const MODULE_COVER_DARK = {
   pillBg: 'rgba(62, 138, 255, 0.2)',
   pillBorder: 'rgba(62, 138, 255, 0.35)',
-  blue: '#62A0FF',
-  blueLight: '#7EB8FF',
-  blueDark: '#4D74ED',
   title: '#E6EEF8',
   muted: '#8A9FB8',
   mutedDesc: '#8A9FB8',
@@ -83,7 +77,15 @@ type PrimaryAction =
 export default function CourseDetail() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { theme, isDark } = useAppTheme();
-  const cover = isDark ? MODULE_COVER_DARK : MODULE_COVER;
+  const cover = useMemo(
+    () => ({
+      ...(isDark ? MODULE_COVER_DARK : MODULE_COVER),
+      blue: theme.colors.primary,
+      blueLight: theme.colors.ctaCardAccent,
+      blueDark: theme.colors.primary,
+    }),
+    [isDark, theme.colors.primary, theme.colors.ctaCardAccent]
+  );
   const [lessonOutcomes, setLessonOutcomes] = useState<Record<string, string>>({});
   const [lessonsLoadError, setLessonsLoadError] = useState<string | null>(null);
   const outcomeRequestsRef = useRef(new Set<string>());
@@ -294,11 +296,11 @@ export default function CourseDetail() {
   }, [lessons, module?.id, recentActivity, suggestedLessonId, suggestedLessonTitle, userProgress]);
 
   const handlePrimaryActionPress = () => {
-    if (!primaryAction) return;
+    if (!primaryAction || !slug) return;
     const sessionId = makeSessionId('learn');
     router.push({
       pathname: routeBuilders.sessionDetail(sessionId),
-      params: { lessonId: primaryAction.lessonId, kind: 'learn' },
+      params: { lessonId: primaryAction.lessonId, kind: 'learn', returnTo: routeBuilders.courseDetail(slug) },
     });
   };
 
@@ -524,7 +526,7 @@ export default function CourseDetail() {
                 const sessionId = makeSessionId('learn');
                 router.push({
                   pathname: routeBuilders.sessionDetail(sessionId),
-                  params: { lessonId: lesson.id, kind: 'learn' },
+                  params: { lessonId: lesson.id, kind: 'learn', returnTo: routeBuilders.courseDetail(slug) },
                 });
               };
 
@@ -547,7 +549,7 @@ export default function CourseDetail() {
               );
               const leftIcon = (
                 <LinearGradient
-                  colors={[cover.blue, cover.blueDark]}
+                  colors={[cover.blueLight, cover.blue]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.lessonNumberBadge}
@@ -653,7 +655,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
-    color: MODULE_COVER.blue,
   },
   moduleTitle: {
     fontFamily: theme.typography.bold,
@@ -680,7 +681,6 @@ const styles = StyleSheet.create({
   progressPercent: {
     fontFamily: theme.typography.bold,
     fontSize: 14,
-    color: MODULE_COVER.blue,
   },
   progressBarBg: {
     height: 8,
@@ -692,7 +692,6 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: MODULE_COVER.blue,
     borderRadius: 4,
   },
   summaryCard: {
@@ -750,7 +749,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: MODULE_COVER.blue,
     shadowOpacity: 0.25,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
@@ -810,7 +808,6 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 8,
-    backgroundColor: MODULE_COVER.blue,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,

@@ -1,3 +1,29 @@
+/**
+ * Start of current day (00:00:00.000) in user's local time, as UTC instant.
+ */
+export function getStartOfLocalDayUtc(
+  now: Date,
+  tzOffsetMinutes?: number,
+): Date {
+  if (!Number.isFinite(tzOffsetMinutes)) return now;
+  if (tzOffsetMinutes! < -14 * 60 || tzOffsetMinutes! > 14 * 60) return now;
+
+  const offsetMs = tzOffsetMinutes! * 60_000;
+  const localNow = new Date(now.getTime() - offsetMs);
+  const startOfLocalDayShiftedUtc = new Date(
+    Date.UTC(
+      localNow.getUTCFullYear(),
+      localNow.getUTCMonth(),
+      localNow.getUTCDate(),
+      0,
+      0,
+      0,
+      0,
+    ),
+  );
+  return new Date(startOfLocalDayShiftedUtc.getTime() + offsetMs);
+}
+
 // Converts UTC timestamp to end of user's local day, then back to UTC for storage
 export function getEndOfLocalDayUtc(
   now: Date,

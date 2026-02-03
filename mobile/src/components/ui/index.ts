@@ -6,6 +6,7 @@ export { LoadingRow } from './loading-row/LoadingRow';
 export { LoadingScreen } from './loading-screen/LoadingScreen';
 export { MetaRow } from './meta-row/MetaRow';
 export { ScrollView } from './scroll-view/ScrollView';
+export { SpeakerButton } from './speaker-button/SpeakerButton';
 export { SegmentedControl } from './segmented-control/SegmentedControl';
 export { StaticCard } from './static-card/StaticCard';
 export { SurfaceCard } from './surface-card/SurfaceCard';

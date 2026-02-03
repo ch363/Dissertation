@@ -29,6 +29,14 @@ import { SessionPlanCacheService } from '../engine/content-delivery/session-plan
 import { extractSkillTags } from '../engine/mastery/skill-extraction.util';
 import { PronunciationService } from '../speech/pronunciation/pronunciation.service';
 import { OnboardingPreferencesService } from '../onboarding/onboarding-preferences.service';
+import { GrammarService } from '../grammar/grammar.service';
+
+/** Delivery methods that use free-text input and get grammatical correctness. */
+const GRAMMATICAL_TEXT_METHODS: DELIVERY_METHOD[] = [
+  DELIVERY_METHOD.TEXT_TRANSLATION,
+  DELIVERY_METHOD.FILL_BLANK,
+  DELIVERY_METHOD.SPEECH_TO_TEXT,
+];
 
 @Injectable()
 export class ProgressService {
@@ -43,6 +51,7 @@ export class ProgressService {
     private sessionPlanCache: SessionPlanCacheService,
     private pronunciationService: PronunciationService,
     private onboardingPreferences: OnboardingPreferencesService,
+    private grammarService: GrammarService,
   ) {}
 
   async startLesson(userId: string, lessonId: string) {
@@ -1184,6 +1193,7 @@ export class ProgressService {
     questionData: any,
     teaching: any,
     feedbackDepth: number,
+    grammaticalCorrectness?: number,
   ): ValidateAnswerResponseDto {
     const feedback = this.buildFeedback(
       isCorrect,
@@ -1196,6 +1206,7 @@ export class ProgressService {
       isCorrect,
       score,
       feedback,
+      ...(grammaticalCorrectness !== undefined && { grammaticalCorrectness }),
     };
   }
 
@@ -1222,12 +1233,28 @@ export class ProgressService {
 
     const score = this.calculateAnswerScore(isCorrect);
 
+    let grammaticalCorrectness: number | undefined;
+    if (
+      GRAMMATICAL_TEXT_METHODS.includes(dto.deliveryMethod) &&
+      typeof dto.answer === 'string' &&
+      dto.answer.trim().length > 0
+    ) {
+      const grammarResult = await this.grammarService.checkGrammar(
+        dto.answer.trim(),
+        'it',
+      );
+      if (grammarResult !== null) {
+        grammaticalCorrectness = Math.round(grammarResult.score);
+      }
+    }
+
     return this.buildValidationResponse(
       isCorrect,
       score,
       questionData,
       teaching,
       feedbackDepth,
+      grammaticalCorrectness,
     );
   }
 
