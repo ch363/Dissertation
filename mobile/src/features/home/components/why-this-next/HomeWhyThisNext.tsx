@@ -50,6 +50,8 @@ type Props = {
   lessonId?: string;
   /** Optional "why this focus" copy for tiny Why? affordance. */
   whyAffordance?: string;
+  /** Increment when the screen gains focus so we restart shimmer (tab/foreground). */
+  screenFocusKey?: number;
 };
 
 export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
@@ -63,6 +65,7 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
   onPress,
   lessonId: _lessonId,
   whyAffordance: _whyAffordance,
+  screenFocusKey,
 }: Props) {
   const { theme, isDark } = useAppTheme();
   const reduceMotion = useReducedMotion();
@@ -125,6 +128,7 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
     shimmerLoopRef.current = null;
   }, []);
 
+  // Start on mount and whenever screen gains focus (tab switch back to Home)
   useEffect(() => {
     if (!useTopicAsTitle) return;
 
@@ -134,9 +138,9 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
     return () => {
       stopFocusAnimations();
     };
-  }, [useTopicAsTitle, reduceMotion, startFocusAnimations, stopFocusAnimations]);
+  }, [useTopicAsTitle, reduceMotion, startFocusAnimations, stopFocusAnimations, screenFocusKey]);
 
-  // Restart shimmer/overlay when app comes back to foreground (they often don't resume otherwise)
+  // Restart when app comes back to foreground
   useEffect(() => {
     if (!useTopicAsTitle || reduceMotion) return;
 
@@ -146,6 +150,16 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
       }
     });
     return () => sub.remove();
+  }, [useTopicAsTitle, reduceMotion, startFocusAnimations]);
+
+  // Fallback: restart shimmer every 30s so it never stays stopped (e.g. native layer quirk)
+  useEffect(() => {
+    if (!useTopicAsTitle || reduceMotion) return;
+
+    const interval = setInterval(() => {
+      startFocusAnimations();
+    }, 30000);
+    return () => clearInterval(interval);
   }, [useTopicAsTitle, reduceMotion, startFocusAnimations]);
 
   const progressValue =

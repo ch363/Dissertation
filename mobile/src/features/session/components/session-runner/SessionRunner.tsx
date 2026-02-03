@@ -1,10 +1,10 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, View, ScrollView } from 'react-native';
 
 import { theme } from '@/services/theme/tokens';
-import { AttemptLog, CardKind, SessionPlan, SessionKind } from '@/types/session';
+import { AttemptLog, Card, CardKind, SessionPlan, SessionKind } from '@/types/session';
 import { getDeliveryMethodForCardKind } from '../../delivery-methods';
 import { validateAnswer, validatePronunciation, recordQuestionAttempt, completeTeaching, updateDeliveryMethodScore } from '@/services/api/progress';
 import { PronunciationResult } from '@/types/session';
@@ -20,6 +20,39 @@ import * as Haptics from 'expo-haptics';
 import { makeSessionId } from '@/features/session/sessionBuilder';
 
 const logger = createLogger('SessionRunner');
+
+/** Extract phrase + translation from review session cards for the summary screen. Dedupes by phrase. */
+function getReviewedTeachingsFromPlan(cards: Card[]): Array<{ phrase: string; translation?: string; emoji?: string }> {
+  const seen = new Set<string>();
+  const out: Array<{ phrase: string; translation?: string; emoji?: string }> = [];
+  for (const card of cards) {
+    let phrase = '';
+    let translation: string | undefined;
+    let emoji: string | undefined;
+    if (card.kind === CardKind.Teach) {
+      phrase = card.content.phrase;
+      translation = card.content.translation;
+      emoji = card.content.emoji;
+    } else if (card.kind === CardKind.MultipleChoice) {
+      phrase = card.sourceText ?? '';
+      translation = card.options?.find((o) => o.id === card.correctOptionId)?.label;
+    } else if (card.kind === CardKind.FillBlank) {
+      phrase = card.text;
+      translation = card.answer;
+    } else if (card.kind === CardKind.TranslateToEn || card.kind === CardKind.TranslateFromEn) {
+      phrase = card.source;
+      translation = card.expected;
+    } else if (card.kind === CardKind.Listening) {
+      phrase = card.expected;
+      translation = card.translation;
+    }
+    if (phrase && !seen.has(phrase)) {
+      seen.add(phrase);
+      out.push({ phrase, translation, emoji });
+    }
+  }
+  return out;
+}
 
 function isHapticsUsable(): boolean {
   return !!(
@@ -42,6 +75,23 @@ async function triggerHaptic(style: 'light' | 'medium') {
   } catch (error) {
     logger.debug('Haptic feedback failed', { error });
   }
+}
+
+/** Per-card state we persist when navigating back/forward so answers remain visible */
+interface SavedCardState {
+  selectedOptionId: string | undefined;
+  selectedAnswer: string | undefined;
+  userAnswer: string;
+  showResult: boolean;
+  isCorrect: boolean;
+  flashcardRating: number | undefined;
+  grammaticalCorrectness: number | null;
+  meaningCorrect: boolean;
+  naturalPhrasing: string | undefined;
+  feedbackWhy: string | undefined;
+  acceptedVariants: string[];
+  validationFeedback: string | undefined;
+  pronunciationResult: PronunciationResult | null;
 }
 
 type Props = {
@@ -71,12 +121,38 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
   const [isPronunciationProcessing, setIsPronunciationProcessing] = useState(false);
   const [awardedXpByCard, setAwardedXpByCard] = useState<Map<string, number>>(new Map());
   const [grammaticalCorrectness, setGrammaticalCorrectness] = useState<number | null>(null);
+  const [meaningCorrect, setMeaningCorrect] = useState(false);
+  const [naturalPhrasing, setNaturalPhrasing] = useState<string | undefined>(undefined);
+  const [feedbackWhy, setFeedbackWhy] = useState<string | undefined>(undefined);
+  const [acceptedVariants, setAcceptedVariants] = useState<string[]>([]);
+  const [validationFeedback, setValidationFeedback] = useState<string | undefined>(undefined);
   const currentCard = plan.cards[index];
   const total = useMemo(() => plan.cards.length, [plan.cards]);
   const isSpeakListening =
     currentCard?.kind === CardKind.Listening &&
     'mode' in currentCard &&
     currentCard.mode === 'speak';
+
+  /** Persist per-card state so answers remain when navigating back to a previous question */
+  const cardStateByIndexRef = useRef<Record<number, SavedCardState>>({});
+
+  const saveCurrentCardState = (atIndex: number) => {
+    cardStateByIndexRef.current[atIndex] = {
+      selectedOptionId,
+      selectedAnswer,
+      userAnswer,
+      showResult,
+      isCorrect,
+      flashcardRating,
+      grammaticalCorrectness,
+      meaningCorrect,
+      naturalPhrasing,
+      feedbackWhy,
+      acceptedVariants,
+      validationFeedback,
+      pronunciationResult,
+    };
+  };
 
   const invalidateLessonPlanCache = () => {
     // Only applicable to learn sessions with a real lessonId.
@@ -90,17 +166,46 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
     if (kind === 'review') clearReviewScreenCache();
   };
 
-  // Track when card is shown for time tracking (teaching and question pages)
+  // When index changes: restore saved state for that card so answers remain when going back
   useEffect(() => {
     if (currentCard) {
       setCardStartTime(Date.now());
     } else {
       setCardStartTime(null);
     }
-    // Reset pronunciation result and grammar when card changes
-    setPronunciationResult(null);
-    setAudioRecordingUri(null);
-    setGrammaticalCorrectness(null);
+
+    const saved = cardStateByIndexRef.current[index];
+    if (saved) {
+      setSelectedOptionId(saved.selectedOptionId);
+      setSelectedAnswer(saved.selectedAnswer);
+      setUserAnswer(saved.userAnswer);
+      setShowResult(saved.showResult);
+      setIsCorrect(saved.isCorrect);
+      setFlashcardRating(saved.flashcardRating);
+      setGrammaticalCorrectness(saved.grammaticalCorrectness);
+      setMeaningCorrect(saved.meaningCorrect);
+      setNaturalPhrasing(saved.naturalPhrasing);
+      setFeedbackWhy(saved.feedbackWhy);
+      setAcceptedVariants(saved.acceptedVariants);
+      setValidationFeedback(saved.validationFeedback);
+      setPronunciationResult(saved.pronunciationResult);
+      setAudioRecordingUri(null);
+    } else {
+      setSelectedOptionId(undefined);
+      setSelectedAnswer(undefined);
+      setUserAnswer('');
+      setShowResult(false);
+      setIsCorrect(false);
+      setFlashcardRating(undefined);
+      setPronunciationResult(null);
+      setAudioRecordingUri(null);
+      setGrammaticalCorrectness(null);
+      setMeaningCorrect(false);
+      setNaturalPhrasing(undefined);
+      setFeedbackWhy(undefined);
+      setAcceptedVariants([]);
+      setValidationFeedback(undefined);
+    }
   }, [index, currentCard]);
 
   const isLast = index >= total - 1;
@@ -124,7 +229,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
         : currentCard.kind === CardKind.TranslateToEn || currentCard.kind === CardKind.TranslateFromEn
           ? isFlashcard
             ? flashcardRating !== undefined // Flashcard: need rating
-            : showResult && userAnswer.trim().length > 0 // Type translation: Must check answer first
+            : showResult && userAnswer.trim().length > 0 && (isCorrect || meaningCorrect) // Type translation: Must check answer first; can proceed when correct or meaning-correct
           : currentCard.kind === CardKind.Listening
             ? isSpeakListening
               ? showResult // Speech practice: proceed after attempt (result may be unavailable on error)
@@ -183,12 +288,20 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
         audioUri;
 
       if (isPronunciationMode && audioUri) {
-        // Handle pronunciation validation
+        // Handle pronunciation validation (with timeout so UI never stays stuck)
+        const PRONUNCIATION_CLIENT_TIMEOUT_MS = 30_000;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Pronunciation validation timed out')), PRONUNCIATION_CLIENT_TIMEOUT_MS);
+        });
+
         logger.info('Processing pronunciation recording', { audioUri, questionId });
         setAudioRecordingUri(audioUri);
         setIsPronunciationProcessing(true);
         try {
-          const audioFile = await SpeechRecognition.getAudioFile(audioUri);
+          const audioFile = await Promise.race([
+            SpeechRecognition.getAudioFile(audioUri),
+            timeoutPromise,
+          ]);
           if (!audioFile?.base64) {
             logger.error('Failed to get audio file for pronunciation validation');
             setIsCorrect(false);
@@ -210,7 +323,10 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           uri: audioFile.uri 
         });
         
-        const pronunciationResponse = await validatePronunciation(questionId, audioFile.base64, audioFormat);
+        const pronunciationResponse = await Promise.race([
+          validatePronunciation(questionId, audioFile.base64, audioFormat),
+          timeoutPromise,
+        ]);
         logger.info('Pronunciation response received', {
           isCorrect: pronunciationResponse.isCorrect,
           overallScore: pronunciationResponse.overallScore,
@@ -269,6 +385,12 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           awardedXp,
         };
         setAttempts((prev) => [...prev, newAttempt]);
+        } catch (pronunciationError) {
+          logger.error('Pronunciation validation failed or timed out', pronunciationError as Error);
+          setIsCorrect(false);
+          setShowResult(true);
+          setUserAnswer('');
+          setPronunciationResult(null);
         } finally {
           setIsPronunciationProcessing(false);
         }
@@ -312,6 +434,11 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
       setGrammaticalCorrectness(
         validationResult.grammaticalCorrectness ?? null,
       );
+      setMeaningCorrect(validationResult.meaningCorrect ?? false);
+      setNaturalPhrasing(validationResult.naturalPhrasing);
+      setFeedbackWhy(validationResult.feedbackWhy);
+      setAcceptedVariants(validationResult.acceptedVariants ?? []);
+      setValidationFeedback(validationResult.feedback);
 
       // Haptic feedback based on correctness
       if (effectiveCorrect) {
@@ -469,7 +596,13 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
   };
 
   const handleNext = async () => {
-    if (!canProceed) return;
+    // Allow "Continue" when showing the wrong-answer translate footer (Try again / Continue)
+    const isTranslateWrongAnswerFooter =
+      (currentCard.kind === CardKind.TranslateToEn || currentCard.kind === CardKind.TranslateFromEn) &&
+      !('isFlashcard' in currentCard && currentCard.isFlashcard) &&
+      showResult &&
+      !isCorrect;
+    if (!canProceed && !isTranslateWrongAnswerFooter) return;
 
     // For cards that don't need result screen, validate and create attempt
     let nextAttempts = attempts;
@@ -618,6 +751,10 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
         }
       }
 
+      // For review, extract teachings from cards so summary can show "phrases you reviewed"
+      const reviewedTeachingsJson =
+        kind === 'review' ? JSON.stringify(getReviewedTeachingsFromPlan(plan.cards)) : undefined;
+
       // Navigate to standard session summary (one screen for all completion flows)
       router.replace({
         pathname: routeBuilders.sessionSummary(sessionId),
@@ -629,35 +766,31 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           ...(returnTo ? { returnTo } : {}),
           totalXp: totalXp.toString(),
           teachingsMastered: teachingsMastered.toString(),
+          ...(reviewedTeachingsJson ? { reviewedTeachings: reviewedTeachingsJson } : {}),
         },
       });
 
       // Still call onComplete for backwards compatibility (though it may not be used)
       onComplete(nextAttempts);
     } else {
-      // Reset state for next card
+      saveCurrentCardState(index);
       setIndex((i) => i + 1);
-      setSelectedOptionId(undefined);
-      setSelectedAnswer(undefined);
-      setUserAnswer('');
-      setShowResult(false);
-      setIsCorrect(false);
-      setFlashcardRating(undefined);
-      setCardStartTime(null);
     }
+  };
+
+  const handleTryAgain = () => {
+    setShowResult(false);
+    setMeaningCorrect(false);
+    setNaturalPhrasing(undefined);
+    setFeedbackWhy(undefined);
+    setAcceptedVariants([]);
+    setValidationFeedback(undefined);
   };
 
   const handleBack = () => {
     if (index > 0) {
-      // Go to previous card and reset per-card state
+      saveCurrentCardState(index);
       setIndex((i) => Math.max(0, i - 1));
-      setSelectedOptionId(undefined);
-      setSelectedAnswer(undefined);
-      setUserAnswer('');
-      setShowResult(false);
-      setIsCorrect(false);
-      setFlashcardRating(undefined);
-      setCardStartTime(null);
       return;
     }
 
@@ -699,8 +832,14 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           showResult={showResult}
           isCorrect={isCorrect}
           grammaticalCorrectness={grammaticalCorrectness}
+          meaningCorrect={meaningCorrect}
+          naturalPhrasing={naturalPhrasing}
+          feedbackWhy={feedbackWhy}
+          acceptedVariants={acceptedVariants}
+          validationFeedback={validationFeedback}
           onCheckAnswer={handleCheckAnswerWrapper}
           onContinue={isSpeakListening ? handleNext : undefined}
+          onTryAgain={handleTryAgain}
           onRating={(rating) => {
             logger.info('Rating received', { rating });
             setFlashcardRating(rating);
@@ -722,23 +861,42 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
 
       {!isSpeakListening ? (
         <View style={styles.footer}>
-          <Pressable
-            style={[styles.primaryButton, !canProceed && styles.primaryButtonDisabled]}
-            onPress={handleNext}
-            disabled={!canProceed}
-          >
-            <LinearGradient
-              colors={primaryButtonGradient}
-              style={StyleSheet.absoluteFill}
-            />
-            <Text style={styles.primaryButtonLabel}>
-              {currentCard.kind === CardKind.Teach && !isLast
-                ? 'Start Practice'
-                : isLast
-                  ? 'Finish'
-                  : 'Next'}
-            </Text>
-          </Pressable>
+          {((currentCard.kind === CardKind.TranslateToEn ||
+            currentCard.kind === CardKind.TranslateFromEn) &&
+            !('isFlashcard' in currentCard && currentCard.isFlashcard) &&
+            showResult &&
+            !isCorrect) ? (
+            <Pressable
+              style={styles.primaryButton}
+              onPress={handleNext}
+              accessibilityRole="button"
+              accessibilityLabel="Continue"
+            >
+              <LinearGradient
+                colors={primaryButtonGradient}
+                style={StyleSheet.absoluteFill}
+              />
+              <Text style={styles.primaryButtonLabel}>Continue</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              style={[styles.primaryButton, !canProceed && styles.primaryButtonDisabled]}
+              onPress={handleNext}
+              disabled={!canProceed}
+            >
+              <LinearGradient
+                colors={primaryButtonGradient}
+                style={StyleSheet.absoluteFill}
+              />
+              <Text style={styles.primaryButtonLabel}>
+                {currentCard.kind === CardKind.Teach && !isLast
+                  ? 'Start Practice'
+                  : isLast
+                    ? 'Finish'
+                    : 'Next'}
+              </Text>
+            </Pressable>
+          )}
         </View>
       ) : null}
     </View>
@@ -766,6 +924,26 @@ const styles = StyleSheet.create({
   footer: {
     paddingTop: theme.spacing.sm,
   },
+  footerRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    alignItems: 'stretch',
+  },
+  secondaryButton: {
+    flex: 1,
+    minHeight: 56,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.card,
+  },
+  secondaryButtonLabel: {
+    color: theme.colors.primary,
+    fontFamily: theme.typography.semiBold,
+    fontSize: 16,
+  },
   primaryButton: {
     minHeight: 56,
     borderRadius: 20,
@@ -776,6 +954,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
+  },
+  primaryButtonFlex: {
+    flex: 1,
   },
   primaryButtonDisabled: {
     opacity: 0.5,

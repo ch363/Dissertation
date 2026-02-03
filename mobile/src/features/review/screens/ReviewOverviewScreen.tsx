@@ -163,15 +163,6 @@ export default function ReviewOverviewScreen() {
             end={{ x: 1, y: 1 }}
             style={styles.heroGradient}
           >
-            {/* Decorative pattern overlay */}
-            <View style={styles.heroPattern}>
-              <View style={[styles.heroPatternCircle, styles.heroPatternCircle1]} />
-              <View style={[styles.heroPatternCircle, styles.heroPatternCircle2]} />
-              <View style={[styles.heroPatternSquare]} />
-            </View>
-            <View style={styles.heroGlow1} />
-            <View style={styles.heroGlow2} />
-
             <View style={styles.heroContent}>
               <View style={styles.heroTopRow}>
                 <View style={styles.heroIconBox}>
@@ -309,63 +300,6 @@ const styles = StyleSheet.create({
     padding: 24,
     position: 'relative',
     overflow: 'hidden',
-  },
-  heroPattern: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    opacity: 0.12,
-  },
-  heroPatternCircle: {
-    position: 'absolute',
-    borderWidth: 4,
-    borderColor: '#FFFFFF',
-    borderRadius: 999,
-  },
-  heroPatternCircle1: {
-    width: 128,
-    height: 128,
-    top: -32,
-    right: -32,
-  },
-  heroPatternCircle2: {
-    width: 160,
-    height: 160,
-    bottom: -40,
-    left: -40,
-  },
-  heroPatternSquare: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    marginLeft: -24,
-    marginTop: -24,
-    width: 48,
-    height: 48,
-    borderWidth: 4,
-    borderColor: '#FFFFFF',
-    transform: [{ rotate: '45deg' }],
-  },
-  heroGlow1: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    // blur in RN is limited; rely on shadow for depth
-  },
-  heroGlow2: {
-    position: 'absolute',
-    bottom: -40,
-    left: -40,
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(37,99,235,0.25)',
   },
   heroContent: {
     position: 'relative',

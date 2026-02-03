@@ -62,6 +62,15 @@ export default function HomeScreen() {
     totalTeachings: number;
     estTime: string;
   } | null>(null);
+  /** Incremented when Home tab gains focus so Focus card shimmer restarts. */
+  const [focusShimmerKey, setFocusShimmerKey] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      setFocusShimmerKey((k) => k + 1);
+      return () => {};
+    }, []),
+  );
 
   const loadData = useCallback(async () => {
     try {
@@ -378,8 +387,8 @@ export default function HomeScreen() {
     if (mode === 'review') {
       const sessionId = makeSessionId('review');
       router.push({
-        pathname: '/session/[sessionId]',
-        params: { sessionId, kind: 'review', returnTo: routes.tabs.review },
+        pathname: routeBuilders.sessionDetail(sessionId),
+        params: { kind: 'review', returnTo: routes.tabs.home },
       });
       return;
     }
@@ -494,6 +503,7 @@ export default function HomeScreen() {
             onPress={focusLessonId ? handleFocusPress : undefined}
             lessonId={focusLessonId ?? undefined}
             whyAffordance={focusWhyAffordance}
+            screenFocusKey={focusShimmerKey}
           />
         </View>
 

@@ -1,20 +1,28 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { IconButton, LoadingScreen, TappableCard } from '@/components/ui';
+import { IconButton } from '@/components/ui';
+import {
+  ModuleCard,
+  SectionHeader,
+  SearchField,
+  FilterChips,
+  CourseIndexLoadingState,
+  CourseIndexEmptyState,
+  CourseIndexErrorState,
+} from '@/features/course/components';
 import { getCachedModules } from '@/services/api/learn-screen-cache';
 import { getModules, type Module } from '@/services/api/modules';
-import { theme } from '@/services/theme/tokens';
+import { theme as baseTheme } from '@/services/theme/tokens';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { useAsyncData } from '@/hooks/useAsyncData';
 
-const PLACEHOLDER_IMAGE =
-  'https://images.unsplash.com/photo-1596247290824-e9f12b8c574f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=400';
-
-function groupModulesByCategory(modules: Module[]): { category: string; modules: Module[] }[] {
+function groupModulesByCategory(
+  modules: Module[],
+): { category: string; modules: Module[] }[] {
   const byCategory = new Map<string, Module[]>();
   for (const m of modules) {
     const key = m.category?.trim() || 'Other';
@@ -27,97 +35,158 @@ function groupModulesByCategory(modules: Module[]): { category: string; modules:
   }));
 }
 
+function filterModulesBySearch(modules: Module[], query: string): Module[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return modules;
+  return modules.filter(
+    (m) =>
+      (m.title ?? '').toLowerCase().includes(q) ||
+      (m.description ?? '').toLowerCase().includes(q),
+  );
+}
+
 export default function CourseIndex() {
   const { theme } = useAppTheme();
-  
-  const { data: modules, loading, error } = useAsyncData<Module[]>(
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCategory, setFilterCategory] = useState('All');
+
+  const { data: modules, loading, error, reload } = useAsyncData<Module[]>(
     'CourseIndexScreen',
     async () => {
       const cached = getCachedModules();
       if (cached) {
-        // Refresh in background for next time
         getModules().catch(() => {});
         return cached;
       }
       return await getModules();
     },
-    []
+    [],
   );
 
-  const groups = useMemo(() => groupModulesByCategory(modules ?? []), [modules]);
+  const filteredBySearch = useMemo(
+    () => filterModulesBySearch(modules ?? [], searchQuery),
+    [modules, searchQuery],
+  );
+
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    (modules ?? []).forEach((m) =>
+      set.add(m.category?.trim() || 'Other'),
+    );
+    return ['All', ...Array.from(set)];
+  }, [modules]);
+
+  const filteredByCategory =
+    filterCategory === 'All'
+      ? filteredBySearch
+      : filteredBySearch.filter(
+          (m) => (m.category?.trim() || 'Other') === filterCategory,
+        );
+
+  const groups = useMemo(
+    () => groupModulesByCategory(filteredByCategory),
+    [filteredByCategory],
+  );
+
   const handleBack = useCallback(() => {
     router.back();
   }, []);
 
-  if (loading) {
-    return (
-      <LoadingScreen
-        title="Loading modules..."
-        subtitle="Please wait while we load your courses."
-      />
-    );
-  }
-
-  if (error && !modules) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>
-      </View>
-    );
-  }
+  const showEmpty =
+    (modules?.length ?? 0) === 0 ||
+    (filteredByCategory.length === 0 && (modules?.length ?? 0) > 0);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
-      <View style={[styles.header, { borderBottomColor: theme.colors.border }]}>
-        <IconButton
-          accessibilityLabel="Back"
-          onPress={handleBack}
-          style={styles.backBtn}
-        >
-          <Ionicons name="chevron-back" size={22} color={theme.colors.text} />
-        </IconButton>
-        <Text style={[styles.screenTitle, { color: theme.colors.text }]}>Courses</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      edges={['top']}
+    >
+      {/* Header - matches Figma: back, title, subtitle, search, filters */}
+      <View
+        style={[
+          styles.header,
+          {
+            borderBottomColor: theme.colors.border,
+            backgroundColor: theme.colors.background,
+          },
+        ]}
       >
-      {(modules?.length ?? 0) === 0 ? (
-        <Text style={[styles.emptyText, { color: theme.colors.mutedText }]}>
-          No courses available
-        </Text>
-      ) : (
-        groups.map(({ category, modules: categoryModules }) => (
-          <View key={category} style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.mutedText }]}>
-              {category}
+        <View style={styles.headerTop}>
+          <IconButton
+            accessibilityLabel="Back"
+            onPress={handleBack}
+            style={styles.backBtn}
+          >
+            <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+          </IconButton>
+          <View style={styles.headerTitles}>
+            <Text style={[styles.screenTitle, { color: theme.colors.text }]}>
+              Courses
             </Text>
-            {categoryModules.map((module) => (
-              <TappableCard
-                key={module.id}
-                title={module.title}
-                subtitle={module.description ?? undefined}
-                leftIcon={
-                  <View style={styles.cardImageWrap}>
-                    <Image
-                      source={{ uri: module.imageUrl || PLACEHOLDER_IMAGE }}
-                      style={styles.cardImage}
-                      resizeMode="cover"
-                    />
-                  </View>
-                }
-                onPress={() => router.push(`/course/${module.id}`)}
-                accessibilityLabel={`${module.title}. ${module.description ?? ''}`}
-                accessibilityHint="Opens course"
-                style={styles.cardSpacing}
-              />
-            ))}
+            <Text
+              style={[styles.screenSubtitle, { color: theme.colors.mutedText }]}
+            >
+              Choose a module to start learning
+            </Text>
           </View>
-        ))
+        </View>
+
+        <View style={styles.searchWrap}>
+          <SearchField
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search modules"
+          />
+        </View>
+
+        <FilterChips
+          options={categories}
+          selected={filterCategory}
+          onSelect={setFilterCategory}
+        />
+      </View>
+
+      {/* Content */}
+      {loading ? (
+        <CourseIndexLoadingState />
+      ) : error && !modules ? (
+        <CourseIndexErrorState onRetry={() => reload()} />
+      ) : showEmpty ? (
+        <CourseIndexEmptyState
+          onClearSearch={
+            searchQuery.trim()
+              ? () => {
+                  setSearchQuery('');
+                }
+              : undefined
+          }
+        />
+      ) : (
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {groups.map(({ category, modules: categoryModules }) => (
+            <View key={category} style={styles.section}>
+              <SectionHeader title={category} />
+              <View style={styles.cardList}>
+                {categoryModules.map((module) => (
+                  <ModuleCard
+                    key={module.id}
+                    title={module.title}
+                    description={module.description ?? ''}
+                    imageUrl={module.imageUrl ?? ''}
+                    onPress={() => router.push(`/course/${module.id}`)}
+                    accessibilityLabel={`${module.title}. ${module.description ?? ''}. Opens course.`}
+                    style={styles.cardSpacing}
+                  />
+                ))}
+              </View>
+            </View>
+          ))}
+        </ScrollView>
       )}
-      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -127,57 +196,52 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: baseTheme.spacing.lg,
+    paddingTop: baseTheme.spacing.sm,
+    paddingBottom: baseTheme.spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  backBtn: { marginRight: 8 },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  backBtn: {
+    marginLeft: -4,
+  },
+  headerTitles: {
+    flex: 1,
+  },
   screenTitle: {
-    fontFamily: theme.typography.semiBold,
-    fontSize: 18,
+    fontFamily: baseTheme.typography.bold,
+    fontSize: 24,
+    lineHeight: 28,
   },
-  headerSpacer: { width: 36, height: 36 },
-  scroll: { flex: 1 },
+  screenSubtitle: {
+    fontFamily: baseTheme.typography.regular,
+    fontSize: 14,
+    lineHeight: 18,
+    marginTop: 2,
+  },
+  searchWrap: {
+    marginBottom: 12,
+  },
+  scroll: {
+    flex: 1,
+  },
   scrollContent: {
-    padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xl * 2,
-  },
-  errorText: {
-    fontFamily: theme.typography.regular,
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  emptyText: {
-    fontFamily: theme.typography.regular,
-    fontSize: 16,
-    textAlign: 'center',
-    marginTop: theme.spacing.xl,
+    paddingHorizontal: baseTheme.spacing.lg,
+    paddingTop: baseTheme.spacing.lg,
+    paddingBottom: baseTheme.spacing.xl * 2,
   },
   section: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: baseTheme.spacing.xl,
   },
-  sectionTitle: {
-    fontFamily: theme.typography.semiBold,
-    fontSize: 13,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: theme.spacing.sm,
-    marginLeft: theme.spacing.xs,
+  cardList: {
+    marginBottom: 0,
   },
   cardSpacing: {
-    marginBottom: theme.spacing.md,
-  },
-  cardImageWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    overflow: 'hidden',
-    backgroundColor: theme.colors.border,
-  },
-  cardImage: {
-    width: '100%',
-    height: '100%',
+    marginBottom: 12,
   },
 });

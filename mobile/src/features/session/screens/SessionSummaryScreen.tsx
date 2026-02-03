@@ -35,6 +35,7 @@ export default function SessionSummaryScreen() {
     returnTo?: string;
     totalXp?: string;
     teachingsMastered?: string;
+    reviewedTeachings?: string;
   }>();
   const kind = params.kind === 'review' ? 'review' : 'learn';
   const lessonId = params.lessonId;
@@ -46,6 +47,7 @@ export default function SessionSummaryScreen() {
   const totalXp = params.totalXp != null && params.totalXp !== '' ? parseInt(params.totalXp, 10) : null;
   const teachingsMastered = params.teachingsMastered != null && params.teachingsMastered !== '' ? parseInt(params.teachingsMastered, 10) : null;
   const showStats = typeof totalXp === 'number' || typeof teachingsMastered === 'number';
+  const reviewedTeachingsJson = params.reviewedTeachings;
 
   const [teachings, setTeachings] = useState<Teaching[]>([]);
   const [loadingTeachings, setLoadingTeachings] = useState(false);
@@ -163,6 +165,33 @@ export default function SessionSummaryScreen() {
 
   useEffect(() => {
     const fetchTeachings = async () => {
+      // Review: use teachings passed from SessionRunner (phrases just reviewed)
+      if (kind === 'review' && reviewedTeachingsJson) {
+        try {
+          const parsed = JSON.parse(reviewedTeachingsJson) as Array<{
+            phrase: string;
+            translation?: string;
+            emoji?: string;
+          }>;
+          const converted: Teaching[] = (parsed || []).map((t, idx) => ({
+            id: `reviewed-${idx}`,
+            knowledgeLevel: 'beginner',
+            emoji: t.emoji ?? null,
+            userLanguageString: t.translation ?? '',
+            learningLanguageString: t.phrase,
+            learningLanguageAudioUrl: null,
+            tip: null,
+            lessonId: '',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }));
+          setTeachings(converted);
+        } catch (e) {
+          Logger.error('Failed to parse reviewed teachings', e);
+        }
+        return;
+      }
+
       if (cachedTeachings.length > 0) {
         const convertedTeachings: Teaching[] = cachedTeachings.map((t, idx) => ({
           id: `cached-${idx}`,
@@ -194,7 +223,7 @@ export default function SessionSummaryScreen() {
     };
 
     fetchTeachings();
-  }, [lessonId, kind, cachedTeachings]);
+  }, [lessonId, kind, cachedTeachings, reviewedTeachingsJson]);
 
   const handleBack = useCallback(() => {
     router.back();
@@ -429,14 +458,14 @@ export default function SessionSummaryScreen() {
                     onPress={handleBackToHome}
                     variant="secondary"
                     accessibilityHint="Returns to home"
-                    style={[styles.secondaryButton, { minHeight: scaled.secondaryMinHeight }]}
+                    style={[styles.secondaryButton, { minHeight: scaled.secondaryMinHeight, backgroundColor: theme.colors.success }]}
                   />
                   <Button
                     title={showBackToModule ? 'Back to module' : kind === 'review' ? 'Back to review' : 'Back to learn'}
                     onPress={showBackToModule ? handleBackToModule : handleReturnTo}
                     variant="secondary"
                     accessibilityHint={showBackToModule ? 'Returns to course' : 'Returns to learn or review'}
-                    style={[styles.secondaryButton, { minHeight: scaled.secondaryMinHeight }]}
+                    style={[styles.secondaryButton, { minHeight: scaled.secondaryMinHeight, backgroundColor: theme.colors.success }]}
                   />
                 </View>
               </View>

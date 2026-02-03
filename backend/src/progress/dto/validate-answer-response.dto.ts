@@ -29,4 +29,34 @@ export class ValidateAnswerResponseDto {
     maximum: 100,
   })
   grammaticalCorrectness?: number;
+
+  @ApiPropertyOptional({
+    description:
+      'True when the answer is meaning-correct but less natural (e.g. acceptable alternative).',
+    example: true,
+  })
+  meaningCorrect?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Preferred natural phrasing to show when meaningCorrect is true.',
+    example: 'What time is it?',
+  })
+  naturalPhrasing?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Optional explanation for why the natural phrasing is preferred.',
+    example:
+      'Native speakers usually say "What time is it?" rather than "What is the time?".',
+  })
+  feedbackWhy?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Other accepted forms to show after submit (e.g. alternative phrasings).',
+    example: ["What's the time?"],
+    type: [String],
+  })
+  acceptedVariants?: string[];
 }

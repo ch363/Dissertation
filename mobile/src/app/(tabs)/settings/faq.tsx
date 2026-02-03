@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,7 +30,14 @@ function SectionHeader({
 
 export default function FaqScreen() {
   const { theme } = useAppTheme();
-  const handleBack = useCallback(() => router.back(), []);
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const handleBack = useCallback(() => {
+    if (returnTo && typeof returnTo === 'string' && returnTo.startsWith('/') && !returnTo.includes('/settings/faq')) {
+      router.replace(returnTo as any);
+    } else {
+      router.back();
+    }
+  }, [returnTo]);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top']}>

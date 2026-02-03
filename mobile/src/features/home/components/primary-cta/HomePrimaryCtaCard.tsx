@@ -45,9 +45,9 @@ export function HomePrimaryCtaCard({ action, learnAction, onPress }: Props) {
   // Primary card uses white/blue-100 text
   const metaColor = isDark ? '#dbeafe' : '#dbeafe'; // blue-100
   
-  // Determine initial mode: if primary action is review and we have a learn action, default to review
-  // Otherwise, use the action kind to determine mode
-  const initialMode = action.kind === 'review' && learnAction ? 'review' : 'learn';
+  // When primary is review and we have a learn action, show segment and default to review; otherwise follow primary.
+  const initialMode: 'review' | 'learn' =
+    action.kind === 'review' ? 'review' : learnAction ? 'learn' : 'learn';
   const [mode, setMode] = useState<'review' | 'learn'>(initialMode);
 
   // Select which action to display based on mode
@@ -90,7 +90,7 @@ export function HomePrimaryCtaCard({ action, learnAction, onPress }: Props) {
         title={currentAction.label}
         subtitle={currentAction.kind === 'review' ? undefined : currentAction.subtitle}
         leftIcon={icon}
-        onPress={() => onPress(mode)}
+        onPress={() => onPress(currentAction.kind === 'review' ? 'review' : 'learn')}
         accessibilityLabel={accessibilityLabel}
         accessibilityHint="Double tap to start"
         segmentedControl={segmentedControl}

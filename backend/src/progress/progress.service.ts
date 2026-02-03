@@ -38,6 +38,17 @@ const GRAMMATICAL_TEXT_METHODS: DELIVERY_METHOD[] = [
   DELIVERY_METHOD.SPEECH_TO_TEXT,
 ];
 
+/** Language code for grammar check: translation/flashcard = user answer language (e.g. en), fill-blank/speech = learning language (it). */
+function getGrammarCheckLanguageCode(deliveryMethod: DELIVERY_METHOD): string {
+  if (
+    deliveryMethod === DELIVERY_METHOD.TEXT_TRANSLATION ||
+    deliveryMethod === DELIVERY_METHOD.FLASHCARD
+  ) {
+    return 'en-GB'; // User types in their language (English)
+  }
+  return 'it'; // User types/speaks in learning language (Italian)
+}
+
 @Injectable()
 export class ProgressService {
   private readonly logger = new LoggerService(ProgressService.name);
@@ -1127,20 +1138,22 @@ export class ProgressService {
     };
   }
 
-  private compareAnswers(
+  /** Result of comparing user answer to primary and optional acceptable-alternative lists. */
+  private compareAnswersResult(
     deliveryMethod: DELIVERY_METHOD,
     userAnswer: string,
     questionData: any,
     teaching: any,
     variantData: any,
-  ): boolean {
+  ): { exact: boolean; meaningCorrect: boolean } {
     if (deliveryMethod === DELIVERY_METHOD.MULTIPLE_CHOICE) {
       if (!questionData.correctOptionId) {
         throw new BadRequestException(
           `Question does not support MULTIPLE_CHOICE delivery method`,
         );
       }
-      return userAnswer === questionData.correctOptionId;
+      const exact = userAnswer === questionData.correctOptionId;
+      return { exact, meaningCorrect: false };
     }
 
     const normalizedUserAnswer = this.normalizeAnswerForComparison(userAnswer);
@@ -1171,16 +1184,58 @@ export class ProgressService {
       );
     }
 
-    const correctAnswers = correctAnswerSource
+    const primaryAnswers = correctAnswerSource
       .toLowerCase()
       .split('/')
       .map((ans) => ans.trim())
       .filter((ans) => ans.length > 0);
 
-    return correctAnswers.some(
+    const exact = primaryAnswers.some(
       (correctAns) =>
         this.normalizeAnswerForComparison(correctAns) === normalizedUserAnswer,
     );
+
+    let meaningCorrect = false;
+    if (
+      !exact &&
+      (deliveryMethod === DELIVERY_METHOD.TEXT_TRANSLATION ||
+        deliveryMethod === DELIVERY_METHOD.FLASHCARD)
+    ) {
+      const alternativesSource =
+        typeof variantData?.acceptableAlternatives === 'string' &&
+        variantData.acceptableAlternatives.trim().length > 0
+          ? variantData.acceptableAlternatives
+          : null;
+      if (alternativesSource) {
+        const alternatives = alternativesSource
+          .split('/')
+          .map((a) => a.trim())
+          .filter((a) => a.length > 0);
+        meaningCorrect = alternatives.some(
+          (alt) =>
+            this.normalizeAnswerForComparison(alt) === normalizedUserAnswer,
+        );
+      }
+    }
+
+    return { exact, meaningCorrect };
+  }
+
+  private compareAnswers(
+    deliveryMethod: DELIVERY_METHOD,
+    userAnswer: string,
+    questionData: any,
+    teaching: any,
+    variantData: any,
+  ): boolean {
+    const { exact } = this.compareAnswersResult(
+      deliveryMethod,
+      userAnswer,
+      questionData,
+      teaching,
+      variantData,
+    );
+    return exact;
   }
 
   private calculateAnswerScore(isCorrect: boolean): number{
@@ -1194,19 +1249,35 @@ export class ProgressService {
     teaching: any,
     feedbackDepth: number,
     grammaticalCorrectness?: number,
+    extra?: {
+      meaningCorrect: boolean;
+      naturalPhrasing?: string;
+      feedbackWhy?: string;
+      acceptedVariants?: string[];
+    },
   ): ValidateAnswerResponseDto {
-    const feedback = this.buildFeedback(
-      isCorrect,
-      questionData.hint,
-      teaching,
-      feedbackDepth,
-    );
+    let feedback: string | undefined;
+    if (extra?.meaningCorrect && !isCorrect && extra.naturalPhrasing) {
+      feedback = `Meaning is correct; more natural phrasing: "${extra.naturalPhrasing}"`;
+    } else {
+      feedback = this.buildFeedback(
+        isCorrect,
+        questionData.hint,
+        teaching,
+        feedbackDepth,
+      );
+    }
 
     return {
       isCorrect,
       score,
       feedback,
       ...(grammaticalCorrectness !== undefined && { grammaticalCorrectness }),
+      ...(extra?.meaningCorrect !== undefined && { meaningCorrect: extra.meaningCorrect }),
+      ...(extra?.naturalPhrasing !== undefined && { naturalPhrasing: extra.naturalPhrasing }),
+      ...(extra?.feedbackWhy !== undefined && extra.feedbackWhy && { feedbackWhy: extra.feedbackWhy }),
+      ...(extra?.acceptedVariants !== undefined &&
+        extra.acceptedVariants.length > 0 && { acceptedVariants: extra.acceptedVariants }),
     };
   }
 
@@ -1223,13 +1294,19 @@ export class ProgressService {
     const { question, teaching, questionData, feedbackDepth } =
       await this.fetchAnswerData(userId, questionId, dto.deliveryMethod);
 
-    const isCorrect = this.compareAnswers(
+    const compareResult = this.compareAnswersResult(
       dto.deliveryMethod,
       dto.answer,
       questionData,
       teaching,
       variantData,
     );
+    // For translation/flashcard, accept both exact and meaning-correct answers (e.g. "What's the time" / "What is the time?")
+    const isCorrect =
+      compareResult.exact ||
+      (compareResult.meaningCorrect &&
+        (dto.deliveryMethod === DELIVERY_METHOD.TEXT_TRANSLATION ||
+          dto.deliveryMethod === DELIVERY_METHOD.FLASHCARD));
 
     const score = this.calculateAnswerScore(isCorrect);
 
@@ -1239,22 +1316,87 @@ export class ProgressService {
       typeof dto.answer === 'string' &&
       dto.answer.trim().length > 0
     ) {
+      const grammarLang = getGrammarCheckLanguageCode(dto.deliveryMethod);
       const grammarResult = await this.grammarService.checkGrammar(
         dto.answer.trim(),
-        'it',
+        grammarLang,
       );
       if (grammarResult !== null) {
         grammaticalCorrectness = Math.round(grammarResult.score);
       }
     }
 
+    let extra: {
+      meaningCorrect: boolean;
+      naturalPhrasing?: string;
+      feedbackWhy?: string;
+      acceptedVariants?: string[];
+    } | undefined;
+    if (
+      compareResult.meaningCorrect &&
+      !compareResult.exact &&
+      (dto.deliveryMethod === DELIVERY_METHOD.TEXT_TRANSLATION ||
+        dto.deliveryMethod === DELIVERY_METHOD.FLASHCARD)
+    ) {
+      const correctAnswerSource =
+        typeof variantData?.answer === 'string' &&
+        variantData.answer.trim().length > 0
+          ? variantData.answer
+          : teaching.userLanguageString ?? '';
+      const primaryDisplayList = correctAnswerSource
+        .split('/')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const naturalPhrasing = primaryDisplayList[0];
+      const acceptedVariants = primaryDisplayList.slice(1);
+      const feedbackWhy =
+        typeof variantData?.feedbackWhy === 'string' &&
+        variantData.feedbackWhy.trim().length > 0
+          ? variantData.feedbackWhy
+          : teaching.tip;
+
+      extra = {
+        meaningCorrect: true,
+        naturalPhrasing,
+        ...(feedbackWhy && { feedbackWhy }),
+        ...(acceptedVariants.length > 0 && { acceptedVariants }),
+      };
+    } else if (
+      compareResult.exact &&
+      (dto.deliveryMethod === DELIVERY_METHOD.TEXT_TRANSLATION ||
+        dto.deliveryMethod === DELIVERY_METHOD.FLASHCARD)
+    ) {
+      const correctAnswerSource =
+        typeof variantData?.answer === 'string' &&
+        variantData.answer.trim().length > 0
+          ? variantData.answer
+          : teaching.userLanguageString ?? '';
+      const primaryDisplayList = correctAnswerSource
+        .split('/')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const acceptedVariants = primaryDisplayList.slice(1);
+      if (acceptedVariants.length > 0) {
+        extra = {
+          meaningCorrect: false,
+          acceptedVariants,
+        };
+      }
+    }
+
+    // Only return grammatical correctness when the answer is correct or meaning-correct.
+    // When the answer is wrong, a grammar % is misleading (e.g. "How come" is grammatical
+    // English but wrong for "Come sta?" — we should not imply they were "85% right").
+    const includeGrammarScore =
+      (isCorrect || extra?.meaningCorrect === true) && grammaticalCorrectness !== undefined;
     return this.buildValidationResponse(
       isCorrect,
       score,
       questionData,
       teaching,
       feedbackDepth,
-      grammaticalCorrectness,
+      includeGrammarScore ? grammaticalCorrectness : undefined,
+      extra,
     );
   }
 
@@ -1371,33 +1513,61 @@ export class ProgressService {
 
     const overallScore = Math.round(assessment.scores.pronunciation);
 
+    const refWords = expectedText
+      .split(/\s+/)
+      .map((w) => w.trim())
+      .filter((w) => w.length > 0);
+
     const words: WordAnalysisDto[] =
       assessment.words.length > 0
-        ? assessment.words.map((w) => {
-            const wordScore = Math.round(w.accuracy);
-            return {
-              word: w.word,
-              score: wordScore,
-              feedback: wordScore >= 85 ? 'perfect' : 'could_improve',
-              ...(w.errorType && w.errorType !== 'None' && { errorType: w.errorType }),
-              ...(w.phonemes &&
-                w.phonemes.length > 0 && {
-                  phonemes: w.phonemes.map((p) => ({
-                    phoneme: p.phoneme,
-                    accuracy: Math.round(Math.max(0, Math.min(100, p.accuracy))),
-                  })),
-                }),
-            };
-          })
-        : expectedText
-            .split(/\s+/)
-            .map((w) => w.trim())
-            .filter((w) => w.length > 0)
-            .map((word) => ({
-              word,
-              score: overallScore,
-              feedback: overallScore >= 85 ? 'perfect' : 'could_improve',
-            }));
+        ? (() => {
+            // Align to reference text so we show one row per expected word and avoid
+            // duplicate entries when Azure returns the same word twice (e.g. from
+            // reference alignment and recognition).
+            const mapped: WordAnalysisDto[] = [];
+            let j = 0;
+            for (const refWord of refWords) {
+              while (
+                j < assessment.words.length &&
+                assessment.words[j].word.toLowerCase() !== refWord.toLowerCase()
+              ) {
+                j++;
+              }
+              if (j < assessment.words.length) {
+                const w = assessment.words[j];
+                const wordScore = Math.round(w.accuracy);
+                mapped.push({
+                  word: w.word,
+                  score: wordScore,
+                  feedback: wordScore >= 85 ? 'perfect' : 'could_improve',
+                  ...(w.errorType &&
+                    w.errorType !== 'None' && { errorType: w.errorType }),
+                  ...(w.phonemes &&
+                    w.phonemes.length > 0 && {
+                      phonemes: w.phonemes.map((p) => ({
+                        phoneme: p.phoneme,
+                        accuracy: Math.round(
+                          Math.max(0, Math.min(100, p.accuracy)),
+                        ),
+                      })),
+                    }),
+                });
+                j++;
+              } else {
+                mapped.push({
+                  word: refWord,
+                  score: overallScore,
+                  feedback: overallScore >= 85 ? 'perfect' : 'could_improve',
+                });
+              }
+            }
+            return mapped;
+          })()
+        : refWords.map((word) => ({
+            word,
+            score: overallScore,
+            feedback: overallScore >= 85 ? 'perfect' : 'could_improve',
+          }));
 
     const transcription = assessment.recognizedText || '';
     const isCorrect = overallScore >= 80;

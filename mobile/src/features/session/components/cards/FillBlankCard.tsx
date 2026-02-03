@@ -181,12 +181,6 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
         </View>
       </View>
 
-      {showResult && grammaticalCorrectness != null && (
-        <Text style={[styles.grammarScore, { color: theme.colors.mutedText }]}>
-          Grammatical correctness: {grammaticalCorrectness}%
-        </Text>
-      )}
-
       {/* Options Card */}
       {card.options && card.options.length > 0 && (
         <View style={[styles.optionsCard, { backgroundColor: theme.colors.card }]}>
@@ -308,11 +302,6 @@ const styles = StyleSheet.create({
     fontFamily: baseTheme.typography.regular,
     fontSize: 18,
     lineHeight: 28,
-  },
-  grammarScore: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 13,
-    marginTop: baseTheme.spacing.xs,
   },
   blankField: {
     minWidth: 100,

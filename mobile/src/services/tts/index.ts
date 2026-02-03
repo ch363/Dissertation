@@ -61,6 +61,21 @@ async function ensureInitialized(): Promise<boolean> {
   }
 }
 
+/**
+ * Normalize text for TTS so engines (e.g. iOS AVSpeechSynthesizer) pronounce correctly.
+ * - NFC normalization for consistent handling of accented chars (e.g. È).
+ * - Replace smart/curly apostrophes with ASCII apostrophe so phrases like "l'una" are pronounced properly.
+ */
+function normalizeTextForTts(text: string): string {
+  if (!text || text.trim().length === 0) return text;
+  const normalized = text.normalize('NFC');
+  return normalized
+    .replace(/\u2019/g, "'")  // RIGHT SINGLE QUOTATION MARK (common in "l'una")
+    .replace(/\u2018/g, "'")  // LEFT SINGLE QUOTATION MARK
+    .replace(/\u2032/g, "'")   // PRIME
+    .replace(/\u00B4/g, "'"); // ACUTE ACCENT when used as apostrophe
+}
+
 export async function speak(text: string, options?: SpeakOptions) {
   const initialized = await ensureInitialized();
   if (!initialized || !SpeechModule) {
@@ -68,8 +83,9 @@ export async function speak(text: string, options?: SpeakOptions) {
     isSpeaking = false;
     return;
   }
-  
-  if (!text || text.trim().length === 0) {
+
+  const normalizedText = normalizeTextForTts(text);
+  if (!normalizedText || normalizedText.trim().length === 0) {
     logger.warn('TTS: Empty text provided');
     isSpeaking = false;
     return;
@@ -92,13 +108,13 @@ export async function speak(text: string, options?: SpeakOptions) {
   
   try {
     isSpeaking = true;
-    logger.info('TTS: Speaking', { textPreview: text.substring(0, 30) });
-    
+    logger.info('TTS: Speaking', { textPreview: normalizedText.substring(0, 30) });
+
     const speakOptions: any = {
       language: options?.language,
       rate: options?.rate || 1.0,
     };
-    
+
     if (typeof SpeechModule.speak === 'function') {
       speakOptions.onDone = () => {
         logger.info('TTS: Speech completed (onDone callback)');
@@ -113,11 +129,11 @@ export async function speak(text: string, options?: SpeakOptions) {
         isSpeaking = false;
       };
     }
-    
-    SpeechModule.speak(text, speakOptions);
+
+    SpeechModule.speak(normalizedText, speakOptions);
     logger.info('TTS: speak() called successfully');
-    
-    const estimatedDuration = Math.max(1000, text.length * 100);
+
+    const estimatedDuration = Math.max(1000, normalizedText.length * 100);
     setTimeout(() => {
       if (isSpeaking) {
         logger.debug('TTS: Resetting speaking flag after estimated duration');

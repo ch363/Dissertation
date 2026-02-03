@@ -19,6 +19,14 @@ function CustomTabBar({ state, descriptors, navigation }: CustomTabBarProps) {
   const focusedKey = state.routes?.[state.index]?.key;
   const currentRouteName = state.routes?.[state.index]?.name ?? '';
 
+  // Hide tab bar on Review screen (full-screen experience).
+  const currentTab = state.routes?.[state.index];
+  const nestedState = currentTab?.state as { routes?: { name: string }[]; index?: number } | undefined;
+  const nestedRouteName = nestedState?.routes?.[nestedState?.index ?? 0]?.name;
+  const isOnReviewScreen =
+    (currentRouteName === 'learn' || currentRouteName === 'learn/index') && nestedRouteName === 'review';
+  if (isOnReviewScreen) return null;
+
   const targetPathForRouteName = (routeName: string) => {
     // Use /learn (no /index) so the learn stack shows its index screen. Using /learn/index
     // would match the dynamic route [lessonId]=index and render LessonOverviewScreen with invalid id.

@@ -29,9 +29,15 @@ type Props = {
   showResult?: boolean;
   isCorrect?: boolean;
   grammaticalCorrectness?: number | null;
+  meaningCorrect?: boolean;
+  naturalPhrasing?: string;
+  feedbackWhy?: string;
+  acceptedVariants?: string[];
+  validationFeedback?: string;
   showHint?: boolean;
   onCheckAnswer?: (audioUri?: string) => void;
   onContinue?: () => void;
+  onTryAgain?: () => void;
   onRating?: (rating: number) => void;
   selectedRating?: number;
   pronunciationResult?: PronunciationResult | null;
@@ -50,9 +56,15 @@ export function CardRenderer({
   showResult,
   isCorrect,
   grammaticalCorrectness,
+  meaningCorrect,
+  naturalPhrasing,
+  feedbackWhy,
+  acceptedVariants,
+  validationFeedback,
   showHint,
   onCheckAnswer,
   onContinue,
+  onTryAgain,
   onRating,
   selectedRating,
   pronunciationResult,
@@ -78,9 +90,15 @@ export function CardRenderer({
         showResult,
         isCorrect,
         grammaticalCorrectness,
+        meaningCorrect,
+        naturalPhrasing,
+        feedbackWhy,
+        acceptedVariants,
+        validationFeedback,
         showHint,
         onCheckAnswer,
         onContinue,
+        onTryAgain,
         onRating,
         selectedRating,
         pronunciationResult,
@@ -102,9 +120,15 @@ function renderCardByKind(
   showResult?: boolean,
   isCorrect?: boolean,
   grammaticalCorrectness?: number | null,
+  meaningCorrect?: boolean,
+  naturalPhrasing?: string,
+  feedbackWhy?: string,
+  acceptedVariants?: string[],
+  validationFeedback?: string,
   showHint?: boolean,
   onCheckAnswer?: (audioUri?: string) => void,
   onContinue?: () => void,
+  onTryAgain?: () => void,
   onRating?: (rating: number) => void,
   selectedRating?: number,
   pronunciationResult?: PronunciationResult | null,
@@ -145,7 +169,13 @@ function renderCardByKind(
           showResult={showResult}
           isCorrect={isCorrect}
           grammaticalCorrectness={grammaticalCorrectness}
+          meaningCorrect={meaningCorrect}
+          naturalPhrasing={naturalPhrasing}
+          feedbackWhy={feedbackWhy}
+          acceptedVariants={acceptedVariants}
+          validationFeedback={validationFeedback}
           onCheckAnswer={onCheckAnswer}
+          onTryAgain={onTryAgain}
           onRating={onRating}
           selectedRating={selectedRating}
         />

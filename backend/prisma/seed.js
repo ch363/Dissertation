@@ -92,28 +92,52 @@ const MODULE_IMAGES = {
 };
 
 // Build default question variants for a teaching (EN/IT strings). Returns array of { deliveryMethod, data }.
+// For specific phrases we add acceptableAlternatives (meaning-correct but less natural) and feedbackWhy.
 function buildVariants(teaching) {
   const en = teaching.userLanguageString;
   const it = teaching.learningLanguageString;
+
+  const translationOverrides = (() => {
+    if (it === "Che ora è?") {
+      return {
+        answer: "What time is it?/What's the time?/What's the time",
+        acceptableAlternatives: "What is the time?/What's the time",
+        feedbackWhy: 'Native speakers usually say "What time is it?" or "What\'s the time?" rather than "What is the time?".',
+      };
+    }
+    if (it === "È l'una") {
+      return {
+        answer: "It's one o'clock/One o'clock",
+        feedbackWhy: 'Note: one o\'clock uses "l\'una" in Italian.',
+      };
+    }
+    return null;
+  })();
+
+  const textTranslationData = {
+    prompt: `Translate '${it}' to English`,
+    source: it,
+    answer: translationOverrides?.answer ?? en,
+    hint: teaching.tip || undefined,
+    ...(translationOverrides?.acceptableAlternatives && {
+      acceptableAlternatives: translationOverrides.acceptableAlternatives,
+    }),
+    ...(translationOverrides?.feedbackWhy && { feedbackWhy: translationOverrides.feedbackWhy }),
+  };
+  const flashcardData = {
+    prompt: `Translate '${it}' to English`,
+    source: it,
+    answer: translationOverrides?.answer ?? en,
+    hint: teaching.tip || undefined,
+    ...(translationOverrides?.acceptableAlternatives && {
+      acceptableAlternatives: translationOverrides.acceptableAlternatives,
+    }),
+    ...(translationOverrides?.feedbackWhy && { feedbackWhy: translationOverrides.feedbackWhy }),
+  };
+
   const variants = [
-    {
-      deliveryMethod: DELIVERY_METHOD.TEXT_TRANSLATION,
-      data: {
-        prompt: `Translate '${it}' to English`,
-        source: it,
-        answer: en,
-        hint: teaching.tip || undefined,
-      },
-    },
-    {
-      deliveryMethod: DELIVERY_METHOD.FLASHCARD,
-      data: {
-        prompt: `Translate '${it}' to English`,
-        source: it,
-        answer: en,
-        hint: teaching.tip || undefined,
-      },
-    },
+    { deliveryMethod: DELIVERY_METHOD.TEXT_TRANSLATION, data: textTranslationData },
+    { deliveryMethod: DELIVERY_METHOD.FLASHCARD, data: flashcardData },
   ];
   if (it.length < 50) {
     variants.push({
@@ -218,7 +242,7 @@ const CONTENT_MANIFEST = [
       ]},
       { id: seedId('lesson', 1, 10), title: 'Recap & practice', description: 'Review essentials from Basics', numberOfItems: 3, teachings: [
         { id: seedId('teaching', 1, 10, 1), questionId: seedId('question', 1, 10, 1), userLanguageString: 'Good night', learningLanguageString: 'Buonanotte', tip: 'Said when going to sleep.', emoji: '🌙' },
-        { id: seedId('teaching', 1, 10, 2), questionId: seedId('question', 1, 10, 2), userLanguageString: 'See you later', learningLanguageString: 'A dopo', tip: 'Informal "see you later".', emoji: '👋' },
+        { id: seedId('teaching', 1, 10, 2), questionId: seedId('question', 1, 10, 2), userLanguageString: 'See you later', learningLanguageString: 'A dopo', tip: 'Informal farewell when you expect to see the person again.', emoji: '👋' },
         { id: seedId('teaching', 1, 10, 3), questionId: seedId('question', 1, 10, 3), userLanguageString: 'Hello (formal)', learningLanguageString: 'Salve', tip: 'Neutral greeting, can be used any time.', emoji: '👋' },
       ]},
     ],

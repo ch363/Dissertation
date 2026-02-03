@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -29,12 +29,16 @@ export function HelpButton({
   const color =
     iconColor ?? (isElevated ? theme.colors.text : theme.colors.mutedText);
 
+  const pathname = usePathname();
   const onPress = () => {
     if (onPressOverride) {
       onPressOverride();
       return;
     }
-    router.push(routes.tabs.settings.faq);
+    router.push({
+      pathname: routes.tabs.settings.faq,
+      params: pathname ? { returnTo: pathname } : undefined,
+    });
   };
 
   const icon = (

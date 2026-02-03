@@ -164,6 +164,14 @@ export interface ValidateAnswerResponse {
   feedback?: string;
   /** Grammatical correctness 0–100 for text-input answers. */
   grammaticalCorrectness?: number;
+  /** True when the answer is meaning-correct but less natural (e.g. acceptable alternative). */
+  meaningCorrect?: boolean;
+  /** Preferred natural phrasing to show when meaningCorrect is true. */
+  naturalPhrasing?: string;
+  /** Optional explanation for why the natural phrasing is preferred. */
+  feedbackWhy?: string;
+  /** Other accepted forms to show after submit (e.g. alternative phrasings). */
+  acceptedVariants?: string[];
 }
 
 import type { PronunciationWordResult } from '@/types/session';

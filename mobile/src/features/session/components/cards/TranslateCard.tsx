@@ -21,7 +21,13 @@ type Props = {
   showResult?: boolean;
   isCorrect?: boolean;
   grammaticalCorrectness?: number | null;
+  meaningCorrect?: boolean;
+  naturalPhrasing?: string;
+  feedbackWhy?: string;
+  acceptedVariants?: string[];
+  validationFeedback?: string;
   onCheckAnswer?: () => void;
+  onTryAgain?: () => void;
   onRating?: (rating: number) => void;
   selectedRating?: number;
 };
@@ -34,7 +40,13 @@ export function TranslateCard({
   showResult = false,
   isCorrect,
   grammaticalCorrectness,
+  meaningCorrect,
+  naturalPhrasing,
+  feedbackWhy,
+  acceptedVariants = [],
+  validationFeedback,
   onCheckAnswer,
+  onTryAgain,
   onRating,
   selectedRating,
 }: Props) {
@@ -45,12 +57,15 @@ export function TranslateCard({
   const [isFlipped, setIsFlipped] = useState(false);
   // Once user has flipped to see the answer, show rating on unflipped side too when they flip back
   const [hasRevealedAnswer, setHasRevealedAnswer] = useState(false);
-  const [showHintState, setShowHintState] = useState(showHint || false);
+  // Hint starts collapsed (showHint from parent is undefined by default) for productive struggle; label shows "Show hint" / "Hide hint".
+  const [showHintState, setShowHintState] = useState(showHint ?? false);
+  const [showWhy, setShowWhy] = useState(false);
   
-  // Reset flip state when card changes
+  // Reset flip state and Why disclosure when card changes
   useEffect(() => {
     setIsFlipped(false);
     setHasRevealedAnswer(false);
+    setShowWhy(false);
   }, [card.id]);
   
   const handleFlip = () => {
@@ -342,7 +357,9 @@ export function TranslateCard({
       {/* Input Card */}
       <View style={styles.inputCard}>
         <Text style={styles.inputLabel}>
-          TYPE IN {card.targetLanguage.toUpperCase()}:
+          {card.targetLanguage === 'en'
+            ? 'Type your answer in English'
+            : 'Type your answer in Italian'}
         </Text>
           <TextInput
           style={styles.textInput}
@@ -377,43 +394,93 @@ export function TranslateCard({
         </Pressable>
       )}
 
-      {/* Result Display */}
+      {/* Result Display – compact, with optional Why? disclosure */}
       {showResult && (
         <>
-          <View style={[styles.resultCard, isCorrect ? styles.resultCardCorrect : styles.resultCardWrong]}>
+          <View
+            style={[
+              styles.resultCardCompact,
+              isCorrect
+                ? styles.resultCardCorrect
+                : meaningCorrect
+                  ? styles.resultCardMeaningCorrect
+                  : styles.resultCardWrong,
+            ]}
+            accessibilityRole="alert"
+            accessibilityLabel={
+              isCorrect
+                ? 'Correct'
+                : meaningCorrect
+                  ? `Meaning correct. More natural phrasing: ${naturalPhrasing ?? card.expected}`
+                  : 'Not quite correct'
+            }
+          >
             <Ionicons
-              name={isCorrect ? 'checkmark-circle' : 'close-circle'}
-              size={48}
-              color={isCorrect ? '#28a745' : '#dc3545'}
+              name={isCorrect ? 'checkmark-circle' : meaningCorrect ? 'information-circle' : 'close-circle'}
+              size={32}
+              color={
+                isCorrect
+                  ? (theme.colors.success ?? '#28a745')
+                  : meaningCorrect
+                    ? (theme.colors.primary ?? '#f59e0b')
+                    : (theme.colors.error ?? '#dc3545')
+              }
               accessible={false}
               importantForAccessibility="no"
             />
-            <Text style={styles.resultTitle}>
-              {isCorrect ? 'CORRECT!' : 'INCORRECT'}
-            </Text>
-            <View style={styles.answerComparison}>
-              <View style={styles.answerRow}>
-                <Text style={styles.answerLabel}>Your answer</Text>
-                <Text style={styles.answerValue}>{userAnswer.trim() || '(empty)'}</Text>
-              </View>
-              <View style={styles.answerRow}>
-                <Text style={styles.answerLabel}>Correct answer</Text>
-                <Text style={styles.answerValue}>{card.expected}</Text>
-              </View>
+            <View style={styles.resultContentCompact}>
+              {isCorrect && (
+                <Text style={styles.resultTitleCompact} allowFontScaling>Correct!</Text>
+              )}
+              {meaningCorrect && !isCorrect && naturalPhrasing && (
+                <>
+                  <Text style={styles.resultMessageCompact} allowFontScaling>
+                    Meaning is correct, but more natural:
+                  </Text>
+                  <View style={styles.suggestedAnswerBlock}>
+                    <Text style={styles.suggestedAnswerText} allowFontScaling selectable>
+                      {naturalPhrasing}
+                    </Text>
+                  </View>
+                </>
+              )}
+              {!isCorrect && !meaningCorrect && (
+                <>
+                  <Text style={styles.resultMessageCompact} allowFontScaling>
+                    Not quite.
+                  </Text>
+                  <Text style={styles.suggestedAnswerLabel} allowFontScaling>
+                    Suggested answer:
+                  </Text>
+                  <View style={styles.suggestedAnswerBlock}>
+                    <Text style={styles.suggestedAnswerText} allowFontScaling selectable>
+                      {naturalPhrasing ?? card.expected}
+                    </Text>
+                  </View>
+                </>
+              )}
+              {acceptedVariants != null && acceptedVariants.length > 0 && (
+                <Text style={styles.acceptedVariantsText} allowFontScaling>
+                  Also accepted: {acceptedVariants.join(', ')}
+                </Text>
+              )}
+              {feedbackWhy && (
+                <Pressable
+                  onPress={() => setShowWhy((prev) => !prev)}
+                  style={styles.whyButton}
+                  accessibilityRole="button"
+                  accessibilityLabel={showWhy ? 'Hide why' : 'Show why'}
+                  accessibilityState={{ expanded: showWhy }}
+                >
+                  <Text style={styles.whyButtonText}>{showWhy ? 'Hide why' : 'Why?'}</Text>
+                </Pressable>
+              )}
+              {showWhy && feedbackWhy && (
+                <Text style={styles.whyText} allowFontScaling>{feedbackWhy}</Text>
+              )}
             </View>
-            {grammaticalCorrectness != null && (
-              <Text style={styles.grammarScore}>
-                Grammatical correctness: {grammaticalCorrectness}%
-              </Text>
-            )}
           </View>
 
-          {isCorrect && (
-            <View style={styles.infoCard}>
-              <Text style={styles.infoLabel}>MEANING</Text>
-              <Text style={styles.infoText}>{card.source}</Text>
-            </View>
-          )}
         </>
       )}
     </View>
@@ -682,7 +749,6 @@ const styles = StyleSheet.create({
     fontFamily: baseTheme.typography.semiBold,
     fontSize: 14,
     color: baseTheme.colors.text,
-    textTransform: 'uppercase',
   },
   textInput: {
     borderWidth: 2,
@@ -724,15 +790,96 @@ const styles = StyleSheet.create({
     gap: baseTheme.spacing.sm,
     width: '100%',
   },
+  resultCardCompact: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: baseTheme.spacing.md,
+    padding: baseTheme.spacing.md,
+    borderRadius: 12,
+    gap: baseTheme.spacing.sm,
+    width: '100%',
+    borderWidth: 2,
+  },
   resultCardCorrect: {
     backgroundColor: '#d4edda',
-    borderWidth: 2,
     borderColor: '#28a745',
   },
+  resultCardMeaningCorrect: {
+    backgroundColor: '#fffbeb',
+    borderColor: '#f59e0b',
+    paddingVertical: baseTheme.spacing.lg,
+    paddingHorizontal: baseTheme.spacing.lg,
+  },
   resultCardWrong: {
-    backgroundColor: '#f8d7da',
-    borderWidth: 2,
+    backgroundColor: '#fef2f2',
     borderColor: '#dc3545',
+    paddingVertical: baseTheme.spacing.lg,
+    paddingHorizontal: baseTheme.spacing.lg,
+  },
+  resultContentCompact: {
+    flex: 1,
+    gap: baseTheme.spacing.sm,
+    minWidth: 0,
+  },
+  resultTitleCompact: {
+    fontFamily: baseTheme.typography.bold,
+    fontSize: 18,
+    color: baseTheme.colors.text,
+  },
+  resultMessageCompact: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 16,
+    color: baseTheme.colors.text,
+    lineHeight: 24,
+  },
+  suggestedAnswerLabel: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 15,
+    color: baseTheme.colors.text,
+    marginTop: baseTheme.spacing.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  suggestedAnswerBlock: {
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    borderRadius: baseTheme.radius.sm,
+    paddingVertical: baseTheme.spacing.md,
+    paddingHorizontal: baseTheme.spacing.md,
+    marginTop: baseTheme.spacing.xs,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+  },
+  suggestedAnswerText: {
+    fontFamily: baseTheme.typography.bold,
+    fontSize: 20,
+    color: baseTheme.colors.text,
+    lineHeight: 28,
+  },
+  acceptedVariantsText: {
+    fontFamily: baseTheme.typography.regular,
+    fontSize: 14,
+    color: baseTheme.colors.mutedText,
+    marginTop: baseTheme.spacing.xs,
+    lineHeight: 20,
+  },
+  whyButton: {
+    alignSelf: 'flex-start',
+    marginTop: baseTheme.spacing.xs,
+    paddingVertical: baseTheme.spacing.xs,
+    paddingHorizontal: 0,
+  },
+  whyButtonText: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 14,
+    color: baseTheme.colors.primary,
+  },
+  whyText: {
+    fontFamily: baseTheme.typography.regular,
+    fontSize: 13,
+    color: baseTheme.colors.mutedText,
+    marginTop: baseTheme.spacing.xs,
+    fontStyle: 'italic',
   },
   resultTitle: {
     fontFamily: baseTheme.typography.bold,
@@ -758,12 +905,6 @@ const styles = StyleSheet.create({
     fontFamily: baseTheme.typography.regular,
     fontSize: 18,
     color: baseTheme.colors.text,
-  },
-  grammarScore: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 13,
-    color: baseTheme.colors.mutedText,
-    marginTop: baseTheme.spacing.sm,
   },
   answerContainer: {
     flexDirection: 'row',

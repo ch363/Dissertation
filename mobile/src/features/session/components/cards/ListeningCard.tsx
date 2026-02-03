@@ -397,6 +397,8 @@ export function ListeningCard({
       setRecordingError(null); // Clear any previous errors on success
       recordingRef.current = null;
       announce('Recording stopped');
+      // Process pronunciation immediately; no need to press Continue
+      onCheckAnswer?.(uri);
     } catch (error: any) {
       logger.error('Failed to stop recording', error as Error);
       setRecordingError(error?.message || 'Failed to stop recording.');
@@ -648,58 +650,88 @@ export function ListeningCard({
             </Pressable>
           ) : null}
           <Pressable
-            style={styles.pronunciationNextButton}
+            style={[
+              styles.pronunciationNextButton,
+              scoreLabel?.label === 'Excellent' && !firstImproveWord && styles.pronunciationNextButtonExcellent,
+            ]}
             onPress={onContinue}
             disabled={!onContinue}
             accessibilityLabel="Next question"
           >
-            <Text style={styles.pronunciationNextText}>Next Question</Text>
-            <Ionicons name="arrow-forward" size={20} color={baseTheme.colors.mutedText} />
+            <Text
+              style={[
+                styles.pronunciationNextText,
+                scoreLabel?.label === 'Excellent' && !firstImproveWord && styles.pronunciationNextTextExcellent,
+              ]}
+            >
+              Next Question
+            </Text>
+            <Ionicons
+              name="arrow-forward"
+              size={20}
+              color={
+                scoreLabel?.label === 'Excellent' && !firstImproveWord
+                  ? '#fff'
+                  : baseTheme.colors.mutedText
+              }
+            />
           </Pressable>
         </View>
       );
     }
 
     // ——— Screen 3: Input (Figma: Speak this phrase, record) ———
+    // Dynamic layout: middle section uses flex so spacing shrinks when needed and everything fits on one page.
     return (
       <View style={styles.pronunciationContainer}>
         <Text style={styles.pronunciationInstruction}>Speak this phrase</Text>
-        <View style={styles.pronunciationPhraseBlock}>
-          <Text style={styles.pronunciationPhrase}>{card.expected}</Text>
-          {card.translation ? (
-            <Text style={styles.pronunciationTranslation}>({card.translation})</Text>
-          ) : null}
-        </View>
-        <SpeakerButton
-          size={64}
-          isPlaying={isPlaying}
-          onPress={handlePlayAudio}
-          accessibilityLabel="Listen to pronunciation"
-        />
-        <View style={styles.pronunciationTipBox}>
-          <Ionicons name="bulb-outline" size={20} color={baseTheme.colors.mutedText} style={styles.pronunciationTipIcon} />
-          <Text style={styles.pronunciationTipText}>Find a quiet space for best results</Text>
-        </View>
-        <View style={styles.pronunciationRecordSection}>
-          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={isRecording ? 'Release to stop recording' : 'Hold to record'}
-              accessibilityHint={isRecording ? undefined : 'Press and hold the button while you speak'}
-              accessibilityState={{ selected: isRecording, disabled: isPronunciationProcessing }}
-              style={[styles.pronunciationRecordButton, isRecording && styles.pronunciationRecordButtonActive]}
-              onPressIn={() => {
-                if (!isRecording && !isPronunciationProcessing) handleStartRecording();
-              }}
-              onPressOut={() => {
-                if (isRecording) handleStopRecording();
-              }}
-              disabled={isPronunciationProcessing}
+        <View style={styles.pronunciationInputMiddle}>
+          <View style={[styles.pronunciationPhraseBlock, styles.pronunciationPhraseBlockInInput]} collapsable={false}>
+            <Text
+              style={styles.pronunciationPhrase}
+              numberOfLines={4}
+              adjustsFontSizeToFit
+              minimumFontScale={0.6}
             >
-              <Ionicons name="mic" size={44} color="#fff" />
-            </Pressable>
-          </Animated.View>
-          <Text style={styles.pronunciationRecordHint}>Hold to record your pronunciation</Text>
+              {card.expected}
+            </Text>
+            {card.translation ? (
+              <Text style={styles.pronunciationTranslation} numberOfLines={2}>
+                ({card.translation})
+              </Text>
+            ) : null}
+          </View>
+          <SpeakerButton
+            size={64}
+            isPlaying={isPlaying}
+            onPress={handlePlayAudio}
+            accessibilityLabel="Listen to pronunciation"
+          />
+          <View style={[styles.pronunciationTipBox, styles.pronunciationTipBoxInInput]}>
+            <Ionicons name="bulb-outline" size={20} color={baseTheme.colors.mutedText} style={styles.pronunciationTipIcon} />
+            <Text style={styles.pronunciationTipText}>Find a quiet space for best results</Text>
+          </View>
+          <View style={[styles.pronunciationRecordSection, styles.pronunciationRecordSectionInInput]}>
+            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={isRecording ? 'Release to stop recording' : 'Hold to record'}
+                accessibilityHint={isRecording ? undefined : 'Press and hold the button while you speak'}
+                accessibilityState={{ selected: isRecording, disabled: isPronunciationProcessing }}
+                style={[styles.pronunciationRecordButton, isRecording && styles.pronunciationRecordButtonActive]}
+                onPressIn={() => {
+                  if (!isRecording && !isPronunciationProcessing) handleStartRecording();
+                }}
+                onPressOut={() => {
+                  if (isRecording) handleStopRecording();
+                }}
+                disabled={isPronunciationProcessing}
+              >
+                <Ionicons name="mic" size={44} color="#fff" />
+              </Pressable>
+            </Animated.View>
+            <Text style={styles.pronunciationRecordHint}>Hold to record your pronunciation</Text>
+          </View>
         </View>
         {isIOSSimulator && (
           <View style={styles.simulatorWarning}>
@@ -715,22 +747,28 @@ export function ListeningCard({
         <Pressable
           style={[
             styles.pronunciationFooterButton,
-            hasRecorded && styles.pronunciationFooterButtonActive,
+            (hasRecorded || isPronunciationProcessing) && styles.pronunciationFooterButtonActive,
           ]}
           onPress={() => {
             if (!hasRecorded || !recordedAudioUri || !onCheckAnswer) return;
             onCheckAnswer(recordedAudioUri);
           }}
-          disabled={!hasRecorded}
-          accessibilityLabel={hasRecorded ? 'Continue' : 'Record to continue'}
+          disabled={!hasRecorded || isPronunciationProcessing}
+          accessibilityLabel={
+            isPronunciationProcessing
+              ? 'Processing…'
+              : hasRecorded
+                ? 'Continue'
+                : 'Record to continue'
+          }
         >
           <Text
             style={[
               styles.pronunciationFooterButtonText,
-              hasRecorded && styles.pronunciationFooterButtonTextActive,
+              (hasRecorded || isPronunciationProcessing) && styles.pronunciationFooterButtonTextActive,
             ]}
           >
-            {hasRecorded ? 'Continue' : 'Record to continue'}
+            {isPronunciationProcessing ? 'Processing…' : hasRecorded ? 'Continue' : 'Record to continue'}
           </Text>
         </Pressable>
       </View>
@@ -815,11 +853,6 @@ export function ListeningCard({
                 </View>
               </View>
             </View>
-            {grammaticalCorrectness != null && (
-              <Text style={styles.grammarScore}>
-                Grammatical correctness: {grammaticalCorrectness}%
-              </Text>
-            )}
           </View>
 
           {isCorrect && (
@@ -1015,12 +1048,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: baseTheme.colors.text,
   },
-  grammarScore: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 13,
-    color: baseTheme.colors.mutedText,
-    marginTop: baseTheme.spacing.sm,
-  },
   answerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1125,18 +1152,30 @@ const styles = StyleSheet.create({
     paddingVertical: baseTheme.spacing.lg,
     paddingHorizontal: baseTheme.spacing.lg,
   },
+  /** Dynamic middle block for pronunciation input: flex space so everything fits on one page */
+  pronunciationInputMiddle: {
+    flex: 1,
+    minHeight: 0,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+  },
   pronunciationInstruction: {
     fontFamily: baseTheme.typography.semiBold,
     fontSize: 13,
     color: baseTheme.colors.link,
     textTransform: 'uppercase',
     letterSpacing: 1.4,
-    marginBottom: baseTheme.spacing.xl,
+    marginBottom: baseTheme.spacing.sm,
   },
   pronunciationPhraseBlock: {
     alignItems: 'center',
     marginBottom: baseTheme.spacing.xl,
     paddingHorizontal: baseTheme.spacing.md,
+    flexShrink: 1,
+  },
+  pronunciationPhraseBlockInInput: {
+    marginBottom: baseTheme.spacing.sm,
   },
   pronunciationPhrase: {
     fontFamily: baseTheme.typography.bold,
@@ -1164,6 +1203,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: baseTheme.colors.border,
   },
+  pronunciationTipBoxInInput: {
+    marginTop: baseTheme.spacing.sm,
+    marginBottom: baseTheme.spacing.sm,
+  },
   pronunciationTipIcon: {
     marginRight: baseTheme.spacing.sm,
   },
@@ -1176,6 +1219,9 @@ const styles = StyleSheet.create({
   pronunciationRecordSection: {
     alignItems: 'center',
     marginBottom: baseTheme.spacing.xl,
+  },
+  pronunciationRecordSectionInInput: {
+    marginBottom: baseTheme.spacing.sm,
   },
   pronunciationRecordButton: {
     width: 112,
@@ -1484,10 +1530,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E7EB',
     gap: 8,
   },
+  pronunciationNextButtonExcellent: {
+    backgroundColor: baseTheme.colors.primary,
+  },
   pronunciationNextText: {
     fontFamily: baseTheme.typography.semiBold,
     fontSize: 16,
     color: baseTheme.colors.text,
+  },
+  pronunciationNextTextExcellent: {
+    color: '#fff',
   },
   checkButton: {
     backgroundColor: baseTheme.colors.primary,

@@ -20,12 +20,12 @@ export function LessonProgressHeader({ title, current, total, onBackPress, retur
 
   const handleExitPress = () => {
     Alert.alert(
-      'Leave session?',
+      'Exit session?',
       'Your progress in this session will not be saved. Are you sure you want to leave?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Leave',
+          text: 'Exit',
           style: 'destructive',
           onPress: () => {
             const destination = (returnTo && returnTo.trim().length > 0) ? returnTo : routes.tabs.home;
@@ -36,18 +36,24 @@ export function LessonProgressHeader({ title, current, total, onBackPress, retur
     );
   };
 
+  const showBackButton = current > 1;
+
   return (
     <View style={styles.container}>
       <View style={styles.titleRow}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          onPress={onBackPress ?? (() => router.back())}
-          hitSlop={10}
-          style={styles.backButton}
-        >
-          <Ionicons name="chevron-back" size={22} color={theme.colors.mutedText} />
-        </Pressable>
+        {showBackButton ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            onPress={onBackPress ?? (() => router.back())}
+            hitSlop={10}
+            style={styles.backButton}
+          >
+            <Ionicons name="chevron-back" size={22} color={theme.colors.mutedText} />
+          </Pressable>
+        ) : (
+          <View style={styles.backButton} />
+        )}
 
         <Text style={styles.titleText} numberOfLines={1}>
           {title}
