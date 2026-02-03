@@ -1,17 +1,16 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { HelpButton } from '@/components/navigation/HelpButton';
+import { HelpButton } from '@/components/navigation';
 import {
   HomePrimaryCtaCard,
   type HomePrimaryAction,
-} from '@/features/home/components/HomePrimaryCtaCard';
-import { HomeStreakCard } from '@/features/home/components/HomeStreakCard';
-import { HomeTodayAtAGlance } from '@/features/home/components/HomeTodayAtAGlance';
-import { HomeWhyThisNext } from '@/features/home/components/HomeWhyThisNext';
+} from '@/features/home/components/primary-cta/HomePrimaryCtaCard';
+import { HomeStreakCard } from '@/features/home/components/streak/HomeStreakCard';
+import { HomeTodayAtAGlance } from '@/features/home/components/today-at-a-glance/HomeTodayAtAGlance';
+import { HomeWhyThisNext } from '@/features/home/components/why-this-next/HomeWhyThisNext';
 import { buildPrimaryAction } from '@/features/home/utils/buildPrimaryAction';
 import { formatLessonDetail } from '@/features/home/utils/formatLessonDetail';
 import {
@@ -24,14 +23,7 @@ import { makeSessionId } from '@/features/session/sessionBuilder';
 import { getSuggestions } from '@/services/api/learn';
 import { getAllMastery } from '@/services/api/mastery';
 import { getLesson, getLessonTeachings } from '@/services/api/modules';
-import {
-  getDashboard,
-  getMyProfile,
-  getRecentActivity,
-  getStats,
-  type AccuracyByDeliveryMethod,
-  type GrammaticalAccuracyByDeliveryMethod,
-} from '@/services/api/profile';
+import { getDashboard, getMyProfile, getRecentActivity, getStats } from '@/services/api/profile';
 import { routeBuilders, routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -53,12 +45,15 @@ export default function HomeScreen() {
   const [estimatedReviewMinutes, setEstimatedReviewMinutes] = useState<number | null>(null);
   const [nextAction, setNextAction] = useState<HomeNextAction | null>(null);
   const [nextLessonItemCount, setNextLessonItemCount] = useState<number | null>(null);
-  const [accuracyByDeliveryMethod, setAccuracyByDeliveryMethod] = useState<AccuracyByDeliveryMethod | null>(null);
-  const [grammaticalAccuracyByDeliveryMethod, setGrammaticalAccuracyByDeliveryMethod] =
-    useState<GrammaticalAccuracyByDeliveryMethod | null>(null);
   const [whyThisText, setWhyThisText] = useState<string>('You’ll build confidence with practical phrases.');
   /** Heuristic topic from last activity (module/lesson title) for Focus when next action is review. */
   const [lastActivityTopic, setLastActivityTopic] = useState<string | null>(null);
+  /** First suggested lesson (from learn API), used for Focus when primary action is review. */
+  const [suggestedLesson, setSuggestedLesson] = useState<{
+    lessonId: string;
+    lessonTitle: string;
+    moduleTitle: string;
+  } | null>(null);
   const [inProgressLesson, setInProgressLesson] = useState<{
     lessonId: string;
     lessonTitle: string;
@@ -90,7 +85,9 @@ export default function HomeScreen() {
         getAllMastery().catch(() => []),
       ]);
 
-      const name = profile?.name?.trim();
+      const rawName = profile?.name;
+      const name =
+        rawName != null && typeof rawName === 'string' ? rawName.trim() : null;
       setDisplayName(name || null);
       setStreakDays(dashboardData.streak || 0);
       setMinutesToday(statsData.minutesToday || 0);
@@ -114,17 +111,6 @@ export default function HomeScreen() {
           ? dashboardData.estimatedReviewMinutes
           : null,
       );
-      setAccuracyByDeliveryMethod(
-        dashboardData.accuracyByDeliveryMethod && Object.keys(dashboardData.accuracyByDeliveryMethod).length > 0
-          ? dashboardData.accuracyByDeliveryMethod
-          : null,
-      );
-      setGrammaticalAccuracyByDeliveryMethod(
-        dashboardData.grammaticalAccuracyByDeliveryMethod &&
-        Object.keys(dashboardData.grammaticalAccuracyByDeliveryMethod).length > 0
-          ? dashboardData.grammaticalAccuracyByDeliveryMethod
-          : null,
-      );
       setNextAction(
         selectHomeNextAction({
           dashboard: dashboardData,
@@ -132,6 +118,16 @@ export default function HomeScreen() {
           suggestions,
         }),
       );
+      const firstSuggestion = suggestions?.lessons?.[0];
+      if (firstSuggestion?.lesson?.id && firstSuggestion?.module?.title) {
+        setSuggestedLesson({
+          lessonId: firstSuggestion.lesson.id,
+          lessonTitle: firstSuggestion.lesson.title?.trim() ?? 'Next lesson',
+          moduleTitle: firstSuggestion.module.title.trim(),
+        });
+      } else {
+        setSuggestedLesson(null);
+      }
       const recentLessonPayload = recentActivity?.recentLesson;
       const recentLesson = recentLessonPayload?.lesson;
       setLastActivityTopic(
@@ -255,6 +251,7 @@ export default function HomeScreen() {
         const skillName = SKILL_CONFIG[weakest.skillTag]?.name ?? weakest.skillTag;
         return `${prefix}Weakest skill today: ${skillName}`;
       }
+      if (suggestedLesson?.moduleTitle) return `${prefix}${suggestedLesson.moduleTitle}`;
       if (lastActivityTopic) return `${prefix}${lastActivityTopic}`;
       return `${prefix}Due reviews`;
     }
@@ -265,7 +262,7 @@ export default function HomeScreen() {
     if (xpTotal < 50) return `${prefix}Getting started`;
     if (xpTotal < 200) return `${prefix}Basics`;
     return `${prefix}Building phrases`;
-  }, [inProgressLesson, nextAction, xpTotal, mastery, lastActivityTopic]);
+  }, [inProgressLesson, nextAction, xpTotal, mastery, lastActivityTopic, suggestedLesson]);
 
   const focusWhy = useMemo(() => {
     if (nextAction?.kind === 'review' && mastery.length > 0) {
@@ -285,6 +282,7 @@ export default function HomeScreen() {
   const focusSecondary = useMemo(() => {
     if (!nextAction) return undefined;
     if (nextAction.kind === 'review') {
+      if (suggestedLesson?.lessonTitle) return `Next lesson: ${suggestedLesson.lessonTitle}`;
       const topicPart = focusTopic.replace(/^Focus:\s*/i, '').trim().toLowerCase();
       const last = lastActivityTopic?.trim().toLowerCase();
       if (!last || topicPart === last) return undefined;
@@ -298,7 +296,7 @@ export default function HomeScreen() {
     if (lessonTitle?.trim()) return `Next: ${lessonTitle.trim()}`;
     if (moduleTitle?.trim()) return `In ${moduleTitle.trim()}`;
     return undefined;
-  }, [nextAction, lastActivityTopic, focusTopic]);
+  }, [nextAction, lastActivityTopic, focusTopic, suggestedLesson]);
 
   const focusPrimaryLine = useMemo(() => {
     if (inProgressLesson) {
@@ -352,8 +350,9 @@ export default function HomeScreen() {
     if (inProgressLesson?.lessonId) return inProgressLesson.lessonId;
     if (nextAction?.kind === 'continue' && nextAction.lessonId) return nextAction.lessonId;
     if (nextAction?.kind === 'startNext' && nextAction.lessonId) return nextAction.lessonId;
+    if (nextAction?.kind === 'review' && suggestedLesson?.lessonId) return suggestedLesson.lessonId;
     return null;
-  }, [inProgressLesson, nextAction]);
+  }, [inProgressLesson, nextAction, suggestedLesson]);
 
   const handleFocusPress = useCallback(() => {
     if (!focusLessonId) return;
@@ -369,8 +368,9 @@ export default function HomeScreen() {
     if (inProgressLesson || nextAction?.kind === 'continue' || (nextAction?.kind === 'startNext' && nextAction.lessonId)) {
       return 'Based on your learning path.';
     }
+    if (nextAction?.kind === 'review' && suggestedLesson) return 'After you review.';
     return undefined;
-  }, [focusWhy, inProgressLesson, nextAction]);
+  }, [focusWhy, inProgressLesson, nextAction, suggestedLesson]);
 
   const handlePrimaryPress = (mode: 'review' | 'learn') => {
     if (!nextAction) return;
@@ -402,9 +402,19 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView
-      edges={['left', 'right', 'bottom']}
-      style={[styles.safeArea, { backgroundColor: theme.colors.background }]}
+    <ScrollView
+      style={[styles.scrollView, { backgroundColor: theme.colors.background }]}
+      contentContainerStyle={[
+        styles.scrollContent,
+        {
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom + baseTheme.spacing.md,
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+        },
+      ]}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
     >
       <View
         style={[
@@ -416,14 +426,7 @@ export default function HomeScreen() {
         ]}
         pointerEvents="none"
       />
-      <View
-        style={[
-          styles.content,
-          {
-            paddingBottom: insets.bottom + baseTheme.spacing.md,
-          },
-        ]}
-      >
+      <View style={styles.content}>
         <View style={styles.headerRow}>
           <View style={styles.sectionTop}>
             <Text
@@ -503,13 +506,16 @@ export default function HomeScreen() {
         ) : null}
 
       </View>
-    </SafeAreaView>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   topBackdrop: {
     position: 'absolute',

@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 
 import { getCurrentUser } from '@/services/api/auth';
 import { saveOnboarding } from '@/services/api/onboarding';
-import { OptionQuestion } from '@/components/onboarding/_components';
+import { OptionQuestion } from '@/components/onboarding';
 import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 
 export default function ExperienceLevel() {

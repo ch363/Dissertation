@@ -5,21 +5,25 @@ import React, { useCallback } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { LoadingRow, ScrollView, TappableCard } from '@/components/ui';
+import { LoadingRow, TappableCard } from '@/components/ui';
 import { ScreenHeader } from '@/components/navigation';
 import { makeSessionId } from '@/features/session/sessionBuilder';
 import { routeBuilders, routes } from '@/services/navigation/routes';
-import { getDashboard, type DashboardData } from '@/services/api/profile';
-import { getDueReviewsLatest, type DueReviewLatest } from '@/services/api/progress';
+import {
+  clearReviewScreenCache,
+  getCachedReviewScreenData,
+  preloadReviewScreenData,
+  type ReviewScreenCacheData,
+} from '@/services/api/review-screen-cache';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
-import { useAsyncData } from '@/hooks/useAsyncData';
 
 function formatDueCount(n: number) {
   if (n === 0) return 'Nothing to review';
@@ -31,49 +35,42 @@ function safeText(s?: string | null) {
   return t.length > 0 ? t : undefined;
 }
 
-/** Due-item cards use the app primary (blue) palette for consistency with PRACTICE tag and Learn tab. */
-const DUE_ITEM_CARD_PALETTE = {
-  bg: '#EFF6FF',
-  border: 'rgba(38,79,212,0.25)',
-  accent: '#2563EB',
-} as const;
-
-/** Palette variants for cycling due-item card colors. */
-const DUE_ITEM_CARD_COLORS = [
-  { bg: '#EFF6FF', border: 'rgba(38,79,212,0.25)', accent: '#2563EB' },
-  { bg: '#F0FDF4', border: 'rgba(22,163,74,0.25)', accent: '#16A34A' },
-  { bg: '#FEF3C7', border: 'rgba(217,119,6,0.25)', accent: '#D97706' },
-] as const;
+const TAB_BAR_HEIGHT = 84;
 
 export default function ReviewOverviewScreen() {
   const { theme } = useAppTheme();
-  
-  const { data, loading, reload } = useAsyncData<{
-    dashboard: DashboardData | null;
-    due: DueReviewLatest[];
-  }>(
-    'ReviewOverviewScreen',
-    async () => {
-      const [dashboardRes, dueItems] = await Promise.all([
-        getDashboard(),
-        getDueReviewsLatest().catch(() => []),
-      ]);
-      return {
-        dashboard: dashboardRes ?? null,
-        due: dueItems || [],
-      };
-    },
-    []
+  const insets = useSafeAreaInsets();
+
+  const [data, setData] = React.useState<ReviewScreenCacheData | null>(() =>
+    getCachedReviewScreenData()
+  );
+  const [loading, setLoading] = React.useState(!getCachedReviewScreenData());
+  const hasDataRef = React.useRef(!!getCachedReviewScreenData());
+
+  const reload = useCallback(async (options?: { forceRefresh?: boolean }) => {
+    if (options?.forceRefresh) {
+      clearReviewScreenCache();
+      setLoading(true);
+    } else if (!hasDataRef.current) {
+      setLoading(true);
+    }
+    const result = await preloadReviewScreenData();
+    if (result) {
+      setData(result);
+      hasDataRef.current = true;
+    }
+    setLoading(false);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      // Always refetch when screen gains focus so "reviews due" count is up to date after a session
+      reload({ forceRefresh: true });
+    }, [reload])
   );
 
   const dashboard = data?.dashboard ?? null;
   const due = data?.due ?? [];
-
-  useFocusEffect(
-    useCallback(() => {
-      reload();
-    }, [reload])
-  );
 
   const handleStartReview = () => {
     const sessionId = makeSessionId('review');
@@ -89,19 +86,27 @@ export default function ReviewOverviewScreen() {
   const accuracyDisplay = '—';
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+    <ScrollView
+      style={[styles.scrollView, { backgroundColor: theme.colors.background }]}
+      contentContainerStyle={[
+        styles.content,
+        styles.scrollContent,
+        {
+          paddingTop: insets.top,
+          paddingBottom: baseTheme.spacing.xl + insets.bottom + TAB_BAR_HEIGHT,
+          paddingLeft: baseTheme.spacing.lg + insets.left,
+          paddingRight: baseTheme.spacing.lg + insets.right,
+        },
+      ]}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
       <ScreenHeader
         title="Review"
         subtitle="Master your knowledge with spaced repetition"
-        icon="sparkles"
-        label="Practice"
         showHelp
         showHome
       />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.content, { paddingBottom: baseTheme.spacing.xl + 32 }]}
-      >
         {/* Stats row: Day Streak, Accuracy, Total XP */}
         <View style={styles.statsRow}>
           <View style={styles.statCardWrapper}>
@@ -217,7 +222,7 @@ export default function ReviewOverviewScreen() {
             <LoadingRow label="Loading due items…" />
           ) : (
             <View style={styles.list}>
-              {(due || []).map((r, index) => {
+              {(due || []).map((r) => {
                 const phrase = safeText(r.question?.teaching?.learningLanguageString);
                 const translation = safeText(r.question?.teaching?.userLanguageString);
                 const lessonTitle = safeText(r.question?.teaching?.lesson?.title);
@@ -239,14 +244,16 @@ export default function ReviewOverviewScreen() {
             </View>
           )}
         </View>
-      </ScrollView>
-    </SafeAreaView>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   content: {
     paddingHorizontal: baseTheme.spacing.lg,
@@ -434,48 +441,4 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   dueItemCardSpacing: {},
-  dueItemCard: {
-    borderWidth: 1,
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  dueItemInner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-  },
-  dueItemTextBlock: {
-    flex: 1,
-    minWidth: 0,
-    gap: 4,
-  },
-  dueItemChevron: {
-    marginLeft: 8,
-    marginTop: 2,
-  },
-  itemPhrase: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 17,
-  },
-  itemTranslation: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 15,
-  },
-  categoryPill: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    marginTop: 8,
-  },
-  categoryPillText: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 13,
-  },
 });

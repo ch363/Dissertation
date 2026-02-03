@@ -1,5 +1,3 @@
-import Constants from 'expo-constants';
-import { Platform } from 'react-native';
 import { createLogger } from '@/services/logging';
 
 const logger = createLogger('TTS');

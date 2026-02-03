@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { PrimaryButton } from '@/components/onboarding/_components';
+import { PrimaryButton } from '@/components/onboarding';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme } from '@/services/theme/tokens';
 

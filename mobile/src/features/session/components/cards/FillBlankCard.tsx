@@ -110,7 +110,6 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
 
   // Parse sentence to find blank position
   const sentenceParts = card.text.split('___');
-  const hasBlank = sentenceParts.length === 2;
 
   return (
     <View style={[styles.container, { gap: theme.spacing.md }]}>

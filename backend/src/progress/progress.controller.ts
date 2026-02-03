@@ -27,6 +27,7 @@ import { ValidateAnswerDto } from './dto/validate-answer.dto';
 import { ValidateAnswerResponseDto } from './dto/validate-answer-response.dto';
 import { ValidatePronunciationDto } from './dto/validate-pronunciation.dto';
 import { PronunciationResponseDto } from './dto/pronunciation-response.dto';
+import { CompleteTeachingDto } from './dto/complete-teaching.dto';
 import { DELIVERY_METHOD } from '@prisma/client';
 import { IsEnum } from 'class-validator';
 
@@ -45,6 +46,16 @@ export class ProgressController {
     return this.progressService.startLesson(userId, lessonId);
   }
 
+  @Post('lessons/:lessonId/end')
+  @ApiOperation({ summary: 'Record lesson ended (sets endedAt for study time)' })
+  @ApiParam({ name: 'lessonId', description: 'Lesson ID' })
+  async endLesson(
+    @User() userId: string,
+    @Param('lessonId') lessonId: string,
+  ) {
+    return this.progressService.endLesson(userId, lessonId);
+  }
+
   @Get('lessons')
   async getUserLessons(
     @User() userId: string,
@@ -58,8 +69,13 @@ export class ProgressController {
   async completeTeaching(
     @User() userId: string,
     @Param('teachingId') teachingId: string,
+    @Body() body: CompleteTeachingDto = {},
   ) {
-    return this.progressService.completeTeaching(userId, teachingId);
+    return this.progressService.completeTeaching(
+      userId,
+      teachingId,
+      body.timeSpentMs,
+    );
   }
 
   @Post('questions/:questionId/attempt')

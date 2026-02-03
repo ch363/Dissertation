@@ -225,11 +225,6 @@ export default function CourseDetail() {
     }).length;
   }, [lessons, progressByLessonId]);
 
-  const lessonsCompleteLabel =
-    lessons.length > 0
-      ? `${completedLessonsCount}/${lessons.length} ${lessons.length === 1 ? 'lesson' : 'lessons'} complete`
-      : null;
-
   const completionExampleOutcome = useMemo(() => {
     // Prefer a strong “outcome” line if we already generated one.
     const first = lessons.find((l) => lessonOutcomes[l.id])?.id;
@@ -297,11 +292,6 @@ export default function CourseDetail() {
       helperText: `Lesson ${lessonIndex} of ${lessons.length} • ~${estMin} min`,
     };
   }, [lessons, module?.id, recentActivity, suggestedLessonId, suggestedLessonTitle, userProgress]);
-
-  const recommendedLessonTitle = useMemo(() => {
-    if (!suggestedLessonId) return null;
-    return suggestedLessonTitle ?? lessons.find((l) => l.id === suggestedLessonId)?.title ?? null;
-  }, [lessons, suggestedLessonId, suggestedLessonTitle]);
 
   const handlePrimaryActionPress = () => {
     if (!primaryAction) return;
@@ -538,17 +528,18 @@ export default function CourseDetail() {
                 });
               };
 
-              const handleLessonPressIn = () => {
-                preloadSessionPlan(lesson.id).catch((error) => {
-                  Logger.debug('Preload failed (non-critical)', { error });
-                });
-              };
-
+              const isCompleted = statusLabel === 'Completed';
+              const pillBg = isCompleted ? theme.colors.success + '18' : cover.metaBg;
+              const pillBorder = isCompleted ? theme.colors.success + '40' : cover.metaBorder;
               const metaRow = (
                 <View style={styles.lessonMetaRow}>
-                  <View style={[styles.lessonStatusPill, { backgroundColor: cover.metaBg, borderColor: cover.metaBorder }]}>
-                    <View style={[styles.lessonStatusDot, { backgroundColor: theme.colors.mutedText }]} />
-                    <Text style={[styles.lessonMetaText, { color: cover.mutedDesc }]}>{statusLabel}</Text>
+                  <View style={[styles.lessonStatusPill, { backgroundColor: pillBg, borderColor: pillBorder }]}>
+                    {isCompleted ? (
+                      <Ionicons name="checkmark-circle" size={14} color={theme.colors.success} />
+                    ) : (
+                      <View style={[styles.lessonStatusDot, { backgroundColor: theme.colors.mutedText }]} />
+                    )}
+                    <Text style={[styles.lessonMetaText, { color: isCompleted ? theme.colors.success : cover.mutedDesc }]}>{statusLabel}</Text>
                   </View>
                   <MetaRow text={progressLabel} icon="document-text-outline" textColor={theme.colors.mutedText} />
                   <MetaRow text={`~${durationMin} min`} icon="time-outline" textColor={theme.colors.mutedText} />

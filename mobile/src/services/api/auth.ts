@@ -1,5 +1,4 @@
 import type { Session, User } from '@supabase/supabase-js';
-import * as Linking from 'expo-linking';
 
 import { getSupabaseClient } from '@/services/supabase/client';
 import { getSupabaseRedirectUrl } from '@/services/env/supabaseConfig';

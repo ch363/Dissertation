@@ -22,6 +22,10 @@ export default function LessonOverviewScreen() {
       if (!lessonId) {
         throw new Error('Lesson ID is required');
       }
+      // Reject route placeholder "index" so we never call the API with a non-UUID (e.g. from /learn/index matching [lessonId]).
+      if (lessonId === 'index') {
+        throw new Error('Lesson ID is required');
+      }
       const [lessonData, teachingsData] = await Promise.all([
         getLesson(lessonId),
         getLessonTeachings(lessonId).catch(() => [] as Teaching[]),

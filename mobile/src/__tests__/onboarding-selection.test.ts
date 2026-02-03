@@ -1,4 +1,4 @@
-import { computeNextSelection, normalizeSelected } from '@/components/onboarding/_components';
+import { computeNextSelection, normalizeSelected } from '@/components/onboarding';
 
 describe('normalizeSelected', () => {
   test('returns empty array for nullish', () => {

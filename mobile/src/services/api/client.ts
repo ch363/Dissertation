@@ -5,6 +5,10 @@ import { createLogger } from '@/services/logging';
 
 const logger = createLogger('ApiClient');
 
+const DEFAULT_TIMEOUT_MS = 30000;
+
+export type RequestOptions = RequestInit & { timeoutMs?: number };
+
 class ApiClient {
   private baseUrl: string;
 
@@ -25,7 +29,7 @@ class ApiClient {
 
   private async request<T = unknown>(
     endpoint: string,
-    options: RequestInit = {},
+    options: RequestOptions = {},
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
     
@@ -41,12 +45,13 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const timeoutMs = 30000;
+    const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    const { timeoutMs: _drop, ...requestInit } = options;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     const config: RequestInit = {
-      ...options,
+      ...requestInit,
       headers,
       signal: options.signal ?? controller.signal,
     };
@@ -117,7 +122,7 @@ class ApiClient {
       }
 
       return data as T;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof ApiClientError) {
         throw error;
       }
@@ -140,19 +145,22 @@ class ApiClient {
           message.includes('Network request failed') ||
           message.includes('connection') ||
           message.includes('timeout'));
-      throw new ApiClientError(
-        isNetworkError
-          ? `${message}. Check that the backend is running and reachable (e.g. EXPO_PUBLIC_API_URL).`
-          : message,
-      );
+      const hint = isNetworkError
+        ? `${message}. Check that the backend is running and reachable (e.g. EXPO_PUBLIC_API_URL).`
+        : message;
+      const withUrl =
+        typeof __DEV__ !== 'undefined' && __DEV__ && isNetworkError
+          ? `${hint} Base URL: ${this.baseUrl}`
+          : hint;
+      throw new ApiClientError(withUrl);
     }
   }
 
-  async get<T = any>(endpoint: string, options?: RequestInit): Promise<T> {
+  async get<T = unknown>(endpoint: string, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: 'GET' });
   }
 
-  async post<T = any>(endpoint: string, body?: any, options?: RequestInit): Promise<T> {
+  async post<T = unknown>(endpoint: string, body?: unknown, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
       method: 'POST',
@@ -160,7 +168,7 @@ class ApiClient {
     });
   }
 
-  async patch<T = any>(endpoint: string, body?: any, options?: RequestInit): Promise<T> {
+  async patch<T = unknown>(endpoint: string, body?: unknown, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
       method: 'PATCH',
@@ -168,7 +176,7 @@ class ApiClient {
     });
   }
 
-  async put<T = any>(endpoint: string, body?: any, options?: RequestInit): Promise<T> {
+  async put<T = unknown>(endpoint: string, body?: unknown, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
       method: 'PUT',
@@ -176,7 +184,7 @@ class ApiClient {
     });
   }
 
-  async delete<T = any>(endpoint: string, options?: RequestInit): Promise<T> {
+  async delete<T = unknown>(endpoint: string, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: 'DELETE' });
   }
 }

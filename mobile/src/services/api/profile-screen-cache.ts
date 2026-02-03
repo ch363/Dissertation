@@ -27,6 +27,7 @@ export async function preloadProfileScreenData(profileId: string | null): Promis
         xpTotal: 0,
         weeklyXP: 0,
         weeklyXPChange: 0,
+        weeklyActivity: [0, 0, 0, 0, 0, 0, 0],
         accuracyPercentage: 0,
         accuracyByDeliveryMethod: {},
         grammaticalAccuracyByDeliveryMethod: {},

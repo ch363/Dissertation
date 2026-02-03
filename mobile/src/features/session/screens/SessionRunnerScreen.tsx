@@ -10,7 +10,7 @@ import { routeBuilders } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { AttemptLog, SessionKind, SessionPlan } from '@/types/session';
 import { getSessionPlan } from '@/services/api/learn';
-import { startLesson } from '@/services/api/progress';
+import { startLesson, endLesson } from '@/services/api/progress';
 import { transformSessionPlan } from '@/services/api/session-plan-transformer';
 import { getCachedSessionPlan } from '@/services/api/session-plan-cache';
 import {
@@ -49,7 +49,7 @@ export default function SessionRunnerScreen(props?: Props) {
 
   const { theme } = useAppTheme();
   const [plan, setPlan] = useState<SessionPlan | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [resolvedKind, setResolvedKind] = useState<SessionKind>(requestedKind);
   const [resolvedLessonId, setResolvedLessonId] = useState<string | undefined>(requestedLessonId);
@@ -58,6 +58,7 @@ export default function SessionRunnerScreen(props?: Props) {
   
   const slideAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+  const lessonStartedRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (plan && !loading && !error) {
@@ -133,6 +134,7 @@ export default function SessionRunnerScreen(props?: Props) {
         if (effectiveKind === 'learn' && effectiveLessonId) {
           try {
             await startLesson(effectiveLessonId);
+            lessonStartedRef.current = effectiveLessonId;
           } catch (err) {
             logger.error('Failed to start lesson', err);
           }
@@ -216,10 +218,19 @@ export default function SessionRunnerScreen(props?: Props) {
 
     return () => {
       cancelled = true;
+      const lessonId = lessonStartedRef.current;
+      if (lessonId) {
+        lessonStartedRef.current = null;
+        endLesson(lessonId).catch((err) => logger.error('Failed to end lesson', err));
+      }
     };
   }, [requestedLessonId, moduleId, sessionId, requestedKind]);
 
-  const handleComplete = async (attempts: AttemptLog[]) => {
+  const handleComplete = async (_attempts: AttemptLog[]) => {
+    if (resolvedKind === 'learn' && resolvedLessonId) {
+      lessonStartedRef.current = null;
+      endLesson(resolvedLessonId).catch((err) => logger.error('Failed to end lesson', err));
+    }
     router.replace({
       pathname: routeBuilders.sessionSummary(sessionId),
       params: {
@@ -246,6 +257,7 @@ export default function SessionRunnerScreen(props?: Props) {
           title="Preparing your session..."
           subtitle="Please wait while we load your exercises."
           safeArea={false}
+          showLogo
         />
       ) : error || !plan ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 }}>

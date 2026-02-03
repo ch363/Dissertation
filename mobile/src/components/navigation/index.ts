@@ -1,5 +1,5 @@
-export { TabBarButton } from './TabBarButton';
-export * from './TabIcons';
-export { BreadcrumbTitle } from './BreadcrumbTitle';
-export { HelpButton } from './HelpButton';
-export { ScreenHeader } from './ScreenHeader';
+export { BreadcrumbTitle } from './breadcrumb-title/BreadcrumbTitle';
+export { HelpButton } from './help-button/HelpButton';
+export { ScreenHeader } from './screen-header/ScreenHeader';
+export { TabBarButton } from './tab-bar-button/TabBarButton';
+export * from './tab-icons/TabIcons';

@@ -3,7 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState, useEffect } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { IconButton } from '@/components/ui/IconButton';
+import { IconButton } from '@/components/ui';
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -452,7 +452,8 @@ const styles = StyleSheet.create({
     width: '100%',
     minHeight: 200,
     maxHeight: 220,
-    padding: baseTheme.spacing.lg,
+    paddingVertical: baseTheme.spacing.lg,
+    paddingHorizontal: baseTheme.spacing.xl,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -462,11 +463,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: baseTheme.spacing.sm,
     marginBottom: baseTheme.spacing.sm,
+    width: '100%',
   },
   flashcardAnswerText: {
     fontFamily: baseTheme.typography.bold,
     fontSize: 32,
     color: '#fff',
+    flex: 1,
+    textAlign: 'center',
+    paddingHorizontal: baseTheme.spacing.xs,
   },
   flashcardAnswerAudio: {
     padding: baseTheme.spacing.xs,
@@ -478,12 +483,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: baseTheme.spacing.sm,
     opacity: 0.9,
+    paddingHorizontal: baseTheme.spacing.xs,
   },
   flashcardExample: {
     marginTop: baseTheme.spacing.sm,
     paddingTop: baseTheme.spacing.sm,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.3)',
+    paddingHorizontal: baseTheme.spacing.xs,
   },
   flashcardExampleLabel: {
     fontFamily: baseTheme.typography.semiBold,

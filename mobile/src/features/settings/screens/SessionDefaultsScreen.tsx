@@ -3,10 +3,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Slider from '@react-native-community/slider';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ScreenHeader } from '@/components/navigation/ScreenHeader';
+import { ScreenHeader } from '@/components/navigation';
 import { ScrollView, StaticCard } from '@/components/ui';
 import { routes } from '@/services/navigation/routes';
 import {
@@ -29,14 +29,12 @@ const ICON_GRADIENTS = {
   purple: ['#C77CFF', '#9B59B6'] as const,
 } as const;
 
-const CARD_RADIUS = 18;
 const ICON_BOX_SIZE = 36;
 const ICON_BOX_RADIUS = 10;
 const ROW_PADDING_V = 16;
 const ROW_PADDING_H = 20;
 const ROW_GAP = 16;
 const TAB_BAR_HEIGHT = 84;
-const SEGMENT_RADIUS = 12;
 
 type ModeOption = { value: SessionDefaultMode; label: string };
 

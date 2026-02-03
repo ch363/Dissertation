@@ -22,23 +22,33 @@ const ALLOWED_MOTIVATIONS = [
   'culture',
   'family',
   'other',
+  'study',
+  'fun',
 ] as const;
 const ALLOWED_LEARNING_STYLES = [
   'visual',
   'auditory',
   'reading',
   'kinesthetic',
+  'writing',
+  'acting',
 ] as const;
-const ALLOWED_DIFFICULTIES = ['easy', 'balanced', 'challenging'] as const;
+const ALLOWED_DIFFICULTIES = ['easy', 'balanced', 'hard', 'challenging'] as const;
 const ALLOWED_GAMIFICATION = ['none', 'light', 'full'] as const;
 const ALLOWED_FEEDBACK = ['gentle', 'direct', 'detailed'] as const;
-const ALLOWED_SESSION_STYLES = ['quick', 'focused', 'deep'] as const;
-const ALLOWED_TONES = ['formal', 'friendly', 'casual'] as const;
+const ALLOWED_SESSION_STYLES = ['short', 'focused', 'deep'] as const;
+const ALLOWED_TONES = ['formal', 'friendly', 'casual', 'professional', 'playful'] as const;
 const ALLOWED_EXPERIENCES = [
   'beginner',
   'some',
   'intermediate',
   'advanced',
+] as const;
+const ALLOWED_MEMORY_HABITS = [
+  'spaced',
+  'mnemonics',
+  'immersion',
+  'writing',
 ] as const;
 
 /**
@@ -158,6 +168,14 @@ export class SaveOnboardingDto {
       (ALLOWED_EXPERIENCES as readonly string[]).includes(value.experience)
     ) {
       sanitized.experience = value.experience;
+    }
+
+    // Validate memoryHabit
+    if (
+      typeof value.memoryHabit === 'string' &&
+      (ALLOWED_MEMORY_HABITS as readonly string[]).includes(value.memoryHabit)
+    ) {
+      sanitized.memoryHabit = value.memoryHabit;
     }
 
     return sanitized;

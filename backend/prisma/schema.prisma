@@ -159,11 +159,13 @@ model UserKnowledgeLevelProgress {
 }
 
 model UserLesson {
-  userId             String   @map("user_id") @db.Uuid
-  lessonId           String   @map("lesson_id") @db.Uuid
-  completedTeachings Int      @default(0) @map("completed_teachings")
-  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  userId             String    @map("user_id") @db.Uuid
+  lessonId           String    @map("lesson_id") @db.Uuid
+  completedTeachings Int       @default(0) @map("completed_teachings")
+  startedAt          DateTime? @map("started_at") @db.Timestamp(6)
+  endedAt            DateTime? @map("ended_at") @db.Timestamp(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
@@ -175,9 +177,11 @@ model UserLesson {
 }
 
 model UserTeachingCompleted {
-  userId     String   @map("user_id") @db.Uuid
-  teachingId String   @map("teaching_id") @db.Uuid
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  userId     String    @map("user_id") @db.Uuid
+  teachingId String    @map("teaching_id") @db.Uuid
+  startedAt DateTime? @map("started_at") @db.Timestamp(6)
+  endedAt   DateTime? @map("ended_at") @db.Timestamp(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   teaching Teaching @relation(fields: [teachingId], references: [id], onDelete: Cascade)
@@ -185,6 +189,7 @@ model UserTeachingCompleted {
   @@id([userId, teachingId])
   @@index([userId])
   @@index([teachingId])
+  @@index([endedAt])
   @@map("user_teachings_completed")
 }
 

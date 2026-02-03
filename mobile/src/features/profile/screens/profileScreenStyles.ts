@@ -4,8 +4,11 @@ import { theme as baseTheme, Theme } from "@/services/theme/tokens";
 export function createProfileScreenStyles(theme: Theme) {
   const c = theme.colors;
   return StyleSheet.create({
-  safeArea: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   content: {
     padding: 20,

@@ -64,14 +64,31 @@ export type ListeningCard = BaseCard & {
   mode?: 'type' | 'speak'; // 'type' = Type What You Hear, 'speak' = Speak This Phrase
 };
 
+export type PronunciationErrorType =
+  | 'None'
+  | 'Omission'
+  | 'Insertion'
+  | 'Mispronunciation'
+  | 'UnexpectedBreak'
+  | 'MissingBreak';
+
+export interface PronunciationWordPhoneme {
+  phoneme: string;
+  accuracy: number;
+}
+
+export interface PronunciationWordResult {
+  word: string;
+  score: number;
+  feedback: 'perfect' | 'could_improve';
+  errorType?: PronunciationErrorType;
+  phonemes?: PronunciationWordPhoneme[];
+}
+
 export type PronunciationResult = {
   overallScore: number; // 0-100
   transcription: string;
-  words: Array<{
-    word: string;
-    score: number; // 0-100
-    feedback: 'perfect' | 'could_improve';
-  }>;
+  words: PronunciationWordResult[];
 };
 
 export type Card = TeachCard | MultipleChoiceCard | FillBlankCard | TranslateCard | ListeningCard;

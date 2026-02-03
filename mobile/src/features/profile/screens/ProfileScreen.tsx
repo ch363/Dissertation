@@ -1,18 +1,17 @@
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef } from 'react';
-import { View, Text, Pressable, RefreshControl, Image, Alert } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, Pressable, RefreshControl, Image, Alert, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { ScrollView, StaticCard } from '@/components/ui';
+import { LoadingScreen, StaticCard } from '@/components/ui';
 import { routes } from '@/services/navigation/routes';
-import { HelpButton } from '@/components/navigation/HelpButton';
+import { HelpButton } from '@/components/navigation';
 import { SKILL_CONFIG, DEFAULT_SKILL_CONFIG } from '@/features/profile/profileConstants';
 import { useProfileData } from '@/features/profile/hooks/useProfileData';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
-import { ProfileScreenSkeleton } from '@/features/profile/components/ProfileScreenSkeleton';
 import { createProfileScreenStyles } from './profileScreenStyles';
 
 const TAB_BAR_HEIGHT = 84;
@@ -26,9 +25,7 @@ export default function Profile() {
   const {
     displayName,
     avatarUrl,
-    progress,
     dashboard,
-    recentActivity,
     mastery,
     loading,
     refreshing,
@@ -54,18 +51,26 @@ export default function Profile() {
   }, [params.edit, loading, router]);
 
   if (loading) {
-    return <ProfileScreenSkeleton />;
+    return <LoadingScreen title="Loading content" />;
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: baseTheme.spacing.xl + insets.bottom + TAB_BAR_HEIGHT },
-        ]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
-      >
+    <ScrollView
+      style={[styles.scrollView, { backgroundColor: theme.colors.background }]}
+      contentContainerStyle={[
+        styles.content,
+        styles.scrollContent,
+        {
+          paddingTop: insets.top,
+          paddingBottom: baseTheme.spacing.xl + insets.bottom + TAB_BAR_HEIGHT,
+          paddingLeft: baseTheme.spacing.lg + insets.left,
+          paddingRight: baseTheme.spacing.lg + insets.right,
+        },
+      ]}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
         <LinearGradient
           colors={[theme.colors.profileHeader, theme.colors.profileHeader]}
           start={{ x: 0, y: 0 }}
@@ -206,17 +211,17 @@ export default function Profile() {
               <View style={styles.statCardSlot}>
                 <View style={[styles.statCard, styles.statCardWhite]}>
                   <View style={[styles.statIconContainer, styles.statIconPurple]}>
-                    <Ionicons name="time" size={22} color="#9333EA" />
+                    <Ionicons name="time-outline" size={22} color="#9333EA" />
                   </View>
                   <Text style={styles.statValue}>{dashboard.studyTimeMinutes ?? 0}m</Text>
-                  <Text style={styles.statLabel}>Study Time</Text>
+                  <Text style={styles.statLabel}>Study time (30d)</Text>
                 </View>
               </View>
 
               <View style={styles.statCardSlot}>
                 <View style={[styles.statCard, styles.statCardWhite]}>
                   <View style={[styles.statIconContainer, styles.statIconOrange]}>
-                    <Ionicons name="flame" size={22} color="#EA580C" />
+                    <Ionicons name="flame" size={22} color={theme.colors.error} />
                   </View>
                   <Text style={styles.statValue}>{dashboard.streak || 0}</Text>
                   <Text style={styles.statLabel}>Day Streak</Text>
@@ -229,16 +234,6 @@ export default function Profile() {
         <View style={styles.progressSection}>
           <View style={styles.progressHeader}>
             <Text style={styles.sectionTitle}>Level Progress</Text>
-            <View style={styles.viewAllButtonWrap}>
-              <Link href="/profile/progress" asChild>
-                <Pressable accessibilityRole="button" hitSlop={8} style={({ pressed }) => [styles.viewAllButton, pressed && styles.viewAllButtonPressed]}>
-                  <Text style={[styles.viewAllText, { color: theme.colors.primary }]}>View all</Text>
-                  <View style={styles.viewAllChevronWrap}>
-                    <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
-                  </View>
-                </Pressable>
-              </Link>
-            </View>
           </View>
 
           <View style={styles.levelInfo}>
@@ -488,8 +483,7 @@ export default function Profile() {
           </Link>
         </StaticCard>
 
-      </ScrollView>
-    </SafeAreaView>
+    </ScrollView>
   );
 }
 

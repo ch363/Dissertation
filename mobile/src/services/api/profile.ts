@@ -54,6 +54,8 @@ export interface DashboardData {
   streak: number | null;
   weeklyXP: number;
   weeklyXPChange: number;
+  /** XP per day for current week: [Mon, Tue, Wed, Thu, Fri, Sat, Sun] */
+  weeklyActivity?: number[];
   accuracyPercentage: number;
   accuracyByDeliveryMethod?: AccuracyByDeliveryMethod;
   grammaticalAccuracyByDeliveryMethod?: GrammaticalAccuracyByDeliveryMethod;
@@ -245,7 +247,7 @@ export async function uploadAvatar(imageUri: string, userId: string): Promise<st
 
     const supabase = getSupabaseClient();
 
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('avatars')
       .upload(fileName, bytes, {
         contentType: `image/${extension === 'jpg' ? 'jpeg' : extension}`,
@@ -289,8 +291,6 @@ export async function refreshSignedAvatarUrlFromUrl(url: string): Promise<string
 
   try {
     const supabase = getSupabaseClient();
-    const supabaseUrl = supabase.storage.url;
-    
     const urlObj = new URL(url);
     const isSupabaseStorage = urlObj.hostname.includes('supabase.co') && 
                               urlObj.pathname.includes('/storage/v1/object/');

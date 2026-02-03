@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { View, Text, StyleSheet, Switch, Pressable } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ScreenHeader } from '@/components/navigation/ScreenHeader';
+import { ScreenHeader } from '@/components/navigation';
 import { ScrollView, StaticCard } from '@/components/ui';
 import { routes } from '@/services/navigation/routes';
 import {
@@ -23,7 +23,6 @@ const ICON_GRADIENTS = {
   purple: ['#BF5AF2', '#8E44AD'] as const,
 } as const;
 
-const CARD_RADIUS = 14;
 const ICON_BOX_SIZE = 29;
 const ICON_BOX_RADIUS = 7;
 const ROW_PADDING_V = 11;

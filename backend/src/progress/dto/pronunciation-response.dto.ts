@@ -1,5 +1,22 @@
 import { ApiProperty } from '@nestjs/swagger';
 
+export const PRONUNCIATION_ERROR_TYPES = [
+  'None',
+  'Omission',
+  'Insertion',
+  'Mispronunciation',
+  'UnexpectedBreak',
+  'MissingBreak',
+] as const;
+export type PronunciationErrorTypeDto = (typeof PRONUNCIATION_ERROR_TYPES)[number];
+
+export class PhonemeScoreDto {
+  @ApiProperty({ description: 'Phoneme symbol', example: 'k' })
+  phoneme: string;
+  @ApiProperty({ description: 'Accuracy 0-100', example: 85, minimum: 0, maximum: 100 })
+  accuracy: number;
+}
+
 export class WordAnalysisDto {
   @ApiProperty({
     description: 'Word text',
@@ -21,6 +38,20 @@ export class WordAnalysisDto {
     enum: ['perfect', 'could_improve'],
   })
   feedback: 'perfect' | 'could_improve';
+
+  @ApiProperty({
+    description: 'Azure error type for this word (when not perfect)',
+    enum: PRONUNCIATION_ERROR_TYPES,
+    required: false,
+  })
+  errorType?: PronunciationErrorTypeDto;
+
+  @ApiProperty({
+    description: 'Per-phoneme accuracy for this word',
+    type: [PhonemeScoreDto],
+    required: false,
+  })
+  phonemes?: PhonemeScoreDto[];
 }
 
 export class PronunciationResponseDto {

@@ -1,4 +1,4 @@
-import type { HomePrimaryAction } from '@/features/home/components/HomePrimaryCtaCard';
+import type { HomePrimaryAction } from '@/features/home/components/primary-cta/HomePrimaryCtaCard';
 import type { HomeNextAction } from '@/features/home/utils/selectHomeNextAction';
 import {
   estimateReviewMinutes,

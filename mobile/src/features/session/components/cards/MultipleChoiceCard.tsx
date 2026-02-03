@@ -1,4 +1,10 @@
+/**
+ * MultipleChoiceCard – matches Figma design from Professional App Redesign (MultipleChoiceScreen).
+ * Layout: instruction → word + audio → options → (feedback / check button).
+ */
+
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -11,6 +17,30 @@ import { announce } from '@/utils/a11y';
 import { createLogger } from '@/services/logging';
 
 const logger = createLogger('MultipleChoiceCard');
+
+// Figma design tokens (from MultipleChoiceScreen – blue/indigo/slate/emerald)
+const FIGMA = {
+  instruction: 'rgba(5, 150, 105, 0.8)', // emerald-600/80
+  audioGradient: ['#2563eb', '#4f46e5'] as const, // blue-600 → indigo-600
+  audioRing: 'rgba(96, 165, 250, 0.4)', // blue-400/40
+  word: '#0f172a', // slate-900
+  optionBorder: '#e2e8f0', // slate-200
+  optionBorderHover: '#cbd5e1', // slate-300
+  optionText: '#334155', // slate-700
+  optionTextSelected: '#0f172a', // slate-900
+  optionSelectedBg: ['#eff6ff', '#eef2ff'] as const, // blue-50 → indigo-50
+  optionSelectedBorder: '#60a5fa', // blue-400
+  optionCorrectBorder: '#059669', // emerald-600
+  optionCorrectBg: 'rgba(5, 150, 105, 0.12)',
+  optionIncorrectBorder: '#dc2626', // red-600
+  optionIncorrectBg: 'rgba(220, 38, 38, 0.12)',
+  optionBg: 'rgba(255, 255, 255, 0.8)',
+  ctaGradient: ['#2563eb', '#4f46e5'] as const,
+  ctaDisabledBg: '#e2e8f0', // slate-200
+  ctaDisabledText: '#94a3b8', // slate-400
+  ctaText: '#FFFFFF',
+  feedbackSuccess: '#059669',
+} as const;
 
 type Props = {
   card: MultipleChoiceCardType;
@@ -39,42 +69,53 @@ export function MultipleChoiceCard({
     else if (isCorrect === false) announce('Incorrect.');
   }, [showResult, isCorrect]);
 
-  function isItalianText(text: string) {
-    // Heuristic: check for Italian-specific characters or a few high-frequency words.
-    // This avoids speaking English MC options on tap.
+  /** Speak the correct answer when user gets it right, only if the answer is in the target language. */
+  useEffect(() => {
+    if (!showResult || isCorrect !== true || !card.options?.length || !card.correctOptionId) return;
+    const correctOpt = card.options.find((o) => o.id === card.correctOptionId);
+    const label = correctOpt?.label?.trim();
+    if (!label || !isTargetLanguageText(label)) return;
+    (async () => {
+      try {
+        const enabled = await getTtsEnabled();
+        if (!enabled) return;
+        const rate = await getTtsRate();
+        await SafeSpeech.stop();
+        await new Promise((r) => setTimeout(r, 150));
+        const hasItalian = /[àèéìíîòóùú]/.test(label) || /^(ciao|grazie|acqua|vino|formaggio|scusa|bene|sì|no|buongiorno|buonasera|arrivederci|per favore|prego)$/i.test(label);
+        await SafeSpeech.speak(label, { language: hasItalian ? 'it-IT' : 'es-ES', rate });
+      } catch (e) {
+        logger.debug('Failed to speak correct answer (non-critical)', e);
+      }
+    })();
+  }, [showResult, isCorrect, card.options, card.correctOptionId]);
+
+  /** True if text looks like target language (Italian/Spanish), not English. */
+  function isTargetLanguageText(text: string) {
     const t = text.trim();
     if (!t) return false;
     const hasItalianChars = /[àèéìíîòóùú]/.test(t);
+    const hasSpanishChars = /[ñáéíóúü¿¡]/.test(t);
     const isCommonItalian =
-      /^(ciao|grazie|prego|scusa|bene|sì|no|buongiorno|buonasera|arrivederci|per favore)$/i.test(t);
-    return hasItalianChars || isCommonItalian;
+      /^(ciao|grazie|prego|scusa|bene|sì|no|buongiorno|buonasera|arrivederci|per favore|acqua|vino|formaggio)$/i.test(t);
+    const isCommonSpanish =
+      /^(agua|vino|hola|gracias|sí|no|buenos días|por favor)$/i.test(t);
+    return hasItalianChars || hasSpanishChars || isCommonItalian || isCommonSpanish;
   }
 
   const handlePlayAudio = async () => {
     if (!card.sourceText) return;
-    // Prevent multiple rapid calls
-    if (isPlaying) {
-      return;
-    }
-    
+    if (isPlaying) return;
+    if (!isTargetLanguageText(card.sourceText)) return;
     try {
       const enabled = await getTtsEnabled();
       if (!enabled) return;
       setIsPlaying(true);
       const rate = await getTtsRate();
       await SafeSpeech.stop();
-      // Small delay to ensure stop completes
       await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Detect language: if sourceText contains Italian characters or common Italian words, use Italian
-      // Otherwise default to English
-      // Simple heuristic: check for Italian-specific characters (à, è, ì, ò, ù) or common Italian words
-      const hasItalianChars = /[àèéìíîòóùú]/.test(card.sourceText);
-      const isCommonItalian = /^(ciao|grazie|prego|scusa|bene|sì|no|buongiorno|buonasera|per favore)$/i.test(card.sourceText.trim());
-      const language = hasItalianChars || isCommonItalian ? 'it-IT' : 'en-US';
-      await SafeSpeech.speak(card.sourceText, { language, rate });
-      
-      // Reset playing state after estimated duration
+      const hasItalian = /[àèéìíîòóùú]/.test(card.sourceText) || /^(ciao|grazie|prego|scusa|bene|sì|no|buongiorno|buonasera|per favore|acqua|vino|formaggio)$/i.test(card.sourceText.trim());
+      await SafeSpeech.speak(card.sourceText, { language: hasItalian ? 'it-IT' : 'es-ES', rate });
       const estimatedDuration = Math.max(2000, card.sourceText.length * 150);
       setTimeout(() => setIsPlaying(false), estimatedDuration);
     } catch (error) {
@@ -84,229 +125,279 @@ export function MultipleChoiceCard({
   };
 
   const handleSpeakOption = async (label: string) => {
-    // Only speak options that look like Italian (learning language in this project).
-    // If options are English MCQ distractors, do nothing.
-    if (!isItalianText(label)) return;
+    if (!isTargetLanguageText(label)) return;
     try {
       const enabled = await getTtsEnabled();
       if (!enabled) return;
       const rate = await getTtsRate();
       await SafeSpeech.stop();
-      await new Promise((resolve) => setTimeout(resolve, 80));
-      await SafeSpeech.speak(label, { language: 'it-IT', rate });
+      await new Promise(resolve => setTimeout(resolve, 80));
+      const hasItalian = /[àèéìíîòóùú]/.test(label) || /^(ciao|grazie|acqua|vino|formaggio|scusa|bene|sì|no|buongiorno|buonasera|arrivederci|per favore|prego)$/i.test(label);
+      await SafeSpeech.speak(label, { language: hasItalian ? 'it-IT' : 'es-ES', rate });
     } catch (error) {
-      // Best-effort: never block selection due to TTS.
       logger.debug('Failed to speak option (non-critical)', error);
     }
   };
 
   const isTranslation = !!card.sourceText;
+  const showPromptSpeaker = isTranslation && !!card.sourceText && isTargetLanguageText(card.sourceText);
 
   return (
-    <View style={[styles.container, { gap: theme.spacing.sm }]}>
-      {/* Instruction Label */}
+    <View style={styles.container}>
+      {/* Instruction – Figma: text-xs font-semibold text-emerald-600/80 tracking-wide uppercase, mb-6 */}
       {isTranslation && (
-        <Text style={[styles.instruction, { color: theme.colors.success }]}>TRANSLATE THIS SENTENCE</Text>
+        <Text style={[styles.instruction, { color: FIGMA.instruction }]}>TRANSLATE THIS SENTENCE</Text>
       )}
 
-      {/* Source Text Card (for translation MCQ) */}
+      {/* Word with Audio – only show speaker when prompt is target language (not English) */}
       {card.sourceText && (
-        <View style={[styles.sourceCard, { backgroundColor: theme.colors.card }]}>
-          <Pressable
-            style={[styles.audioButton, { backgroundColor: theme.colors.primary }]}
-            onPress={handlePlayAudio}
-            accessibilityRole="button"
-            accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
-            accessibilityHint="Plays the sentence audio"
-            accessibilityState={{ selected: isPlaying, busy: isPlaying }}
-          >
-            <Ionicons
-              name={isPlaying ? 'pause' : 'volume-high'}
-              size={20}
-              color={theme.colors.onPrimary}
-              accessible={false}
-              importantForAccessibility="no"
-            />
-          </Pressable>
-          <Text style={[styles.sourceText, { color: theme.colors.text }]}>{card.sourceText}</Text>
+        <View style={styles.wordRow}>
+          {showPromptSpeaker ? (
+            <Pressable
+              onPress={handlePlayAudio}
+              style={({ pressed }) => [
+                styles.audioButtonWrap,
+                isPlaying && styles.audioButtonPlaying,
+                pressed && styles.audioButtonPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={isPlaying ? 'Pause audio' : 'Play pronunciation'}
+              accessibilityState={{ selected: isPlaying, busy: isPlaying }}
+            >
+              <LinearGradient
+                colors={FIGMA.audioGradient}
+                style={styles.audioButton}
+                start={{ x: 0, y: 1 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Ionicons
+                  name={isPlaying ? 'pause' : 'volume-high'}
+                  size={20}
+                  color={FIGMA.ctaText}
+                />
+              </LinearGradient>
+            </Pressable>
+          ) : null}
+          <Text style={[styles.sourceText, { color: FIGMA.word }]}>{card.sourceText}</Text>
         </View>
       )}
 
-      {/* Question Prompt (for non-translation MCQ) */}
+      {/* Question Prompt (non-translation MCQ) */}
       {!isTranslation && (
         <Text style={[styles.prompt, { color: theme.colors.text }]}>{card.prompt}</Text>
       )}
 
-      {/* Options */}
+      {/* Multiple Choice Options – Figma: space-y-3; px-6 py-4 rounded-2xl; selected gradient + blue-400 border */}
       {!card.options || card.options.length === 0 ? (
-        <View style={[styles.errorContainer, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+        <View style={[styles.errorContainer, { backgroundColor: FIGMA.optionBg, borderColor: FIGMA.optionBorder }]}>
           <Text style={[styles.errorText, { color: theme.colors.mutedText }]}>No options available</Text>
         </View>
       ) : (
         <View style={styles.optionsContainer}>
           {card.options.map((opt) => {
-          const isSelected = selectedOptionId === opt.id;
-          const isCorrectOption = opt.id === card.correctOptionId;
-          const showAsCorrect = showResult && isCorrectOption;
-          const showAsSelected = isSelected && !showResult;
-          const showAsIncorrectSelected = showResult && isSelected && !isCorrectOption;
+            const isSelected = selectedOptionId === opt.id;
+            const isCorrectOption = opt.id === card.correctOptionId;
+            const showAsCorrect = showResult && isCorrectOption;
+            const showAsSelected = isSelected && !showResult;
+            const showAsIncorrectSelected = showResult && isSelected && !isCorrectOption;
 
-          return (
-            <Pressable
-              key={opt.id}
-              accessibilityRole="button"
-              accessibilityLabel={`Answer option: ${opt.label}`}
-              accessibilityState={{
-                selected: isSelected,
-                disabled: showResult,
-              }}
-              onPress={() => {
-                if (showResult) return; // Disable selection after checking
-                // Speak learning-language (Italian) options on tap; keep English MC options silent.
-                void handleSpeakOption(opt.label);
-                onSelectOption?.(opt.id);
-              }}
-              style={[
-                styles.option,
-                { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
-                showAsSelected && { borderColor: theme.colors.primary },
-                showAsCorrect && { borderColor: theme.colors.success, backgroundColor: theme.colors.success + '25' },
-                showAsIncorrectSelected && { borderColor: theme.colors.error, backgroundColor: theme.colors.error + '20' },
-              ]}
-            >
-              <Text style={[styles.optionLabel, { color: theme.colors.text }]}>{opt.label}</Text>
-              {showAsCorrect ? (
-                <Ionicons
-                  name="checkmark-circle"
-                  size={24}
-                  color={theme.colors.success}
-                  accessible={false}
-                  importantForAccessibility="no"
-                />
-              ) : showAsIncorrectSelected ? (
-                <Ionicons
-                  name="close-circle"
-                  size={24}
-                  color={theme.colors.error}
-                  accessible={false}
-                  importantForAccessibility="no"
-                />
-              ) : null}
-            </Pressable>
-          );
-        })}
+            const borderColor = showAsCorrect
+              ? FIGMA.optionCorrectBorder
+              : showAsIncorrectSelected
+                ? FIGMA.optionIncorrectBorder
+                : showAsSelected
+                  ? FIGMA.optionSelectedBorder
+                  : FIGMA.optionBorder;
+
+            return (
+              <Pressable
+                key={opt.id}
+                accessibilityRole="button"
+                accessibilityLabel={`Answer option: ${opt.label}`}
+                accessibilityState={{ selected: isSelected, disabled: showResult }}
+                onPress={() => {
+                  if (showResult) return;
+                  void handleSpeakOption(opt.label);
+                  onSelectOption?.(opt.id);
+                }}
+                style={[styles.optionOuter, { borderColor }, showAsSelected && styles.optionSelectedShadow]}
+              >
+                {(showAsSelected && !showResult) ? (
+                  <LinearGradient
+                    colors={FIGMA.optionSelectedBg}
+                    style={styles.optionInner}
+                    start={{ x: 0, y: 1 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <Text style={[styles.optionLabel, { color: FIGMA.optionTextSelected }]}>{opt.label}</Text>
+                  </LinearGradient>
+                ) : (
+                  <View
+                    style={[
+                      styles.optionInner,
+                      {
+                        backgroundColor: showAsCorrect
+                          ? FIGMA.optionCorrectBg
+                          : showAsIncorrectSelected
+                            ? FIGMA.optionIncorrectBg
+                            : FIGMA.optionBg,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.optionLabel, { color: showAsCorrect || showAsIncorrectSelected ? theme.colors.text : FIGMA.optionText }]}>
+                      {opt.label}
+                    </Text>
+                    {showAsCorrect ? (
+                      <Ionicons name="checkmark-circle" size={24} color={FIGMA.feedbackSuccess} />
+                    ) : showAsIncorrectSelected ? (
+                      <Ionicons name="close-circle" size={24} color={FIGMA.optionIncorrectBorder} />
+                    ) : null}
+                  </View>
+                )}
+              </Pressable>
+            );
+          })}
         </View>
       )}
 
-      {/* Feedback Banner (after checking, if correct) - appears right after options */}
-      {showResult && isCorrect && (
-        <View style={[styles.feedbackBanner, { backgroundColor: theme.colors.success }]} accessibilityRole="alert">
-          <Ionicons
-            name="checkmark-circle"
-            size={20}
-            color={theme.colors.onPrimary}
-            accessible={false}
-            importantForAccessibility="no"
-          />
-          <Text style={[styles.feedbackText, { color: theme.colors.onPrimary }]}>Excellent! That's correct!</Text>
+      {/* Feedback Banner – after check: correct (green) or incorrect (red) */}
+      {showResult && isCorrect === true && (
+        <View style={[styles.feedbackBanner, { backgroundColor: FIGMA.feedbackSuccess }]} accessibilityRole="alert">
+          <Ionicons name="checkmark-circle" size={20} color={FIGMA.ctaText} />
+          <Text style={[styles.feedbackText, { color: FIGMA.ctaText }]}>Excellent! That's correct!</Text>
+        </View>
+      )}
+      {showResult && isCorrect === false && (
+        <View style={[styles.feedbackBanner, { backgroundColor: FIGMA.optionIncorrectBorder }]} accessibilityRole="alert">
+          <Ionicons name="close-circle" size={20} color={FIGMA.ctaText} />
+          <Text style={[styles.feedbackText, { color: FIGMA.ctaText }]}>That's incorrect.</Text>
         </View>
       )}
 
-      {/* Check Answer Button (only for non-translation MCQ) */}
+      {/* Footer CTA – Figma: h-56 rounded-[20px] font-semibold; disabled slate-200/slate-400; enabled gradient blue-600 → indigo-600 */}
       {!showResult && selectedOptionId !== undefined && !isTranslation && (
         <Pressable
-          style={[styles.checkButton, { backgroundColor: theme.colors.success }]}
+          style={({ pressed }) => [
+            styles.ctaWrap,
+            !selectedOptionId && styles.ctaDisabled,
+            pressed && selectedOptionId && styles.ctaPressed,
+          ]}
           onPress={onCheckAnswer}
+          disabled={!selectedOptionId}
           accessibilityRole="button"
           accessibilityLabel="Check answer"
-          accessibilityHint="Checks whether your selected option is correct"
         >
-          <Text style={[styles.checkButtonText, { color: theme.colors.onPrimary }]}>Check Answer</Text>
+          {selectedOptionId ? (
+            <LinearGradient
+              colors={FIGMA.ctaGradient}
+              style={styles.ctaButton}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <Text style={[styles.ctaText, { color: FIGMA.ctaText }]}>Check Answer</Text>
+            </LinearGradient>
+          ) : (
+            <View style={[styles.ctaButton, { backgroundColor: FIGMA.ctaDisabledBg }]}>
+              <Text style={[styles.ctaText, { color: FIGMA.ctaDisabledText }]}>Check Answer</Text>
+            </View>
+          )}
         </Pressable>
       )}
     </View>
   );
 }
 
+const OPTION_PADDING_H = 24;
+const OPTION_PADDING_V = 16;
+const RADIUS_OPTION = 16;
+const RADIUS_CTA = 20;
+const AUDIO_SIZE = 48;
+const CTA_HEIGHT = 56;
+
 const styles = StyleSheet.create({
   container: {
-    gap: baseTheme.spacing.sm,
+    flex: 1,
+    gap: baseTheme.spacing.md,
+  },
+  instruction: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 12,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 24,
+  },
+  wordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 32,
+  },
+  audioButtonWrap: {
+    borderRadius: AUDIO_SIZE / 2,
+    overflow: 'hidden',
+  },
+  audioButtonPlaying: {
+    borderWidth: 4,
+    borderColor: FIGMA.audioRing,
+  },
+  audioButtonPressed: {
+    opacity: 0.9,
+  },
+  audioButton: {
+    width: AUDIO_SIZE,
+    height: AUDIO_SIZE,
+    borderRadius: AUDIO_SIZE / 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sourceText: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 24,
+    flex: 1,
+  },
+  prompt: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 20,
+    marginBottom: baseTheme.spacing.sm,
+  },
+  optionsContainer: {
+    gap: 12,
+  },
+  optionOuter: {
+    borderRadius: RADIUS_OPTION,
+    borderWidth: 2,
+    overflow: 'hidden',
+  },
+  optionSelectedShadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  optionInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: OPTION_PADDING_H,
+    paddingVertical: OPTION_PADDING_V,
+    borderRadius: RADIUS_OPTION - 2,
+    minHeight: 56,
+  },
+  optionLabel: {
+    fontFamily: baseTheme.typography.medium,
+    fontSize: 16,
     flex: 1,
   },
   errorContainer: {
     padding: baseTheme.spacing.lg,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderRadius: RADIUS_OPTION,
+    borderWidth: 2,
   },
   errorText: {
     fontFamily: baseTheme.typography.regular,
     fontSize: 14,
     textAlign: 'center',
-  },
-  instruction: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 14,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  sourceCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: baseTheme.spacing.md,
-    borderRadius: 16,
-    padding: baseTheme.spacing.lg,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  audioButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sourceText: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 18,
-    flex: 1,
-  },
-  prompt: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 20,
-    marginBottom: baseTheme.spacing.xs,
-  },
-  optionsContainer: {
-    gap: baseTheme.spacing.sm,
-  },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: baseTheme.spacing.md,
-    borderRadius: 16,
-    borderWidth: 2,
-    minHeight: 56,
-  },
-  optionSelected: {},
-  optionCorrect: {},
-  optionIncorrect: {},
-  optionLabel: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 18,
-    flex: 1,
-  },
-  checkButton: {
-    padding: baseTheme.spacing.md,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: baseTheme.spacing.xs,
-  },
-  checkButtonText: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 16,
-    textTransform: 'uppercase',
   },
   feedbackBanner: {
     flexDirection: 'row',
@@ -315,11 +406,34 @@ const styles = StyleSheet.create({
     gap: baseTheme.spacing.xs,
     paddingVertical: baseTheme.spacing.sm,
     paddingHorizontal: baseTheme.spacing.md,
-    borderRadius: 12,
-    marginTop: baseTheme.spacing.xs,
+    borderRadius: RADIUS_OPTION,
   },
   feedbackText: {
-    fontFamily: baseTheme.typography.bold,
+    fontFamily: baseTheme.typography.semiBold,
     fontSize: 14,
+  },
+  ctaWrap: {
+    alignSelf: 'stretch',
+  },
+  ctaDisabled: {
+    opacity: 1,
+  },
+  ctaPressed: {
+    opacity: 0.95,
+  },
+  ctaButton: {
+    height: CTA_HEIGHT,
+    borderRadius: RADIUS_CTA,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 24,
+    elevation: 4,
+  },
+  ctaText: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 16,
   },
 });

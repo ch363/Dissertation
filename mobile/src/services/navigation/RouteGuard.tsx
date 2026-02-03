@@ -5,7 +5,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { LoadingScreen } from '@/components/ui';
 import { resolvePostAuthDestination } from '@/features/auth/flows/resolvePostAuthDestination';
 import { useAuth } from '@/services/auth/AuthProvider';
-import { isPublicRootSegment, routes } from '@/services/navigation/routes';
+import { isPublicRootSegment } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { createLogger } from '@/services/logging';
 

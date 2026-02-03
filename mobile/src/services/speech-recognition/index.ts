@@ -77,8 +77,9 @@ export async function getAudioFile(uri: string | null): Promise<{ uri: string; b
   try {
     const FileSystem = await getFileSystemModule();
     if (FileSystem) {
+      // Use string 'base64' so we don't rely on EncodingType being present after dynamic import
       const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: 'base64',
       });
 
       return {

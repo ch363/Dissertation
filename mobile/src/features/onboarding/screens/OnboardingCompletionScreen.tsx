@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LoadingScreen } from '@/components/ui';
 import { getCurrentUser } from '@/services/api/auth';
 import { saveOnboarding } from '@/services/api/onboarding';
-import { PrimaryButton } from '@/components/onboarding/_components';
+import { PrimaryButton } from '@/components/onboarding';
 import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 import { routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
@@ -14,61 +14,6 @@ import { theme } from '@/services/theme/tokens';
 import { createLogger } from '@/services/logging';
 
 const logger = createLogger('OnboardingCompletion');
-
-type StepRequirement = {
-  key: string;
-  path: string;
-  isComplete: (answers: Record<string, any>) => boolean;
-};
-
-const REQUIRED_STEPS: StepRequirement[] = [
-  {
-    key: 'motivation',
-    path: '/(onboarding)/1_motivation-goals',
-    isComplete: (answers) => !!answers.motivation?.key,
-  },
-  {
-    key: 'learningStyles',
-    path: '/(onboarding)/2_preferred-learning',
-    isComplete: (answers) =>
-      Array.isArray(answers.learningStyles) && answers.learningStyles.length > 0,
-  },
-  {
-    key: 'memoryHabit',
-    path: '/(onboarding)/3_memory-habits',
-    isComplete: (answers) => !!answers.memoryHabit,
-  },
-  {
-    key: 'difficulty',
-    path: '/(onboarding)/4_difficulty',
-    isComplete: (answers) => !!answers.difficulty,
-  },
-  {
-    key: 'gamification',
-    path: '/(onboarding)/5_gamification',
-    isComplete: (answers) => !!answers.gamification,
-  },
-  {
-    key: 'feedback',
-    path: '/(onboarding)/6_feedback-style',
-    isComplete: (answers) => !!answers.feedback,
-  },
-  {
-    key: 'sessionStyle',
-    path: '/(onboarding)/7_session-style',
-    isComplete: (answers) => !!answers.sessionStyle,
-  },
-  {
-    key: 'tone',
-    path: '/(onboarding)/8_tone',
-    isComplete: (answers) => !!answers.tone,
-  },
-  {
-    key: 'experience',
-    path: '/(onboarding)/9_experience-level',
-    isComplete: (answers) => !!answers.experience,
-  },
-];
 
 export default function OnboardingCompletion() {
   const { theme } = useAppTheme();

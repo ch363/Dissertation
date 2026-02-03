@@ -7,8 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ScrollView } from '@/components/ui';
 import { ScreenHeader } from '@/components/navigation';
-import { Card } from '@/components/profile/Card';
-import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/profile';
+import { Button } from '@/components/ui';
 import { getDueReviewsLatest, type DueReviewLatest } from '@/services/api/progress';
 import { makeSessionId } from '@/features/session/sessionBuilder';
 import { routeBuilders, routes } from '@/services/navigation/routes';

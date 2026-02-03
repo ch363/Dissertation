@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ContentDeliveryService } from '../engine/content-delivery/content-delivery.service';
 import { SessionPlanDto, SessionContext } from '../engine/content-delivery/session-types';
+import { ProgressService } from '../progress/progress.service';
 import { LearningPathCardDto } from './learning-path.dto';
 import { ReviewSummaryDto } from './review-summary.dto';
 
@@ -10,6 +11,7 @@ export class LearnService {
   constructor(
     private prisma: PrismaService,
     private contentDelivery: ContentDeliveryService,
+    private progressService: ProgressService,
   ) {}
 
   async getLearningPath(userId: string): Promise<LearningPathCardDto[]> {
@@ -96,32 +98,13 @@ export class LearnService {
     });
   }
 
+  /**
+   * Review summary uses the same "latest per question" due count as the
+   * dashboard and review session plan, so counts stay consistent after
+   * completing reviews.
+   */
   async getReviewSummary(userId: string): Promise<ReviewSummaryDto> {
-    const now = new Date();
-
-    const dueReviews = await this.prisma.userQuestionPerformance.findMany({
-      where: {
-        userId,
-        nextReviewDue: {
-          lte: now,
-          not: null,
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        questionId: true,
-        createdAt: true,
-      },
-    });
-
-    const seen = new Set<string>();
-    const deduped = dueReviews.filter((r) => {
-      if (seen.has(r.questionId)) return false;
-      seen.add(r.questionId);
-      return true;
-    });
-
-    const dueCount = deduped.length;
+    const dueCount = await this.progressService.getDueReviewCount(userId);
     const progress = Math.max(0, Math.min(1, 1 - dueCount / 10));
 
     return {

@@ -46,6 +46,7 @@ export class ProgressService {
   ) {}
 
   async startLesson(userId: string, lessonId: string) {
+    const now = new Date();
     return this.prisma.userLesson.upsert({
       where: {
         userId_lessonId: {
@@ -54,12 +55,14 @@ export class ProgressService {
         },
       },
       update: {
-        updatedAt: new Date(),
+        startedAt: now,
+        updatedAt: now,
       },
       create: {
         userId,
         lessonId,
         completedTeachings: 0,
+        startedAt: now,
       },
       include: {
         lesson: {
@@ -69,6 +72,20 @@ export class ProgressService {
             imageUrl: true,
           },
         },
+      },
+    });
+  }
+
+  async endLesson(userId: string, lessonId: string) {
+    const now = new Date();
+    return this.prisma.userLesson.updateMany({
+      where: {
+        userId,
+        lessonId,
+      },
+      data: {
+        endedAt: now,
+        updatedAt: now,
       },
     });
   }
@@ -210,7 +227,11 @@ export class ProgressService {
     });
   }
 
-  async completeTeaching(userId: string, teachingId: string) {
+  async completeTeaching(
+    userId: string,
+    teachingId: string,
+    timeSpentMs?: number,
+  ) {
     return this.prisma.$transaction(async (tx) => {
       const teaching = await tx.teaching.findUnique({
         where: { id: teachingId },
@@ -220,6 +241,16 @@ export class ProgressService {
       if (!teaching) {
         throw new NotFoundException(`Teaching with ID ${teachingId} not found`);
       }
+
+      const now = new Date();
+      const startedAt =
+        timeSpentMs != null && Number.isFinite(timeSpentMs) && timeSpentMs > 0
+          ? new Date(now.getTime() - Math.min(timeSpentMs, 3600000))
+          : null;
+      const endedAt =
+        timeSpentMs != null && Number.isFinite(timeSpentMs) && timeSpentMs > 0
+          ? now
+          : null;
 
       const existing = await tx.userTeachingCompleted.findUnique({
         where: {
@@ -236,9 +267,21 @@ export class ProgressService {
           data: {
             userId,
             teachingId,
+            startedAt,
+            endedAt,
           },
         });
         wasNewlyCompleted = true;
+      } else if (startedAt != null && endedAt != null) {
+        await tx.userTeachingCompleted.update({
+          where: {
+            userId_teachingId: {
+              userId,
+              teachingId,
+            },
+          },
+          data: { startedAt, endedAt },
+        });
       }
 
       if (wasNewlyCompleted) {
@@ -443,17 +486,55 @@ export class ProgressService {
     });
   }
 
+  /**
+   * Count of questions due for review: "due" means the *latest* performance row
+   * per question (by createdAt) has nextReviewDue <= dueCutoff.
+   */
+  async getDueReviewCount(userId: string, dueCutoff: Date = new Date()): Promise<number> {
+    try {
+      type Row = { count: bigint };
+      const result = await this.prisma.$queryRaw<Row[]>`
+        SELECT COUNT(*) AS count FROM (
+          SELECT question_id, next_review_due,
+                 ROW_NUMBER() OVER (PARTITION BY question_id ORDER BY created_at DESC) AS rn
+          FROM user_question_performance
+          WHERE user_id = ${userId}::uuid
+        ) sub
+        WHERE rn = 1 AND next_review_due IS NOT NULL AND next_review_due <= ${dueCutoff}
+      `;
+      return Number(result[0]?.count ?? 0);
+    } catch (error: any) {
+      if (isMissingColumnOrSchemaMismatchError(error)) return 0;
+      throw error;
+    }
+  }
+
+  /**
+   * Returns due reviews where "due" means: the *latest* performance row per
+   * question (by createdAt) has nextReviewDue <= now. This way, when the user
+   * completes a review we create a new row with a future nextReviewDue, and
+   * that question correctly disappears from the due list.
+   */
   async getDueReviewsLatest(userId: string) {
     const now = new Date();
 
-    const allDueReviews = await this.prisma.userQuestionPerformance.findMany({
-      where: {
-        userId,
-        nextReviewDue: {
-          lte: now,
-          not: null,
-        },
-      },
+    type Row = { id: string };
+    const latestDueIds = await this.prisma.$queryRaw<Row[]>`
+      SELECT id FROM (
+        SELECT id, question_id, next_review_due,
+               ROW_NUMBER() OVER (PARTITION BY question_id ORDER BY created_at DESC) AS rn
+        FROM user_question_performance
+        WHERE user_id = ${userId}::uuid
+      ) sub
+      WHERE rn = 1 AND next_review_due IS NOT NULL AND next_review_due <= ${now}
+    `;
+    const ids = latestDueIds.map((r) => r.id);
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return this.prisma.userQuestionPerformance.findMany({
+      where: { id: { in: ids } },
       include: {
         question: {
           include: {
@@ -477,19 +558,9 @@ export class ProgressService {
         },
       },
       orderBy: {
-        createdAt: 'desc',
+        nextReviewDue: 'asc',
       },
     });
-
-    const questionIdMap = new Map<string, (typeof allDueReviews)[0]>();
-    allDueReviews.forEach((review) => {
-      const existing = questionIdMap.get(review.questionId);
-      if (!existing || review.createdAt > existing.createdAt) {
-        questionIdMap.set(review.questionId, review);
-      }
-    });
-
-    return Array.from(questionIdMap.values());
   }
 
   async updateDeliveryMethodScore(
@@ -756,42 +827,7 @@ export class ProgressService {
     const xp = user?.knowledgePoints || 0;
 
     const dueCutoff = getEndOfLocalDayUtc(now, tzOffsetMinutes);
-
-    let dueReviews: Array<{ questionId: string; createdAt: Date }> = [];
-    try {
-      dueReviews = await this.prisma.userQuestionPerformance.findMany({
-        where: {
-          userId,
-          nextReviewDue: {
-            lte: dueCutoff,
-            not: null,
-          },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-        select: {
-          questionId: true,
-          createdAt: true,
-        },
-      });
-    } catch (error: any) {
-      if (!isMissingColumnOrSchemaMismatchError(error)) {
-        throw error;
-      }
-      dueReviews = [];
-    }
-
-    const questionIdSet = new Set<string>();
-    const dedupedDueReviews = dueReviews.filter((review) => {
-      if (questionIdSet.has(review.questionId)) {
-        return false;
-      }
-      questionIdSet.add(review.questionId);
-      return true;
-    });
-
-    const dueReviewCount = dedupedDueReviews.length;
+    const dueReviewCount = await this.getDueReviewCount(userId, dueCutoff);
 
     const userLessons = await this.prisma.userLesson.findMany({
       where: { userId },
@@ -997,6 +1033,7 @@ export class ProgressService {
 
   private normalizeAnswerForComparison(s: string): string {
     return s
+      .replace(/\s*\([^)]*\)/g, ' ') // strip parentheticals e.g. "(formal)" so "Excuse me (formal)" matches "Excuse me"
       .toLowerCase()
       .trim()
       .replace(/[^\p{L}\s]/gu, '')
@@ -1315,6 +1352,14 @@ export class ProgressService {
               word: w.word,
               score: wordScore,
               feedback: wordScore >= 85 ? 'perfect' : 'could_improve',
+              ...(w.errorType && w.errorType !== 'None' && { errorType: w.errorType }),
+              ...(w.phonemes &&
+                w.phonemes.length > 0 && {
+                  phonemes: w.phonemes.map((p) => ({
+                    phoneme: p.phoneme,
+                    accuracy: Math.round(Math.max(0, Math.min(100, p.accuracy))),
+                  })),
+                }),
             };
           })
         : expectedText

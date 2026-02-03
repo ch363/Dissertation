@@ -1,5 +1,19 @@
 import { apiClient } from './client';
+import { ApiClientError } from './types';
 import type { DeliveryMethod } from '@/features/session/delivery-methods';
+
+const VALIDATE_ANSWER_RETRY_DELAY_MS = 1000;
+
+function isNetworkError(e: unknown): boolean {
+  if (!(e instanceof ApiClientError)) return false;
+  const m = e.message.toLowerCase();
+  return (
+    m.includes('network') ||
+    m.includes('reachable') ||
+    m.includes('failed to fetch') ||
+    m.includes('timeout')
+  );
+}
 
 export interface QuestionAttemptDto {
   deliveryMethod?: DeliveryMethod | string;
@@ -64,6 +78,10 @@ export async function startLesson(lessonId: string) {
   return apiClient.post(`/progress/lessons/${lessonId}/start`);
 }
 
+export async function endLesson(lessonId: string) {
+  return apiClient.post(`/progress/lessons/${lessonId}/end`);
+}
+
 export async function getUserLessons(): Promise<UserLessonProgress[]> {
   const tzOffsetMinutes = new Date().getTimezoneOffset();
   const params = new URLSearchParams();
@@ -74,8 +92,13 @@ export async function getUserLessons(): Promise<UserLessonProgress[]> {
   return apiClient.get<UserLessonProgress[]>(`/progress/lessons${query ? `?${query}` : ''}`);
 }
 
-export async function completeTeaching(teachingId: string) {
-  return apiClient.post(`/progress/teachings/${teachingId}/complete`);
+export async function completeTeaching(
+  teachingId: string,
+  timeSpentMs?: number,
+) {
+  return apiClient.post(`/progress/teachings/${teachingId}/complete`, {
+    ...(timeSpentMs != null && timeSpentMs > 0 ? { timeSpentMs } : {}),
+  });
 }
 
 export interface QuestionAttemptResponse {
@@ -121,7 +144,7 @@ export interface ProgressSummary {
   dueReviewCount: number;
 }
 
-export async function getProgressSummary(userId: string | null): Promise<ProgressSummary> {
+export async function getProgressSummary(_userId: string | null): Promise<ProgressSummary> {
   const tzOffsetMinutes = new Date().getTimezoneOffset();
   const params = new URLSearchParams();
   if (Number.isFinite(tzOffsetMinutes)) {
@@ -141,14 +164,14 @@ export interface ValidateAnswerResponse {
   feedback?: string;
 }
 
+import type { PronunciationWordResult } from '@/types/session';
+
+export type { PronunciationWordResult } from '@/types/session';
+
 export interface PronunciationResponse {
   overallScore: number;
   transcription: string;
-  words: Array<{
-    word: string;
-    score: number;
-    feedback: 'perfect' | 'could_improve';
-  }>;
+  words: PronunciationWordResult[];
   isCorrect: boolean;
   score: number;
 }
@@ -158,14 +181,22 @@ export async function validateAnswer(
   answer: string,
   deliveryMethod: DeliveryMethod,
 ): Promise<ValidateAnswerResponse> {
-  return apiClient.post<ValidateAnswerResponse>(
-    `/progress/questions/${questionId}/validate`,
-    {
-      answer,
-      deliveryMethod,
-    },
-  );
+  const attempt = async (): Promise<ValidateAnswerResponse> =>
+    apiClient.post<ValidateAnswerResponse>(
+      `/progress/questions/${questionId}/validate`,
+      { answer, deliveryMethod },
+    );
+  try {
+    return await attempt();
+  } catch (e) {
+    if (!isNetworkError(e)) throw e;
+    await new Promise((r) => setTimeout(r, VALIDATE_ANSWER_RETRY_DELAY_MS));
+    return attempt();
+  }
 }
+
+/** Timeout for pronunciation validation (ML processing can take longer than default). */
+const PRONUNCIATION_TIMEOUT_MS = 60_000;
 
 export async function validatePronunciation(
   questionId: string,
@@ -178,5 +209,6 @@ export async function validatePronunciation(
       audioBase64,
       audioFormat,
     },
+    { timeoutMs: PRONUNCIATION_TIMEOUT_MS },
   );
 }

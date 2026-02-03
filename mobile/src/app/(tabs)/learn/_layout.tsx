@@ -1,14 +1,24 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Stack, router } from 'expo-router';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { StackActions } from '@react-navigation/native';
+import { Stack, useNavigation } from 'expo-router';
+import React, { useEffect } from 'react';
 
 import { useReducedMotion } from '@/hooks/useReducedMotion';
-import { routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 
 export default function LearnLayout() {
   const { theme } = useAppTheme();
   const reduceMotion = useReducedMotion();
+  const navigation = useNavigation();
+
+  // When user taps the Learn tab while already in this stack (e.g. on Review),
+  // pop to the Learn root so they land on Learn index, not stuck on Review.
+  useEffect(() => {
+    const parent = navigation.getParent();
+    const unsub = parent?.addListener?.('tabPress', () => {
+      navigation.dispatch(StackActions.popToTop());
+    });
+    return () => (typeof unsub === 'function' ? unsub() : undefined);
+  }, [navigation]);
 
   return (
     <Stack
@@ -32,13 +42,3 @@ export default function LearnLayout() {
     </Stack>
   );
 }
-
-const styles = StyleSheet.create({
-  backRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backTitle: {
-    fontSize: 17,
-  },
-});

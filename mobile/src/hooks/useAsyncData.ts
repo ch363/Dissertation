@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getUserFriendlyMessage } from '@/services/errors';
 import { createLogger } from '@/services/logging';
 
-export interface UseAsyncDataOptions {
+export interface UseAsyncDataOptions<T = unknown> {
   skip?: boolean;
-  onSuccess?: (data: any) => void;
+  onSuccess?: (data: T) => void;
   onError?: (error: Error) => void;
 }
 
@@ -19,7 +19,7 @@ export function useAsyncData<T>(
   context: string,
   fetcher: () => Promise<T>,
   deps: React.DependencyList = [],
-  options: UseAsyncDataOptions = {},
+  options: UseAsyncDataOptions<T> = {},
 ): UseAsyncDataResult<T> {
   const { skip = false, onSuccess, onError } = options;
   const [data, setData] = useState<T | null>(null);
@@ -38,10 +38,10 @@ export function useAsyncData<T>(
       const result = await fetcherRef.current();
       setData(result);
       onSuccess?.(result);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(getUserFriendlyMessage(err));
-      logger.error('Failed to load data', err);
-      onError?.(err);
+      logger.error('Failed to load data', err instanceof Error ? err : new Error(String(err)));
+      onError?.(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setLoading(false);
     }

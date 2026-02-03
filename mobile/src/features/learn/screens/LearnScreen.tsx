@@ -1,19 +1,20 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useCallback, useRef } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { ScrollView } from '@/components/ui';
-
-import { LearnHeader } from '@/components/learn/LearnHeader';
-import { SuggestedForYouSection } from '@/components/learn/SuggestedForYouSection';
-import { LearnScreenSkeleton } from '@/features/learn/components/LearnScreenSkeleton';
-import { LearningPathCarousel } from '@/components/learn/LearningPathCarousel';
-import { ReviewSection } from '@/components/learn/ReviewSection';
+import { LoadingScreen } from '@/components/ui';
+import {
+  LearnHeader,
+  LearningPathCarousel,
+  ReviewSection,
+  SuggestedForYouSection,
+} from '@/components/learn';
 import { getSuggestions, type ModuleSuggestion } from '@/services/api/learn';
-import { getCachedLearnScreenData, preloadLearnScreenData } from '@/services/api/learn-screen-cache';
+import { clearLearnScreenCache, getCachedLearnScreenData, preloadLearnScreenData } from '@/services/api/learn-screen-cache';
+import { preloadReviewScreenData } from '@/services/api/review-screen-cache';
 import { getDashboard } from '@/services/api/profile';
 import { getLessons, getModules } from '@/services/api/modules';
 import { getUserLessons } from '@/services/api/progress';
@@ -25,12 +26,14 @@ import { useAsyncData } from '@/hooks/useAsyncData';
 
 export default function LearnScreen() {
   const { theme, isDark } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const catalogGradientColors = isDark ? [theme.colors.profileHeader, theme.colors.profileHeader] : [theme.colors.primary, theme.colors.primary];
   const catalogBadgeBg = isDark ? (theme.colors.profileHeader + '40') : '#DBEAFE';
   const catalogBadgeText = isDark ? theme.colors.text : '#264FD4';
   const router = useRouter();
   const hasLoadedOnceRef = useRef(false);
   const isLoadingRef = useRef(false);
+  const [hasCompletedFocusCheck, setHasCompletedFocusCheck] = React.useState(false);
 
   const { data, loading, reload } = useAsyncData<{
     learningPathItems: LearningPathItem[];
@@ -51,6 +54,7 @@ export default function LearnScreen() {
         suggestions = cached.suggestions;
         
         preloadLearnScreenData().catch(() => {});
+        preloadReviewScreenData().catch(() => {});
       } else {
         [modules, lessons, userProgress, dashboard, suggestions] = await Promise.all([
           getModules().catch(() => []),
@@ -59,6 +63,7 @@ export default function LearnScreen() {
           getDashboard().catch(() => ({ streak: 0, dueReviewCount: 0, activeLessonCount: 0, xpTotal: 0, estimatedReviewMinutes: 0 })),
           getSuggestions({ limit: 8 }).catch(() => ({ lessons: [], modules: [] })),
         ]);
+        preloadReviewScreenData().catch(() => {});
       }
 
       const learningPathItems = buildLearningPathItems({
@@ -102,6 +107,7 @@ export default function LearnScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      setHasCompletedFocusCheck(true);
       if (isLoadingRef.current) return;
       const cached = getCachedLearnScreenData();
       const needLoad = !hasLoadedOnceRef.current || !cached;
@@ -111,23 +117,40 @@ export default function LearnScreen() {
         reload().finally(() => {
           isLoadingRef.current = false;
         });
-      } else if (cached) {
-        preloadLearnScreenData().catch(() => {});
+      } else {
+        // Refocus with existing cache: clear cache and reload so progress (e.g. completed modules) is up to date.
+        clearLearnScreenCache();
+        isLoadingRef.current = true;
+        reload().finally(() => {
+          isLoadingRef.current = false;
+        });
       }
+      return () => {
+        setHasCompletedFocusCheck(false);
+      };
     }, [reload])
   );
 
-  if (loading) {
-    return <LearnScreenSkeleton />;
+  const showLoading = loading || (data != null && !hasCompletedFocusCheck);
+  if (showLoading) {
+    return <LoadingScreen title="Loading content" />;
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top', 'left', 'right']}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        style={{ backgroundColor: theme.colors.background }}
-      >
+    <ScrollView
+      style={[styles.scrollView, { backgroundColor: theme.colors.background }]}
+      contentContainerStyle={[
+        styles.scrollContent,
+        {
+          paddingTop: insets.top,
+          paddingBottom: 100 + insets.bottom,
+          paddingLeft: 20 + insets.left,
+          paddingRight: 20 + insets.right,
+        },
+      ]}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
         <LearnHeader />
         {dueReviewCount > 0 ? (
           <>
@@ -211,21 +234,19 @@ export default function LearnScreen() {
             </LinearGradient>
           </Pressable>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 120,
+    flexGrow: 1,
   },
   allModulesSection: {
     marginTop: 24,
-    paddingHorizontal: 20,
     gap: 14,
   },
   allModulesHeader: {

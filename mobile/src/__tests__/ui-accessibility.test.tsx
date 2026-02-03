@@ -2,10 +2,8 @@ import React from 'react';
 import { Pressable, View } from 'react-native';
 import renderer from 'react-test-renderer';
 
-import { Button } from '@/components/ui/Button';
-import { IconButton } from '@/components/ui/IconButton';
-import { ListRow } from '@/components/ui/ListRow';
-import { TabBarButton } from '@/components/navigation/TabBarButton';
+import { Button, IconButton, ListRow } from '@/components/ui';
+import { TabBarButton } from '@/components/navigation';
 import { ThemeProvider } from '@/services/theme/ThemeProvider';
 
 function wrap(node: React.ReactElement) {

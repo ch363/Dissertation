@@ -11,11 +11,12 @@ import {
   Pressable,
   Image,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { HelpButton } from '@/components/navigation/HelpButton';
-import { ScrollView, StaticCard } from '@/components/ui';
+import { HelpButton } from '@/components/navigation';
+import { StaticCard } from '@/components/ui';
 import {
   getMyProfile,
   refreshSignedAvatarUrlFromUrl as refreshAvatarUrl,
@@ -220,15 +221,21 @@ export default function SettingsScreen() {
     : 'U';
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
-      <ScrollView
-        style={[styles.scroll, { backgroundColor: theme.colors.background }]}
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: baseTheme.spacing.xl + insets.bottom + TAB_BAR_HEIGHT },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
+    <ScrollView
+      style={[styles.scrollView, { backgroundColor: theme.colors.background }]}
+      contentContainerStyle={[
+        styles.content,
+        styles.scrollContent,
+        {
+          paddingTop: insets.top,
+          paddingBottom: baseTheme.spacing.xl + insets.bottom + TAB_BAR_HEIGHT,
+          paddingLeft: baseTheme.spacing.lg + insets.left,
+          paddingRight: baseTheme.spacing.lg + insets.right,
+        },
+      ]}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
         <View style={styles.titleRow}>
           <View>
             <Text style={[styles.title, { color: theme.colors.text }]}>Settings</Text>
@@ -238,9 +245,9 @@ export default function SettingsScreen() {
           </View>
           <HelpButton
             variant="elevated"
-            onPress={() => router.push(routes.tabs.settings.help)}
-            accessibilityLabel="Help, settings"
-            accessibilityHint="Opens help information"
+            onPress={() => router.push(routes.tabs.settings.faq)}
+            accessibilityLabel="FAQ"
+            accessibilityHint="Opens frequently asked questions"
           />
         </View>
 
@@ -292,13 +299,22 @@ export default function SettingsScreen() {
         <Section title="HELP" color={theme.colors.mutedText}>
           <StaticCard style={styles.card}>
             <SettingNavRow
+              icon={<Ionicons name="book-outline" size={18} color="#FFFFFF" />}
+              iconColors={ICON_GRADIENTS.blue}
+              label="Help"
+              subtitle="Getting started and tips for success"
+              onPress={() => router.push(routes.tabs.settings.help)}
+              accessibilityLabel="Open Help"
+              accessibilityHint="View getting started and tips"
+            />
+            <SettingNavRow
               icon={<Ionicons name="help-circle-outline" size={18} color="#FFFFFF" />}
               iconColors={ICON_GRADIENTS.blue}
-              label="Help & FAQ"
-              subtitle="Instructions, tips and frequently asked questions"
-              onPress={() => router.push(routes.tabs.settings.help)}
-              accessibilityLabel="Open Help and FAQ"
-              accessibilityHint="View instructions, tips and FAQs"
+              label="FAQ"
+              subtitle="Frequently asked questions"
+              onPress={() => router.push(routes.tabs.settings.faq)}
+              accessibilityLabel="Open FAQ"
+              accessibilityHint="View frequently asked questions"
             />
           </StaticCard>
         </Section>
@@ -411,8 +427,7 @@ export default function SettingsScreen() {
             </Pressable>
           </StaticCard>
         </Section>
-      </ScrollView>
-    </SafeAreaView>
+    </ScrollView>
   );
 }
 
@@ -424,8 +439,8 @@ const ROW_PADDING_H = 16;
 const ROW_GAP = 14;
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1 },
-  scroll: { flex: 1 },
+  scrollView: { flex: 1 },
+  scrollContent: { flexGrow: 1 },
   content: {
     paddingHorizontal: baseTheme.spacing.lg,
     paddingBottom: baseTheme.spacing.xl,

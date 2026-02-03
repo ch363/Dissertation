@@ -62,7 +62,7 @@ export class SessionPlanService {
       (userTimeAverages.avgTimePerTeachSec +
         userTimeAverages.avgTimePerPracticeSec) /
       2;
-    const targetItemCount = effectiveTimeBudgetSec
+    let targetItemCount = effectiveTimeBudgetSec
       ? calculateItemCount(effectiveTimeBudgetSec, avgTimePerItem)
       : 15;
 
@@ -91,7 +91,12 @@ export class SessionPlanService {
 
     let selectedCandidates: DeliveryCandidate[] = [];
     if (context.mode === 'review') {
-      selectedCandidates = reviewCandidates;
+      // Ensure each question appears at most once to prevent the same question looping
+      const byId = new Map<string, DeliveryCandidate>();
+      for (const c of reviewCandidates) {
+        if (!byId.has(c.id)) byId.set(c.id, c);
+      }
+      selectedCandidates = Array.from(byId.values());
     } else if (context.mode === 'learn') {
       const rankedNew = rankCandidates(
         newCandidates,
@@ -131,6 +136,13 @@ export class SessionPlanService {
         ...rankedReviews.slice(0, reviewCount),
         ...rankedNew.slice(0, newCount),
       ];
+    }
+
+    // Review mode: ensure we include multiple items when available so the user
+    // sees a full batch of reviews before the summary (not one summary per item).
+    if (context.mode === 'review' && selectedCandidates.length > 1) {
+      const minReviewCount = Math.min(10, selectedCandidates.length);
+      targetItemCount = Math.max(targetItemCount, minReviewCount);
     }
 
     selectedCandidates = selectedCandidates.slice(0, targetItemCount);

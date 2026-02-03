@@ -25,7 +25,7 @@ export async function getOnboarding(): Promise<OnboardingResponse | null> {
   return apiClient.get<OnboardingResponse | null>('/onboarding');
 }
 
-export async function hasOnboarding(userId?: string): Promise<boolean> {
+export async function hasOnboarding(_userId?: string): Promise<boolean> {
   const response = await apiClient.get<HasOnboardingResponse>('/onboarding/has');
   return response.hasOnboarding;
 }

@@ -17,6 +17,13 @@ export class CandidateService {
     private difficultyCalculator: DifficultyCalculator,
   ) {}
 
+  /**
+   * Returns review candidates where "due" means: the *latest* performance row
+   * per question (by createdAt) has nextReviewDue <= now. This matches
+   * ProgressService.getDueReviewsLatest so that when the user completes a
+   * review we create a new row with a future nextReviewDue and that question
+   * correctly disappears from the due list.
+   */
   async getReviewCandidates(
     userId: string,
     options: CandidateOptions = {},
@@ -25,18 +32,7 @@ export class CandidateService {
     const now = new Date();
     const candidates: DeliveryCandidate[] = [];
 
-    const questionWhere: {
-      userId: string;
-      nextReviewDue: { lte: Date; not: null };
-      questionId?: { in: string[] };
-    } = {
-      userId,
-      nextReviewDue: {
-        lte: now,
-        not: null,
-      },
-    };
-
+    let questionIdsFilter: string[] | undefined;
     if (lessonId) {
       const lessonQuestions = await this.prisma.question.findMany({
         where: {
@@ -44,11 +40,10 @@ export class CandidateService {
         },
         select: { id: true },
       });
-      const questionIds = lessonQuestions.map((q) => q.id);
-      if (questionIds.length === 0) {
+      questionIdsFilter = lessonQuestions.map((q) => q.id);
+      if (questionIdsFilter.length === 0) {
         return [];
       }
-      questionWhere.questionId = { in: questionIds };
     } else if (moduleId) {
       const moduleQuestions = await this.prisma.question.findMany({
         where: {
@@ -58,20 +53,24 @@ export class CandidateService {
         },
         select: { id: true },
       });
-      const questionIds = moduleQuestions.map((q) => q.id);
-      if (questionIds.length === 0) {
+      questionIdsFilter = moduleQuestions.map((q) => q.id);
+      if (questionIdsFilter.length === 0) {
         return [];
       }
-      questionWhere.questionId = { in: questionIds };
     }
 
-    let allDuePerformances: Awaited<
+    const baseWhere = {
+      userId,
+      ...(questionIdsFilter ? { questionId: { in: questionIdsFilter } } : {}),
+    };
+
+    let allPerformances: Awaited<
       ReturnType<typeof this.prisma.userQuestionPerformance.findMany>
     >;
     try {
-      allDuePerformances =
+      allPerformances =
         await this.prisma.userQuestionPerformance.findMany({
-          where: questionWhere,
+          where: baseWhere,
           orderBy: { createdAt: 'desc' },
         });
     } catch (error: unknown) {
@@ -86,15 +85,21 @@ export class CandidateService {
       throw error;
     }
 
-    const questionIdMap = new Map<string, (typeof allDuePerformances)[0]>();
-    for (const perf of allDuePerformances) {
-      const existing = questionIdMap.get(perf.questionId);
-      if (!existing || perf.createdAt > existing.createdAt) {
+    // Keep only the latest performance row per question (we already ordered by createdAt desc)
+    const questionIdMap = new Map<string, (typeof allPerformances)[0]>();
+    for (const perf of allPerformances) {
+      if (!questionIdMap.has(perf.questionId)) {
         questionIdMap.set(perf.questionId, perf);
       }
     }
 
-    for (const perf of Array.from(questionIdMap.values())) {
+    // Include only questions whose *latest* row is due (nextReviewDue <= now)
+    const dueLatestPerformances = Array.from(questionIdMap.values()).filter(
+      (perf) =>
+        perf.nextReviewDue != null && perf.nextReviewDue.getTime() <= now.getTime(),
+    );
+
+    for (const perf of dueLatestPerformances) {
       const question = await this.prisma.question.findUnique({
         where: { id: perf.questionId },
         include: {

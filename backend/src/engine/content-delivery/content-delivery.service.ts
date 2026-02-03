@@ -37,21 +37,25 @@ export class ContentDeliveryService {
     return plan;
   }
 
+  /**
+   * Dashboard plan uses "latest per question" for due count so it matches
+   * getDueReviewCount and review session plans (questions disappear after
+   * completion).
+   */
   async getDashboardPlan(userId: string): Promise<DashboardPlanDto> {
     const now = new Date();
 
-    const dueQuestionIds = await this.prisma.userQuestionPerformance.findMany({
-      where: {
-        userId,
-        nextReviewDue: {
-          lte: now,
-          not: null,
-        },
-      },
-      select: { questionId: true },
-      distinct: ['questionId'],
-    });
-    const dueQuestionCount = dueQuestionIds.length;
+    type Row = { count: bigint };
+    const dueResult = await this.prisma.$queryRaw<Row[]>`
+      SELECT COUNT(*) AS count FROM (
+        SELECT question_id, next_review_due,
+               ROW_NUMBER() OVER (PARTITION BY question_id ORDER BY created_at DESC) AS rn
+        FROM user_question_performance
+        WHERE user_id = ${userId}::uuid
+      ) sub
+      WHERE rn = 1 AND next_review_due IS NOT NULL AND next_review_due <= ${now}
+    `;
+    const dueQuestionCount = Number(dueResult[0]?.count ?? 0);
 
     const dueReviews = Array(dueQuestionCount).fill({ dueAt: now });
 

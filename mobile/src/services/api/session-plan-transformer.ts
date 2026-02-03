@@ -66,6 +66,8 @@ export function transformSessionPlan(
   sessionId: string,
 ): SessionPlan {
   const cards: Card[] = [];
+  /** Avoid showing the same question twice in one session (e.g. review loop bug). */
+  const seenQuestionIds = new Set<string>();
 
   logger.info('Transforming session plan', {
     stepsCount: backendPlan.steps?.length || 0,
@@ -90,6 +92,11 @@ export function transformSessionPlan(
       });
     } else if (step.type === 'practice') {
       const item = step.item as BackendPracticeItem;
+      if (seenQuestionIds.has(item.questionId)) {
+        logger.info('Skipping duplicate practice step for question', { questionId: item.questionId });
+        continue;
+      }
+      seenQuestionIds.add(item.questionId);
       const deliveryMethod = item.deliveryMethod;
 
       logger.info('Processing practice step', {

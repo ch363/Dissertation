@@ -9,7 +9,7 @@ import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 import { getLessons, getLessonTeachings, type Lesson } from '@/services/api/modules';
 import { getUserLessons, type UserLessonProgress } from '@/services/api/progress';
-import { LessonMicroProgress } from '@/components/learn/LessonMicroProgress';
+import { LessonMicroProgress } from '@/components/learn';
 import { buildLessonOutcome } from '@/features/learn/utils/lessonOutcome';
 import { useAsyncData } from '@/hooks/useAsyncData';
 

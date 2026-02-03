@@ -7,7 +7,10 @@ import { UsersService } from '../users/users.service';
 import { ProgressService } from '../progress/progress.service';
 import { ResetProgressDto } from '../progress/dto/reset-progress.dto';
 import { isMissingColumnOrSchemaMismatchError } from '../common/utils/prisma-error.util';
-import { getEndOfLocalDayUtc } from '../common/utils/date.util';
+import {
+  getStartOfWeekLocalUtc,
+  getEndOfWeekLocalUtc,
+} from '../common/utils/date.util';
 import { LoggerService } from '../common/logger';
 
 @Injectable()
@@ -92,8 +95,40 @@ export class MeService {
     const dashboardData = await this.fetchDashboardData(userId, now, tzOffsetMinutes);
     const streakInfo = await this.calculateStreakInfo(userId);
     const xpProgress = await this.calculateXPProgress(userId, now, dashboardData);
-    
-    return this.buildDashboardResponse(dashboardData, streakInfo, xpProgress);
+    const weeklyActivity = await this.getWeeklyActivity(userId, now, tzOffsetMinutes);
+    return this.buildDashboardResponse(dashboardData, streakInfo, xpProgress, weeklyActivity);
+  }
+
+  /**
+   * XP earned per day for the current week (Mon=0 .. Sun=6) in user's timezone.
+   */
+  private async getWeeklyActivity(
+    userId: string,
+    now: Date,
+    tzOffsetMinutes?: number,
+  ): Promise<number[]> {
+    const weekStart = getStartOfWeekLocalUtc(now, tzOffsetMinutes);
+    const weekEnd = getEndOfWeekLocalUtc(now, tzOffsetMinutes);
+    const rows = await this.prisma.userKnowledgeLevelProgress.findMany({
+      where: {
+        userId,
+        createdAt: {
+          gte: weekStart,
+          lte: weekEnd,
+        },
+      },
+      select: { value: true, createdAt: true },
+    });
+    const offsetMs = Number.isFinite(tzOffsetMinutes) ? (tzOffsetMinutes! * 60_000) : 0;
+    const dailyXp = [0, 0, 0, 0, 0, 0, 0];
+    for (const row of rows) {
+      const localMs = row.createdAt.getTime() - offsetMs;
+      const localDate = new Date(localMs);
+      const dayOfWeek = localDate.getUTCDay();
+      const monToSunIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      dailyXp[monToSunIndex] += row.value;
+    }
+    return dailyXp;
   }
 
   private async fetchDashboardData(
@@ -101,43 +136,13 @@ export class MeService {
     now: Date,
     tzOffsetMinutes?: number,
   ) {
-    const dueCutoff = getEndOfLocalDayUtc(now, tzOffsetMinutes);
     const thirtyDaysAgo = new Date(now);
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    let dueReviews: Array<{ questionId: string; createdAt: Date }> = [];
-    try {
-      dueReviews = await this.prisma.userQuestionPerformance.findMany({
-        where: {
-          userId,
-          nextReviewDue: {
-            lte: dueCutoff,
-            not: null,
-          },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-        select: {
-          questionId: true,
-          createdAt: true,
-        },
-      });
-    } catch (error: unknown) {
-      if (!isMissingColumnOrSchemaMismatchError(error)) {
-        throw error;
-      }
-      dueReviews = [];
-    }
-
-    const questionIdSet = new Set<string>();
-    const dedupedDueReviews = dueReviews.filter((review) => {
-      if (questionIdSet.has(review.questionId)) {
-        return false;
-      }
-      questionIdSet.add(review.questionId);
-      return true;
-    });
+    // Use "due right now" (same as session plan and due list) so the count matches
+    // what the user can actually review. Previously we used end-of-day, which showed
+    // "2 due" when 0 were due right now.
+    const dueReviewCount = await this.progressService.getDueReviewCount(userId, now);
 
     const activeLessonCount = await this.prisma.userLesson.count({
       where: { userId },
@@ -201,7 +206,7 @@ export class MeService {
     });
 
     return {
-      dueReviewCount: dedupedDueReviews.length,
+      dueReviewCount,
       activeLessonCount,
       xpTotal: xpProgress._sum.value || 0,
       recentPerformances,
@@ -315,11 +320,46 @@ export class MeService {
           : 0;
     }
 
-    const totalStudyTimeMs = dashboardData.studyTimePerformances.reduce((sum, perf) => {
+    // Study time (last 30 days): question card time (timeToComplete) + teaching time (endedAt - startedAt) + lesson time (endedAt - startedAt).
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const questionTimeMs = dashboardData.studyTimePerformances.reduce((sum, perf) => {
       return sum + (perf.timeToComplete || 0);
     }, 0);
 
-    const studyTimeMinutes = Math.round(totalStudyTimeMs / (1000 * 60));
+    const teachingRows = await this.prisma.userTeachingCompleted.findMany({
+      where: {
+        userId,
+        endedAt: { gte: thirtyDaysAgo, not: null },
+        startedAt: { not: null },
+      },
+      select: { startedAt: true, endedAt: true },
+    });
+    let teachingTimeMs = 0;
+    for (const row of teachingRows) {
+      if (row.startedAt != null && row.endedAt != null) {
+        teachingTimeMs += row.endedAt.getTime() - row.startedAt.getTime();
+      }
+    }
+
+    const lessonRows = await this.prisma.userLesson.findMany({
+      where: {
+        userId,
+        endedAt: { gte: thirtyDaysAgo, not: null },
+        startedAt: { not: null },
+      },
+      select: { startedAt: true, endedAt: true },
+    });
+    let lessonTimeMs = 0;
+    for (const row of lessonRows) {
+      if (row.startedAt != null && row.endedAt != null) {
+        lessonTimeMs += row.endedAt.getTime() - row.startedAt.getTime();
+      }
+    }
+
+    const totalStudyTimeMs = questionTimeMs + teachingTimeMs + lessonTimeMs;
+
+    const studyTimeMinutes = Math.floor(totalStudyTimeMs / (1000 * 60));
 
     const performancesWithTime = dashboardData.studyTimePerformances.filter(
       (p) => p.timeToComplete != null && p.timeToComplete > 0,
@@ -327,7 +367,7 @@ export class MeService {
     const defaultMinutesPerCard = 0.5;
     const avgMsPerCard =
       performancesWithTime.length > 0
-        ? totalStudyTimeMs / performancesWithTime.length
+        ? questionTimeMs / performancesWithTime.length
         : defaultMinutesPerCard * 60 * 1000;
     const avgMinutesPerCard = avgMsPerCard / (60 * 1000);
     const estimatedReviewMinutes = Math.max(
@@ -350,6 +390,7 @@ export class MeService {
     dashboardData: Awaited<ReturnType<typeof this.fetchDashboardData>>,
     streakInfo: { streak: any },
     xpProgress: Awaited<ReturnType<typeof this.calculateXPProgress>>,
+    weeklyActivity: number[],
   ) {
     return {
       dueReviewCount: dashboardData.dueReviewCount,
@@ -359,6 +400,7 @@ export class MeService {
       streak: streakInfo.streak,
       weeklyXP: xpProgress.weeklyXP,
       weeklyXPChange: xpProgress.weeklyXPChange,
+      weeklyActivity,
       accuracyPercentage: xpProgress.accuracyPercentage,
       accuracyByDeliveryMethod: xpProgress.accuracyByDeliveryMethod,
       grammaticalAccuracyByDeliveryMethod: xpProgress.grammaticalAccuracyByDeliveryMethod,
@@ -492,58 +534,19 @@ export class MeService {
       teachingsByLessonId.set(teaching.lessonId, existing);
     });
 
-    const questionIds = teachings.flatMap((t) => t.questions.map((q) => q.id));
-    let dueReviews: Array<{ questionId: string; createdAt: Date }> = [];
-    try {
-      dueReviews = await this.prisma.userQuestionPerformance.findMany({
-        where: {
-          userId,
-          questionId: { in: questionIds },
-          nextReviewDue: {
-            lte: now,
-            not: null,
-          },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-        select: {
-          questionId: true,
-          createdAt: true,
-        },
-      });
-    } catch (error: unknown) {
-      if (!isMissingColumnOrSchemaMismatchError(error)) {
-        throw error;
-      }
-      dueReviews = [];
-    }
-
-    const dueReviewsByQuestionId = new Map<string, (typeof dueReviews)[0]>();
-    dueReviews.forEach((review) => {
-      const existing = dueReviewsByQuestionId.get(review.questionId);
-      if (!existing || review.createdAt > existing.createdAt) {
-        dueReviewsByQuestionId.set(review.questionId, review);
-      }
-    });
-
-    const questionToLessonId = new Map<string, string>();
-    teachings.forEach((teaching) => {
-      teaching.questions.forEach((q) => {
-        questionToLessonId.set(q.id, teaching.lessonId);
-      });
-    });
-
+    const questionIdSet = new Set(teachings.flatMap((t) => t.questions.map((q) => q.id)));
+    const dueItems = await this.progressService.getDueReviewsLatest(userId);
     const dueCountByLessonId = new Map<string, number>();
-    dueReviewsByQuestionId.forEach((review) => {
-      const lessonId = questionToLessonId.get(review.questionId);
+    for (const item of dueItems) {
+      if (!questionIdSet.has(item.questionId)) continue;
+      const lessonId = item.question?.teaching?.lesson?.id;
       if (lessonId) {
         dueCountByLessonId.set(
           lessonId,
           (dueCountByLessonId.get(lessonId) || 0) + 1,
         );
       }
-    });
+    }
 
     return userLessons.map((ul) => {
       const teachingsInLesson = teachingsByLessonId.get(ul.lessonId) || [];

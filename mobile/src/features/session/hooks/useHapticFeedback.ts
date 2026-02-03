@@ -1,27 +1,21 @@
+import * as Haptics from 'expo-haptics';
 import { createLogger } from '@/services/logging';
 
 const logger = createLogger('HapticFeedback');
-let HapticsModule: typeof import('expo-haptics') | null = null;
 
-async function getHapticsModule() {
-  if (!HapticsModule) {
-    try {
-      HapticsModule = await import('expo-haptics');
-    } catch (error) {
-      logger.debug('expo-haptics not available, haptic feedback disabled', { error });
-    }
-  }
-  return HapticsModule;
+function isHapticsUsable(): boolean {
+  return !!(
+    Haptics.ImpactFeedbackStyle &&
+    typeof Haptics.impactAsync === 'function'
+  );
 }
 
 export type HapticStyle = 'light' | 'medium' | 'heavy';
 
 export function useHapticFeedback() {
   const triggerHaptic = async (style: HapticStyle = 'medium') => {
+    if (!isHapticsUsable()) return;
     try {
-      const Haptics = await getHapticsModule();
-      if (!Haptics) return;
-
       let feedbackStyle;
       switch (style) {
         case 'light':

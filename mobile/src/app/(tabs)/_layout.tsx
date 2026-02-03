@@ -3,7 +3,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { TabBarButton } from '@/components/navigation/TabBarButton';
+import { TabBarButton } from '@/components/navigation';
 import { hasOnboarding } from '@/services/api/onboarding';
 import { useAuth } from '@/services/auth/AuthProvider';
 import { routes } from '@/services/navigation/routes';
@@ -20,7 +20,9 @@ function CustomTabBar({ state, descriptors, navigation }: CustomTabBarProps) {
   const currentRouteName = state.routes?.[state.index]?.name ?? '';
 
   const targetPathForRouteName = (routeName: string) => {
-    if (routeName.includes('learn')) return routes.tabs.learn;
+    // Use /learn (no /index) so the learn stack shows its index screen. Using /learn/index
+    // would match the dynamic route [lessonId]=index and render LessonOverviewScreen with invalid id.
+    if (routeName.includes('learn')) return '/(tabs)/learn';
     if (routeName.includes('profile')) return routes.tabs.profile.root;
     return routes.tabs.home;
   };
@@ -51,7 +53,7 @@ function CustomTabBar({ state, descriptors, navigation }: CustomTabBarProps) {
           },
         ]}
       >
-        {visibleRoutes.map((route: Route, idx: number) => {
+        {visibleRoutes.map((route: Route) => {
           const isFocused =
             route.key === focusedKey || (currentRouteName === 'settings' && route.name === 'profile');
           const onPress = () => {

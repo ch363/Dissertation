@@ -12,7 +12,6 @@ export const routes = {
     profile: {
       root: '/(tabs)/profile' as const,
       index: '/(tabs)/profile' as const,
-      progress: '/(tabs)/profile/progress' as const,
       edit: '/(tabs)/profile/edit' as const,
       skills: '/(tabs)/profile/skills' as const,
       reviews: '/(tabs)/profile/reviews' as const,
@@ -23,6 +22,7 @@ export const routes = {
       session: '/(tabs)/settings/session' as const,
       sessionLesson: '/(tabs)/settings/session-lesson' as const,
       help: '/(tabs)/settings/help' as const,
+      faq: '/(tabs)/settings/faq' as const,
     },
   },
   auth: {
@@ -36,6 +36,7 @@ export const routes = {
     root: '/(onboarding)' as const,
     welcome: '/(onboarding)/welcome' as const,
     completion: '/(onboarding)/completion' as const,
+    help: '/(onboarding)/help' as const,
   },
   session: {
     root: '/session' as const,

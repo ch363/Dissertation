@@ -3,48 +3,61 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, Animated, ActivityIndicator, Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import Constants from 'expo-constants';
+import * as FileSystem from 'expo-file-system';
 
-import { Button } from '@/components/ui/Button';
-import { IconButton } from '@/components/ui/IconButton';
+import { IconButton } from '@/components/ui';
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
-import { ListeningCard as ListeningCardType, PronunciationResult } from '@/types/session';
-import * as SpeechRecognition from '@/services/speech-recognition';
+import {
+  ListeningCard as ListeningCardType,
+  PronunciationResult,
+  PronunciationWordResult,
+  PronunciationErrorType,
+} from '@/types/session';
 import { announce } from '@/utils/a11y';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { createLogger } from '@/services/logging';
 
 const logger = createLogger('ListeningCard');
 
-// Lazy load FileSystem to avoid native module errors
-// This is completely optional - if FileSystem isn't available, we just skip file size checking
+const ERROR_TYPE_TIPS: Record<Exclude<PronunciationErrorType, 'None'>, string> = {
+  Omission: 'You skipped this word. Try saying it in the phrase.',
+  Insertion: 'Extra word detected. Stick to the phrase and try again.',
+  Mispronunciation: 'This word was mispronounced. Listen to the model and try again.',
+  UnexpectedBreak: 'Pause was in an unexpected place. Try saying the phrase more smoothly.',
+  MissingBreak: 'Try pausing slightly where it feels natural (e.g. between clauses).',
+};
+
+function getTipForWord(word: PronunciationWordResult): string {
+  if (word.errorType && word.errorType !== 'None' && ERROR_TYPE_TIPS[word.errorType]) {
+    const tip = ERROR_TYPE_TIPS[word.errorType];
+    const weakPhonemes =
+      word.phonemes?.filter((p) => p.accuracy < 80).map((p) => p.phoneme);
+    if (weakPhonemes && weakPhonemes.length > 0) {
+      return `${tip} Focus on these sounds: ${weakPhonemes.join(', ')}.`;
+    }
+    return tip;
+  }
+  if (word.phonemes?.some((p) => p.accuracy < 80)) {
+    const weak = word.phonemes.filter((p) => p.accuracy < 80).map((p) => p.phoneme);
+    return `Focus on these sounds: ${weak.join(', ')}. Listen to the model and try again.`;
+  }
+  return 'Listen to the model and try again.';
+}
+
+// Optional file size check - fails gracefully if native module unavailable.
+// Static import avoids Metro "unknown module" errors from dynamic import().
 async function getFileSize(uri: string): Promise<number | null> {
-  // Completely optional feature - if FileSystem native module isn't linked,
-  // we just return null and don't show file size. This shouldn't break the app.
   try {
-    // Use dynamic import with explicit error handling
-    let FileSystemModule: typeof import('expo-file-system') | null = null;
-    
-    try {
-      FileSystemModule = await import('expo-file-system');
-    } catch (importError) {
-      // Native module not available - this is fine, file size is optional
-      return null;
-    }
-    
-    if (!FileSystemModule || typeof FileSystemModule.getInfoAsync !== 'function') {
-      return null;
-    }
-    
-    const fileInfo = await FileSystemModule.getInfoAsync(uri);
+    if (typeof FileSystem.getInfoAsync !== 'function') return null;
+    const fileInfo = await FileSystem.getInfoAsync(uri);
     if (fileInfo.exists && 'size' in fileInfo && typeof fileInfo.size === 'number') {
       return fileInfo.size;
     }
     return null;
-  } catch (error) {
-    // Silently fail - file size checking is optional
+  } catch {
     return null;
   }
 }
@@ -58,6 +71,8 @@ type Props = {
   onCheckAnswer?: (audioUri?: string) => void;
   onContinue?: () => void;
   pronunciationResult?: PronunciationResult | null;
+  isPronunciationProcessing?: boolean;
+  onPracticeAgain?: () => void;
 };
 
 export function ListeningCard({
@@ -69,18 +84,20 @@ export function ListeningCard({
   onCheckAnswer,
   onContinue,
   pronunciationResult,
+  isPronunciationProcessing = false,
+  onPracticeAgain,
 }: Props) {
   const ctx = useAppTheme();
   const theme = ctx?.theme ?? baseTheme;
   const [isPlaying, setIsPlaying] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [hasRecorded, setHasRecorded] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const [recordedAudioUri, setRecordedAudioUri] = useState<string | null>(null);
   const [isPlayingRecording, setIsPlayingRecording] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState<number | null>(null);
-  const [recordingFileSize, setRecordingFileSize] = useState<number | null>(null);
+  const [_recordingDuration, setRecordingDuration] = useState<number | null>(null);
+  const [_recordingFileSize, setRecordingFileSize] = useState<number | null>(null);
+  const [expandedWordIndex, setExpandedWordIndex] = useState<number | null>(null);
   const playbackSoundRef = useRef<Audio.Sound | null>(null);
   const mode = card.mode || 'type'; // 'type' or 'speak'
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
@@ -121,6 +138,10 @@ export function ListeningCard({
   useEffect(() => {
     if (recordingError) announce(recordingError);
   }, [recordingError]);
+
+  useEffect(() => {
+    setExpandedWordIndex(null);
+  }, [pronunciationResult]);
 
   const handlePlayAudio = async () => {
     // Prevent multiple rapid calls
@@ -383,15 +404,7 @@ export function ListeningCard({
     }
   };
 
-  const handleRecordButtonPress = () => {
-    if (isRecording) {
-      handleStopRecording();
-    } else {
-      handleStartRecording();
-    }
-  };
-
-  const handlePlayRecording = async () => {
+  const _handlePlayRecording = async () => {
     if (!recordedAudioUri || isPlayingRecording) {
       return;
     }
@@ -454,219 +467,270 @@ export function ListeningCard({
     }
   };
 
-  // Reset processing state when result is shown
-  useEffect(() => {
-    if (showResult) {
-      setIsProcessing(false);
+    if (mode === 'speak') {
+    // ——— Screen 1: Loading (Figma: Analyzing your pronunciation) ———
+    if (isPronunciationProcessing) {
+      return (
+        <View style={styles.pronunciationContainer}>
+          <View style={styles.pronunciationLoadingContent}>
+            <ActivityIndicator size="large" color="#14B8A6" style={styles.pronunciationSpinner} />
+            <Text style={styles.pronunciationLoadingTitle}>Analyzing your pronunciation</Text>
+            <Text style={styles.pronunciationLoadingSubtext}>
+              Please wait while we process your recording...
+            </Text>
+            <Text style={styles.pronunciationLoadingTime}>Usually takes ~2 seconds</Text>
+            <View style={styles.pronunciationSteps}>
+              <View style={styles.pronunciationStepRow}>
+                <View style={styles.pronunciationStepDot} />
+                <Text style={styles.pronunciationStepText}>Analyzing audio quality</Text>
+              </View>
+              <View style={styles.pronunciationStepRow}>
+                <View style={styles.pronunciationStepDot} />
+                <Text style={styles.pronunciationStepText}>Comparing pronunciation</Text>
+              </View>
+              <View style={styles.pronunciationStepRow}>
+                <View style={styles.pronunciationStepDot} />
+                <Text style={styles.pronunciationStepText}>Generating feedback</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      );
     }
-  }, [showResult]);
 
+    // ——— Screen 2: Result (Figma: Pronunciation result with score and word analysis) ———
+    if (showResult && pronunciationResult) {
+      const scoreLabels = [
+        { label: 'Poor', min: 0, max: 49 },
+        { label: 'Fair', min: 50, max: 69 },
+        { label: 'Good', min: 70, max: 79 },
+        { label: 'Great', min: 80, max: 89 },
+        { label: 'Excellent', min: 90, max: 100 },
+      ];
+      const scoreLabel = scoreLabels.find(
+        (s) => pronunciationResult.overallScore >= s.min && pronunciationResult.overallScore <= s.max
+      );
+      const firstImproveWord = pronunciationResult.words.find((w) => w.feedback === 'could_improve');
 
-  if (mode === 'speak') {
-    // Speech Practice Mode (P22/P23)
-    return (
-      <View style={styles.container}>
-        <Text style={styles.instruction}>SPEAK THIS PHRASE</Text>
-
-        {!showResult ? (
-          // Practice Screen (P22)
-          <>
-            <View style={styles.phraseCard}>
-              <View style={styles.phraseRow}>
-                <IconButton
-                  accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
-                  accessibilityHint="Plays the phrase audio"
-                  onPress={handlePlayAudio}
-                  style={styles.audioButton}
-                >
+      return (
+        <View style={styles.pronunciationContainer}>
+          <Text style={styles.pronunciationResultHeading}>PRONUNCIATION RESULT</Text>
+          <Text style={styles.pronunciationPhrase}>{card.expected}</Text>
+          <Text style={styles.pronunciationTranslation}>
+            {card.translation ? `(${card.translation})` : ''}
+          </Text>
+          <Text style={styles.pronunciationScore}>{pronunciationResult.overallScore}%</Text>
+          <Text style={styles.pronunciationScoreLabel}>
+            {scoreLabel?.label ?? '—'} ({scoreLabel?.min ?? 0}–{scoreLabel?.max ?? 100})
+          </Text>
+          <View style={styles.pronunciationBarContainer}>
+            <View style={styles.pronunciationBarTrack}>
+              <View
+                style={[
+                  styles.pronunciationBarFill,
+                  { width: `${Math.min(100, Math.max(0, pronunciationResult.overallScore))}%` },
+                ]}
+              />
+              <View
+                style={[
+                  styles.pronunciationBarMarker,
+                  { left: `${Math.min(100, Math.max(0, pronunciationResult.overallScore))}%` },
+                ]}
+              />
+            </View>
+            <View style={styles.pronunciationBarLabels}>
+              <Text style={styles.pronunciationBarLabelText}>Poor</Text>
+              <Text style={styles.pronunciationBarLabelText}>Excellent</Text>
+            </View>
+          </View>
+          <Text style={styles.pronunciationAnalysisTitle}>WORD-BY-WORD ANALYSIS</Text>
+          <View style={styles.pronunciationWordList}>
+            {pronunciationResult.words.map((word, index) => {
+              const isExpandable = word.feedback === 'could_improve';
+              const isExpanded = expandedWordIndex === index;
+              const rowContent = (
+                <>
                   <Ionicons
-                    name={isPlaying ? 'pause' : 'volume-high'}
-                    size={24}
-                    color="#fff"
+                    name={word.feedback === 'perfect' ? 'checkmark-circle' : 'alert-circle'}
+                    size={22}
+                    color={word.feedback === 'perfect' ? '#22C55E' : '#F97316'}
+                    style={styles.pronunciationWordIcon}
                   />
-                </IconButton>
-                <View style={styles.phraseTextContainer}>
-                  <Text style={styles.phraseText}>{card.expected}</Text>
-                  <Text style={styles.phraseTranslation}>
-                    {card.translation ? `(${card.translation})` : '(Translation)'}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.recordingSection}>
-              <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={isRecording ? 'Stop recording' : 'Start recording'}
-                  accessibilityHint="Records your pronunciation"
-                  accessibilityState={{ selected: isRecording, disabled: isProcessing, busy: isProcessing }}
-                  style={[styles.recordButton, isRecording && styles.recordButtonActive]}
-                  onPress={handleRecordButtonPress}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? (
-                    <ActivityIndicator size="large" color="#fff" />
-                  ) : (
-                    <Ionicons name="mic" size={48} color="#fff" accessible={false} importantForAccessibility="no" />
-                  )}
-                </Pressable>
-              </Animated.View>
-              <Text style={styles.recordHint}>
-                {isRecording ? 'Recording...' : 'Tap to record your pronunciation'}
-              </Text>
-              {isIOSSimulator && (
-                <View style={styles.simulatorWarning}>
-                  <Text style={styles.warningText}>
-                    ⚠️ iOS Simulator: Microphone may not work
-                  </Text>
-                  <Text style={styles.warningSubtext}>
-                    Try: System Settings → Privacy → Microphone → Allow Xcode
-                  </Text>
-                  <Text style={styles.warningSubtext}>
-                    Or: Simulator menu → I/O → Audio Input → Built-in Microphone
-                  </Text>
-                </View>
-              )}
-              {recordingError && (
-                <Text style={styles.errorText} accessibilityRole="alert">
-                  {recordingError}
-                </Text>
-              )}
-              {recordingDuration !== null && (
-                <Text style={styles.durationText}>
-                  Recorded: {recordingDuration.toFixed(1)}s
-                  {recordingFileSize !== null && ` • ${(recordingFileSize / 1024).toFixed(1)} KB`}
-                </Text>
-              )}
-              {recordingFileSize !== null && recordingFileSize < 1000 && (
-                <Text style={styles.warningText}>
-                  ⚠️ File size is very small. Recording may be empty.
-                </Text>
-              )}
-            </View>
-
-            {hasRecorded && !isProcessing && (
-              <>
-                <View style={styles.playbackSection}>
-                  <Pressable
-                    style={styles.playbackButton}
-                    onPress={handlePlayRecording}
-                    disabled={isPlayingRecording}
-                    accessibilityRole="button"
-                    accessibilityLabel={isPlayingRecording ? 'Playing recording' : 'Play recording'}
-                    accessibilityHint="Plays back what you recorded"
-                    accessibilityState={{ disabled: isPlayingRecording, busy: isPlayingRecording }}
-                  >
-                    <Ionicons
-                      name={isPlayingRecording ? 'pause' : 'play'}
-                      size={24}
-                      color="#fff"
-                      accessible={false}
-                      importantForAccessibility="no"
-                    />
-                    <Text style={styles.playbackButtonText}>
-                      {isPlayingRecording ? 'Playing...' : 'Play Recording'}
-                    </Text>
-                  </Pressable>
-                </View>
-              </>
-            )}
-
-            <Button
-              title={hasRecorded ? 'Continue' : 'Record to continue'}
-              variant="secondary"
-              disabled={!hasRecorded || isProcessing}
-              onPress={() => {
-                if (!hasRecorded || isProcessing) return;
-                if (!recordedAudioUri || !onCheckAnswer) return;
-                setIsProcessing(true);
-                onCheckAnswer(recordedAudioUri);
-              }}
-              style={styles.ctaButton}
-            />
-          </>
-        ) : (
-          // Result Screen (P23)
-          <>
-            <View style={styles.phraseCard}>
-              <View style={styles.phraseRow}>
-                <IconButton
-                  accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
-                  accessibilityHint="Plays the phrase audio"
-                  onPress={handlePlayAudio}
-                  style={styles.audioButton}
-                >
-                  <Ionicons
-                    name={isPlaying ? 'pause' : 'volume-high'}
-                    size={24}
-                    color="#fff"
-                  />
-                </IconButton>
-                <View style={styles.phraseTextContainer}>
-                  <Text style={styles.phraseText}>{card.expected}</Text>
-                  <Text style={styles.phraseTranslation}>
-                    {card.translation ? `(${card.translation})` : '(Translation)'}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {pronunciationResult && (
-              <>
-                <View style={styles.resultCard}>
-                  <Text style={styles.resultTitle}>PRONUNCIATION RESULT</Text>
-                  <Text style={styles.score}>{pronunciationResult.overallScore}%</Text>
-                  <Text style={styles.scoreLabel}>Pronunciation Score</Text>
-                </View>
-
-                <View style={styles.analysisCard}>
-                  <Text style={styles.analysisTitle}>WORD-BY-WORD ANALYSIS</Text>
-                  <View style={styles.wordAnalysis}>
-                    {pronunciationResult.words.map((word, index) => (
-                      <View key={index} style={styles.wordItem}>
-                        <Ionicons
-                          name={word.feedback === 'perfect' ? 'checkmark-circle' : 'alert-circle'}
-                          size={20}
-                          color={word.feedback === 'perfect' ? '#28a745' : '#ff9800'}
-                          accessible={false}
-                          importantForAccessibility="no"
-                        />
-                        <Text style={styles.wordText}>{word.word}</Text>
-                        <Text
-                          style={[
-                            styles.wordFeedback,
-                            word.feedback === 'could_improve' && styles.wordFeedbackOrange,
-                          ]}
-                        >
-                          {word.feedback === 'perfect' ? 'Perfect' : 'Could improve'}
-                        </Text>
-                        {word.feedback === 'could_improve' && (
-                          <IconButton
-                            accessibilityLabel={`Play audio for ${word.word}`}
-                            accessibilityHint="Plays this word"
-                            onPress={() => handlePlayWordAudio(word.word)}
-                            style={styles.wordAudioButton}
-                          >
-                            <Ionicons name="volume-high" size={16} color={theme.colors.primary} />
-                          </IconButton>
-                        )}
-                      </View>
-                    ))}
+                  <Text style={styles.pronunciationWordText}>{word.word}</Text>
+                  <View style={styles.pronunciationWordBadgeWrap}>
+                    <View
+                      style={[
+                        styles.pronunciationWordBadge,
+                        word.feedback === 'perfect' ? styles.pronunciationWordBadgePerfect : styles.pronunciationWordBadgeImprove,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.pronunciationWordBadgeText,
+                          word.feedback === 'perfect' ? styles.pronunciationWordBadgeTextPerfect : styles.pronunciationWordBadgeTextImprove,
+                        ]}
+                      >
+                        {word.feedback === 'perfect' ? 'Perfect' : 'Could improve'}
+                      </Text>
+                    </View>
+                    {isExpandable && (
+                      <Pressable
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handlePlayWordAudio(word.word);
+                        }}
+                        style={styles.pronunciationWordSpeaker}
+                        accessibilityLabel={`Play ${word.word}`}
+                      >
+                        <Ionicons name="volume-high" size={18} color="#F97316" />
+                      </Pressable>
+                    )}
                   </View>
+                </>
+              );
+              return isExpandable ? (
+                <Pressable
+                  key={index}
+                  style={[styles.pronunciationWordRow, isExpanded && styles.pronunciationWordRowExpanded]}
+                  onPress={() => setExpandedWordIndex((prev) => (prev === index ? null : index))}
+                  accessibilityLabel={`${word.word}, could improve. ${isExpanded ? 'Tap to collapse tip' : 'Tap for tip'}`}
+                  accessibilityRole="button"
+                >
+                  {rowContent}
+                </Pressable>
+              ) : (
+                <View key={index} style={styles.pronunciationWordRow}>
+                  {rowContent}
                 </View>
-              </>
-            )}
+              );
+            })}
+          </View>
+          {expandedWordIndex !== null && pronunciationResult.words[expandedWordIndex] && (
+            <View style={styles.pronunciationTipPanel}>
+              <Ionicons name="bulb" size={18} color="#92400E" style={styles.pronunciationTipPanelIcon} />
+              <Text style={styles.pronunciationTipPanelText}>
+                {getTipForWord(pronunciationResult.words[expandedWordIndex])}
+              </Text>
+              <Pressable
+                onPress={() => setExpandedWordIndex(null)}
+                style={styles.pronunciationTipPanelClose}
+                accessibilityLabel="Close tip"
+              >
+                <Ionicons name="close" size={18} color="#6B7280" />
+              </Pressable>
+            </View>
+          )}
+          <View style={styles.pronunciationLegend}>
+            <View style={styles.pronunciationLegendRow}>
+              <Ionicons name="checkmark-circle" size={14} color="#22C55E" style={styles.pronunciationLegendIcon} />
+              <Text style={styles.pronunciationLegendText}>Perfect: Matches reference audio.</Text>
+            </View>
+            <View style={styles.pronunciationLegendRow}>
+              <Ionicons name="alert-circle" size={14} color="#F97316" style={styles.pronunciationLegendIcon} />
+              <Text style={styles.pronunciationLegendText}>Could improve: Tap for specific tips.</Text>
+            </View>
+          </View>
+          {firstImproveWord ? (
+            <Pressable
+              style={styles.pronunciationPracticeAgainButton}
+              onPress={() => {
+                setHasRecorded(false);
+                setRecordedAudioUri(null);
+                onPracticeAgain?.();
+              }}
+              accessibilityLabel={`Practice ${firstImproveWord.word} again`}
+            >
+              <Ionicons name="refresh" size={20} color="#fff" style={styles.pronunciationPracticeAgainIcon} />
+              <Text style={styles.pronunciationPracticeAgainText}>
+                Practice "{firstImproveWord.word}" again
+              </Text>
+            </Pressable>
+          ) : null}
+          <Pressable
+            style={styles.pronunciationNextButton}
+            onPress={onContinue}
+            disabled={!onContinue}
+            accessibilityLabel="Next question"
+          >
+            <Text style={styles.pronunciationNextText}>Next Question</Text>
+            <Ionicons name="arrow-forward" size={20} color={baseTheme.colors.mutedText} />
+          </Pressable>
+        </View>
+      );
+    }
 
-            <Button
-              title="Continue"
-              variant="secondary"
-              disabled={!onContinue}
-              onPress={() => onContinue?.()}
-              style={styles.ctaButton}
-            />
-          </>
+    // ——— Screen 3: Input (Figma: Speak this phrase, record) ———
+    return (
+      <View style={styles.pronunciationContainer}>
+        <Text style={styles.pronunciationInstruction}>SPEAK THIS PHRASE</Text>
+        <Text style={styles.pronunciationPhrase}>{card.expected}</Text>
+        <Text style={styles.pronunciationTranslation}>
+          {card.translation ? `(${card.translation})` : ''}
+        </Text>
+        <Pressable
+          onPress={handlePlayAudio}
+          style={styles.pronunciationSpeakerButton}
+          accessibilityLabel="Listen to pronunciation"
+        >
+          <Ionicons name="volume-high" size={28} color="#2563EB" />
+        </Pressable>
+        <View style={styles.pronunciationTipBox}>
+          <Ionicons name="bulb-outline" size={18} color="#92400E" style={styles.pronunciationTipIcon} />
+          <Text style={styles.pronunciationTipText}>Tip: Find a quiet space for best results</Text>
+        </View>
+        <View style={styles.pronunciationRecordSection}>
+          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={isRecording ? 'Release to stop recording' : 'Hold to record'}
+              accessibilityHint={isRecording ? undefined : 'Press and hold the button while you speak'}
+              accessibilityState={{ selected: isRecording, disabled: isPronunciationProcessing }}
+              style={[styles.pronunciationRecordButton, isRecording && styles.pronunciationRecordButtonActive]}
+              onPressIn={() => {
+                if (!isRecording && !isPronunciationProcessing) handleStartRecording();
+              }}
+              onPressOut={() => {
+                if (isRecording) handleStopRecording();
+              }}
+              disabled={isPronunciationProcessing}
+            >
+              <Ionicons name="mic" size={48} color="#fff" />
+            </Pressable>
+          </Animated.View>
+          <Text style={styles.pronunciationRecordHint}>Hold to record your pronunciation</Text>
+        </View>
+        {isIOSSimulator && (
+          <View style={styles.simulatorWarning}>
+            <Text style={styles.warningText}>⚠️ iOS Simulator: Microphone may not work</Text>
+            <Text style={styles.warningSubtext}>Try: System Settings → Privacy → Microphone → Allow Xcode</Text>
+          </View>
         )}
+        {recordingError ? (
+          <Text style={styles.errorText} accessibilityRole="alert">
+            {recordingError}
+          </Text>
+        ) : null}
+        <Pressable
+          style={[
+            styles.pronunciationFooterButton,
+            hasRecorded && styles.pronunciationFooterButtonActive,
+          ]}
+          onPress={() => {
+            if (!hasRecorded || !recordedAudioUri || !onCheckAnswer) return;
+            onCheckAnswer(recordedAudioUri);
+          }}
+          disabled={!hasRecorded}
+          accessibilityLabel={hasRecorded ? 'Continue' : 'Record to continue'}
+        >
+          <Text
+            style={[
+              styles.pronunciationFooterButtonText,
+              hasRecorded && styles.pronunciationFooterButtonTextActive,
+            ]}
+          >
+            {hasRecorded ? 'Continue' : 'Record to continue'}
+          </Text>
+        </Pressable>
       </View>
     );
   }
@@ -1055,6 +1119,356 @@ const styles = StyleSheet.create({
   alsoCorrectText: {
     fontFamily: baseTheme.typography.regular,
     fontSize: 14,
+    color: baseTheme.colors.text,
+  },
+  // Pronunciation assessment (Figma: Input, Loading, Result)
+  pronunciationContainer: {
+    flex: 1,
+    minHeight: 0,
+    alignItems: 'center',
+    paddingVertical: baseTheme.spacing.sm,
+  },
+  pronunciationInstruction: {
+    fontFamily: baseTheme.typography.bold,
+    fontSize: 12,
+    color: '#0D9488',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    marginBottom: baseTheme.spacing.md,
+  },
+  pronunciationPhrase: {
+    fontFamily: baseTheme.typography.bold,
+    fontSize: 32,
+    color: baseTheme.colors.text,
+    textAlign: 'center',
+    marginBottom: baseTheme.spacing.xs,
+    paddingHorizontal: baseTheme.spacing.md,
+  },
+  pronunciationTranslation: {
+    fontFamily: baseTheme.typography.regular,
+    fontSize: 16,
+    color: baseTheme.colors.mutedText,
+    textAlign: 'center',
+    marginBottom: baseTheme.spacing.md,
+  },
+  pronunciationSpeakerButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 12,
+    backgroundColor: '#DBEAFE',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: baseTheme.spacing.md,
+  },
+  pronunciationTipBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: baseTheme.spacing.lg,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  pronunciationTipIcon: {
+    marginRight: 8,
+  },
+  pronunciationTipText: {
+    fontFamily: baseTheme.typography.regular,
+    fontSize: 14,
+    color: '#92400E',
+    flex: 1,
+  },
+  pronunciationRecordSection: {
+    alignItems: 'center',
+    marginBottom: baseTheme.spacing.md,
+  },
+  pronunciationRecordButton: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#F87171',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: baseTheme.spacing.sm,
+  },
+  pronunciationRecordButtonActive: {
+    backgroundColor: '#EF4444',
+  },
+  pronunciationRecordHint: {
+    fontFamily: baseTheme.typography.regular,
+    fontSize: 14,
+    color: baseTheme.colors.mutedText,
+    textAlign: 'center',
+  },
+  pronunciationFooterButton: {
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 16,
+    backgroundColor: '#E5E7EB',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 'auto',
+  },
+  pronunciationFooterButtonActive: {
+    backgroundColor: '#F97316',
+  },
+  pronunciationFooterButtonText: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  pronunciationFooterButtonTextActive: {
+    color: '#fff',
+  },
+  // Loading screen
+  pronunciationLoadingContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: baseTheme.spacing.lg,
+  },
+  pronunciationSpinner: {
+    marginBottom: baseTheme.spacing.lg,
+  },
+  pronunciationLoadingTitle: {
+    fontFamily: baseTheme.typography.bold,
+    fontSize: 22,
+    color: baseTheme.colors.text,
+    textAlign: 'center',
+    marginBottom: baseTheme.spacing.sm,
+  },
+  pronunciationLoadingSubtext: {
+    fontFamily: baseTheme.typography.regular,
+    fontSize: 16,
+    color: baseTheme.colors.mutedText,
+    textAlign: 'center',
+    marginBottom: baseTheme.spacing.xs,
+  },
+  pronunciationLoadingTime: {
+    fontFamily: baseTheme.typography.regular,
+    fontSize: 14,
+    color: baseTheme.colors.mutedText,
+    marginBottom: baseTheme.spacing.lg,
+  },
+  pronunciationSteps: {
+    alignSelf: 'stretch',
+    gap: 12,
+  },
+  pronunciationStepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pronunciationStepDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#14B8A6',
+  },
+  pronunciationStepText: {
+    fontFamily: baseTheme.typography.regular,
+    fontSize: 14,
+    color: baseTheme.colors.mutedText,
+  },
+  // Result screen
+  pronunciationResultHeading: {
+    fontFamily: baseTheme.typography.bold,
+    fontSize: 12,
+    color: '#0D9488',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    marginBottom: baseTheme.spacing.sm,
+  },
+  pronunciationScore: {
+    fontFamily: baseTheme.typography.bold,
+    fontSize: 56,
+    color: '#0D9488',
+    marginBottom: baseTheme.spacing.xs,
+  },
+  pronunciationScoreLabel: {
+    fontFamily: baseTheme.typography.regular,
+    fontSize: 16,
+    color: baseTheme.colors.text,
+    marginBottom: baseTheme.spacing.md,
+  },
+  pronunciationBarContainer: {
+    width: '100%',
+    marginBottom: baseTheme.spacing.lg,
+  },
+  pronunciationBarTrack: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#E5E7EB',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  pronunciationBarFill: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: '#14B8A6',
+    borderRadius: 4,
+  },
+  pronunciationBarMarker: {
+    position: 'absolute',
+    top: -2,
+    width: 4,
+    height: 12,
+    borderRadius: 2,
+    backgroundColor: '#22C55E',
+    marginLeft: -2,
+  },
+  pronunciationBarLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 4,
+    paddingHorizontal: 0,
+  },
+  pronunciationBarLabelText: {
+    fontFamily: baseTheme.typography.regular,
+    fontSize: 12,
+    color: baseTheme.colors.mutedText,
+  },
+  pronunciationAnalysisTitle: {
+    fontFamily: baseTheme.typography.bold,
+    fontSize: 12,
+    color: baseTheme.colors.mutedText,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: baseTheme.spacing.sm,
+    alignSelf: 'flex-start',
+  },
+  pronunciationWordList: {
+    width: '100%',
+    gap: baseTheme.spacing.sm,
+    marginBottom: baseTheme.spacing.md,
+  },
+  pronunciationWordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pronunciationWordRowExpanded: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    borderRadius: 10,
+  },
+  pronunciationTipPanel: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    width: '100%',
+    padding: 12,
+    marginBottom: baseTheme.spacing.md,
+    borderRadius: 12,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    gap: 8,
+  },
+  pronunciationTipPanelIcon: {
+    marginTop: 2,
+  },
+  pronunciationTipPanelText: {
+    flex: 1,
+    fontFamily: baseTheme.typography.regular,
+    fontSize: 14,
+    color: '#92400E',
+    lineHeight: 20,
+  },
+  pronunciationTipPanelClose: {
+    padding: 4,
+  },
+  pronunciationWordIcon: {
+    marginRight: 10,
+  },
+  pronunciationWordText: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 18,
+    color: baseTheme.colors.text,
+    flex: 1,
+  },
+  pronunciationWordBadgeWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pronunciationWordBadge: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+  },
+  pronunciationWordBadgePerfect: {
+    backgroundColor: '#DCFCE7',
+  },
+  pronunciationWordBadgeImprove: {
+    backgroundColor: '#FFEDD5',
+  },
+  pronunciationWordBadgeText: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 13,
+  },
+  pronunciationWordBadgeTextPerfect: {
+    color: '#166534',
+  },
+  pronunciationWordBadgeTextImprove: {
+    color: '#C2410C',
+  },
+  pronunciationWordSpeaker: {
+    padding: 4,
+  },
+  pronunciationLegend: {
+    width: '100%',
+    marginBottom: baseTheme.spacing.lg,
+    gap: 4,
+  },
+  pronunciationLegendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pronunciationLegendIcon: {
+    marginRight: 6,
+  },
+  pronunciationLegendText: {
+    fontFamily: baseTheme.typography.regular,
+    fontSize: 13,
+    color: baseTheme.colors.mutedText,
+    flex: 1,
+  },
+  pronunciationPracticeAgainButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 16,
+    backgroundColor: '#F97316',
+    marginBottom: baseTheme.spacing.sm,
+    gap: 8,
+  },
+  pronunciationPracticeAgainIcon: {
+    marginRight: 4,
+  },
+  pronunciationPracticeAgainText: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 16,
+    color: '#fff',
+  },
+  pronunciationNextButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 16,
+    backgroundColor: '#E5E7EB',
+    gap: 8,
+  },
+  pronunciationNextText: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 16,
     color: baseTheme.colors.text,
   },
   checkButton: {

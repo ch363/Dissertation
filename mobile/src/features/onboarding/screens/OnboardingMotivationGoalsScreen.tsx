@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 
-import { OptionQuestion } from '@/components/onboarding/_components';
+import { OptionQuestion } from '@/components/onboarding';
 import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 
 export default function MotivationGoals() {

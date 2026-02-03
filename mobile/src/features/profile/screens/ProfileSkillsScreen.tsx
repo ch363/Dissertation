@@ -1,12 +1,12 @@
 import React, { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { LoadingRow } from '@/components/ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScrollView } from '@/components/ui';
 import { ScreenHeader } from '@/components/navigation';
-import { Card } from '@/components/profile/Card';
+import { Card } from '@/components/profile';
 import { getAllMastery, type SkillMastery } from '@/services/api/mastery';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
