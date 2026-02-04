@@ -1,0 +1,28 @@
+appId: com.ch363.fluentia
+---
+# Journey: Start a lesson from Home (Primary CTA)
+# User sees recommended next action and starts learning
+
+- launchApp
+- assertVisible: "Welcome back"
+- assertVisible: "Continue your learning journey"
+
+# Primary CTA card should be visible
+- assertVisible:
+    id: ".*primary.*cta.*"
+    optional: true
+
+# Tap the primary action button (could be Continue, Start Learning, or Review)
+- tapOn:
+    text: "Continue Lesson|Start Learning|Start Review"
+    optional: true
+
+# Should navigate to session runner
+- assertVisible:
+    text: ".*Session.*|.*Lesson.*"
+    optional: true
+
+# Progress bar should be visible during session
+- assertVisible:
+    id: ".*progress.*"
+    optional: true

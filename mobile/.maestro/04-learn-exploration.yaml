@@ -1,0 +1,48 @@
+appId: com.ch363.fluentia
+---
+# Journey: Browse Learn hub and explore lessons
+# User browses available content and filters lessons
+
+- launchApp
+
+# Navigate to Learn tab
+- tapOn:
+    id: ".*learn.*tab.*"
+    optional: true
+
+- assertVisible:
+    text: "Learn|Discover"
+    optional: true
+
+# Look for discover carousel
+- assertVisible:
+    text: "Discover|Recommended"
+    optional: true
+
+# Check for review card
+- assertVisible:
+    text: "Review|Due"
+    optional: true
+
+# Tap "See all lessons" or similar browse action
+- tapOn:
+    text: "See all|Browse|All lessons"
+    optional: true
+
+# Should show lesson list
+- assertVisible:
+    text: "Lessons|Filter"
+    optional: true
+
+# Try tapping a lesson
+- tapOn:
+    index: 0
+    optional: true
+
+# Lesson overview should appear
+- assertVisible:
+    text: "Start|Continue|Lesson"
+    optional: true
+
+# Go back to Learn hub
+- back

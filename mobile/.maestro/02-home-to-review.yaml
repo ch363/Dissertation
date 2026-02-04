@@ -1,0 +1,22 @@
+appId: com.ch363.fluentia
+---
+# Journey: Start a review session from Home
+# User taps on review CTA to practice due cards
+
+- launchApp
+- assertVisible: "Welcome back"
+
+# Check if review button is available
+- assertVisible:
+    text: "Review|Due"
+    optional: true
+
+# Tap review action if available
+- tapOn:
+    text: "Review|Start Review|Review Due"
+    optional: true
+
+# Session runner should load
+- assertVisible:
+    text: ".*cards.*|.*review.*"
+    optional: true

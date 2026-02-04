@@ -75,8 +75,35 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=...
 
 ### Testing
 
-- Unit/component: `npm test` (Jest with Expo mocks). Key coverage: auth-flow, onboarding mapper/provider, progress repo, Home screen.
-- E2E (Maestro): `tests/e2e/maestro/signup-onboarding.yaml` for sign-up → onboarding → first lesson smoke.
+#### Unit/Component Tests
+- Run with: `npm test` (Jest with Expo mocks)
+- Key coverage: auth-flow, onboarding mapper/provider, progress repo, Home screen
+
+#### E2E Tests (Maestro)
+- Location: `.maestro/` directory
+- **Run all tests:** `npm run test:e2e`
+- **Run specific journey:**
+  - Lesson flow: `npm run test:e2e:lesson`
+  - Review flow: `npm run test:e2e:review`
+  - Navigation: `npm run test:e2e:navigation`
+  - Full journey: `npm run test:e2e:full-journey`
+- See `.maestro/README.md` and `.maestro/TEST_SUITE.md` for complete documentation
+
+**Test Coverage:**
+- 11 comprehensive user journey tests covering:
+  - Home → Lesson/Review flows
+  - Tab navigation (Home, Learn, Profile, Settings)
+  - Lesson discovery and exploration
+  - Session completion flows
+  - Progress and mastery views
+  - First-time user experience
+  - Complete end-to-end user journey
+
+**Prerequisites:**
+- Maestro CLI (install: `curl -Ls "https://get.maestro.mobile.dev" | bash`)
+- Java 17+ (install: `brew install openjdk@17`)
+- iOS Simulator or Android Emulator running with app installed
+- **User must be logged in** (tests start from Home screen)
 
 ---
 

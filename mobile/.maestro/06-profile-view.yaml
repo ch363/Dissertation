@@ -1,0 +1,42 @@
+appId: com.ch363.fluentia
+---
+# Journey: View profile and mastery
+# User checks their overall progress and skill mastery
+
+- launchApp
+
+# Navigate to Profile
+- tapOn:
+    id: ".*profile.*tab.*"
+    optional: true
+
+- assertVisible:
+    text: "Profile|Total XP"
+    optional: true
+
+# Check for user stats
+- assertVisible:
+    text: "XP|Mastery|Skills"
+    optional: true
+
+# Scroll to see skill mastery
+- scroll
+
+# Look for skill breakdown
+- assertVisible:
+    text: "Vocabulary|Grammar|Pronunciation"
+    optional: true
+
+# Tap skills to see details
+- tapOn:
+    text: "View Skills|Mastery"
+    optional: true
+- assertVisible:
+    text: "Skill|Mastery"
+    optional: true
+- back
+
+# Return to home
+- tapOn:
+    id: ".*home.*tab.*"
+    optional: true

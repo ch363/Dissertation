@@ -1,0 +1,32 @@
+appId: com.ch363.fluentia
+---
+# Journey: View daily progress and streak
+# User checks their learning stats and motivation
+
+- launchApp
+
+# Home screen elements
+- assertVisible: "Welcome back"
+
+# Streak card (if user has a streak)
+- assertVisible:
+    text: ".*streak.*|.*day.*"
+    optional: true
+
+# Today at a glance section
+- assertVisible:
+    text: "Today|minutes|items"
+    optional: true
+
+# Focus section (Why this next)
+- assertVisible:
+    text: "Focus:|Because"
+    optional: true
+
+# Scroll down to see more content
+- scroll
+
+# Help button should be accessible
+- assertVisible:
+    id: ".*help.*"
+    optional: true

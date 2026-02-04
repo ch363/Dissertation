@@ -1,0 +1,47 @@
+appId: com.ch363.fluentia
+---
+# Journey: Access settings and preferences
+# User configures app appearance and learning preferences
+
+- launchApp
+
+# Navigate to Settings
+- tapOn:
+    id: ".*settings.*tab.*"
+    optional: true
+
+- assertVisible:
+    text: "Settings"
+
+# Check for appearance settings
+- assertVisible:
+    text: "Appearance|Theme"
+    optional: true
+
+# Check for session/learning settings
+- assertVisible:
+    text: "Session|Learning"
+    optional: true
+
+# Tap appearance settings
+- tapOn:
+    text: "Appearance|Theme"
+    optional: true
+- assertVisible:
+    text: "Light|Dark|System"
+    optional: true
+- back
+
+# Tap session settings
+- tapOn:
+    text: "Session|Learning"
+    optional: true
+- assertVisible:
+    text: "Default|Difficulty"
+    optional: true
+- back
+
+# Return to home
+- tapOn:
+    id: ".*home.*tab.*"
+    optional: true

@@ -1,0 +1,9 @@
+appId: com.ch363.fluentia
+---
+# Test: Verify app launches and landing screen is displayed
+
+- launchApp
+- assertVisible: "Fluentia"
+- assertVisible: "Personalised learning, one step at a time."
+- assertVisible: "Get Started"
+- assertVisible: "Log In"

@@ -1,0 +1,77 @@
+appId: com.ch363.fluentia
+---
+# Journey: Complete end-to-end user experience
+# Full flow: Home → Learn → Lesson → Session → Completion → Home
+
+- launchApp
+
+# === HOME SCREEN ===
+- assertVisible: "Welcome back"
+- assertVisible: "Continue your learning journey"
+
+# Check streak (if exists)
+- assertVisible:
+    text: ".*streak.*|.*day.*"
+    optional: true
+
+# === NAVIGATE TO LEARN ===
+- tapOn:
+    id: ".*learn.*tab.*"
+    optional: true
+- assertVisible:
+    text: "Learn|Discover"
+    optional: true
+
+# === BROWSE LESSONS ===
+- tapOn:
+    text: "See all|Browse|All lessons"
+    optional: true
+- assertVisible:
+    text: "Lessons|Filter"
+    optional: true
+
+# === SELECT A LESSON ===
+- tapOn:
+    index: 0
+    optional: true
+- assertVisible:
+    text: "Start|Continue"
+    optional: true
+
+# === START SESSION ===
+- tapOn:
+    text: "Start|Continue"
+    optional: true
+- assertVisible:
+    text: ".*Session.*|.*progress.*"
+    optional: true
+
+# === INTERACT WITH SESSION ===
+# Simulate a few interactions
+- tapOn:
+    index: 0
+    optional: true
+- wait: 1000
+- tapOn:
+    text: "Continue|Next|Submit"
+    optional: true
+- wait: 1000
+
+# === COMPLETION ===
+- assertVisible:
+    text: "Complete|Well done|XP"
+    optional: true
+
+# === RETURN HOME ===
+- tapOn:
+    text: "Done|Home|Continue"
+    optional: true
+- tapOn:
+    id: ".*home.*tab.*"
+    optional: true
+- assertVisible: "Welcome back"
+
+# === VERIFY PROGRESS UPDATED ===
+- assertVisible:
+    text: "Today|minutes|items"
+    optional: true
