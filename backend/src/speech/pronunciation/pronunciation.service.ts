@@ -95,7 +95,10 @@ export class PronunciationService {
     speechConfig.speechRecognitionLanguage = locale;
 
     const audioContainer = detectAudioContainer(audioBytes);
-    const audioConfig = this.createAudioConfigFromBytes(audioBytes, audioContainer);
+    const audioConfig = this.createAudioConfigFromBytes(
+      audioBytes,
+      audioContainer,
+    );
     const recognizer = new SpeechSDK.SpeechRecognizer(
       speechConfig,
       audioConfig,
@@ -170,7 +173,9 @@ export class PronunciationService {
             phonemesCount: phonemes.length,
             phonemeSample:
               phonemes.length > 0
-                ? phonemes.slice(0, 2).map((p: any) => ({ p: p?.Phoneme, acc: p?.AccuracyScore }))
+                ? phonemes
+                    .slice(0, 2)
+                    .map((p: any) => ({ p: p?.Phoneme, acc: p?.AccuracyScore }))
                 : undefined,
           };
         });
@@ -200,16 +205,22 @@ export class PronunciationService {
       const words: PronunciationWordScore[] = this.extractWordsFromJson(nBest0);
 
       if (words.length > 0) {
-        this.logger.log('PronunciationAssessment extracted words (sent to client)');
         this.logger.log(
-          JSON.stringify({
-            words: words.map((w) => ({
-              word: w.word,
-              accuracy: w.accuracy,
-              errorType: w.errorType ?? '(none)',
-              phonemesCount: w.phonemes?.length ?? 0,
-            })),
-          }, null, 0),
+          'PronunciationAssessment extracted words (sent to client)',
+        );
+        this.logger.log(
+          JSON.stringify(
+            {
+              words: words.map((w) => ({
+                word: w.word,
+                accuracy: w.accuracy,
+                errorType: w.errorType ?? '(none)',
+                phonemesCount: w.phonemes?.length ?? 0,
+              })),
+            },
+            null,
+            0,
+          ),
         );
       }
 
@@ -223,10 +234,13 @@ export class PronunciationService {
     } catch (err) {
       // If the SDK fails parsing WAV input, surface as 400 with actionable guidance.
       const message =
-        err && typeof err === 'object' && 'message' in (err as any)
-          ? String((err as any).message)
+        err && typeof err === 'object' && 'message' in err
+          ? String(err.message)
           : '';
-      if (message.toLowerCase().includes('wav') && message.toLowerCase().includes('header')) {
+      if (
+        message.toLowerCase().includes('wav') &&
+        message.toLowerCase().includes('header')
+      ) {
         throw new BadRequestException(
           'Invalid audio payload: expected WAV (RIFF/WAVE) or raw 16kHz mono PCM. Please re-record and try again.',
         );
@@ -257,16 +271,15 @@ export class PronunciationService {
           parsed.bitsPerSample,
           parsed.channels,
         );
-        const pushStream = SpeechSDK.AudioInputStream.createPushStream(
-          streamFormat,
-        );
+        const pushStream =
+          SpeechSDK.AudioInputStream.createPushStream(streamFormat);
         const arrayBuffer = Uint8Array.from(parsed.pcmData).buffer;
         pushStream.write(arrayBuffer);
         pushStream.close();
         return SpeechSDK.AudioConfig.fromStreamInput(pushStream);
       } catch (wavParseErr) {
         throw new BadRequestException(
-          `Invalid WAV payload: ${(wavParseErr as any)?.message ?? 'could not parse WAV'}`,
+          `Invalid WAV payload: ${wavParseErr?.message ?? 'could not parse WAV'}`,
         );
       }
     }
@@ -297,7 +310,8 @@ export class PronunciationService {
       bitsPerSample,
       channels,
     );
-    const pushStream = SpeechSDK.AudioInputStream.createPushStream(streamFormat);
+    const pushStream =
+      SpeechSDK.AudioInputStream.createPushStream(streamFormat);
     const arrayBuffer = Uint8Array.from(audioBytes).buffer;
     pushStream.write(arrayBuffer);
     pushStream.close();

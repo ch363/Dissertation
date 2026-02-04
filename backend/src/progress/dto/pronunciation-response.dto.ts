@@ -8,12 +8,18 @@ export const PRONUNCIATION_ERROR_TYPES = [
   'UnexpectedBreak',
   'MissingBreak',
 ] as const;
-export type PronunciationErrorTypeDto = (typeof PRONUNCIATION_ERROR_TYPES)[number];
+export type PronunciationErrorTypeDto =
+  (typeof PRONUNCIATION_ERROR_TYPES)[number];
 
 export class PhonemeScoreDto {
   @ApiProperty({ description: 'Phoneme symbol', example: 'k' })
   phoneme: string;
-  @ApiProperty({ description: 'Accuracy 0-100', example: 85, minimum: 0, maximum: 100 })
+  @ApiProperty({
+    description: 'Accuracy 0-100',
+    example: 85,
+    minimum: 0,
+    maximum: 100,
+  })
   accuracy: number;
 }
 

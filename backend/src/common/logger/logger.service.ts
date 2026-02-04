@@ -1,4 +1,8 @@
-import { Injectable, LoggerService as NestLoggerService, Scope } from '@nestjs/common';
+import {
+  Injectable,
+  LoggerService as NestLoggerService,
+  Scope,
+} from '@nestjs/common';
 import { Logger as NestLogger } from '@nestjs/common';
 
 @Injectable({ scope: Scope.TRANSIENT })
@@ -23,10 +27,14 @@ export class LoggerService extends NestLogger implements NestLoggerService {
     }
   }
 
-  logError(message: string, error?: Error | unknown, metadata?: Record<string, unknown>) {
+  logError(
+    message: string,
+    error?: Error | unknown,
+    metadata?: Record<string, unknown>,
+  ) {
     const stack = error instanceof Error ? error.stack : undefined;
     const errorMessage = error instanceof Error ? error.message : String(error);
-    
+
     const fullMetadata = {
       ...metadata,
       error: errorMessage,
@@ -39,10 +47,7 @@ export class LoggerService extends NestLogger implements NestLoggerService {
         this.context,
       );
     } else {
-      super.error(
-        `${message} ${JSON.stringify(fullMetadata)}`,
-        this.context,
-      );
+      super.error(`${message} ${JSON.stringify(fullMetadata)}`, this.context);
     }
   }
 

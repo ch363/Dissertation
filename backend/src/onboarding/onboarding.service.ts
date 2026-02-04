@@ -155,10 +155,12 @@ export class OnboardingService {
       const initialScores =
         await this.preferencesService.getInitialDeliveryMethodScores(userId);
 
-      const existingScores = await this.prisma.userDeliveryMethodScore.findMany({
-        where: { userId },
-        select: { deliveryMethod: true },
-      });
+      const existingScores = await this.prisma.userDeliveryMethodScore.findMany(
+        {
+          where: { userId },
+          select: { deliveryMethod: true },
+        },
+      );
 
       const existingMethods = new Set(
         existingScores.map((s) => s.deliveryMethod),

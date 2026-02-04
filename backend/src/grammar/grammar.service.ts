@@ -21,7 +21,10 @@ export class GrammarService {
    * Check grammatical correctness of text in the given language.
    * Returns a 0–100 score (100 = no issues). On network/API errors returns null.
    */
-  async checkGrammar(text: string, languageCode: string): Promise<GrammarCheckResult | null> {
+  async checkGrammar(
+    text: string,
+    languageCode: string,
+  ): Promise<GrammarCheckResult | null> {
     const trimmed = text?.trim();
     if (!trimmed || trimmed.length > 20000) {
       return { score: 100, issueCount: 0 };
@@ -33,7 +36,10 @@ export class GrammarService {
       params.set('language', languageCode);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        REQUEST_TIMEOUT_MS,
+      );
 
       const res = await fetch(LANGUAGETOOL_API, {
         method: 'POST',
@@ -51,7 +57,9 @@ export class GrammarService {
         return null;
       }
 
-      const data = (await res.json()) as { matches?: Array<{ rule?: { category?: { id?: string } } }> };
+      const data = (await res.json()) as {
+        matches?: Array<{ rule?: { category?: { id?: string } } }>;
+      };
       const matches = Array.isArray(data.matches) ? data.matches : [];
       const penalty = Math.min(MAX_PENALTY, matches.length * PENALTY_PER_MATCH);
       const score = Math.max(0, 100 - penalty);

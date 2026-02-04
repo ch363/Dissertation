@@ -66,8 +66,12 @@ export class MeController {
     @User() userId: string,
     @Query('tzOffsetMinutes') tzOffsetMinutes?: string,
   ) {
-    const parsed = tzOffsetMinutes !== undefined ? Number(tzOffsetMinutes) : undefined;
-    return this.meService.getDashboard(userId, Number.isFinite(parsed) ? parsed : undefined);
+    const parsed =
+      tzOffsetMinutes !== undefined ? Number(tzOffsetMinutes) : undefined;
+    return this.meService.getDashboard(
+      userId,
+      Number.isFinite(parsed) ? parsed : undefined,
+    );
   }
 
   @Get('stats')
@@ -76,8 +80,12 @@ export class MeController {
     @User() userId: string,
     @Query('tzOffsetMinutes') tzOffsetMinutes?: string,
   ) {
-    const parsed = tzOffsetMinutes !== undefined ? Number(tzOffsetMinutes) : undefined;
-    return this.meService.getStats(userId, Number.isFinite(parsed) ? parsed : undefined);
+    const parsed =
+      tzOffsetMinutes !== undefined ? Number(tzOffsetMinutes) : undefined;
+    return this.meService.getStats(
+      userId,
+      Number.isFinite(parsed) ? parsed : undefined,
+    );
   }
 
   @Get('lessons')

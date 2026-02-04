@@ -68,11 +68,10 @@ export class CandidateService {
       ReturnType<typeof this.prisma.userQuestionPerformance.findMany>
     >;
     try {
-      allPerformances =
-        await this.prisma.userQuestionPerformance.findMany({
-          where: baseWhere,
-          orderBy: { createdAt: 'desc' },
-        });
+      allPerformances = await this.prisma.userQuestionPerformance.findMany({
+        where: baseWhere,
+        orderBy: { createdAt: 'desc' },
+      });
     } catch (error: unknown) {
       const err = error as { message?: string };
       if (
@@ -96,7 +95,8 @@ export class CandidateService {
     // Include only questions whose *latest* row is due (nextReviewDue <= now)
     const dueLatestPerformances = Array.from(questionIdMap.values()).filter(
       (perf) =>
-        perf.nextReviewDue != null && perf.nextReviewDue.getTime() <= now.getTime(),
+        perf.nextReviewDue != null &&
+        perf.nextReviewDue.getTime() <= now.getTime(),
     );
 
     for (const perf of dueLatestPerformances) {
@@ -167,11 +167,10 @@ export class CandidateService {
           this.difficultyCalculator.calculateBaseDifficulty(
             question.teaching.knowledgeLevel,
           );
-        const difficulty =
-          this.difficultyCalculator.adjustDifficultyForMastery(
-            baseDifficulty,
-            estimatedMastery,
-          );
+        const difficulty = this.difficultyCalculator.adjustDifficultyForMastery(
+          baseDifficulty,
+          estimatedMastery,
+        );
 
         candidates.push({
           kind: 'question',
@@ -260,10 +259,9 @@ export class CandidateService {
           question.teaching,
         );
 
-        const difficulty =
-          this.difficultyCalculator.calculateBaseDifficulty(
-            question.teaching.knowledgeLevel,
-          );
+        const difficulty = this.difficultyCalculator.calculateBaseDifficulty(
+          question.teaching.knowledgeLevel,
+        );
 
         candidates.push({
           kind: 'question',
@@ -288,9 +286,7 @@ export class CandidateService {
 
   extractSkillTags(item: { skillTags?: Array<{ name: string }> }): string[] {
     if (item.skillTags && Array.isArray(item.skillTags)) {
-      return item.skillTags
-        .map((tag) => tag.name)
-        .filter((name) => name);
+      return item.skillTags.map((tag) => tag.name).filter((name) => name);
     }
     return [];
   }

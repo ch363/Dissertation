@@ -209,7 +209,11 @@ export class ContentLookupService {
     questionId: string,
     lessonId: string,
     variantData: any,
-    direction: { isLearningToUser: boolean; sourceText: string; correctAnswer: string },
+    direction: {
+      isLearningToUser: boolean;
+      sourceText: string;
+      correctAnswer: string;
+    },
   ): Promise<{
     options: Array<{ id: string; label: string }>;
     correctOptionId: string;
@@ -217,8 +221,11 @@ export class ContentLookupService {
   } | null> {
     const { isLearningToUser, sourceText, correctAnswer } = direction;
 
-    const variantOptions: Array<{ id: string; label: string; isCorrect?: boolean }> | undefined =
-      Array.isArray(variantData?.options) ? variantData.options : undefined;
+    const variantOptions:
+      | Array<{ id: string; label: string; isCorrect?: boolean }>
+      | undefined = Array.isArray(variantData?.options)
+      ? variantData.options
+      : undefined;
 
     if (variantOptions && variantOptions.length > 0) {
       const labels = variantOptions.map((o) => o.label);
@@ -320,7 +327,9 @@ export class ContentLookupService {
           if (
             candidate &&
             candidate.toLowerCase() !== correctAnswer.toLowerCase() &&
-            !fallbackOptions.some((opt) => opt.toLowerCase() === candidate.toLowerCase())
+            !fallbackOptions.some(
+              (opt) => opt.toLowerCase() === candidate.toLowerCase(),
+            )
           ) {
             fallbackOptions.push(candidate);
             if (fallbackOptions.length >= 4) break;
@@ -328,7 +337,9 @@ export class ContentLookupService {
         }
       }
     } catch (error) {
-      this.logger.logError(`Error fetching lesson teachings for fallback`, { error });
+      this.logger.logError(`Error fetching lesson teachings for fallback`, {
+        error,
+      });
     }
 
     const commonWords = isLearningToUser
@@ -382,10 +393,7 @@ export class ContentLookupService {
         }));
       }
 
-      return await this.createFallbackFillBlankOptions(
-        lessonId,
-        blankAnswer,
-      );
+      return await this.createFallbackFillBlankOptions(lessonId, blankAnswer);
     } catch (error) {
       this.handleQuestionErrors(
         'FILL_BLANK_OPTIONS_FAILED',
@@ -435,10 +443,21 @@ export class ContentLookupService {
         }
       }
     } catch (error) {
-      this.logger.logError('Error creating fallback fill-blank options', { error });
+      this.logger.logError('Error creating fallback fill-blank options', {
+        error,
+      });
     }
 
-    const commonWords = ['Sì', 'No', 'Ciao', 'Grazie', 'Per', 'Mille', 'Molto', 'Bene'];
+    const commonWords = [
+      'Sì',
+      'No',
+      'Ciao',
+      'Grazie',
+      'Per',
+      'Mille',
+      'Molto',
+      'Bene',
+    ];
     for (const word of commonWords) {
       if (fallbackOptions.length >= 4) break;
       if (
@@ -556,13 +575,15 @@ export class ContentLookupService {
           result.explanation = mcqResult.explanation;
         }
 
-        result.prompt = this.buildQuestionPrompt(
-          deliveryMethod,
-          variantData,
-          { sourceText: direction.sourceText },
-        );
+        result.prompt = this.buildQuestionPrompt(deliveryMethod, variantData, {
+          sourceText: direction.sourceText,
+        });
 
-        if (!result.options || result.options.length === 0 || !result.correctOptionId) {
+        if (
+          !result.options ||
+          result.options.length === 0 ||
+          !result.correctOptionId
+        ) {
           this.handleQuestionErrors(
             'MCQ_VALIDATION_FAILED',
             questionId,
@@ -573,7 +594,10 @@ export class ContentLookupService {
             { id: 'opt1', label: correctAnswer || 'Option 1' },
             { id: 'opt2', label: direction.isLearningToUser ? 'Yes' : 'Sì' },
             { id: 'opt3', label: direction.isLearningToUser ? 'No' : 'No' },
-            { id: 'opt4', label: direction.isLearningToUser ? 'Hello' : 'Ciao' },
+            {
+              id: 'opt4',
+              label: direction.isLearningToUser ? 'Hello' : 'Ciao',
+            },
           ];
           result.correctOptionId = 'opt1';
         }
@@ -586,7 +610,9 @@ export class ContentLookupService {
         const sourceIsItalian = this.isLikelyItalian(result.source);
         result.answer =
           variantData?.answer ??
-          (sourceIsItalian ? teaching.userLanguageString : teaching.learningLanguageString);
+          (sourceIsItalian
+            ? teaching.userLanguageString
+            : teaching.learningLanguageString);
         result.hint = variantData?.hint ?? teaching.tip;
         result.prompt = this.buildQuestionPrompt(deliveryMethod, variantData, {
           source: result.source,

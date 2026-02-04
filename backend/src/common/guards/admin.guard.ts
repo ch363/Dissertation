@@ -59,9 +59,8 @@ export class AdminGuard implements CanActivate {
 
     if (this.supabaseAdmin) {
       try {
-        const { data: authUser } = await this.supabaseAdmin.auth.admin.getUserById(
-          userId,
-        );
+        const { data: authUser } =
+          await this.supabaseAdmin.auth.admin.getUserById(userId);
 
         if (authUser?.user?.user_metadata?.is_admin === true) {
           return true;

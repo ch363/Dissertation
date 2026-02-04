@@ -33,11 +33,22 @@ const ALLOWED_LEARNING_STYLES = [
   'writing',
   'acting',
 ] as const;
-const ALLOWED_DIFFICULTIES = ['easy', 'balanced', 'hard', 'challenging'] as const;
+const ALLOWED_DIFFICULTIES = [
+  'easy',
+  'balanced',
+  'hard',
+  'challenging',
+] as const;
 const ALLOWED_GAMIFICATION = ['none', 'light', 'full'] as const;
 const ALLOWED_FEEDBACK = ['gentle', 'direct', 'detailed'] as const;
 const ALLOWED_SESSION_STYLES = ['short', 'focused', 'deep'] as const;
-const ALLOWED_TONES = ['formal', 'friendly', 'casual', 'professional', 'playful'] as const;
+const ALLOWED_TONES = [
+  'formal',
+  'friendly',
+  'casual',
+  'professional',
+  'playful',
+] as const;
 const ALLOWED_EXPERIENCES = [
   'beginner',
   'some',

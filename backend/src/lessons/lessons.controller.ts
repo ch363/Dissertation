@@ -18,7 +18,11 @@ import {
 import { LessonsService } from './lessons.service';
 import { CreateLessonDto } from './dto/create-lesson.dto';
 import { UpdateLessonDto } from './dto/update-lesson.dto';
-import { AdminPost, AdminPatch, AdminDelete } from '../common/decorators/admin-endpoint.decorator';
+import {
+  AdminPost,
+  AdminPatch,
+  AdminDelete,
+} from '../common/decorators/admin-endpoint.decorator';
 import { IsUUID, IsOptional } from 'class-validator';
 
 export class LessonsQueryDto {

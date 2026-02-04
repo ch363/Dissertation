@@ -8,7 +8,13 @@ import { OnboardingModule } from '../onboarding/onboarding.module';
 import { GrammarModule } from '../grammar/grammar.module';
 
 @Module({
-  imports: [EngineModule, ContentModule, SpeechModule, OnboardingModule, GrammarModule],
+  imports: [
+    EngineModule,
+    ContentModule,
+    SpeechModule,
+    OnboardingModule,
+    GrammarModule,
+  ],
   controllers: [ProgressController],
   providers: [ProgressService],
   exports: [ProgressService],

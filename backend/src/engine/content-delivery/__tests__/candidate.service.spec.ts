@@ -171,9 +171,9 @@ describe('CandidateService', () => {
       prisma.userQuestionPerformance.findMany.mockRejectedValue(
         new Error('Connection refused'),
       );
-      await expect(
-        service.getReviewCandidates('user-1'),
-      ).rejects.toThrow('Connection refused');
+      await expect(service.getReviewCandidates('user-1')).rejects.toThrow(
+        'Connection refused',
+      );
     });
   });
 

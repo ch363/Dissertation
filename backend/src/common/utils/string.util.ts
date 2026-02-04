@@ -1,6 +1,6 @@
 export function normalizeTitle(title: string): string {
   if (!title) return '';
-  
+
   return title
     .trim()
     .split(' ')

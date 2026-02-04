@@ -18,7 +18,11 @@ import {
 import { TeachingsService } from './teachings.service';
 import { CreateTeachingDto } from './dto/create-teaching.dto';
 import { UpdateTeachingDto } from './dto/update-teaching.dto';
-import { AdminPost, AdminPatch, AdminDelete } from '../common/decorators/admin-endpoint.decorator';
+import {
+  AdminPost,
+  AdminPatch,
+  AdminDelete,
+} from '../common/decorators/admin-endpoint.decorator';
 import { IsUUID, IsOptional } from 'class-validator';
 
 export class TeachingsQueryDto {

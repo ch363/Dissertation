@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ContentDeliveryService } from '../engine/content-delivery/content-delivery.service';
-import { SessionPlanDto, SessionContext } from '../engine/content-delivery/session-types';
+import {
+  SessionPlanDto,
+  SessionContext,
+} from '../engine/content-delivery/session-types';
 import { ProgressService } from '../progress/progress.service';
 import { LearningPathCardDto } from './learning-path.dto';
 

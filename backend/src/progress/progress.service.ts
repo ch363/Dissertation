@@ -443,10 +443,11 @@ export class ProgressService {
       }
 
       if (lowMasterySkills.length > 0) {
-        this.logger.logInfo(
-          'User has low mastery skills',
-          { userId, skills: lowMasterySkills, threshold: 0.5 },
-        );
+        this.logger.logInfo('User has low mastery skills', {
+          userId,
+          skills: lowMasterySkills,
+          threshold: 0.5,
+        });
       }
     } catch (error) {
       this.logger.logError('Error updating mastery', error, { userId });
@@ -464,7 +465,11 @@ export class ProgressService {
           value: awardedXp,
         });
       } catch (error) {
-        this.logger.logError('Error recording knowledge level progress', error, { userId, xp: awardedXp });
+        this.logger.logError(
+          'Error recording knowledge level progress',
+          error,
+          { userId, xp: awardedXp },
+        );
       }
     }
 
@@ -510,7 +515,10 @@ export class ProgressService {
    * Count of questions due for review: "due" means the *latest* performance row
    * per question (by createdAt) has nextReviewDue <= dueCutoff.
    */
-  async getDueReviewCount(userId: string, dueCutoff: Date = new Date()): Promise<number> {
+  async getDueReviewCount(
+    userId: string,
+    dueCutoff: Date = new Date(),
+  ): Promise<number> {
     try {
       type Row = { count: bigint };
       const result = await this.prisma.$queryRaw<Row[]>`
@@ -1238,7 +1246,7 @@ export class ProgressService {
     return exact;
   }
 
-  private calculateAnswerScore(isCorrect: boolean): number{
+  private calculateAnswerScore(isCorrect: boolean): number {
     return isCorrect ? 100 : 0;
   }
 
@@ -1273,11 +1281,18 @@ export class ProgressService {
       score,
       feedback,
       ...(grammaticalCorrectness !== undefined && { grammaticalCorrectness }),
-      ...(extra?.meaningCorrect !== undefined && { meaningCorrect: extra.meaningCorrect }),
-      ...(extra?.naturalPhrasing !== undefined && { naturalPhrasing: extra.naturalPhrasing }),
-      ...(extra?.feedbackWhy !== undefined && extra.feedbackWhy && { feedbackWhy: extra.feedbackWhy }),
+      ...(extra?.meaningCorrect !== undefined && {
+        meaningCorrect: extra.meaningCorrect,
+      }),
+      ...(extra?.naturalPhrasing !== undefined && {
+        naturalPhrasing: extra.naturalPhrasing,
+      }),
+      ...(extra?.feedbackWhy !== undefined &&
+        extra.feedbackWhy && { feedbackWhy: extra.feedbackWhy }),
       ...(extra?.acceptedVariants !== undefined &&
-        extra.acceptedVariants.length > 0 && { acceptedVariants: extra.acceptedVariants }),
+        extra.acceptedVariants.length > 0 && {
+          acceptedVariants: extra.acceptedVariants,
+        }),
     };
   }
 
@@ -1326,12 +1341,14 @@ export class ProgressService {
       }
     }
 
-    let extra: {
-      meaningCorrect: boolean;
-      naturalPhrasing?: string;
-      feedbackWhy?: string;
-      acceptedVariants?: string[];
-    } | undefined;
+    let extra:
+      | {
+          meaningCorrect: boolean;
+          naturalPhrasing?: string;
+          feedbackWhy?: string;
+          acceptedVariants?: string[];
+        }
+      | undefined;
     if (
       compareResult.meaningCorrect &&
       !compareResult.exact &&
@@ -1342,7 +1359,7 @@ export class ProgressService {
         typeof variantData?.answer === 'string' &&
         variantData.answer.trim().length > 0
           ? variantData.answer
-          : teaching.userLanguageString ?? '';
+          : (teaching.userLanguageString ?? '');
       const primaryDisplayList = correctAnswerSource
         .split('/')
         .map((s) => s.trim())
@@ -1370,7 +1387,7 @@ export class ProgressService {
         typeof variantData?.answer === 'string' &&
         variantData.answer.trim().length > 0
           ? variantData.answer
-          : teaching.userLanguageString ?? '';
+          : (teaching.userLanguageString ?? '');
       const primaryDisplayList = correctAnswerSource
         .split('/')
         .map((s) => s.trim())
@@ -1388,7 +1405,8 @@ export class ProgressService {
     // When the answer is wrong, a grammar % is misleading (e.g. "How come" is grammatical
     // English but wrong for "Come sta?" — we should not imply they were "85% right").
     const includeGrammarScore =
-      (isCorrect || extra?.meaningCorrect === true) && grammaticalCorrectness !== undefined;
+      (isCorrect || extra?.meaningCorrect === true) &&
+      grammaticalCorrectness !== undefined;
     return this.buildValidationResponse(
       isCorrect,
       score,

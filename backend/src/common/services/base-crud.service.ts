@@ -23,7 +23,10 @@ export abstract class BaseCrudService<T> {
     try {
       return await this.model.create({ data });
     } catch (error) {
-      this.logger.logError(`Failed to create ${this.displayName}`, { data, error });
+      this.logger.logError(`Failed to create ${this.displayName}`, {
+        data,
+        error,
+      });
       throw error;
     }
   }
@@ -32,7 +35,9 @@ export abstract class BaseCrudService<T> {
     try {
       return await this.model.findMany(options);
     } catch (error) {
-      this.logger.logError(`Failed to find all ${this.displayName}s`, { error });
+      this.logger.logError(`Failed to find all ${this.displayName}s`, {
+        error,
+      });
       throw error;
     }
   }
@@ -45,7 +50,9 @@ export abstract class BaseCrudService<T> {
       });
 
       if (!record) {
-        throw new NotFoundException(`${this.displayName} with ID ${id} not found`);
+        throw new NotFoundException(
+          `${this.displayName} with ID ${id} not found`,
+        );
       }
 
       return record;
@@ -66,9 +73,15 @@ export abstract class BaseCrudService<T> {
       });
     } catch (error: any) {
       if (error.code === 'P2025') {
-        throw new NotFoundException(`${this.displayName} with ID ${id} not found`);
+        throw new NotFoundException(
+          `${this.displayName} with ID ${id} not found`,
+        );
       }
-      this.logger.logError(`Failed to update ${this.displayName}`, { id, data, error });
+      this.logger.logError(`Failed to update ${this.displayName}`, {
+        id,
+        data,
+        error,
+      });
       throw error;
     }
   }
@@ -80,9 +93,14 @@ export abstract class BaseCrudService<T> {
       });
     } catch (error: any) {
       if (error.code === 'P2025') {
-        throw new NotFoundException(`${this.displayName} with ID ${id} not found`);
+        throw new NotFoundException(
+          `${this.displayName} with ID ${id} not found`,
+        );
       }
-      this.logger.logError(`Failed to remove ${this.displayName}`, { id, error });
+      this.logger.logError(`Failed to remove ${this.displayName}`, {
+        id,
+        error,
+      });
       throw error;
     }
   }
@@ -91,7 +109,10 @@ export abstract class BaseCrudService<T> {
     try {
       return await this.model.count({ where });
     } catch (error) {
-      this.logger.logError(`Failed to count ${this.displayName}s`, { where, error });
+      this.logger.logError(`Failed to count ${this.displayName}s`, {
+        where,
+        error,
+      });
       throw error;
     }
   }

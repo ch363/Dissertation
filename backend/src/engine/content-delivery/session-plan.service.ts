@@ -80,14 +80,11 @@ export class SessionPlanService {
         moduleId: context.moduleId,
       },
     );
-    const newCandidates = await this.candidateService.getNewCandidates(
-      userId,
-      {
-        lessonId: context.lessonId,
-        moduleId: context.moduleId,
-        prioritizedSkills,
-      },
-    );
+    const newCandidates = await this.candidateService.getNewCandidates(userId, {
+      lessonId: context.lessonId,
+      moduleId: context.moduleId,
+      prioritizedSkills,
+    });
 
     let selectedCandidates: DeliveryCandidate[] = [];
     if (context.mode === 'review') {
@@ -723,7 +720,7 @@ export class SessionPlanService {
     return onboardingScores;
   }
 
-  private buildTitle(context: SessionContext): string{
+  private buildTitle(context: SessionContext): string {
     if (context.lessonId) {
       return 'Lesson Session';
     }

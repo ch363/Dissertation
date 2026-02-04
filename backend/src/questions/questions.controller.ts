@@ -18,7 +18,11 @@ import {
 import { QuestionsService } from './questions.service';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { UpdateDeliveryMethodsDto } from './dto/update-delivery-methods.dto';
-import { AdminPost, AdminDelete, AdminProtected } from '../common/decorators/admin-endpoint.decorator';
+import {
+  AdminPost,
+  AdminDelete,
+  AdminProtected,
+} from '../common/decorators/admin-endpoint.decorator';
 import { IsUUID, IsOptional } from 'class-validator';
 
 export class QuestionsQueryDto {
@@ -55,7 +59,10 @@ export class QuestionsController {
   }
 
   @Put(':id/delivery-methods')
-  @AdminProtected('Replace delivery methods for a question', 'Delivery methods updated')
+  @AdminProtected(
+    'Replace delivery methods for a question',
+    'Delivery methods updated',
+  )
   updateDeliveryMethods(
     @Param('id') id: string,
     @Body() updateDto: UpdateDeliveryMethodsDto,

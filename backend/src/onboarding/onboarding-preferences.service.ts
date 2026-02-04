@@ -64,8 +64,14 @@ export class OnboardingPreferencesService {
 
     const learningStyleMap: Record<string, DELIVERY_METHOD[]> = {
       visual: [DELIVERY_METHOD.FLASHCARD, DELIVERY_METHOD.MULTIPLE_CHOICE],
-      auditory: [DELIVERY_METHOD.TEXT_TO_SPEECH, DELIVERY_METHOD.SPEECH_TO_TEXT],
-      kinesthetic: [DELIVERY_METHOD.FILL_BLANK, DELIVERY_METHOD.TEXT_TRANSLATION],
+      auditory: [
+        DELIVERY_METHOD.TEXT_TO_SPEECH,
+        DELIVERY_METHOD.SPEECH_TO_TEXT,
+      ],
+      kinesthetic: [
+        DELIVERY_METHOD.FILL_BLANK,
+        DELIVERY_METHOD.TEXT_TRANSLATION,
+      ],
       reading: [DELIVERY_METHOD.TEXT_TRANSLATION, DELIVERY_METHOD.FILL_BLANK],
       writing: [DELIVERY_METHOD.FILL_BLANK, DELIVERY_METHOD.TEXT_TRANSLATION],
     };
@@ -95,7 +101,10 @@ export class OnboardingPreferencesService {
       const experienceLower = experience.toLowerCase();
       let adjustment = 0;
 
-      if (experienceLower.includes('beginner') || experienceLower.includes('new')) {
+      if (
+        experienceLower.includes('beginner') ||
+        experienceLower.includes('new')
+      ) {
         adjustment = -0.1;
       } else if (
         experienceLower.includes('advanced') ||
@@ -107,7 +116,10 @@ export class OnboardingPreferencesService {
       if (adjustment !== 0) {
         for (const method of Object.values(DELIVERY_METHOD)) {
           const currentScore = scores.get(method) || defaultScore;
-          scores.set(method, Math.max(0.1, Math.min(1.0, currentScore + adjustment)));
+          scores.set(
+            method,
+            Math.max(0.1, Math.min(1.0, currentScore + adjustment)),
+          );
         }
       }
     }
@@ -124,7 +136,10 @@ export class OnboardingPreferencesService {
 
     const experienceLower = preferences.experience.toLowerCase();
 
-    if (experienceLower.includes('beginner') || experienceLower.includes('new')) {
+    if (
+      experienceLower.includes('beginner') ||
+      experienceLower.includes('new')
+    ) {
       return {
         prior: 0.4,
         learn: 0.15,
@@ -133,7 +148,10 @@ export class OnboardingPreferencesService {
       };
     }
 
-    if (experienceLower.includes('advanced') || experienceLower.includes('expert')) {
+    if (
+      experienceLower.includes('advanced') ||
+      experienceLower.includes('expert')
+    ) {
       return {
         prior: 0.2,
         learn: 0.25,

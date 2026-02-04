@@ -60,8 +60,12 @@ export function parseWavPcm(bytes: Buffer): ParsedWavPcm {
   }
 
   let offset = 12;
-  let fmt: { audioFormat: number; channels: number; sampleRateHz: number; bitsPerSample: number } | null =
-    null;
+  let fmt: {
+    audioFormat: number;
+    channels: number;
+    sampleRateHz: number;
+    bitsPerSample: number;
+  } | null = null;
   let data: Buffer | null = null;
 
   while (offset + 8 <= bytes.length) {
@@ -101,10 +105,14 @@ export function parseWavPcm(bytes: Buffer): ParsedWavPcm {
   }
 
   if (fmt.audioFormat !== 1) {
-    throw new Error(`Unsupported WAV audioFormat=${fmt.audioFormat} (expected PCM=1)`);
+    throw new Error(
+      `Unsupported WAV audioFormat=${fmt.audioFormat} (expected PCM=1)`,
+    );
   }
   if (fmt.bitsPerSample !== 16) {
-    throw new Error(`Unsupported WAV bitsPerSample=${fmt.bitsPerSample} (expected 16)`);
+    throw new Error(
+      `Unsupported WAV bitsPerSample=${fmt.bitsPerSample} (expected 16)`,
+    );
   }
   if (fmt.channels < 1 || fmt.channels > 2) {
     throw new Error(`Unsupported WAV channels=${fmt.channels}`);
@@ -120,4 +128,3 @@ export function parseWavPcm(bytes: Buffer): ParsedWavPcm {
     bitsPerSample: fmt.bitsPerSample,
   };
 }
-

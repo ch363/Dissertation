@@ -22,8 +22,7 @@ export function extractSkillTags(item: any): string[] {
 
   if (tags.length === 0) {
     logger.logWarn('extractSkillTags: No skill tags found', {
-      message:
-        'Ensure skillTags relation is included in Prisma query',
+      message: 'Ensure skillTags relation is included in Prisma query',
       itemType: item.teaching ? 'Question' : 'Teaching',
     });
   }

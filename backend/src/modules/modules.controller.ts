@@ -7,16 +7,15 @@ import {
   Param,
   Delete,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { ModulesService } from './modules.service';
 import { CreateModuleDto } from './dto/create-module.dto';
 import { UpdateModuleDto } from './dto/update-module.dto';
-import { AdminPost, AdminPatch, AdminDelete } from '../common/decorators/admin-endpoint.decorator';
+import {
+  AdminPost,
+  AdminPatch,
+  AdminDelete,
+} from '../common/decorators/admin-endpoint.decorator';
 
 @ApiTags('modules')
 @Controller('modules')

@@ -317,7 +317,7 @@ export function composeWithInterleaving(
       selected.deliveryMethods.forEach((m) => usedModalities.add(m));
     }
 
-    remaining = remaining.filter((c) => c.id !== selected!.id);
+    remaining = remaining.filter((c) => c.id !== selected.id);
 
     if (needsModalityCoverage) {
       const listeningSpeaking: DELIVERY_METHOD[] = [

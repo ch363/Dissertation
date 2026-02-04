@@ -78,7 +78,9 @@ export class MeService {
             displayName = 'User';
           }
         } catch (error) {
-          this.logger.logWarn('Failed to fetch user metadata from Supabase', { error: String(error) });
+          this.logger.logWarn('Failed to fetch user metadata from Supabase', {
+            error: String(error),
+          });
           displayName = 'User';
         }
       } else {
@@ -94,11 +96,28 @@ export class MeService {
 
   async getDashboard(userId: string, tzOffsetMinutes?: number) {
     const now = new Date();
-    const dashboardData = await this.fetchDashboardData(userId, now, tzOffsetMinutes);
+    const dashboardData = await this.fetchDashboardData(
+      userId,
+      now,
+      tzOffsetMinutes,
+    );
     const streakInfo = await this.calculateStreakInfo(userId);
-    const xpProgress = await this.calculateXPProgress(userId, now, dashboardData);
-    const weeklyActivity = await this.getWeeklyActivity(userId, now, tzOffsetMinutes);
-    return this.buildDashboardResponse(dashboardData, streakInfo, xpProgress, weeklyActivity);
+    const xpProgress = await this.calculateXPProgress(
+      userId,
+      now,
+      dashboardData,
+    );
+    const weeklyActivity = await this.getWeeklyActivity(
+      userId,
+      now,
+      tzOffsetMinutes,
+    );
+    return this.buildDashboardResponse(
+      dashboardData,
+      streakInfo,
+      xpProgress,
+      weeklyActivity,
+    );
   }
 
   /**
@@ -121,7 +140,9 @@ export class MeService {
       },
       select: { value: true, createdAt: true },
     });
-    const offsetMs = Number.isFinite(tzOffsetMinutes) ? (tzOffsetMinutes! * 60_000) : 0;
+    const offsetMs = Number.isFinite(tzOffsetMinutes)
+      ? tzOffsetMinutes! * 60_000
+      : 0;
     const dailyXp = [0, 0, 0, 0, 0, 0, 0];
     for (const row of rows) {
       const localMs = row.createdAt.getTime() - offsetMs;
@@ -144,7 +165,10 @@ export class MeService {
     // Use "due right now" (same as session plan and due list) so the count matches
     // what the user can actually review. Previously we used end-of-day, which showed
     // "2 due" when 0 were due right now.
-    const dueReviewCount = await this.progressService.getDueReviewCount(userId, now);
+    const dueReviewCount = await this.progressService.getDueReviewCount(
+      userId,
+      now,
+    );
 
     const activeLessonCount = await this.prisma.userLesson.count({
       where: { userId },
@@ -157,55 +181,59 @@ export class MeService {
       },
     });
 
-    const recentPerformances = await this.prisma.userQuestionPerformance.findMany({
-      where: {
-        userId,
-        createdAt: {
-          gte: thirtyDaysAgo,
+    const recentPerformances =
+      await this.prisma.userQuestionPerformance.findMany({
+        where: {
+          userId,
+          createdAt: {
+            gte: thirtyDaysAgo,
+          },
+          percentageAccuracy: {
+            not: null,
+          },
         },
-        percentageAccuracy: {
-          not: null,
+        select: {
+          percentageAccuracy: true,
         },
-      },
-      select: {
-        percentageAccuracy: true,
-      },
-    });
+      });
 
-    const accuracyPerformances = await this.prisma.userQuestionPerformance.findMany({
-      where: {
-        userId,
-        createdAt: { gte: thirtyDaysAgo },
-      },
-      select: { deliveryMethod: true, score: true },
-    });
+    const accuracyPerformances =
+      await this.prisma.userQuestionPerformance.findMany({
+        where: {
+          userId,
+          createdAt: { gte: thirtyDaysAgo },
+        },
+        select: { deliveryMethod: true, score: true },
+      });
 
     const grammaticalMethods: DELIVERY_METHOD[] = [
       DELIVERY_METHOD.TEXT_TRANSLATION,
       DELIVERY_METHOD.SPEECH_TO_TEXT,
       DELIVERY_METHOD.TEXT_TO_SPEECH,
     ];
-    const grammaticalPerformances = await this.prisma.userQuestionPerformance.findMany({
-      where: {
-        userId,
-        createdAt: { gte: thirtyDaysAgo },
-        deliveryMethod: { in: grammaticalMethods },
-        percentageAccuracy: { not: null },
-      },
-      select: { deliveryMethod: true, percentageAccuracy: true },
-    });
-
-    const studyTimePerformances = await this.prisma.userQuestionPerformance.findMany({
-      where: {
-        userId,
-        createdAt: {
-          gte: thirtyDaysAgo,
+    const grammaticalPerformances =
+      await this.prisma.userQuestionPerformance.findMany({
+        where: {
+          userId,
+          createdAt: { gte: thirtyDaysAgo },
+          deliveryMethod: { in: grammaticalMethods },
+          percentageAccuracy: { not: null },
         },
-      },
-      select: {
-        timeToComplete: true,
-      },
-    });
+        select: { deliveryMethod: true, percentageAccuracy: true },
+      });
+
+    const studyTimePerformances =
+      await this.prisma.userQuestionPerformance.findMany({
+        where: {
+          userId,
+          createdAt: {
+            gte: thirtyDaysAgo,
+          },
+        },
+        select: {
+          timeToComplete: true,
+        },
+      });
 
     return {
       dueReviewCount,
@@ -230,42 +258,46 @@ export class MeService {
   ) {
     const weekAgo = new Date(now);
     weekAgo.setDate(weekAgo.getDate() - 7);
-    
-    const weeklyXpProgress = await this.prisma.userKnowledgeLevelProgress.aggregate({
-      where: {
-        userId,
-        createdAt: {
-          gte: weekAgo,
+
+    const weeklyXpProgress =
+      await this.prisma.userKnowledgeLevelProgress.aggregate({
+        where: {
+          userId,
+          createdAt: {
+            gte: weekAgo,
+          },
         },
-      },
-      _sum: {
-        value: true,
-      },
-    });
+        _sum: {
+          value: true,
+        },
+      });
 
     const weeklyXP = weeklyXpProgress._sum.value || 0;
 
     const twoWeeksAgo = new Date(now);
     twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
 
-    const previousWeekXpProgress = await this.prisma.userKnowledgeLevelProgress.aggregate({
-      where: {
-        userId,
-        createdAt: {
-          gte: twoWeeksAgo,
-          lt: weekAgo,
+    const previousWeekXpProgress =
+      await this.prisma.userKnowledgeLevelProgress.aggregate({
+        where: {
+          userId,
+          createdAt: {
+            gte: twoWeeksAgo,
+            lt: weekAgo,
+          },
         },
-      },
-      _sum: {
-        value: true,
-      },
-    });
+        _sum: {
+          value: true,
+        },
+      });
 
     const previousWeekXP = previousWeekXpProgress._sum.value || 0;
 
     let weeklyXPChange = 0;
     if (previousWeekXP > 0) {
-      weeklyXPChange = Math.round(((weeklyXP - previousWeekXP) / previousWeekXP) * 100);
+      weeklyXPChange = Math.round(
+        ((weeklyXP - previousWeekXP) / previousWeekXP) * 100,
+      );
     } else if (weeklyXP > 0) {
       weeklyXPChange = 100;
     }
@@ -276,13 +308,15 @@ export class MeService {
         (sum, perf) => sum + (perf.percentageAccuracy || 0),
         0,
       );
-      accuracyPercentage = Math.round(totalAccuracy / dashboardData.recentPerformances.length);
+      accuracyPercentage = Math.round(
+        totalAccuracy / dashboardData.recentPerformances.length,
+      );
     }
 
     const passThreshold = 50;
     const accuracyByDeliveryMethod: Record<string, number> = {};
     const methodCounts = new Map<string, { pass: number; total: number }>();
-    
+
     for (const p of dashboardData.accuracyPerformances) {
       const key = p.deliveryMethod;
       const current = methodCounts.get(key) ?? { pass: 0, total: 0 };
@@ -290,7 +324,7 @@ export class MeService {
       if (p.score >= passThreshold) current.pass += 1;
       methodCounts.set(key, current);
     }
-    
+
     for (const method of Object.values(DELIVERY_METHOD)) {
       const stats = methodCounts.get(method);
       accuracyByDeliveryMethod[method] =
@@ -305,14 +339,14 @@ export class MeService {
       DELIVERY_METHOD.TEXT_TO_SPEECH,
     ];
     const grammaticalByMethod = new Map<string, number[]>();
-    
+
     for (const p of dashboardData.grammaticalPerformances) {
       const acc = p.percentageAccuracy ?? 0;
       const list = grammaticalByMethod.get(p.deliveryMethod) ?? [];
       list.push(acc);
       grammaticalByMethod.set(p.deliveryMethod, list);
     }
-    
+
     const grammaticalAccuracyByDeliveryMethod: Record<string, number> = {};
     for (const method of grammaticalMethods) {
       const values = grammaticalByMethod.get(method) ?? [];
@@ -325,9 +359,12 @@ export class MeService {
     // Study time (last 30 days): question card time (timeToComplete) + teaching time (endedAt - startedAt) + lesson time (endedAt - startedAt).
     const thirtyDaysAgo = new Date(now);
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const questionTimeMs = dashboardData.studyTimePerformances.reduce((sum, perf) => {
-      return sum + (perf.timeToComplete || 0);
-    }, 0);
+    const questionTimeMs = dashboardData.studyTimePerformances.reduce(
+      (sum, perf) => {
+        return sum + (perf.timeToComplete || 0);
+      },
+      0,
+    );
 
     const teachingRows = await this.prisma.userTeachingCompleted.findMany({
       where: {
@@ -405,7 +442,8 @@ export class MeService {
       weeklyActivity,
       accuracyPercentage: xpProgress.accuracyPercentage,
       accuracyByDeliveryMethod: xpProgress.accuracyByDeliveryMethod,
-      grammaticalAccuracyByDeliveryMethod: xpProgress.grammaticalAccuracyByDeliveryMethod,
+      grammaticalAccuracyByDeliveryMethod:
+        xpProgress.grammaticalAccuracyByDeliveryMethod,
       studyTimeMinutes: xpProgress.studyTimeMinutes,
     };
   }
@@ -539,7 +577,9 @@ export class MeService {
       teachingsByLessonId.set(teaching.lessonId, existing);
     });
 
-    const questionIdSet = new Set(teachings.flatMap((t) => t.questions.map((q) => q.id)));
+    const questionIdSet = new Set(
+      teachings.flatMap((t) => t.questions.map((q) => q.id)),
+    );
     const dueItems = await this.progressService.getDueReviewsLatest(userId);
     const dueCountByLessonId = new Map<string, number>();
     for (const item of dueItems) {
@@ -603,7 +643,7 @@ export class MeService {
     });
 
     const skillStats = new Map<string, { mastered: number; total: number }>();
-    
+
     performances.forEach((perf) => {
       perf.question.skillTags.forEach((skill) => {
         const tag = skill.name;
@@ -619,7 +659,10 @@ export class MeService {
     });
 
     return masteryRecords.map((record) => {
-      const stats = skillStats.get(record.skillTag) || { mastered: 0, total: 0 };
+      const stats = skillStats.get(record.skillTag) || {
+        mastered: 0,
+        total: 0,
+      };
       return {
         skillType: record.skillTag,
         skillTag: record.skillTag,

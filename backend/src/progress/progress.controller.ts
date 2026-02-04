@@ -47,12 +47,11 @@ export class ProgressController {
   }
 
   @Post('lessons/:lessonId/end')
-  @ApiOperation({ summary: 'Record lesson ended (sets endedAt for study time)' })
+  @ApiOperation({
+    summary: 'Record lesson ended (sets endedAt for study time)',
+  })
   @ApiParam({ name: 'lessonId', description: 'Lesson ID' })
-  async endLesson(
-    @User() userId: string,
-    @Param('lessonId') lessonId: string,
-  ) {
+  async endLesson(@User() userId: string, @Param('lessonId') lessonId: string) {
     return this.progressService.endLesson(userId, lessonId);
   }
 
@@ -61,8 +60,12 @@ export class ProgressController {
     @User() userId: string,
     @Query('tzOffsetMinutes') tzOffsetMinutes?: string,
   ) {
-    const parsed = tzOffsetMinutes !== undefined ? Number(tzOffsetMinutes) : undefined;
-    return this.progressService.getUserLessons(userId, Number.isFinite(parsed) ? parsed : undefined);
+    const parsed =
+      tzOffsetMinutes !== undefined ? Number(tzOffsetMinutes) : undefined;
+    return this.progressService.getUserLessons(
+      userId,
+      Number.isFinite(parsed) ? parsed : undefined,
+    );
   }
 
   @Post('teachings/:teachingId/complete')
@@ -148,8 +151,12 @@ export class ProgressController {
     @User() userId: string,
     @Query('tzOffsetMinutes') tzOffsetMinutes?: string,
   ) {
-    const parsed = tzOffsetMinutes !== undefined ? Number(tzOffsetMinutes) : undefined;
-    return this.progressService.getProgressSummary(userId, Number.isFinite(parsed) ? parsed : undefined);
+    const parsed =
+      tzOffsetMinutes !== undefined ? Number(tzOffsetMinutes) : undefined;
+    return this.progressService.getProgressSummary(
+      userId,
+      Number.isFinite(parsed) ? parsed : undefined,
+    );
   }
 
   @Post('modules/:moduleIdOrSlug/complete')

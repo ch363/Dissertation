@@ -9,13 +9,7 @@ import {
 import { LearnService } from './learn.service';
 import { SupabaseJwtGuard } from '../common/guards/supabase-jwt.guard';
 import { User } from '../common/decorators/user.decorator';
-import {
-  IsOptional,
-  IsInt,
-  Min,
-  IsEnum,
-  IsString,
-} from 'class-validator';
+import { IsOptional, IsInt, Min, IsEnum, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { SessionPlanDto } from '../engine/content-delivery/session-types';
 import { LearningPathCardDto } from './learning-path.dto';

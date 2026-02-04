@@ -258,7 +258,9 @@ export function calculateFsrs(
 
   if (!isFinite(intervalDays) || intervalDays <= 0) {
     const fallbackIntervalDays = 1;
-    const nextDue = new Date(now.getTime() + fallbackIntervalDays * 24 * 60 * 60 * 1000);
+    const nextDue = new Date(
+      now.getTime() + fallbackIntervalDays * 24 * 60 * 60 * 1000,
+    );
     return {
       stability,
       difficulty,
