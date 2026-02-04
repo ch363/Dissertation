@@ -1,53 +1,42 @@
 appId: com.ch363.fluentia
 ---
-# Journey: Complete a learning session
-# User goes through a full learning session and sees completion
+# Journey: Enter a session and complete at least one card
+# Uses Learn → catalog → lesson so session is guaranteed
 
 - launchApp
+- assertVisible:
+    text: ".*Welcome back.*"
 
-# Start a session from primary CTA
 - tapOn:
-    text: "Continue|Start Learning"
-    optional: true
-
-# Session runner should load
+    text: "Learn"
+- tapOn:
+    text: "Browse full catalog"
 - assertVisible:
-    text: ".*Session.*|.*progress.*"
-    optional: true
-
-# Progress bar should be visible
-- assertVisible:
-    id: ".*progress.*"
-    optional: true
-
-# Simulate answering questions (tap through multiple cards)
-# This is a basic simulation - actual interaction depends on question type
+    text: "Courses"
 - tapOn:
     index: 0
-    optional: true
-- wait: 1000
-
-- tapOn:
-    text: "Continue|Next|Submit"
-    optional: true
-- wait: 1000
-
-- tapOn:
-    text: "Continue|Next|Submit"
-    optional: true
-- wait: 1000
-
-# Eventually should reach completion screen
 - assertVisible:
-    text: "Complete|Well done|XP|Mastery"
-    optional: true
-
-# Tap to see summary
+    text: "Lessons"
 - tapOn:
-    text: "Continue|View Summary|Done"
-    optional: true
+    index: 0
 
-# Should return to home or show summary
 - assertVisible:
-    text: "Welcome back|Summary|XP gained"
+    text: "Start Lesson|Continue|Session"
+- tapOn:
+    text: "Start Lesson"
     optional: true
+- waitForAnimationToEnd
+
+# Must see session UI
+- assertVisible:
+    text: "Continue|Finish"
+- tapOn:
+    text: "Continue"
+- waitForAnimationToEnd
+- tapOn:
+    text: "Continue|Finish"
+- waitForAnimationToEnd
+
+# Completion or more cards (summary: "You completed", "XP", "Continue", "Back to home")
+- assertVisible:
+    text: "completed|XP|Continue|Finish|Back to home"

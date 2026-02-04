@@ -1,40 +1,22 @@
 appId: com.ch363.fluentia
 ---
-# Journey: Navigate between home and other tabs
-# User explores the app navigation
+# Journey: Navigate between Home, Learn, Profile tabs
 
 - launchApp
-
-# Verify Home tab is active
-- assertVisible: "Welcome back"
-- assertVisible: "Continue your learning journey"
-
-# Navigate to Learn tab
-- tapOn:
-    id: ".*learn.*tab.*"
-    optional: true
 - assertVisible:
-    text: "Learn|Discover"
-    optional: true
+    text: ".*Welcome back.*"
 
-# Navigate to Profile tab  
 - tapOn:
-    id: ".*profile.*tab.*"
-    optional: true
+    text: "Learn"
 - assertVisible:
-    text: "Profile|Total XP|Mastery"
-    optional: true
+    text: ".*Learning Path.*|.*Review.*|All Modules"
 
-# Navigate to Settings tab
 - tapOn:
-    id: ".*settings.*tab.*"
-    optional: true
+    text: "Profile"
 - assertVisible:
-    text: "Settings|Appearance|Session"
-    optional: true
+    text: "Total XP"
 
-# Return to Home tab
 - tapOn:
-    id: ".*home.*tab.*"
-    optional: true
-- assertVisible: "Welcome back"
+    text: "Home"
+- assertVisible:
+    text: ".*Welcome back.*"

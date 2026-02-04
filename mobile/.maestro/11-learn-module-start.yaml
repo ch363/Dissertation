@@ -1,6 +1,6 @@
 appId: com.ch363.fluentia
 ---
-# Journey: Browse Learn hub, open catalog, open a lesson
+# Journey: Home → Learn → catalog → course → lesson → session
 
 - launchApp
 - assertVisible:
@@ -15,20 +15,27 @@ appId: com.ch363.fluentia
     text: "Browse full catalog"
 - assertVisible:
     text: "Courses"
-
-# Tap first course (course detail shows Lessons)
 - tapOn:
     index: 0
 - assertVisible:
     text: "Lessons"
-
-# Tap first lesson (opens session or lesson overview)
 - tapOn:
     index: 0
+
 - assertVisible:
     text: "Start Lesson|Continue|Lesson|Session"
+- tapOn:
+    text: "Start Lesson"
+    optional: true
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Continue|Finish"
+- tapOn:
+    text: "Continue"
 
 - back
 - back
+- tapOn:
+    text: "Home"
 - assertVisible:
-    text: ".*Learning Path.*|.*Review.*|All Modules"
+    text: ".*Welcome back.*"

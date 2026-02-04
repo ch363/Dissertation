@@ -16,6 +16,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:e2e": "maestro test .maestro",
+    "test:e2e:all": "zsh -l -c 'MAESTRO=\"${HOME}/.maestro/bin/maestro\"; [ -x \"$MAESTRO\" ] || MAESTRO=maestro; for f in .maestro/app-launch.yaml .maestro/01-home-to-lesson.yaml .maestro/02-home-to-review.yaml .maestro/03-home-navigation.yaml .maestro/04-learn-exploration.yaml .maestro/05-streak-and-progress.yaml .maestro/06-profile-view.yaml .maestro/07-settings-navigation.yaml .maestro/08-session-completion-flow.yaml .maestro/09-first-time-user-experience.yaml .maestro/10-complete-user-journey.yaml .maestro/11-learn-module-start.yaml; do \"$MAESTRO\" test \"$f\" || exit 1; done'",
     "test:e2e:smoke": "maestro test .maestro/app-launch.yaml",
     "test:e2e:lesson": "maestro test .maestro/01-home-to-lesson.yaml",
     "test:e2e:review": "maestro test .maestro/02-home-to-review.yaml",
@@ -27,6 +28,8 @@
     "test:e2e:session": "maestro test .maestro/08-session-completion-flow.yaml",
     "test:e2e:first-time": "maestro test .maestro/09-first-time-user-experience.yaml",
     "test:e2e:full-journey": "maestro test .maestro/10-complete-user-journey.yaml",
+    "test:e2e:learn-module": "maestro test .maestro/11-learn-module-start.yaml",
+    "test:e2e:critical": "maestro test .maestro/{01,02,08,10}-*.yaml",
     "ci": "npm run lint && npm run type-check && npm test -- --ci",
     "prepare": "npx simple-git-hooks"
   },

@@ -1,22 +1,29 @@
 appId: com.ch363.fluentia
 ---
 # Journey: Start a review session from Home
-# User taps on review CTA to practice due cards
+# Requires review to be due (primary CTA shows "Start Review"). Tap it and verify we enter the session.
 
 - launchApp
-- assertVisible: "Welcome back"
-
-# Check if review button is available
 - assertVisible:
-    text: "Review|Due"
-    optional: true
+    text: ".*Welcome back.*"
 
-# Tap review action if available
+# Tap the primary CTA "Start Review" (exact label - avoids matching "Review" in "Quick review" subtitle)
 - tapOn:
-    text: "Review|Start Review|Review Due"
+    text: "Start Review"
+
+# Verify we entered the session runner
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Continue|Finish"
+- assertVisible:
+    text: "Session"
     optional: true
 
-# Session runner should load
-- assertVisible:
-    text: ".*cards.*|.*review.*"
+# Press Continue in the review session to advance through cards
+- tapOn:
+    text: "Continue"
+- waitForAnimationToEnd
+- tapOn:
+    text: "Continue|Finish"
     optional: true
+- waitForAnimationToEnd

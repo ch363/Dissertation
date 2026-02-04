@@ -1,31 +1,21 @@
 appId: com.ch363.fluentia
 ---
-# Journey: First-time user empty state
-# New user sees appropriate messaging and CTAs
+# Journey: First-time or low-activity user sees Home and can navigate
+# Requires: Welcome back, and at least one CTA or Help
 
 - launchApp
-- assertVisible: "Welcome back"
-
-# First-time users should see empty state hint
 - assertVisible:
-    text: ".*fill up.*progress.*|.*start.*"
-    optional: true
+    text: ".*Welcome back.*"
 
-# Help button should be accessible
+# Some primary content (Focus card or empty-state messaging)
+- assertVisible:
+    text: "NEXT UP|Focus|Start|Continue|Help|Today"
+
 - tapOn:
-    id: ".*help.*"
-    optional: true
+    text: "Help"
 - assertVisible:
-    text: "Help|Tips|Guide"
-    optional: true
+    text: "Help"
 - back
 
-# Primary CTA should suggest starting learning
 - assertVisible:
-    text: "Start Learning|Get Started|Begin"
-    optional: true
-
-# Focus card should show beginner-friendly content
-- assertVisible:
-    text: "Focus:|Getting started|Basics"
-    optional: true
+    text: ".*Welcome back.*"

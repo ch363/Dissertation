@@ -42,6 +42,8 @@ type Props = {
   onTryAgain?: () => void;
   onRating?: (rating: number) => void;
   selectedRating?: number;
+  /** Current incorrect attempt count (for showing "Try Again" vs "Continue") */
+  incorrectAttemptCount?: number;
 };
 
 export function TranslateCard({
@@ -59,9 +61,10 @@ export function TranslateCard({
   validationFeedback: _validationFeedback,
   showSuggestedAnswer = false,
   onCheckAnswer,
-  onTryAgain: _onTryAgain,
+  onTryAgain,
   onRating,
   selectedRating,
+  incorrectAttemptCount = 0,
 }: Props) {
   const ctx = useAppTheme();
   const theme = ctx?.theme ?? baseTheme;
@@ -596,6 +599,26 @@ export function TranslateCard({
               )}
             </View>
           </View>
+
+          {/* Try Again Button - only show if incorrect and haven't reached max attempts */}
+          {!isCorrect && !meaningCorrect && !showSuggestedAnswer && onTryAgain && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Try again"
+              accessibilityHint="Clear result and try answering again"
+              style={styles.tryAgainButton}
+              onPress={onTryAgain}
+            >
+              <Ionicons
+                name="refresh"
+                size={18}
+                color={baseTheme.colors.primary}
+                accessible={false}
+                importantForAccessibility="no"
+              />
+              <Text style={styles.tryAgainButtonText}>Try Again</Text>
+            </Pressable>
+          )}
         </>
       )}
     </View>
@@ -1041,6 +1064,24 @@ const styles = StyleSheet.create({
     color: baseTheme.colors.mutedText,
     marginTop: baseTheme.spacing.xs,
     fontStyle: 'italic',
+  },
+  tryAgainButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: baseTheme.spacing.xs,
+    paddingVertical: baseTheme.spacing.sm,
+    paddingHorizontal: baseTheme.spacing.md,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: baseTheme.colors.primary,
+    backgroundColor: '#fff',
+    marginTop: baseTheme.spacing.xs,
+  },
+  tryAgainButtonText: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 14,
+    color: baseTheme.colors.primary,
   },
   resultTitle: {
     fontFamily: baseTheme.typography.bold,

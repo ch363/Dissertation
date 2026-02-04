@@ -49,7 +49,11 @@ type Props = {
   onSelectOption?: (optionId: string) => void;
   showResult?: boolean;
   isCorrect?: boolean;
+  showCorrectAnswer?: boolean;
   onCheckAnswer?: () => void;
+  onTryAgain?: () => void;
+  /** Current incorrect attempt count (for showing "Try Again" vs showing correct answer) */
+  incorrectAttemptCount?: number;
 };
 
 export function MultipleChoiceCard({
@@ -60,6 +64,8 @@ export function MultipleChoiceCard({
   isCorrect,
   showCorrectAnswer = false,
   onCheckAnswer,
+  onTryAgain,
+  incorrectAttemptCount = 0,
 }: Props) {
   const ctx = useAppTheme();
   const theme = ctx?.theme ?? baseTheme;
@@ -308,13 +314,35 @@ export function MultipleChoiceCard({
         </View>
       )}
       {showResult && isCorrect === false && (
-        <View
-          style={[styles.feedbackBanner, { backgroundColor: FIGMA.optionIncorrectBorder }]}
-          accessibilityRole="alert"
-        >
-          <Ionicons name="close-circle" size={20} color={FIGMA.ctaText} />
-          <Text style={[styles.feedbackText, { color: FIGMA.ctaText }]}>That's incorrect.</Text>
-        </View>
+        <>
+          <View
+            style={[styles.feedbackBanner, { backgroundColor: FIGMA.optionIncorrectBorder }]}
+            accessibilityRole="alert"
+          >
+            <Ionicons name="close-circle" size={20} color={FIGMA.ctaText} />
+            <Text style={[styles.feedbackText, { color: FIGMA.ctaText }]}>That's incorrect.</Text>
+          </View>
+
+          {/* Try Again Button - only show if incorrect and haven't reached max attempts */}
+          {!showCorrectAnswer && onTryAgain && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Try again"
+              accessibilityHint="Clear result and select a different answer"
+              style={styles.tryAgainButton}
+              onPress={onTryAgain}
+            >
+              <Ionicons
+                name="refresh"
+                size={18}
+                color={baseTheme.colors.primary}
+                accessible={false}
+                importantForAccessibility="no"
+              />
+              <Text style={styles.tryAgainButtonText}>Try Again</Text>
+            </Pressable>
+          )}
+        </>
       )}
 
       {/* Footer CTA – Figma: h-56 rounded-[20px] font-semibold; disabled slate-200/slate-400; enabled gradient blue-600 → indigo-600 */}
@@ -463,5 +491,23 @@ const styles = StyleSheet.create({
   ctaText: {
     fontFamily: baseTheme.typography.semiBold,
     fontSize: 16,
+  },
+  tryAgainButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: baseTheme.spacing.xs,
+    paddingVertical: baseTheme.spacing.sm,
+    paddingHorizontal: baseTheme.spacing.md,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: baseTheme.colors.primary,
+    backgroundColor: '#fff',
+    marginTop: baseTheme.spacing.xs,
+  },
+  tryAgainButtonText: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 14,
+    color: baseTheme.colors.primary,
   },
 });

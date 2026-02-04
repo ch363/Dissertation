@@ -46,6 +46,7 @@ type Props = {
   pronunciationResult?: PronunciationResult | null;
   isPronunciationProcessing?: boolean;
   onPracticeAgain?: () => void;
+  incorrectAttemptCount?: number;
 };
 
 export function CardRenderer({
@@ -75,6 +76,7 @@ export function CardRenderer({
   pronunciationResult,
   isPronunciationProcessing,
   onPracticeAgain,
+  incorrectAttemptCount,
 }: Props) {
   // Teach cards render their own container (with usage note card)
   if (card.kind === CardKind.Teach) {
@@ -111,6 +113,7 @@ export function CardRenderer({
         pronunciationResult,
         isPronunciationProcessing,
         onPracticeAgain,
+        incorrectAttemptCount,
       )}
     </View>
   );
@@ -143,6 +146,7 @@ function renderCardByKind(
   pronunciationResult?: PronunciationResult | null,
   isPronunciationProcessing?: boolean,
   onPracticeAgain?: () => void,
+  incorrectAttemptCount?: number,
 ) {
   switch (card.kind) {
     case CardKind.MultipleChoice:
@@ -155,6 +159,8 @@ function renderCardByKind(
           isCorrect={isCorrect}
           showCorrectAnswer={showCorrectAnswer}
           onCheckAnswer={onCheckAnswer}
+          onTryAgain={onTryAgain}
+          incorrectAttemptCount={incorrectAttemptCount}
         />
       );
     case CardKind.FillBlank:
@@ -189,6 +195,7 @@ function renderCardByKind(
           onTryAgain={onTryAgain}
           onRating={onRating}
           selectedRating={selectedRating}
+          incorrectAttemptCount={incorrectAttemptCount}
         />
       );
     case CardKind.Listening:

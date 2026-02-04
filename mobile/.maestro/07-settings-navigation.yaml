@@ -1,47 +1,83 @@
 appId: com.ch363.fluentia
 ---
-# Journey: Access settings and preferences
-# User configures app appearance and learning preferences
+# Journey: Access settings and exercise all settings functionality
+# Covers: Help, FAQ, Dark Mode, Speech, Session defaults, Adaptivity, Notifications
 
 - launchApp
 
-# Navigate to Settings
+# Navigate to Settings (Profile tab → Settings)
 - tapOn:
-    id: ".*settings.*tab.*"
-    optional: true
-
-- assertVisible:
+    text: "Profile"
+- scroll
+- tapOn:
     text: "Settings"
 
-# Check for appearance settings
+# === SETTINGS MAIN SCREEN ===
 - assertVisible:
-    text: "Appearance|Theme"
-    optional: true
-
-# Check for session/learning settings
+    text: "Settings"
 - assertVisible:
-    text: "Session|Learning"
-    optional: true
+    text: "HELP"
+- assertVisible:
+    text: "APPEARANCE"
+- assertVisible:
+    text: "LEARNING"
+- assertVisible:
+    text: "NOTIFICATIONS"
 
-# Tap appearance settings
+# === HELP ===
 - tapOn:
-    text: "Appearance|Theme"
-    optional: true
+    text: "Help"
 - assertVisible:
-    text: "Light|Dark|System"
-    optional: true
+    text: "Help"
 - back
 
-# Tap session settings
+# === FAQ ===
 - tapOn:
-    text: "Session|Learning"
-    optional: true
+    text: "FAQ"
 - assertVisible:
-    text: "Default|Difficulty"
-    optional: true
+    text: "FAQ"
 - back
 
-# Return to home
+# === APPEARANCE (Dark Mode) ===
+- assertVisible:
+    text: "Dark Mode"
+- assertVisible:
+    text: "APPEARANCE"
+
+# === LEARNING: Speech ===
 - tapOn:
-    id: ".*home.*tab.*"
-    optional: true
+    text: "Speech"
+- assertVisible:
+    text: "Speech"
+- back
+
+# === LEARNING: Session defaults ===
+- tapOn:
+    text: "Session defaults"
+- assertVisible:
+    text: "Session defaults"
+- assertVisible:
+    text: "MODE|Learn|Review|Mixed"
+- back
+
+# === LEARNING: Adaptivity (toggle on main settings) ===
+- assertVisible:
+    text: "Adaptivity"
+
+# === NOTIFICATIONS ===
+- assertVisible:
+    text: "Notifications"
+
+# === ACCOUNT (do not tap Sign out) ===
+- scroll
+- assertVisible:
+    text: "ACCOUNT"
+- assertVisible:
+    text: "Sign out"
+
+# Return to Profile then Home
+- back
+- tapOn:
+    text: "Home"
+- assertVisible:
+    text: ".*Welcome back.*"

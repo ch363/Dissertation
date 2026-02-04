@@ -41,7 +41,7 @@ export default function OnboardingLayout() {
       <Stack.Screen name="7_session-style" options={{ title: '' }} />
       <Stack.Screen name="8_tone" options={{ title: '' }} />
       <Stack.Screen name="9_experience-level" options={{ title: '' }} />
-      <Stack.Screen name="completion" options={{ title: '' }} />
+      <Stack.Screen name="completion" options={{ headerShown: false }} />
       <Stack.Screen name="help" options={{ title: 'Help' }} />
     </Stack>
   );

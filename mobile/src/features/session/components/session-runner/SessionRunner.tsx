@@ -838,11 +838,17 @@ export function SessionRunner({
 
   const handleTryAgain = () => {
     setShowResult(false);
+    setIsCorrect(false);
     setMeaningCorrect(false);
     setNaturalPhrasing(undefined);
     setFeedbackWhy(undefined);
     setAcceptedVariants([]);
     setValidationFeedback(undefined);
+    setGrammaticalCorrectness(null);
+    // Don't reset userAnswer or selectedOptionId - let user see/edit their previous answer
+    // But do reset these if they want a completely fresh start:
+    // setUserAnswer('');
+    // setSelectedOptionId(undefined);
   };
 
   const handleBack = () => {
@@ -926,6 +932,7 @@ export function SessionRunner({
                 }
               : undefined
           }
+          incorrectAttemptCount={incorrectAttemptCount}
         />
       </ScrollView>
 
