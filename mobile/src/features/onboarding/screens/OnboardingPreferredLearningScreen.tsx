@@ -7,29 +7,29 @@ export default function PreferredLearning() {
   const { answers, setAnswerAndSave } = useOnboarding();
 
   const options = [
-    { 
-      key: 'visual', 
-      icon: 'eye-outline', 
+    {
+      key: 'visual',
+      icon: 'eye-outline',
       label: 'Seeing pictures, diagrams, or written text',
-      description: 'Learn through visual aids and reading'
+      description: 'Learn through visual aids and reading',
     },
-    { 
-      key: 'auditory', 
-      icon: 'volume-high-outline', 
+    {
+      key: 'auditory',
+      icon: 'volume-high-outline',
       label: 'Hearing sounds or spoken words',
-      description: 'Learn through listening and audio'
+      description: 'Learn through listening and audio',
     },
-    { 
-      key: 'writing', 
-      icon: 'create-outline', 
+    {
+      key: 'writing',
+      icon: 'create-outline',
       label: 'Writing/typing out answers',
-      description: 'Learn through active writing practice'
+      description: 'Learn through active writing practice',
     },
-    { 
-      key: 'acting', 
-      icon: 'mic-outline', 
+    {
+      key: 'acting',
+      icon: 'mic-outline',
       label: 'Acting it out / speaking it aloud',
-      description: 'Learn through speaking and interaction'
+      description: 'Learn through speaking and interaction',
     },
   ];
 

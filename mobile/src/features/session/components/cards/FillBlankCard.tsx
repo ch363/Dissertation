@@ -2,15 +2,16 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { CARD_TYPE_COLORS } from '../../constants/cardTypeColors';
+
 import { SpeakerButton } from '@/components/ui';
+import { createLogger } from '@/services/logging';
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
 import { FillBlankCard as FillBlankCardType } from '@/types/session';
 import { announce } from '@/utils/a11y';
-import { createLogger } from '@/services/logging';
-import { CARD_TYPE_COLORS } from '../../constants/cardTypeColors';
 
 const logger = createLogger('FillBlankCard');
 
@@ -23,7 +24,14 @@ type Props = {
   grammaticalCorrectness?: number | null;
 };
 
-export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult, isCorrect, grammaticalCorrectness }: Props) {
+export function FillBlankCard({
+  card,
+  selectedAnswer,
+  onSelectAnswer,
+  showResult,
+  isCorrect,
+  grammaticalCorrectness: _grammaticalCorrectness,
+}: Props) {
   const ctx = useAppTheme();
   const theme = ctx?.theme ?? baseTheme;
   const [isPlaying, setIsPlaying] = useState(false);
@@ -42,12 +50,12 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
           if (!enabled) {
             return;
           }
-          
+
           const rate = await getTtsRate();
           await SafeSpeech.stop();
           // Small delay to ensure stop completes
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
           // Speak the selected word
           logger.info('Speaking selected word', { selectedAnswer });
           await SafeSpeech.speak(selectedAnswer, { language: 'it-IT', rate });
@@ -55,7 +63,7 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
           logger.error('Failed to speak selected word', error as Error);
         }
       }
-      
+
       // Update the ref to track the current answer
       previousAnswerRef.current = selectedAnswer;
     };
@@ -74,12 +82,12 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
       logger.warn('No text available for audio');
       return;
     }
-    
+
     // Prevent multiple rapid calls
     if (isPlaying) {
       return;
     }
-    
+
     try {
       const enabled = await getTtsEnabled();
       if (!enabled) {
@@ -90,8 +98,8 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
       const rate = await getTtsRate();
       await SafeSpeech.stop();
       // Small delay to ensure stop completes
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       // Speak the sentence with blank removed (replace ___ with a pause or just remove it)
       // Remove the blank marker and speak the sentence naturally
       const textToSpeak = card.text.replace(/___/g, ' ').trim() || '';
@@ -116,10 +124,22 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
 
   return (
     <View style={[styles.container, { gap: theme.spacing.md }]}>
-      <Text style={[styles.instruction, { color: CARD_TYPE_COLORS.fillBlank.instruction }]}>FILL IN THE BLANK</Text>
+      <Text style={[styles.instruction, { color: CARD_TYPE_COLORS.fillBlank.instruction }]}>
+        FILL IN THE BLANK
+      </Text>
 
       {/* Main Question Card */}
-      <View style={[styles.questionCard, { backgroundColor: theme.colors.card, borderLeftWidth: 3, borderLeftColor: CARD_TYPE_COLORS.fillBlank.border, paddingLeft: theme.spacing.sm }]}>
+      <View
+        style={[
+          styles.questionCard,
+          {
+            backgroundColor: theme.colors.card,
+            borderLeftWidth: 3,
+            borderLeftColor: CARD_TYPE_COLORS.fillBlank.border,
+            paddingLeft: theme.spacing.sm,
+          },
+        ]}
+      >
         {/* Audio button - always show if text is available */}
         {(card.audioUrl || card.text) && (
           <View style={styles.audioButton}>
@@ -130,32 +150,49 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
               accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
               accessibilityHint="Plays the sentence audio"
             />
-            <Text style={[styles.audioLabel, { color: theme.colors.text }]}>Listen and complete</Text>
+            <Text style={[styles.audioLabel, { color: theme.colors.text }]}>
+              Listen and complete
+            </Text>
           </View>
         )}
 
         {/* Sentence with blank */}
         <View style={styles.sentenceContainer}>
-          {sentenceParts[0] && <Text style={[styles.sentenceText, { color: theme.colors.text }]}>{sentenceParts[0].trim()}</Text>}
-          <View 
+          {sentenceParts[0] && (
+            <Text style={[styles.sentenceText, { color: theme.colors.text }]}>
+              {sentenceParts[0].trim()}
+            </Text>
+          )}
+          <View
             style={[
-              styles.blankField, 
+              styles.blankField,
               {
                 borderColor: theme.colors.primary,
                 backgroundColor: theme.colors.primary + '18',
               },
               selectedAnswer && showResult
-                ? isCorrect 
-                  ? { backgroundColor: theme.colors.success + '30', borderColor: theme.colors.success, borderWidth: 3 }
-                  : { backgroundColor: theme.colors.error + '20', borderColor: theme.colors.error, borderWidth: 3 }
-                : selectedAnswer 
-                  ? { backgroundColor: theme.colors.primary + '18', borderColor: theme.colors.primary }
-                  : null
+                ? isCorrect
+                  ? {
+                      backgroundColor: theme.colors.success + '30',
+                      borderColor: theme.colors.success,
+                      borderWidth: 3,
+                    }
+                  : {
+                      backgroundColor: theme.colors.error + '20',
+                      borderColor: theme.colors.error,
+                      borderWidth: 3,
+                    }
+                : selectedAnswer
+                  ? {
+                      backgroundColor: theme.colors.primary + '18',
+                      borderColor: theme.colors.primary,
+                    }
+                  : null,
             ]}
           >
-            <Text 
+            <Text
               style={[
-                styles.blankText, 
+                styles.blankText,
                 { color: theme.colors.primary },
                 selectedAnswer && showResult
                   ? isCorrect
@@ -163,29 +200,35 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
                     : { color: theme.colors.error }
                   : selectedAnswer
                     ? { color: theme.colors.text }
-                    : null
+                    : null,
               ]}
             >
               {selectedAnswer || ''}
             </Text>
             {/* Show checkmark/X icon for correct/incorrect */}
             {selectedAnswer && showResult && (
-              <Ionicons 
-                name={isCorrect ? "checkmark-circle" : "close-circle"} 
-                size={20} 
-                color={isCorrect ? theme.colors.success : theme.colors.error} 
-                style={styles.blankIcon} 
+              <Ionicons
+                name={isCorrect ? 'checkmark-circle' : 'close-circle'}
+                size={20}
+                color={isCorrect ? theme.colors.success : theme.colors.error}
+                style={styles.blankIcon}
               />
             )}
           </View>
-          {sentenceParts[1] && <Text style={[styles.sentenceText, { color: theme.colors.text }]}>{sentenceParts[1].trim()}</Text>}
+          {sentenceParts[1] && (
+            <Text style={[styles.sentenceText, { color: theme.colors.text }]}>
+              {sentenceParts[1].trim()}
+            </Text>
+          )}
         </View>
       </View>
 
       {/* Options Card */}
       {card.options && card.options.length > 0 && (
         <View style={[styles.optionsCard, { backgroundColor: theme.colors.card }]}>
-          <Text style={[styles.optionsLabel, { color: theme.colors.mutedText }]}>TAP TO FILL THE BLANK</Text>
+          <Text style={[styles.optionsLabel, { color: theme.colors.mutedText }]}>
+            TAP TO FILL THE BLANK
+          </Text>
           <View style={styles.optionsGrid}>
             {card.options.map((opt) => {
               const isSelected = selectedAnswer === opt.label;
@@ -193,16 +236,26 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
               const isIncorrectOption = showResult && !isCorrect && isSelected;
               // Disable all options once correct answer is selected
               const isDisabled = showResult && isCorrect;
-              
+
               return (
                 <Pressable
                   key={opt.id}
                   style={[
-                    styles.optionButton, 
+                    styles.optionButton,
                     { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
-                    !showResult && isSelected && { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
-                    isCorrectOption && { backgroundColor: theme.colors.success + '25', borderColor: theme.colors.success },
-                    isIncorrectOption && { backgroundColor: theme.colors.error + '20', borderColor: theme.colors.error },
+                    !showResult &&
+                      isSelected && {
+                        backgroundColor: theme.colors.primary,
+                        borderColor: theme.colors.primary,
+                      },
+                    isCorrectOption && {
+                      backgroundColor: theme.colors.success + '25',
+                      borderColor: theme.colors.success,
+                    },
+                    isIncorrectOption && {
+                      backgroundColor: theme.colors.error + '20',
+                      borderColor: theme.colors.error,
+                    },
                     isDisabled && !isCorrectOption && { opacity: 0.7 },
                   ]}
                   onPress={() => {
@@ -219,9 +272,9 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
                     disabled: isDisabled,
                   }}
                 >
-                  <Text 
+                  <Text
                     style={[
-                      styles.optionText, 
+                      styles.optionText,
                       { color: theme.colors.text },
                       !showResult && isSelected && { color: theme.colors.onPrimary },
                       isCorrectOption && { color: theme.colors.success },

@@ -1,32 +1,32 @@
 import { router } from 'expo-router';
 
-import { getCurrentUser } from '@/services/api/auth';
-import { saveOnboarding } from '@/services/api/onboarding';
 import { OptionQuestion } from '@/components/onboarding';
 import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
+import { getCurrentUser } from '@/services/api/auth';
+import { saveOnboarding } from '@/services/api/onboarding';
 
 export default function ExperienceLevel() {
   const { setAnswerAndSave, answers } = useOnboarding();
   const selected = answers.experience ?? null;
 
   const options = [
-    { 
-      key: 'beginner', 
-      icon: 'leaf-outline', 
+    {
+      key: 'beginner',
+      icon: 'leaf-outline',
       label: 'Beginner',
-      description: 'Just starting out with the basics'
+      description: 'Just starting out with the basics',
     },
-    { 
-      key: 'intermediate', 
-      icon: 'flower-outline', 
+    {
+      key: 'intermediate',
+      icon: 'flower-outline',
       label: 'Intermediate',
-      description: 'Some knowledge, ready to grow'
+      description: 'Some knowledge, ready to grow',
     },
-    { 
-      key: 'advanced', 
-      icon: 'trending-up-outline', 
+    {
+      key: 'advanced',
+      icon: 'trending-up-outline',
       label: 'Advanced',
-      description: 'Strong foundation, seeking mastery'
+      description: 'Strong foundation, seeking mastery',
     },
   ];
 

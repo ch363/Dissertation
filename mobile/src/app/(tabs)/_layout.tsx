@@ -24,7 +24,7 @@ function CustomTabBar({ state, descriptors, navigation }: CustomTabBarProps) {
   const currentRoute = state.routes[state.index];
   const isOnMainTab = allowed.has(currentRouteName);
   const isOnNestedScreen = currentRoute?.state?.index !== undefined && currentRoute.state.index > 0;
-  
+
   const shouldShowTabBar = isOnMainTab && !isOnNestedScreen;
   if (!shouldShowTabBar) {
     return null;
@@ -66,7 +66,8 @@ function CustomTabBar({ state, descriptors, navigation }: CustomTabBarProps) {
       >
         {visibleRoutes.map((route: Route) => {
           const isFocused =
-            route.key === focusedKey || (currentRouteName === 'settings' && route.name === 'profile');
+            route.key === focusedKey ||
+            (currentRouteName === 'settings' && route.name === 'profile');
           const onPress = () => {
             const routeName = String(route.name ?? '');
             const targetPath = targetPathForRouteName(routeName);
@@ -112,11 +113,13 @@ export default function TabsLayout() {
     if (!session?.user?.id || checkedRef.current) return;
     let cancelled = false;
     checkedRef.current = true;
-    hasOnboarding(session.user.id).then((done) => {
-      if (!cancelled && !done) router.replace(routes.onboarding.welcome);
-    }).finally(() => {
-      if (cancelled) checkedRef.current = false;
-    });
+    hasOnboarding(session.user.id)
+      .then((done) => {
+        if (!cancelled && !done) router.replace(routes.onboarding.welcome);
+      })
+      .finally(() => {
+        if (cancelled) checkedRef.current = false;
+      });
     return () => {
       cancelled = true;
     };

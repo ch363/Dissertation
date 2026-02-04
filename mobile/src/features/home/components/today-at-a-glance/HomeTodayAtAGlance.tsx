@@ -3,12 +3,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 
+import { cardGapBetweenRows, iconContainerRadius, iconContainerSize } from '../styles/homeStyles';
+
 import { StaticCard, TappableCard } from '@/components/ui';
-import {
-  cardGapBetweenRows,
-  iconContainerRadius,
-  iconContainerSize,
-} from '../styles/homeStyles';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 

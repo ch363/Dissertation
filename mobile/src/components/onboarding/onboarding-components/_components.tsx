@@ -19,25 +19,25 @@ type SelectedValue = string | string[] | null | undefined;
 
 function calculateDynamicSizing(numOptions: number, hasSubtitle: boolean) {
   const { height: screenHeight } = Dimensions.get('window');
-  
+
   const stepperHeight = 40;
   const titleHeight = hasSubtitle ? 90 : 55;
   const footerHeight = 140;
   const contentPadding = 40;
   const cardMargins = (numOptions - 1) * 12;
-  
+
   const fixedHeight = stepperHeight + titleHeight + footerHeight + contentPadding + cardMargins;
   const availableHeight = screenHeight - fixedHeight;
-  
+
   const baseCardHeight = Math.floor(availableHeight / numOptions);
-  
+
   const minCardHeight = 64;
   const maxCardHeight = 90;
-  
+
   const cardHeight = Math.max(minCardHeight, Math.min(maxCardHeight, baseCardHeight));
-  
+
   const isCompact = cardHeight <= 70;
-  
+
   return {
     cardHeight,
     cardPaddingVertical: isCompact ? 12 : 14,
@@ -105,8 +105,19 @@ export function QuestionScreen({
       </ScrollView>
       {footer ? (
         <View style={styles.stickyWrap}>
-          <View style={[styles.fade, { backgroundColor: theme.colors.background }]} pointerEvents="none" />
-          <View style={[styles.stickyInner, { paddingBottom: theme.spacing.md + insets.bottom, backgroundColor: theme.colors.background }]}>
+          <View
+            style={[styles.fade, { backgroundColor: theme.colors.background }]}
+            pointerEvents="none"
+          />
+          <View
+            style={[
+              styles.stickyInner,
+              {
+                paddingBottom: theme.spacing.md + insets.bottom,
+                backgroundColor: theme.colors.background,
+              },
+            ]}
+          >
             {footer}
           </View>
         </View>
@@ -124,7 +135,9 @@ export function Stepper({ current, total }: { current: number; total: number }) 
       accessibilityLabel={`Step ${current} of ${total}`}
     >
       <View style={styles.stepperRow}>
-        <Text style={[styles.stepperText, { color: theme.colors.text }]}>{`Step ${current} of ${total}`}</Text>
+        <Text
+          style={[styles.stepperText, { color: theme.colors.text }]}
+        >{`Step ${current} of ${total}`}</Text>
         <ProgressDots current={current} total={total} />
       </View>
     </View>
@@ -152,13 +165,15 @@ export function Option({
   const isDark = theme.colors.background === '#0E141B';
   const selectedBg = isDark ? 'rgba(98, 160, 255, 0.2)' : '#E9F3FF';
   const iconBgColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)';
-  
-  const dynamicStyles = dynamicSizing ? {
-    minHeight: dynamicSizing.cardHeight,
-    paddingVertical: dynamicSizing.cardPaddingVertical,
-    paddingHorizontal: dynamicSizing.cardPaddingHorizontal,
-  } : {};
-  
+
+  const dynamicStyles = dynamicSizing
+    ? {
+        minHeight: dynamicSizing.cardHeight,
+        paddingVertical: dynamicSizing.cardPaddingVertical,
+        paddingHorizontal: dynamicSizing.cardPaddingHorizontal,
+      }
+    : {};
+
   return (
     <Pressable
       onPress={onPress}
@@ -166,7 +181,12 @@ export function Option({
         styles.option,
         dynamicStyles,
         { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
-        selected && { ...styles.optionSelected, borderColor: theme.colors.primary, backgroundColor: selectedBg, shadowColor: theme.colors.primary },
+        selected && {
+          ...styles.optionSelected,
+          borderColor: theme.colors.primary,
+          backgroundColor: selectedBg,
+          shadowColor: theme.colors.primary,
+        },
       ]}
       accessibilityRole={(multiple ? 'checkbox' : 'radio') as AccessibilityRole}
       accessibilityState={{ checked: !!selected }}
@@ -175,15 +195,17 @@ export function Option({
     >
       <View style={styles.optionInner}>
         {icon ? (
-          <View style={[
-            styles.iconCircle, 
-            { backgroundColor: iconBgColor },
-            dynamicSizing && {
-              width: dynamicSizing.iconCircleSize,
-              height: dynamicSizing.iconCircleSize,
-              borderRadius: dynamicSizing.iconCircleSize / 2,
-            }
-          ]}>
+          <View
+            style={[
+              styles.iconCircle,
+              { backgroundColor: iconBgColor },
+              dynamicSizing && {
+                width: dynamicSizing.iconCircleSize,
+                height: dynamicSizing.iconCircleSize,
+                borderRadius: dynamicSizing.iconCircleSize / 2,
+              },
+            ]}
+          >
             <Ionicons
               name={icon as keyof typeof Ionicons.glyphMap}
               size={dynamicSizing?.iconSize || 22}
@@ -192,33 +214,44 @@ export function Option({
           </View>
         ) : null}
         <View style={{ flex: 1 }}>
-          <Text style={[
-            styles.optionText, 
-            { color: theme.colors.text },
-            dynamicSizing && {
-              fontSize: dynamicSizing.labelSize,
-              lineHeight: dynamicSizing.labelLineHeight,
-            },
-            selected && styles.optionTextSelected
-          ]}>
+          <Text
+            style={[
+              styles.optionText,
+              { color: theme.colors.text },
+              dynamicSizing && {
+                fontSize: dynamicSizing.labelSize,
+                lineHeight: dynamicSizing.labelLineHeight,
+              },
+              selected && styles.optionTextSelected,
+            ]}
+          >
             {label}
           </Text>
           {description ? (
-            <Text style={[
-              styles.optionDescription, 
-              { color: theme.colors.text },
-              dynamicSizing && {
-                fontSize: dynamicSizing.descriptionSize,
-                lineHeight: dynamicSizing.descriptionLineHeight,
-              }
-            ]}>
+            <Text
+              style={[
+                styles.optionDescription,
+                { color: theme.colors.text },
+                dynamicSizing && {
+                  fontSize: dynamicSizing.descriptionSize,
+                  lineHeight: dynamicSizing.descriptionLineHeight,
+                },
+              ]}
+            >
               {description}
             </Text>
           ) : null}
         </View>
         <View style={styles.radioContainer}>
-          <View style={[styles.radioOuter, { borderColor: selected ? theme.colors.primary : theme.colors.border }]}>
-            {selected && <View style={[styles.radioInner, { backgroundColor: theme.colors.primary }]} />}
+          <View
+            style={[
+              styles.radioOuter,
+              { borderColor: selected ? theme.colors.primary : theme.colors.border },
+            ]}
+          >
+            {selected && (
+              <View style={[styles.radioInner, { backgroundColor: theme.colors.primary }]} />
+            )}
           </View>
         </View>
       </View>
@@ -241,13 +274,17 @@ export function PrimaryButton({
 }) {
   const { theme } = useAppTheme();
   const isDark = theme.colors.background === '#0E141B';
-  const buttonBg = disabled 
-    ? (isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)')
+  const buttonBg = disabled
+    ? isDark
+      ? 'rgba(255, 255, 255, 0.1)'
+      : 'rgba(0, 0, 0, 0.06)'
     : theme.colors.primary;
-  const textColor = disabled 
-    ? (isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)')
+  const textColor = disabled
+    ? isDark
+      ? 'rgba(255, 255, 255, 0.3)'
+      : 'rgba(0, 0, 0, 0.3)'
     : '#FFFFFF';
-    
+
   return (
     <Pressable
       onPress={onPress}
@@ -265,7 +302,12 @@ export function PrimaryButton({
 export function SecondaryButton({ title, onPress }: { title: string; onPress: () => void }) {
   const { theme } = useAppTheme();
   return (
-    <Pressable onPress={onPress} style={[styles.secondaryBtn, { borderColor: theme.colors.border }]} accessibilityRole="button" hitSlop={8}>
+    <Pressable
+      onPress={onPress}
+      style={[styles.secondaryBtn, { borderColor: theme.colors.border }]}
+      accessibilityRole="button"
+      hitSlop={8}
+    >
       <Text style={[styles.secondaryBtnText, { color: theme.colors.text }]}>{title}</Text>
     </Pressable>
   );
@@ -289,15 +331,19 @@ export function Spacer({ size = SPACER_DEFAULT }: { size?: number }) {
   return <View style={{ height: size }} />;
 }
 
-export function QuestionTitle({ children, subtitle }: { children: React.ReactNode; subtitle?: string }) {
+export function QuestionTitle({
+  children,
+  subtitle,
+}: {
+  children: React.ReactNode;
+  subtitle?: string;
+}) {
   const { theme } = useAppTheme();
   return (
     <View style={styles.titleWrap}>
       <Text style={[styles.questionTitle, { color: theme.colors.text }]}>{children}</Text>
       {subtitle ? (
-        <Text style={[styles.questionSubtitle, { color: theme.colors.text }]}>
-          {subtitle}
-        </Text>
+        <Text style={[styles.questionSubtitle, { color: theme.colors.text }]}>{subtitle}</Text>
       ) : null}
     </View>
   );
@@ -314,7 +360,10 @@ export function WhyWeAskLink() {
       <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
         <View style={styles.sheetBackdrop}>
           <Pressable style={{ flex: 1 }} onPress={() => setOpen(false)} />
-          <View style={[styles.sheet, { backgroundColor: theme.colors.background }]} accessibilityRole={'dialog' as AccessibilityRole}>
+          <View
+            style={[styles.sheet, { backgroundColor: theme.colors.background }]}
+            accessibilityRole={'dialog' as AccessibilityRole}
+          >
             <View
               style={{
                 height: 4,
@@ -378,7 +427,7 @@ export function OptionQuestion({
 
   const dynamicSizing = React.useMemo(
     () => calculateDynamicSizing(options.length, !!subtitle),
-    [options.length, subtitle]
+    [options.length, subtitle],
   );
 
   const goNext = React.useCallback(() => {

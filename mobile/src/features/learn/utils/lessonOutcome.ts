@@ -14,10 +14,7 @@ function joinWithAnd(parts: string[]): string {
 }
 
 function normalize(s: string) {
-  return s
-    .toLowerCase()
-    .replace(/’/g, "'")
-    .replace(/[“”]/g, '"');
+  return s.toLowerCase().replace(/’/g, "'").replace(/[“”]/g, '"');
 }
 
 function pickExamplePhrases(teachings: Teaching[]): string[] {
@@ -39,7 +36,12 @@ function pickExamplePhrases(teachings: Teaching[]): string[] {
 export function buildLessonOutcome(teachings: Teaching[]): string | null {
   if (!Array.isArray(teachings) || teachings.length === 0) return null;
 
-  const text = normalize(teachings.map((t) => t.userLanguageString).filter(Boolean).join(' | '));
+  const text = normalize(
+    teachings
+      .map((t) => t.userLanguageString)
+      .filter(Boolean)
+      .join(' | '),
+  );
 
   const greet =
     /\b(hello|hi|good morning|good afternoon|good evening|goodbye|bye|see you)\b/.test(text) ||
@@ -75,10 +77,12 @@ export function buildLessonOutcome(teachings: Teaching[]): string | null {
 
   const examples = pickExamplePhrases(teachings);
   if (examples.length >= 2) {
-    const list = examples.length === 2 ? `"${examples[0]}" and "${examples[1]}"` : `"${examples[0]}", "${examples[1]}", and "${examples[2]}"`;
+    const list =
+      examples.length === 2
+        ? `"${examples[0]}" and "${examples[1]}"`
+        : `"${examples[0]}", "${examples[1]}", and "${examples[2]}"`;
     return `Use phrases like ${list}`;
   }
 
   return null;
 }
-

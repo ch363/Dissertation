@@ -59,29 +59,27 @@ export function TappableCard({
   const { theme, isDark } = useAppTheme();
   const isPrimary = variant === 'primary';
   const bgColor = isPrimary ? theme.colors.primary : theme.colors.card;
-  
-  const gradientColors = isDark
-    ? ['#1d4ed8', '#1e40af']
-    : ['#2563eb', '#1d4ed8'];
-  
+
+  const gradientColors = isDark ? ['#1d4ed8', '#1e40af'] : ['#2563eb', '#1d4ed8'];
+
   const overlineColor = isPrimary ? (isDark ? '#93c5fd' : '#bfdbfe') : theme.colors.mutedText;
   const titleColor = isPrimary ? '#FFFFFF' : theme.colors.text;
   const subtitleColor = isPrimary ? (isDark ? '#dbeafe' : '#dbeafe') : theme.colors.mutedText;
   const chevronColor = isPrimary ? '#FFFFFF' : theme.colors.text;
-  
-  const iconBgColor = iconBackgroundColorProp ?? 
-    (isPrimary ? 'rgba(59, 130, 246, 0.4)' : theme.colors.border);
+
+  const iconBgColor =
+    iconBackgroundColorProp ?? (isPrimary ? 'rgba(59, 130, 246, 0.4)' : theme.colors.border);
 
   const iconElement =
     typeof leftIcon === 'string' ? (
       <View style={[styles.iconBox, { backgroundColor: iconBgColor }]}>
-      <Ionicons
-        name={leftIcon as keyof typeof Ionicons.glyphMap}
-        size={24}
-        color={isPrimary ? '#FFFFFF' : theme.colors.text}
-        accessible={false}
-        importantForAccessibility="no"
-      />
+        <Ionicons
+          name={leftIcon as keyof typeof Ionicons.glyphMap}
+          size={24}
+          color={isPrimary ? '#FFFFFF' : theme.colors.text}
+          accessible={false}
+          importantForAccessibility="no"
+        />
       </View>
     ) : leftIcon ? (
       <View style={[styles.iconBox, { backgroundColor: iconBgColor }]}>{leftIcon}</View>

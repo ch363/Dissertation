@@ -99,4 +99,3 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
 });
-

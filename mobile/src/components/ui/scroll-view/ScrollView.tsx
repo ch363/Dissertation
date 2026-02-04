@@ -9,14 +9,7 @@ import { ScrollView as RNScrollView, ScrollViewProps } from 'react-native';
  */
 export const ScrollView = React.forwardRef<RNScrollView, ScrollViewProps>(
   ({ bounces = false, overScrollMode = 'never', ...props }, ref) => {
-    return (
-      <RNScrollView
-        ref={ref}
-        bounces={bounces}
-        overScrollMode={overScrollMode}
-        {...props}
-      />
-    );
+    return <RNScrollView ref={ref} bounces={bounces} overScrollMode={overScrollMode} {...props} />;
   },
 );
 

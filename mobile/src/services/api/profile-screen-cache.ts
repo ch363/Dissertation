@@ -1,8 +1,9 @@
+import { getAllMastery } from './mastery';
 import { getMyProfile, getDashboard } from './profile';
 import { getProgressSummary } from './progress';
-import { getAllMastery } from './mastery';
-import { createLogger } from '@/services/logging';
+
 import { CacheManager } from '@/services/cache/cache-utils';
+import { createLogger } from '@/services/logging';
 
 const logger = createLogger('ProfileScreenCache');
 

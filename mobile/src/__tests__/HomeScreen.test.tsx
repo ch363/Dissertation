@@ -25,7 +25,9 @@ jest.mock('@/services/api/profile', () => ({
   getMyProfile: jest.fn().mockResolvedValue({ name: 'Test User' }),
   getDashboard: mockGetDashboard,
   getStats: jest.fn().mockResolvedValue({ minutesToday: 0, completedItemsToday: 0 }),
-  getRecentActivity: jest.fn().mockResolvedValue({ recentLesson: null, recentTeaching: null, recentQuestion: null }),
+  getRecentActivity: jest
+    .fn()
+    .mockResolvedValue({ recentLesson: null, recentTeaching: null, recentQuestion: null }),
 }));
 
 jest.mock('@/services/api/learn', () => ({
@@ -46,10 +48,20 @@ jest.mock('@/services/api/mastery', () => ({
 }));
 
 jest.mock('@/services/api/modules', () => ({
-  getLesson: jest.fn().mockResolvedValue({ id: 'lesson-1', title: 'Lesson 1', numberOfItems: 3, moduleId: 'module-1' }),
+  getLesson: jest.fn().mockResolvedValue({
+    id: 'lesson-1',
+    title: 'Lesson 1',
+    numberOfItems: 3,
+    moduleId: 'module-1',
+  }),
   getLessonTeachings: jest.fn().mockResolvedValue([
     { id: 't1', userLanguageString: 'Hello', learningLanguageString: 'Ciao', lessonId: 'lesson-1' },
-    { id: 't2', userLanguageString: 'My name is', learningLanguageString: 'Mi chiamo', lessonId: 'lesson-1' },
+    {
+      id: 't2',
+      userLanguageString: 'My name is',
+      learningLanguageString: 'Mi chiamo',
+      lessonId: 'lesson-1',
+    },
   ]),
 }));
 
@@ -66,5 +78,4 @@ describe('HomeScreen', () => {
       .toJSON();
     expect(tree).toBeTruthy();
   });
-
 });

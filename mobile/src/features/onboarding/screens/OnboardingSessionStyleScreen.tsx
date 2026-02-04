@@ -7,23 +7,23 @@ export default function SessionStyle() {
   const { answers, setAnswerAndSave } = useOnboarding();
 
   const options = [
-    { 
-      key: 'short', 
-      icon: 'time-outline', 
+    {
+      key: 'short',
+      icon: 'time-outline',
       label: 'Short bursts (5–10 min)',
-      description: 'Quick practice sessions that fit your busy schedule'
+      description: 'Quick practice sessions that fit your busy schedule',
     },
-    { 
-      key: 'focused', 
-      icon: 'flag-outline', 
+    {
+      key: 'focused',
+      icon: 'flag-outline',
       label: 'Focused blocks (20–30 min)',
-      description: 'Balanced sessions for steady progress'
+      description: 'Balanced sessions for steady progress',
     },
-    { 
-      key: 'deep', 
-      icon: 'fitness-outline', 
+    {
+      key: 'deep',
+      icon: 'fitness-outline',
       label: 'Deep sessions (45+ min)',
-      description: 'Immersive learning for maximum retention'
+      description: 'Immersive learning for maximum retention',
     },
   ];
 

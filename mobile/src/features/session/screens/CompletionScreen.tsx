@@ -1,8 +1,8 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 
 import { ContentContinueButton, StaticCard } from '@/components/ui';
 import { routeBuilders } from '@/services/navigation/routes';
@@ -12,9 +12,9 @@ const TROPHY_ORANGE = '#E85D04';
 const TROPHY_GLOW = 'rgba(232, 93, 4, 0.25)';
 
 export default function CompletionScreen() {
-  const params = useLocalSearchParams<{ 
-    sessionId?: string; 
-    kind?: string; 
+  const params = useLocalSearchParams<{
+    sessionId?: string;
+    kind?: string;
     lessonId?: string;
     planMode?: string;
     timeBudgetSec?: string;
@@ -62,9 +62,7 @@ export default function CompletionScreen() {
             </View>
             <Text style={styles.titleLine1}>Session</Text>
             <Text style={styles.titleLine2}>Complete!</Text>
-            <Text style={styles.subtitle}>
-              Great work! Here's what you accomplished:
-            </Text>
+            <Text style={styles.subtitle}>Great work! Here's what you accomplished:</Text>
           </View>
 
           <View style={styles.statsContainer}>
@@ -88,7 +86,11 @@ export default function CompletionScreen() {
           </View>
 
           <View style={styles.actions}>
-            <ContentContinueButton title="Continue" onPress={handleContinue} accessibilityHint="Goes to session summary" />
+            <ContentContinueButton
+              title="Continue"
+              onPress={handleContinue}
+              accessibilityHint="Goes to session summary"
+            />
           </View>
         </StaticCard>
       </ScrollView>

@@ -50,7 +50,13 @@ export function PracticeToolsGrid({ tools }: Props) {
                   <Text style={styles.cardTitle}>{tool.title}</Text>
                   {isLocked ? (
                     <View style={styles.lockBadge}>
-                      <Ionicons name="lock-closed" size={14} color="#8A6B00" accessible={false} importantForAccessibility="no" />
+                      <Ionicons
+                        name="lock-closed"
+                        size={14}
+                        color="#8A6B00"
+                        accessible={false}
+                        importantForAccessibility="no"
+                      />
                       <Text style={styles.lockBadgeText}>Locked</Text>
                     </View>
                   ) : null}

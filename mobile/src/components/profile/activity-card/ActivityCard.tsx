@@ -1,7 +1,7 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
+import React from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -42,14 +42,25 @@ export function ActivityCard({ title, items, emptyMessage = 'No recent activity'
   return (
     <View>
       <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>{title}</Text>
-      <View style={[styles.card, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+        ]}
+      >
         {items.length === 0 ? (
           <Text style={[styles.emptyText, { color: theme.colors.mutedText }]}>{emptyMessage}</Text>
         ) : (
           items.map((item, index) => {
             const content = (
               <Pressable
-                style={[styles.item, index < items.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.colors.border }]}
+                style={[
+                  styles.item,
+                  index < items.length - 1 && {
+                    borderBottomWidth: 1,
+                    borderBottomColor: theme.colors.border,
+                  },
+                ]}
                 onPress={item.onPress}
                 disabled={!item.onPress && !item.route}
               >
@@ -60,7 +71,10 @@ export function ActivityCard({ title, items, emptyMessage = 'No recent activity'
                   <Text style={[styles.itemTitle, { color: theme.colors.text }]} numberOfLines={1}>
                     {item.title}
                   </Text>
-                  <Text style={[styles.itemSubtitle, { color: theme.colors.mutedText }]} numberOfLines={1}>
+                  <Text
+                    style={[styles.itemSubtitle, { color: theme.colors.mutedText }]}
+                    numberOfLines={1}
+                  >
                     {item.subtitle}
                   </Text>
                 </View>
@@ -72,7 +86,10 @@ export function ActivityCard({ title, items, emptyMessage = 'No recent activity'
                     name="chevron-forward"
                     size={16}
                     color={theme.colors.mutedText}
-                    style={[styles.chevron, !(item.route || item.onPress) && styles.chevronPlaceholder]}
+                    style={[
+                      styles.chevron,
+                      !(item.route || item.onPress) && styles.chevronPlaceholder,
+                    ]}
                   />
                 </View>
               </Pressable>

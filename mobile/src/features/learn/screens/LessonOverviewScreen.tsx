@@ -1,16 +1,16 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 
 import { ContentContinueButton, LoadingScreen, ScrollView, StaticCard } from '@/components/ui';
 import { makeSessionId } from '@/features/session/sessionBuilder';
-import { useAppTheme } from '@/services/theme/ThemeProvider';
-import { theme as baseTheme } from '@/services/theme/tokens';
+import { useAsyncData } from '@/hooks/useAsyncData';
 import { getLesson, getLessonTeachings, type Lesson, type Teaching } from '@/services/api/modules';
 import { routeBuilders, routes } from '@/services/navigation/routes';
-import { useAsyncData } from '@/hooks/useAsyncData';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { theme as baseTheme } from '@/services/theme/tokens';
 
 export default function LessonOverviewScreen() {
   const { lessonId } = useLocalSearchParams<{ lessonId?: string }>();
@@ -33,7 +33,7 @@ export default function LessonOverviewScreen() {
       ]);
       return { lesson: lessonData, teachings: teachingsData };
     },
-    [lessonId]
+    [lessonId],
   );
 
   const lesson = data?.lesson ?? null;
@@ -60,10 +60,7 @@ export default function LessonOverviewScreen() {
 
   if (loading) {
     return (
-      <LoadingScreen
-        title="Loading lesson..."
-        subtitle="Please wait while we load this lesson."
-      />
+      <LoadingScreen title="Loading lesson..." subtitle="Please wait while we load this lesson." />
     );
   }
 
@@ -94,10 +91,16 @@ export default function LessonOverviewScreen() {
           hitSlop={10}
           style={styles.homeButton}
         >
-          <Ionicons name="home" size={22} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
+          <Ionicons
+            name="home"
+            size={22}
+            color={theme.colors.mutedText}
+            accessible={false}
+            importantForAccessibility="no"
+          />
         </Pressable>
       </View>
-      
+
       <ScrollView
         contentContainerStyle={{
           padding: baseTheme.spacing.lg,
@@ -134,7 +137,9 @@ export default function LessonOverviewScreen() {
           onPress={handleStart}
           disabled={locked}
           accessibilityLabel={locked ? 'Start lesson, locked' : 'Start lesson'}
-          accessibilityHint={locked ? 'Complete the previous lesson to unlock' : 'Starts this lesson'}
+          accessibilityHint={
+            locked ? 'Complete the previous lesson to unlock' : 'Starts this lesson'
+          }
         />
       </ScrollView>
     </SafeAreaView>

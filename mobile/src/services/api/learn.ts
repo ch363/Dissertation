@@ -36,7 +36,7 @@ export async function getSuggestions(options?: {
   if (options?.currentLessonId) params.append('currentLessonId', options.currentLessonId);
   if (options?.moduleId) params.append('moduleId', options.moduleId);
   if (options?.limit) params.append('limit', options.limit.toString());
-  
+
   const query = params.toString();
   return apiClient.get<LearnSuggestionsResponse>(`/learn/suggestions${query ? `?${query}` : ''}`);
 }
@@ -54,7 +54,7 @@ export async function getSessionPlan(options?: {
   if (options?.lessonId) params.append('lessonId', options.lessonId);
   if (options?.moduleId) params.append('moduleId', options.moduleId);
   if (options?.theme) params.append('theme', options.theme);
-  
+
   const query = params.toString();
   return apiClient.get(`/learn/session-plan${query ? `?${query}` : ''}`);
 }

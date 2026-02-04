@@ -1,6 +1,6 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -34,7 +34,12 @@ export function WeeklyActivityCard({ dailyBars, summaryText }: Props) {
   return (
     <View style={styles.wrapper}>
       <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>THIS WEEK</Text>
-      <View style={[styles.card, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+        ]}
+      >
         <View style={styles.chartRow}>
           {bars.map((bar, index) => {
             const isToday = index === todayIndex;
@@ -51,7 +56,10 @@ export function WeeklyActivityCard({ dailyBars, summaryText }: Props) {
                   {fillHeight > 0 &&
                     (isToday ? (
                       <LinearGradient
-                        colors={[theme.colors.ctaCardAccent || theme.colors.primary, theme.colors.primary]}
+                        colors={[
+                          theme.colors.ctaCardAccent || theme.colors.primary,
+                          theme.colors.primary,
+                        ]}
                         start={{ x: 0, y: 1 }}
                         end={{ x: 0, y: 0 }}
                         style={[styles.barFill, { height: `${fillHeight}%` }]}
@@ -74,13 +82,19 @@ export function WeeklyActivityCard({ dailyBars, summaryText }: Props) {
                     style={[
                       styles.dayLabel,
                       {
-                        color: isToday ? theme.colors.primary : bar.active ? theme.colors.text : theme.colors.mutedText,
+                        color: isToday
+                          ? theme.colors.primary
+                          : bar.active
+                            ? theme.colors.text
+                            : theme.colors.mutedText,
                       },
                     ]}
                   >
                     {DAY_LABELS[index]}
                   </Text>
-                  {isToday && <View style={[styles.todayDot, { backgroundColor: theme.colors.primary }]} />}
+                  {isToday && (
+                    <View style={[styles.todayDot, { backgroundColor: theme.colors.primary }]} />
+                  )}
                 </View>
               </View>
             );

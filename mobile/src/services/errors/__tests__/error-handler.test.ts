@@ -15,12 +15,7 @@ describe('Error Handler', () => {
     });
 
     it('should support user message', () => {
-      const error = new AppError(
-        'Internal error',
-        ErrorType.SERVER,
-        500,
-        'Something went wrong',
-      );
+      const error = new AppError('Internal error', ErrorType.SERVER, 500, 'Something went wrong');
       expect(error.userMessage).toBe('Something went wrong');
     });
   });

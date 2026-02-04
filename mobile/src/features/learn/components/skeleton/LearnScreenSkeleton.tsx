@@ -63,10 +63,7 @@ export function LearnScreenSkeleton() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
           <SkeletonBar width={120} height={28} borderRadius={10} animatedOpacity={pulse} />
@@ -91,10 +88,7 @@ export function LearnScreenSkeleton() {
                   {[1, 2, 3, 4, 5, 6].map((j) => (
                     <Animated.View
                       key={j}
-                      style={[
-                        styles.segment,
-                        { backgroundColor: SKELETON_COLOR, opacity: pulse },
-                      ]}
+                      style={[styles.segment, { backgroundColor: SKELETON_COLOR, opacity: pulse }]}
                     />
                   ))}
                 </View>
@@ -115,7 +109,10 @@ export function LearnScreenSkeleton() {
                 <SkeletonBar width="60%" height={14} animatedOpacity={pulse} />
               </View>
               <Animated.View
-                style={[styles.reviewIllustration, { backgroundColor: SKELETON_COLOR, opacity: pulse }]}
+                style={[
+                  styles.reviewIllustration,
+                  { backgroundColor: SKELETON_COLOR, opacity: pulse },
+                ]}
               />
             </View>
             <SkeletonBar width="100%" height={48} borderRadius={12} animatedOpacity={pulse} />

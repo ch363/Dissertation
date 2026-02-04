@@ -1,24 +1,24 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, Animated, Dimensions } from 'react-native';
-import { LoadingScreen } from '@/components/ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { LoadingScreen } from '@/components/ui';
 import { SessionRunner } from '@/features/session/components/SessionRunner';
 import { makeSessionId } from '@/features/session/sessionBuilder';
-import { routeBuilders } from '@/services/navigation/routes';
-import { useAppTheme } from '@/services/theme/ThemeProvider';
-import { AttemptLog, SessionKind, SessionPlan } from '@/types/session';
 import { getSessionPlan } from '@/services/api/learn';
 import { startLesson, endLesson } from '@/services/api/progress';
-import { transformSessionPlan } from '@/services/api/session-plan-transformer';
 import { getCachedSessionPlan } from '@/services/api/session-plan-cache';
+import { transformSessionPlan } from '@/services/api/session-plan-transformer';
+import { createLogger } from '@/services/logging';
+import { routeBuilders } from '@/services/navigation/routes';
 import {
   getSessionDefaultLessonId,
   getSessionDefaultMode,
   getSessionDefaultTimeBudgetSec,
 } from '@/services/preferences/settings-facade';
-import { createLogger } from '@/services/logging';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { AttemptLog, SessionKind, SessionPlan } from '@/types/session';
 
 const logger = createLogger('SessionRunnerScreen');
 
@@ -55,7 +55,7 @@ export default function SessionRunnerScreen(props?: Props) {
   const [resolvedLessonId, setResolvedLessonId] = useState<string | undefined>(requestedLessonId);
   const [resolvedMode, setResolvedMode] = useState<'learn' | 'review' | 'mixed'>('mixed');
   const [resolvedTimeBudgetSec, setResolvedTimeBudgetSec] = useState<number | null>(null);
-  
+
   const slideAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const lessonStartedRef = useRef<string | null>(null);
@@ -91,14 +91,12 @@ export default function SessionRunnerScreen(props?: Props) {
       ]);
 
       const effectiveLessonId =
-        requestedKind === 'review' ? requestedLessonId ?? undefined : requestedLessonId ?? defaultLessonFilter ?? undefined;
+        requestedKind === 'review'
+          ? (requestedLessonId ?? undefined)
+          : (requestedLessonId ?? defaultLessonFilter ?? undefined);
 
       const effectiveMode: 'learn' | 'review' | 'mixed' =
-        requestedKind === 'review'
-          ? 'review'
-          : requestedLessonId
-            ? 'learn'
-            : defaultMode;
+        requestedKind === 'review' ? 'review' : requestedLessonId ? 'learn' : defaultMode;
       const effectiveKind: SessionKind = effectiveMode === 'review' ? 'review' : 'learn';
 
       setResolvedKind(effectiveKind);
@@ -158,7 +156,12 @@ export default function SessionRunnerScreen(props?: Props) {
           firstStep: planData?.steps?.[0],
         });
 
-        if (planData && planData.steps && Array.isArray(planData.steps) && planData.steps.length > 0) {
+        if (
+          planData &&
+          planData.steps &&
+          Array.isArray(planData.steps) &&
+          planData.steps.length > 0
+        ) {
           const transformedPlan = transformSessionPlan(planData, sessionId);
           logger.debug('Transformed plan', {
             cardsCount: transformedPlan.cards.length,
@@ -181,7 +184,6 @@ export default function SessionRunnerScreen(props?: Props) {
                 ...(returnTo ? { returnTo } : {}),
               },
             });
-            return;
           }
         } else {
           logger.error('Invalid plan data', undefined, {
@@ -200,7 +202,8 @@ export default function SessionRunnerScreen(props?: Props) {
           const msg = err?.message ?? '';
           const needsOnboarding =
             typeof msg === 'string' &&
-            (msg.includes('does not have onboarding data') || msg.includes('must complete onboarding'));
+            (msg.includes('does not have onboarding data') ||
+              msg.includes('must complete onboarding'));
           if (needsOnboarding) {
             router.replace('/(onboarding)/welcome');
             return;
@@ -266,15 +269,15 @@ export default function SessionRunnerScreen(props?: Props) {
             backgroundColor: theme.colors.background,
           }}
         >
-          <SessionRunner 
-            plan={plan} 
+          <SessionRunner
+            plan={plan}
             sessionId={sessionId}
             kind={resolvedKind}
             lessonId={resolvedLessonId}
             planMode={resolvedMode}
             timeBudgetSec={resolvedTimeBudgetSec}
             returnTo={returnTo}
-            onComplete={handleComplete} 
+            onComplete={handleComplete}
           />
         </Animated.View>
       )}

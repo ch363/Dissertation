@@ -9,7 +9,7 @@ export function useReducedMotion() {
 
     AccessibilityInfo.isReduceMotionEnabled?.()
       .then((enabled) => {
-        if (mounted)         setReducedMotion(!!enabled);
+        if (mounted) setReducedMotion(!!enabled);
       })
       .catch(() => {});
 
@@ -25,4 +25,3 @@ export function useReducedMotion() {
 
   return reducedMotion;
 }
-

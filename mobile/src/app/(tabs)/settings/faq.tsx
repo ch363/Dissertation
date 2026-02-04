@@ -1,9 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScrollView } from 'react-native';
 
 import { FaqContent } from '@/features/settings/components/faq/FaqContent';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
@@ -32,7 +31,12 @@ export default function FaqScreen() {
   const { theme } = useAppTheme();
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const handleBack = useCallback(() => {
-    if (returnTo && typeof returnTo === 'string' && returnTo.startsWith('/') && !returnTo.includes('/settings/faq')) {
+    if (
+      returnTo &&
+      typeof returnTo === 'string' &&
+      returnTo.startsWith('/') &&
+      !returnTo.includes('/settings/faq')
+    ) {
       router.replace(returnTo as any);
     } else {
       router.back();
@@ -40,7 +44,10 @@ export default function FaqScreen() {
   }, [returnTo]);
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top']}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.colors.background }]}
+      edges={['top']}
+    >
       <View style={styles.header}>
         <TouchableOpacity
           onPress={handleBack}

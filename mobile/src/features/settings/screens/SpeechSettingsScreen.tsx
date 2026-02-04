@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import Slider from '@react-native-community/slider';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { View, Text, StyleSheet, Switch, Pressable } from 'react-native';
@@ -94,7 +94,10 @@ function SettingToggleRow({
       <View style={styles.settingRowContent}>
         <Text style={[styles.settingRowLabel, { color: theme.colors.text }]}>{label}</Text>
         {subtitle ? (
-          <Text style={[styles.settingRowSubtitle, { color: theme.colors.mutedText }]} numberOfLines={2}>
+          <Text
+            style={[styles.settingRowSubtitle, { color: theme.colors.mutedText }]}
+            numberOfLines={2}
+          >
             {subtitle}
           </Text>
         ) : null}
@@ -151,7 +154,10 @@ function SettingSliderRow({
         <View style={styles.settingRowContent}>
           <Text style={[styles.settingRowLabel, { color: theme.colors.text }]}>{label}</Text>
           {subtitle ? (
-            <Text style={[styles.settingRowSubtitle, { color: theme.colors.mutedText }]} numberOfLines={2}>
+            <Text
+              style={[styles.settingRowSubtitle, { color: theme.colors.mutedText }]}
+              numberOfLines={2}
+            >
               {subtitle}
             </Text>
           ) : null}
@@ -213,7 +219,10 @@ function SettingNavRow({
       <View style={styles.settingRowContent}>
         <Text style={[styles.settingRowLabel, { color: theme.colors.text }]}>{label}</Text>
         {subtitle ? (
-          <Text style={[styles.settingRowSubtitle, { color: theme.colors.mutedText }]} numberOfLines={2}>
+          <Text
+            style={[styles.settingRowSubtitle, { color: theme.colors.mutedText }]}
+            numberOfLines={2}
+          >
             {subtitle}
           </Text>
         ) : null}
@@ -266,17 +275,14 @@ export default function SpeechSettings() {
     router.replace(routes.tabs.settings.root);
   }, [navigation]);
 
-  const handleVoicePress = useCallback(() => {
-  }, []);
+  const handleVoicePress = useCallback(() => {}, []);
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top']}>
-      <ScreenHeader
-        title="Speech"
-        onBackPress={handleBack}
-        backLabel="Settings"
-        showHelp={false}
-      />
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.colors.background }]}
+      edges={['top']}
+    >
+      <ScreenHeader title="Speech" onBackPress={handleBack} backLabel="Settings" showHelp={false} />
       <ScrollView
         style={[styles.scroll, { backgroundColor: theme.colors.background }]}
         contentContainerStyle={[

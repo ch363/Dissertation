@@ -1,6 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -46,10 +46,17 @@ export function StatPill({ label, value, accessibilityLabel, variant = 'secondar
     >
       {iconName && (
         <View style={styles.iconWrap}>
-          <Ionicons name={iconName} size={iconSize} color={iconColor} strokeWidth={isPrimary ? 2.5 : 2} />
+          <Ionicons
+            name={iconName}
+            size={iconSize}
+            color={iconColor}
+            strokeWidth={isPrimary ? 2.5 : 2}
+          />
         </View>
       )}
-      <Text style={[styles.value, { color: theme.colors.text }, isPrimary && styles.valuePrimary]}>{value}</Text>
+      <Text style={[styles.value, { color: theme.colors.text }, isPrimary && styles.valuePrimary]}>
+        {value}
+      </Text>
       <Text style={[styles.label, { color: theme.colors.mutedText }]}>{label}</Text>
     </View>
   );

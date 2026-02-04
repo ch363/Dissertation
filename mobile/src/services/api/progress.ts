@@ -1,6 +1,8 @@
 import { apiClient } from './client';
 import { ApiClientError } from './types';
+
 import type { DeliveryMethod } from '@/features/session/delivery-methods';
+import type { PronunciationWordResult } from '@/types/session';
 
 const VALIDATE_ANSWER_RETRY_DELAY_MS = 1000;
 
@@ -92,10 +94,7 @@ export async function getUserLessons(): Promise<UserLessonProgress[]> {
   return apiClient.get<UserLessonProgress[]>(`/progress/lessons${query ? `?${query}` : ''}`);
 }
 
-export async function completeTeaching(
-  teachingId: string,
-  timeSpentMs?: number,
-) {
+export async function completeTeaching(teachingId: string, timeSpentMs?: number) {
   return apiClient.post(`/progress/teachings/${teachingId}/complete`, {
     ...(timeSpentMs != null && timeSpentMs > 0 ? { timeSpentMs } : {}),
   });
@@ -110,7 +109,10 @@ export async function recordQuestionAttempt(
   questionId: string,
   attempt: QuestionAttemptDto,
 ): Promise<QuestionAttemptResponse> {
-  return apiClient.post<QuestionAttemptResponse>(`/progress/questions/${questionId}/attempt`, attempt);
+  return apiClient.post<QuestionAttemptResponse>(
+    `/progress/questions/${questionId}/attempt`,
+    attempt,
+  );
 }
 
 export async function getDueReviews(): Promise<DueReview[]> {
@@ -121,16 +123,11 @@ export async function getDueReviewsLatest(): Promise<DueReviewLatest[]> {
   return apiClient.get<DueReviewLatest[]>('/progress/reviews/due/latest');
 }
 
-export async function updateDeliveryMethodScore(
-  method: string,
-  score: DeliveryMethodScoreDto,
-) {
+export async function updateDeliveryMethodScore(method: string, score: DeliveryMethodScoreDto) {
   return apiClient.post(`/progress/delivery-method/${method}/score`, score);
 }
 
-export async function recordKnowledgeLevelProgress(
-  progress: KnowledgeLevelProgressDto,
-) {
+export async function recordKnowledgeLevelProgress(progress: KnowledgeLevelProgressDto) {
   return apiClient.post('/progress/knowledge-level-progress', progress);
 }
 
@@ -174,8 +171,6 @@ export interface ValidateAnswerResponse {
   acceptedVariants?: string[];
 }
 
-import type { PronunciationWordResult } from '@/types/session';
-
 export type { PronunciationWordResult } from '@/types/session';
 
 export interface PronunciationResponse {
@@ -192,10 +187,10 @@ export async function validateAnswer(
   deliveryMethod: DeliveryMethod,
 ): Promise<ValidateAnswerResponse> {
   const attempt = async (): Promise<ValidateAnswerResponse> =>
-    apiClient.post<ValidateAnswerResponse>(
-      `/progress/questions/${questionId}/validate`,
-      { answer, deliveryMethod },
-    );
+    apiClient.post<ValidateAnswerResponse>(`/progress/questions/${questionId}/validate`, {
+      answer,
+      deliveryMethod,
+    });
   try {
     return await attempt();
   } catch (e) {

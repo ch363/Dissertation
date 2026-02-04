@@ -41,7 +41,11 @@ export function StaticCard({
   const { theme } = useAppTheme();
   const paddingVertical = compact ? CARD_PADDING_V_COMPACT : CARD_PADDING_V;
   const titleStyle = titleVariant === 'subtle' ? styles.titleSubtle : styles.title;
-  const iconContainerStyle = [styles.iconBox, { backgroundColor: theme.colors.border }, iconBoxStyle];
+  const iconContainerStyle = [
+    styles.iconBox,
+    { backgroundColor: theme.colors.border },
+    iconBoxStyle,
+  ];
 
   const iconElement =
     typeof leftIcon === 'string' ? (
@@ -55,9 +59,7 @@ export function StaticCard({
         />
       </View>
     ) : leftIcon ? (
-      <View style={iconContainerStyle}>
-        {leftIcon}
-      </View>
+      <View style={iconContainerStyle}>{leftIcon}</View>
     ) : null;
 
   const hasHeader = title != null || iconElement != null;

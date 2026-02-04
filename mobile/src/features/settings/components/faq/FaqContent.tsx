@@ -11,56 +11,69 @@ import { theme as baseTheme } from '@/services/theme/tokens';
 
 export const FAQ_DATA = [
   {
-    question: "How does review work?",
-    answer: "Fluentia uses spaced repetition: items you struggle with appear more often, and ones you know well appear less often. Do your scheduled reviews on the Learn tab to keep vocabulary strong.",
+    question: 'How does review work?',
+    answer:
+      'Fluentia uses spaced repetition: items you struggle with appear more often, and ones you know well appear less often. Do your scheduled reviews on the Learn tab to keep vocabulary strong.',
   },
   {
-    question: "Can I change session length or exercise types?",
-    answer: "Yes. Go to Settings → Session defaults to set your preferred session length and which exercise types (e.g. translate, listen) you want in each session.",
+    question: 'Can I change session length or exercise types?',
+    answer:
+      'Yes. Go to Settings → Session defaults to set your preferred session length and which exercise types (e.g. translate, listen) you want in each session.',
   },
   {
-    question: "What is Adaptivity?",
-    answer: "When Adaptivity is on, the app adjusts lesson difficulty and when reviews are due based on your answers. Turn it off in Settings → Learning if you prefer fixed schedules.",
+    question: 'What is Adaptivity?',
+    answer:
+      'When Adaptivity is on, the app adjusts lesson difficulty and when reviews are due based on your answers. Turn it off in Settings → Learning if you prefer fixed schedules.',
   },
   {
-    question: "Where can I see my progress?",
-    answer: "Profile shows your overall progress, skills and review history. You can also see today's plan and streak on Home.",
+    question: 'Where can I see my progress?',
+    answer:
+      "Profile shows your overall progress, skills and review history. You can also see today's plan and streak on Home.",
   },
   {
-    question: "How is my streak calculated?",
-    answer: "Your streak counts consecutive days where you complete at least one learning activity (e.g. a lesson or a review session). Missing a day resets the streak to zero, but you can start building it again the next day.",
+    question: 'How is my streak calculated?',
+    answer:
+      'Your streak counts consecutive days where you complete at least one learning activity (e.g. a lesson or a review session). Missing a day resets the streak to zero, but you can start building it again the next day.',
   },
   {
-    question: "What exercise types are there?",
-    answer: "Sessions can include multiple choice, translation (type or speak), fill-in-the-blank, listening, and pronunciation. You choose which types to enable in Settings → Session defaults.",
+    question: 'What exercise types are there?',
+    answer:
+      'Sessions can include multiple choice, translation (type or speak), fill-in-the-blank, listening, and pronunciation. You choose which types to enable in Settings → Session defaults.',
   },
   {
-    question: "How does pronunciation checking work?",
-    answer: "When you do speaking exercises, Fluentia can check your pronunciation using speech recognition. Make sure microphone access is allowed and try a quiet environment. You can adjust speech settings (e.g. playback speed) in Settings → Speech.",
+    question: 'How does pronunciation checking work?',
+    answer:
+      'When you do speaking exercises, Fluentia can check your pronunciation using speech recognition. Make sure microphone access is allowed and try a quiet environment. You can adjust speech settings (e.g. playback speed) in Settings → Speech.',
   },
   {
     question: "Why isn't the microphone or speech working?",
-    answer: "Check that the app has microphone permission in your device settings. On iOS Simulator, speech input may not be available — use a real device for pronunciation practice. Restarting the app or checking Settings → Speech can also help.",
+    answer:
+      'Check that the app has microphone permission in your device settings. On iOS Simulator, speech input may not be available — use a real device for pronunciation practice. Restarting the app or checking Settings → Speech can also help.',
   },
   {
     question: "What's the difference between 'Start session' and doing a lesson?",
-    answer: "Lessons introduce new content step by step. 'Start session' runs a practice session that mixes review items and optional new material based on your plan. Both count toward your streak and progress.",
+    answer:
+      "Lessons introduce new content step by step. 'Start session' runs a practice session that mixes review items and optional new material based on your plan. Both count toward your streak and progress.",
   },
   {
-    question: "Can I redo a lesson or skip one?",
-    answer: "You can replay or revisit lessons from the Learn tab. Progress is saved so you can continue where you left off; the app is designed so you can move at your own pace.",
+    question: 'Can I redo a lesson or skip one?',
+    answer:
+      'You can replay or revisit lessons from the Learn tab. Progress is saved so you can continue where you left off; the app is designed so you can move at your own pace.',
   },
   {
-    question: "How do I change my password or email?",
-    answer: "Use the sign-in screen's 'Forgot password?' to receive a reset link. Account details like email are managed through your auth provider; sign out and back in from Settings if you've updated them elsewhere.",
+    question: 'How do I change my password or email?',
+    answer:
+      "Use the sign-in screen's 'Forgot password?' to receive a reset link. Account details like email are managed through your auth provider; sign out and back in from Settings if you've updated them elsewhere.",
   },
   {
-    question: "How do I sign out?",
-    answer: "Open Settings, scroll to the Account section and tap Sign out. You'll need to sign in again to use your account on this device.",
+    question: 'How do I sign out?',
+    answer:
+      "Open Settings, scroll to the Account section and tap Sign out. You'll need to sign in again to use your account on this device.",
   },
   {
-    question: "Is my data private?",
-    answer: "Your progress and learning data are stored in your account and used only to personalize your experience (e.g. spaced repetition, recommendations). We don't sell your data. See the app's privacy policy for full details.",
+    question: 'Is my data private?',
+    answer:
+      "Your progress and learning data are stored in your account and used only to personalize your experience (e.g. spaced repetition, recommendations). We don't sell your data. See the app's privacy policy for full details.",
   },
 ] as const;
 
@@ -111,7 +124,12 @@ export function FaqContent() {
   }, []);
 
   return (
-    <View style={[faqStyles.card, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+    <View
+      style={[
+        faqStyles.card,
+        { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+      ]}
+    >
       {FAQ_DATA.map((faq, index) => (
         <FaqItem
           key={index}

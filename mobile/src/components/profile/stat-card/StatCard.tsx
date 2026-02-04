@@ -1,6 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -17,7 +17,12 @@ export function StatCard({ label, value, icon, color }: Props) {
   const iconColor = color || theme.colors.primary;
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+      ]}
+    >
       {icon && <Ionicons name={icon} size={24} color={iconColor} style={styles.icon} />}
       <Text style={[styles.value, { color: theme.colors.text }]}>{String(value)}</Text>
       <Text style={[styles.label, { color: theme.colors.mutedText }]}>{label}</Text>

@@ -5,6 +5,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { HelpButton } from '../help-button/HelpButton';
+
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
@@ -108,9 +109,7 @@ export function ScreenHeader({
             )}
             <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>
             {subtitle && (
-              <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
-                {subtitle}
-              </Text>
+              <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>{subtitle}</Text>
             )}
           </View>
         </View>

@@ -41,7 +41,13 @@ export function DueTodayTile({ item, onPress }: Props) {
     >
       <View style={styles.topRow}>
         <View style={[styles.iconCircle, { backgroundColor: theme.colors.primary + '20' }]}>
-          <Ionicons name={item.icon} size={20} color={theme.colors.primary} accessible={false} importantForAccessibility="no" />
+          <Ionicons
+            name={item.icon}
+            size={20}
+            color={theme.colors.primary}
+            accessible={false}
+            importantForAccessibility="no"
+          />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: theme.colors.text }]}>{item.title}</Text>
@@ -66,7 +72,13 @@ export function DueTodayTile({ item, onPress }: Props) {
         )}
       </View>
       <View style={styles.etaRow}>
-        <Ionicons name="time-outline" size={14} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
+        <Ionicons
+          name="time-outline"
+          size={14}
+          color={theme.colors.mutedText}
+          accessible={false}
+          importantForAccessibility="no"
+        />
         <Text style={[styles.etaText, { color: theme.colors.mutedText }]}>{item.eta}</Text>
       </View>
     </Pressable>

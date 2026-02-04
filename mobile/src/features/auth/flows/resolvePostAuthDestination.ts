@@ -1,7 +1,7 @@
 import { hasOnboarding } from '@/services/api/onboarding';
 import { ensureProfileSeed } from '@/services/api/profile';
-import { routes } from '@/services/navigation/routes';
 import { createLogger } from '@/services/logging';
+import { routes } from '@/services/navigation/routes';
 
 const Logger = createLogger('ResolvePostAuthDestination');
 
@@ -15,16 +15,16 @@ export async function resolvePostAuthDestination(userId: string): Promise<string
   try {
     // Ensure the profile row exists before routing anywhere that depends on it.
     await ensureProfileSeed();
-    
+
     // Check if user has completed onboarding
     const onboardingDone = await hasOnboarding(userId);
     Logger.info('resolvePostAuthDestination', { userId, onboardingDone });
-    
+
     // Users who completed onboarding should go to home
     if (onboardingDone) {
       return routes.tabs.home;
     }
-    
+
     // Users who haven't completed onboarding should be routed to onboarding
     return routes.onboarding.welcome;
   } catch (err) {

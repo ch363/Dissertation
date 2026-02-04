@@ -1,11 +1,11 @@
 import type { HomePrimaryAction } from '@/features/home/components/primary-cta/HomePrimaryCtaCard';
-import type { HomeNextAction } from '@/features/home/utils/selectHomeNextAction';
 import {
   estimateReviewMinutes,
   formatReviewMinutesRange,
   formatReviewMinutesRangeFromEstimate,
 } from '@/features/home/utils/estimateReviewMinutes';
 import { formatLessonDetail } from '@/features/home/utils/formatLessonDetail';
+import type { HomeNextAction } from '@/features/home/utils/selectHomeNextAction';
 
 export function buildPrimaryAction(
   nextAction: HomeNextAction | null,

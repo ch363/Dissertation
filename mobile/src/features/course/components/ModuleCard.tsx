@@ -1,13 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Image,
-  type ViewStyle,
-} from 'react-native';
+import { View, Text, StyleSheet, Pressable, Image, type ViewStyle } from 'react-native';
 
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -70,28 +63,17 @@ export function ModuleCard({
         </View>
 
         <View style={styles.content}>
-          <Text
-            style={[styles.title, { color: theme.colors.text }]}
-            numberOfLines={2}
-          >
+          <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={2}>
             {title}
           </Text>
-          <Text
-            style={[styles.description, { color: theme.colors.mutedText }]}
-            numberOfLines={1}
-          >
+          <Text style={[styles.description, { color: theme.colors.mutedText }]} numberOfLines={1}>
             {description}
           </Text>
 
           {hasMeta ? (
             <View style={styles.metaRow}>
               {level != null && level !== '' ? (
-                <View
-                  style={[
-                    styles.pill,
-                    { backgroundColor: theme.colors.primary + '18' },
-                  ]}
-                >
+                <View style={[styles.pill, { backgroundColor: theme.colors.primary + '18' }]}>
                   <Text
                     style={[styles.pillText, { color: theme.colors.primary }]}
                     numberOfLines={1}
@@ -101,12 +83,7 @@ export function ModuleCard({
                 </View>
               ) : null}
               {duration != null && duration !== '' ? (
-                <View
-                  style={[
-                    styles.pill,
-                    { backgroundColor: theme.colors.border },
-                  ]}
-                >
+                <View style={[styles.pill, { backgroundColor: theme.colors.border }]}>
                   <Text
                     style={[styles.pillText, { color: theme.colors.mutedText }]}
                     numberOfLines={1}
@@ -116,12 +93,7 @@ export function ModuleCard({
                 </View>
               ) : null}
               {lessons != null && lessons !== '' ? (
-                <View
-                  style={[
-                    styles.pill,
-                    { backgroundColor: theme.colors.border },
-                  ]}
-                >
+                <View style={[styles.pill, { backgroundColor: theme.colors.border }]}>
                   <Text
                     style={[styles.pillText, { color: theme.colors.mutedText }]}
                     numberOfLines={1}
@@ -131,17 +103,9 @@ export function ModuleCard({
                 </View>
               ) : null}
               {status === 'In progress' ? (
-                <View
-                  style={[
-                    styles.pill,
-                    { backgroundColor: theme.colors.success + '20' },
-                  ]}
-                >
+                <View style={[styles.pill, { backgroundColor: theme.colors.success + '20' }]}>
                   <Text
-                    style={[
-                      styles.pillText,
-                      { color: theme.colors.success },
-                    ]}
+                    style={[styles.pillText, { color: theme.colors.success }]}
                     numberOfLines={1}
                   >
                     In progress
@@ -152,17 +116,8 @@ export function ModuleCard({
           ) : null}
         </View>
 
-        <View
-          style={[
-            styles.chevronWrap,
-            { backgroundColor: theme.colors.border },
-          ]}
-        >
-          <Ionicons
-            name="chevron-forward"
-            size={20}
-            color={theme.colors.mutedText}
-          />
+        <View style={[styles.chevronWrap, { backgroundColor: theme.colors.border }]}>
+          <Ionicons name="chevron-forward" size={20} color={theme.colors.mutedText} />
         </View>
       </View>
     </Pressable>

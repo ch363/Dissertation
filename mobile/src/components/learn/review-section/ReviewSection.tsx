@@ -1,15 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
-import { useAppTheme } from '@/services/theme/ThemeProvider';
-import { theme as baseTheme } from '@/services/theme/tokens';
 import {
   estimateReviewMinutes,
   formatReviewMinutesRange,
   formatReviewMinutesRangeFromEstimate,
 } from '@/features/home/utils/estimateReviewMinutes';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { theme as baseTheme } from '@/services/theme/tokens';
 
 type Props = {
   dueCount: number;
@@ -79,7 +79,9 @@ export function ReviewSection({ dueCount, estimatedReviewMinutes: fromDashboard,
             ]}
           >
             <LinearGradient
-              colors={dueCount > 0 ? [theme.colors.primary, theme.colors.primary] : ['#9CA3AF', '#6B7280']}
+              colors={
+                dueCount > 0 ? [theme.colors.primary, theme.colors.primary] : ['#9CA3AF', '#6B7280']
+              }
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.ctaGradient}

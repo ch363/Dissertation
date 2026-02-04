@@ -45,9 +45,7 @@ const config: ExpoConfig = {
       base?.extra?.EXPO_PUBLIC_API_URL ||
       'http://localhost:3000',
     EXPO_PUBLIC_BACKEND_URL:
-      process.env.EXPO_PUBLIC_BACKEND_URL ||
-      base?.extra?.EXPO_PUBLIC_BACKEND_URL ||
-      undefined,
+      process.env.EXPO_PUBLIC_BACKEND_URL || base?.extra?.EXPO_PUBLIC_BACKEND_URL || undefined,
   },
 };
 

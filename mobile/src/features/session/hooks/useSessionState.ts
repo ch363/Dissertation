@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { AttemptLog, Card, CardKind } from '@/types/session';
-import { PronunciationResult } from '@/types/session';
+
+import { AttemptLog, Card, CardKind, PronunciationResult } from '@/types/session';
 
 export interface SessionState {
   index: number;

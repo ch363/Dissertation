@@ -2,8 +2,8 @@ import type { Session, User } from '@supabase/supabase-js';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { getMyProfile, type Profile } from '@/services/api/profile';
-import { getSupabaseClient } from '@/services/supabase/client';
 import { createLogger } from '@/services/logging';
+import { getSupabaseClient } from '@/services/supabase/client';
 
 const logger = createLogger('AuthProvider');
 

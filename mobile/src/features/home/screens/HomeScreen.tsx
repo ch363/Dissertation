@@ -18,17 +18,17 @@ import {
   selectHomeNextAction,
   type HomeNextAction,
 } from '@/features/home/utils/selectHomeNextAction';
-import { SKILL_CONFIG } from '@/features/profile/profileConstants';
 import { buildLessonOutcome } from '@/features/learn/utils/lessonOutcome';
+import { SKILL_CONFIG } from '@/features/profile/profileConstants';
 import { makeSessionId } from '@/features/session/sessionBuilder';
 import { getSuggestions } from '@/services/api/learn';
 import { getAllMastery } from '@/services/api/mastery';
 import { getLesson, getLessonTeachings } from '@/services/api/modules';
 import { getDashboard, getMyProfile, getRecentActivity, getStats } from '@/services/api/profile';
+import { createLogger } from '@/services/logging';
 import { routeBuilders, routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
-import { createLogger } from '@/services/logging';
 
 const logger = createLogger('HomeScreen');
 
@@ -44,11 +44,13 @@ export default function HomeScreen() {
   const [accuracyToday, setAccuracyToday] = useState<number | null>(null);
   const [dueReviewCount, setDueReviewCount] = useState<number>(0);
   const [xpTotal, setXpTotal] = useState<number>(0);
-  const [mastery, setMastery] = useState<Array<{ skillTag: string; masteryProbability: number }>>([]);
+  const [mastery, setMastery] = useState<{ skillTag: string; masteryProbability: number }[]>([]);
   const [estimatedReviewMinutes, setEstimatedReviewMinutes] = useState<number | null>(null);
   const [nextAction, setNextAction] = useState<HomeNextAction | null>(null);
   const [nextLessonItemCount, setNextLessonItemCount] = useState<number | null>(null);
-  const [whyThisText, setWhyThisText] = useState<string>('You’ll build confidence with practical phrases.');
+  const [whyThisText, setWhyThisText] = useState<string>(
+    'You’ll build confidence with practical phrases.',
+  );
   /** Heuristic topic from last activity (module/lesson title) for Focus when next action is review. */
   const [lastActivityTopic, setLastActivityTopic] = useState<string | null>(null);
   /** First suggested lesson (from learn API), used for Focus when primary action is review. */
@@ -78,29 +80,29 @@ export default function HomeScreen() {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [profile, dashboardData, statsData, recentActivity, suggestions, masteryData] = await Promise.all([
-        getMyProfile().catch(() => null),
-        getDashboard().catch(() => ({
-          streak: 0,
-          dueReviewCount: 0,
-          activeLessonCount: 0,
-          xpTotal: 0,
-          weeklyXP: 0,
-          weeklyXPChange: 0,
-          accuracyPercentage: 0,
-          accuracyByDeliveryMethod: {},
-          grammaticalAccuracyByDeliveryMethod: {},
-          studyTimeMinutes: 0,
-        })),
-        getStats().catch(() => ({ minutesToday: 0, completedItemsToday: 0 })),
-        getRecentActivity().catch(() => null),
-        getSuggestions({ limit: 1 }).catch(() => ({ lessons: [], modules: [] })),
-        getAllMastery().catch(() => []),
-      ]);
+      const [profile, dashboardData, statsData, recentActivity, suggestions, masteryData] =
+        await Promise.all([
+          getMyProfile().catch(() => null),
+          getDashboard().catch(() => ({
+            streak: 0,
+            dueReviewCount: 0,
+            activeLessonCount: 0,
+            xpTotal: 0,
+            weeklyXP: 0,
+            weeklyXPChange: 0,
+            accuracyPercentage: 0,
+            accuracyByDeliveryMethod: {},
+            grammaticalAccuracyByDeliveryMethod: {},
+            studyTimeMinutes: 0,
+          })),
+          getStats().catch(() => ({ minutesToday: 0, completedItemsToday: 0 })),
+          getRecentActivity().catch(() => null),
+          getSuggestions({ limit: 1 }).catch(() => ({ lessons: [], modules: [] })),
+          getAllMastery().catch(() => []),
+        ]);
 
       const rawName = profile?.name;
-      const name =
-        rawName != null && typeof rawName === 'string' ? rawName.trim() : null;
+      const name = rawName != null && typeof rawName === 'string' ? rawName.trim() : null;
       setDisplayName(name || null);
       setStreakDays(dashboardData.streak || 0);
       setMinutesToday(statsData.minutesToday || 0);
@@ -113,23 +115,26 @@ export default function HomeScreen() {
       setDueReviewCount(dashboardData.dueReviewCount || 0);
       const totalXP = dashboardData.xpTotal ?? 0;
       setXpTotal(totalXP);
-      
+
       // Determine if this is a first-time user (no XP, no streak, no activity)
       setIsFirstTimeUser(
         totalXP === 0 &&
-        (dashboardData.streak || 0) === 0 &&
-        (statsData.minutesToday || 0) === 0 &&
-        (statsData.completedItemsToday ?? 0) === 0
+          (dashboardData.streak || 0) === 0 &&
+          (statsData.minutesToday || 0) === 0 &&
+          (statsData.completedItemsToday ?? 0) === 0,
       );
       setMastery(
         Array.isArray(masteryData)
-          ? masteryData.map((m) => ({ skillTag: m.skillTag, masteryProbability: m.masteryProbability }))
+          ? masteryData.map((m) => ({
+              skillTag: m.skillTag,
+              masteryProbability: m.masteryProbability,
+            }))
           : [],
       );
       setEstimatedReviewMinutes(
         'estimatedReviewMinutes' in dashboardData &&
-        typeof dashboardData.estimatedReviewMinutes === 'number' &&
-        dashboardData.estimatedReviewMinutes > 0
+          typeof dashboardData.estimatedReviewMinutes === 'number' &&
+          dashboardData.estimatedReviewMinutes > 0
           ? dashboardData.estimatedReviewMinutes
           : null,
       );
@@ -204,7 +209,10 @@ export default function HomeScreen() {
 
     if (!lessonId) {
       setNextLessonItemCount(null);
-      setWhyThisText((nextAction && 'reason' in nextAction ? nextAction.reason : undefined) ?? 'You’ll build confidence with practical phrases.');
+      setWhyThisText(
+        (nextAction && 'reason' in nextAction ? nextAction.reason : undefined) ??
+          'You’ll build confidence with practical phrases.',
+      );
       return;
     }
 
@@ -217,14 +225,21 @@ export default function HomeScreen() {
 
         if (cancelled) return;
 
-        setNextLessonItemCount(typeof lesson?.numberOfItems === 'number' ? lesson.numberOfItems : null);
+        setNextLessonItemCount(
+          typeof lesson?.numberOfItems === 'number' ? lesson.numberOfItems : null,
+        );
         const outcome = teachings.length > 0 ? buildLessonOutcome(teachings) : null;
-        const fallback = (nextAction && 'reason' in nextAction ? nextAction.reason : undefined) ?? 'You’ll build confidence with practical phrases.';
+        const fallback =
+          (nextAction && 'reason' in nextAction ? nextAction.reason : undefined) ??
+          'You’ll build confidence with practical phrases.';
         setWhyThisText(outcome ?? fallback);
       } catch {
         if (cancelled) return;
         setNextLessonItemCount(null);
-        setWhyThisText((nextAction && 'reason' in nextAction ? nextAction.reason : undefined) ?? 'You’ll build confidence with practical phrases.');
+        setWhyThisText(
+          (nextAction && 'reason' in nextAction ? nextAction.reason : undefined) ??
+            'You’ll build confidence with practical phrases.',
+        );
       }
     })();
 
@@ -235,12 +250,7 @@ export default function HomeScreen() {
 
   const primaryAction: HomePrimaryAction = useMemo(
     () =>
-      buildPrimaryAction(
-        nextAction,
-        dueReviewCount,
-        nextLessonItemCount,
-        estimatedReviewMinutes,
-      ),
+      buildPrimaryAction(nextAction, dueReviewCount, nextLessonItemCount, estimatedReviewMinutes),
     [nextAction, nextLessonItemCount, dueReviewCount, estimatedReviewMinutes],
   );
 
@@ -297,7 +307,11 @@ export default function HomeScreen() {
       const skillName = SKILL_CONFIG[weakest.skillTag]?.name ?? weakest.skillTag;
       return `Because you struggle most with ${skillName}`;
     }
-    if (whyThisText && whyThisText.trim() !== '' && !/build confidence|practical phrases/i.test(whyThisText)) {
+    if (
+      whyThisText &&
+      whyThisText.trim() !== '' &&
+      !/build confidence|practical phrases/i.test(whyThisText)
+    ) {
       return whyThisText;
     }
     return undefined;
@@ -307,12 +321,19 @@ export default function HomeScreen() {
     if (!nextAction) return undefined;
     if (nextAction.kind === 'review') {
       if (suggestedLesson?.lessonTitle) return `Next lesson: ${suggestedLesson.lessonTitle}`;
-      const topicPart = focusTopic.replace(/^Focus:\s*/i, '').trim().toLowerCase();
+      const topicPart = focusTopic
+        .replace(/^Focus:\s*/i, '')
+        .trim()
+        .toLowerCase();
       const last = lastActivityTopic?.trim().toLowerCase();
       if (!last || topicPart === last) return undefined;
       return `From: ${lastActivityTopic!.trim()}`;
     }
-    if (nextAction.kind === 'continue' && 'progressLabel' in nextAction && nextAction.progressLabel?.trim()) {
+    if (
+      nextAction.kind === 'continue' &&
+      'progressLabel' in nextAction &&
+      nextAction.progressLabel?.trim()
+    ) {
       return nextAction.progressLabel.trim();
     }
     const lessonTitle = 'lessonTitle' in nextAction ? nextAction.lessonTitle : null;
@@ -347,13 +368,17 @@ export default function HomeScreen() {
   }, [inProgressLesson, nextAction]);
 
   const focusProgressLine = useMemo(() => {
-    const total = inProgressLesson?.totalTeachings ?? (nextAction?.kind === 'continue' ? nextAction.totalTeachings : undefined);
-    const completed = inProgressLesson?.completedTeachings ?? (nextAction?.kind === 'continue' ? nextAction.completedTeachings : undefined);
+    const total =
+      inProgressLesson?.totalTeachings ??
+      (nextAction?.kind === 'continue' ? nextAction.totalTeachings : undefined);
+    const completed =
+      inProgressLesson?.completedTeachings ??
+      (nextAction?.kind === 'continue' ? nextAction.completedTeachings : undefined);
     if (typeof total !== 'number' || total < 1) return undefined;
     const done = typeof completed === 'number' ? completed : 0;
     const remaining = Math.max(0, total - done);
     const percent = Math.round((done / total) * 100);
-    
+
     if (remaining === 0) {
       return `${total} ${total === 1 ? 'lesson' : 'lessons'} • 100% complete`;
     }
@@ -364,7 +389,11 @@ export default function HomeScreen() {
     if (inProgressLesson && inProgressLesson.totalTeachings > 0) {
       return inProgressLesson.completedTeachings / inProgressLesson.totalTeachings;
     }
-    if (nextAction?.kind !== 'continue' || typeof nextAction.totalTeachings !== 'number' || nextAction.totalTeachings <= 0) {
+    if (
+      nextAction?.kind !== 'continue' ||
+      typeof nextAction.totalTeachings !== 'number' ||
+      nextAction.totalTeachings <= 0
+    ) {
       return undefined;
     }
     return nextAction.completedTeachings / nextAction.totalTeachings;
@@ -389,7 +418,11 @@ export default function HomeScreen() {
 
   const focusWhyAffordance = useMemo(() => {
     if (focusWhy && focusWhy.trim().length > 0 && focusWhy.length < 80) return focusWhy.trim();
-    if (inProgressLesson || nextAction?.kind === 'continue' || (nextAction?.kind === 'startNext' && nextAction.lessonId)) {
+    if (
+      inProgressLesson ||
+      nextAction?.kind === 'continue' ||
+      (nextAction?.kind === 'startNext' && nextAction.lessonId)
+    ) {
       return 'Based on your learning path.';
     }
     if (nextAction?.kind === 'review' && suggestedLesson) return 'After you review.';
@@ -481,10 +514,10 @@ export default function HomeScreen() {
           </View>
           <View style={styles.helpButtonWrap}>
             <HelpButton
-            variant="elevated"
-            accessibilityLabel="Help, home screen tips"
-            accessibilityHint="Opens help information"
-          />
+              variant="elevated"
+              accessibilityLabel="Help, home screen tips"
+              accessibilityHint="Opens help information"
+            />
           </View>
         </View>
 
@@ -538,7 +571,6 @@ export default function HomeScreen() {
             </Text>
           </View>
         ) : null}
-
       </View>
     </ScrollView>
   );

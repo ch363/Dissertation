@@ -40,13 +40,31 @@ export default function LandingScreen() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" accessible={false} />
-        <Text style={[styles.title, { color: theme.colors.text }]} accessibilityRole="header">Fluentia</Text>
-        <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>Personalised learning, one step at a time.</Text>
+        <Image
+          source={require('@/assets/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+          accessible={false}
+        />
+        <Text style={[styles.title, { color: theme.colors.text }]} accessibilityRole="header">
+          Fluentia
+        </Text>
+        <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
+          Personalised learning, one step at a time.
+        </Text>
 
         <View style={styles.buttons}>
-          <Button title="Get Started" onPress={goSignUp} accessibilityHint="Creates a new account" />
-          <Button title="Log In" onPress={goSignIn} variant="secondary" accessibilityHint="Signs in to your account" />
+          <Button
+            title="Get Started"
+            onPress={goSignUp}
+            accessibilityHint="Creates a new account"
+          />
+          <Button
+            title="Log In"
+            onPress={goSignIn}
+            variant="secondary"
+            accessibilityHint="Signs in to your account"
+          />
         </View>
         <StatusBar style="auto" />
       </View>

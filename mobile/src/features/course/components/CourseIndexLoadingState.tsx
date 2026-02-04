@@ -21,9 +21,7 @@ export function CourseIndexLoadingState() {
           ]}
         >
           <View style={styles.row}>
-            <View
-              style={[styles.thumbSkeleton, { backgroundColor: theme.colors.border }]}
-            />
+            <View style={[styles.thumbSkeleton, { backgroundColor: theme.colors.border }]} />
             <View style={styles.contentSkeleton}>
               <View
                 style={[styles.line, styles.lineTitle, { backgroundColor: theme.colors.border }]}
@@ -32,20 +30,18 @@ export function CourseIndexLoadingState() {
                 style={[styles.line, styles.lineDesc, { backgroundColor: theme.colors.border }]}
               />
               <View style={styles.metaRow}>
+                <View style={[styles.pillSkeleton, { backgroundColor: theme.colors.border }]} />
+                <View style={[styles.pillSkeleton, { backgroundColor: theme.colors.border }]} />
                 <View
-                  style={[styles.pillSkeleton, { backgroundColor: theme.colors.border }]}
-                />
-                <View
-                  style={[styles.pillSkeleton, { backgroundColor: theme.colors.border }]}
-                />
-                <View
-                  style={[styles.pillSkeleton, styles.pillWider, { backgroundColor: theme.colors.border }]}
+                  style={[
+                    styles.pillSkeleton,
+                    styles.pillWider,
+                    { backgroundColor: theme.colors.border },
+                  ]}
                 />
               </View>
             </View>
-            <View
-              style={[styles.chevronSkeleton, { backgroundColor: theme.colors.border }]}
-            />
+            <View style={[styles.chevronSkeleton, { backgroundColor: theme.colors.border }]} />
           </View>
         </View>
       ))}

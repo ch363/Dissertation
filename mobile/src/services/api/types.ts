@@ -1,7 +1,5 @@
 /** Typed wrapper for API responses: success with data or failure with message. */
-export type ApiEnvelope<T> =
-  | { success: true; data: T }
-  | { success: false; message: string };
+export type ApiEnvelope<T> = { success: true; data: T } | { success: false; message: string };
 
 export function isApiEnvelope(value: unknown): value is ApiEnvelope<unknown> {
   if (value === null || typeof value !== 'object') return false;

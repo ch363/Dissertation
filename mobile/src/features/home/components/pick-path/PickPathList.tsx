@@ -29,9 +29,8 @@ export function PickPathList({ items, onPressItem, headerLabel }: Props) {
       <View style={styles.cardList}>
         {items.map((item) => {
           const disabled = !!item.locked;
-          const subtitle = disabled && item.lockCopy
-            ? `${item.lessons}\n${item.lockCopy}`
-            : item.lessons;
+          const subtitle =
+            disabled && item.lockCopy ? `${item.lessons}\n${item.lockCopy}` : item.lessons;
           return (
             <TappableCard
               key={item.title}

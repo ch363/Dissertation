@@ -4,8 +4,8 @@
  */
 
 import { Ionicons } from '@expo/vector-icons';
-import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, StyleSheet } from 'react-native';
 
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -36,10 +36,19 @@ export function HelpContent() {
     <>
       {/* Getting Started */}
       <SectionHeader title="Getting started" icon="book-outline" theme={theme} />
-      <View style={[helpStyles.card, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+      <View
+        style={[
+          helpStyles.card,
+          { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+        ]}
+      >
         <View style={helpStyles.instructionRow}>
           <LinearGradient
-            colors={[theme.colors.primary, `${theme.colors.primary}DD`, `${theme.colors.primary}BB`]}
+            colors={[
+              theme.colors.primary,
+              `${theme.colors.primary}DD`,
+              `${theme.colors.primary}BB`,
+            ]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={helpStyles.stepBadge}
@@ -49,14 +58,19 @@ export function HelpContent() {
           <View style={helpStyles.instructionContent}>
             <Text style={[helpStyles.instructionTitle, { color: theme.colors.text }]}>Home</Text>
             <Text style={[helpStyles.instructionBody, { color: theme.colors.mutedText }]}>
-              See your streak, today's plan and suggested next steps. Tap a lesson or 'Start session' to learn.
+              See your streak, today's plan and suggested next steps. Tap a lesson or 'Start
+              session' to learn.
             </Text>
           </View>
         </View>
         <View style={[helpStyles.divider, { backgroundColor: theme.colors.border }]} />
         <View style={helpStyles.instructionRow}>
           <LinearGradient
-            colors={[theme.colors.primary, `${theme.colors.primary}DD`, `${theme.colors.primary}BB`]}
+            colors={[
+              theme.colors.primary,
+              `${theme.colors.primary}DD`,
+              `${theme.colors.primary}BB`,
+            ]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={helpStyles.stepBadge}
@@ -66,14 +80,19 @@ export function HelpContent() {
           <View style={helpStyles.instructionContent}>
             <Text style={[helpStyles.instructionTitle, { color: theme.colors.text }]}>Learn</Text>
             <Text style={[helpStyles.instructionBody, { color: theme.colors.mutedText }]}>
-              Browse lessons and your learning path. Start a lesson or tap Review to practise vocabulary.
+              Browse lessons and your learning path. Start a lesson or tap Review to practise
+              vocabulary.
             </Text>
           </View>
         </View>
         <View style={[helpStyles.divider, { backgroundColor: theme.colors.border }]} />
         <View style={helpStyles.instructionRow}>
           <LinearGradient
-            colors={[theme.colors.primary, `${theme.colors.primary}DD`, `${theme.colors.primary}BB`]}
+            colors={[
+              theme.colors.primary,
+              `${theme.colors.primary}DD`,
+              `${theme.colors.primary}BB`,
+            ]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={helpStyles.stepBadge}
@@ -81,16 +100,23 @@ export function HelpContent() {
             <Text style={helpStyles.stepText}>3</Text>
           </LinearGradient>
           <View style={helpStyles.instructionContent}>
-            <Text style={[helpStyles.instructionTitle, { color: theme.colors.text }]}>Sessions</Text>
+            <Text style={[helpStyles.instructionTitle, { color: theme.colors.text }]}>
+              Sessions
+            </Text>
             <Text style={[helpStyles.instructionBody, { color: theme.colors.mutedText }]}>
-              Complete exercises (e.g. translate, listen, type). Your progress and reviews are adapted over time.
+              Complete exercises (e.g. translate, listen, type). Your progress and reviews are
+              adapted over time.
             </Text>
           </View>
         </View>
         <View style={[helpStyles.divider, { backgroundColor: theme.colors.border }]} />
         <View style={helpStyles.instructionRow}>
           <LinearGradient
-            colors={[theme.colors.primary, `${theme.colors.primary}DD`, `${theme.colors.primary}BB`]}
+            colors={[
+              theme.colors.primary,
+              `${theme.colors.primary}DD`,
+              `${theme.colors.primary}BB`,
+            ]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={helpStyles.stepBadge}
@@ -100,7 +126,8 @@ export function HelpContent() {
           <View style={helpStyles.instructionContent}>
             <Text style={[helpStyles.instructionTitle, { color: theme.colors.text }]}>Profile</Text>
             <Text style={[helpStyles.instructionBody, { color: theme.colors.mutedText }]}>
-              View stats, skills and review history. Edit your profile and preferences from Settings.
+              View stats, skills and review history. Edit your profile and preferences from
+              Settings.
             </Text>
           </View>
         </View>
@@ -108,11 +135,16 @@ export function HelpContent() {
 
       {/* Tips */}
       <SectionHeader title="Tips for success" icon="sparkles-outline" theme={theme} />
-      <View style={[helpStyles.card, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+      <View
+        style={[
+          helpStyles.card,
+          { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+        ]}
+      >
         {[
-          "Do a little every day — short sessions help retention more than rare long ones.",
-          "Keep reviews on — the app schedules them based on how well you know each item.",
-          "Use Speech in Settings to hear pronunciations and tune speed to your level.",
+          'Do a little every day — short sessions help retention more than rare long ones.',
+          'Keep reviews on — the app schedules them based on how well you know each item.',
+          'Use Speech in Settings to hear pronunciations and tune speed to your level.',
         ].map((tip, index, arr) => (
           <View key={index}>
             <View style={helpStyles.tipRow}>

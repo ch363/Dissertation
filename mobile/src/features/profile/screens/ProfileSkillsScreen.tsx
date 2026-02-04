@@ -1,16 +1,15 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { LoadingRow } from '@/components/ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 
-import { ScrollView } from '@/components/ui';
 import { ScreenHeader } from '@/components/navigation';
 import { Card } from '@/components/profile';
+import { ScrollView, LoadingRow } from '@/components/ui';
+import { useAsyncData } from '@/hooks/useAsyncData';
 import { getAllMastery, type SkillMastery } from '@/services/api/mastery';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
-import { useAsyncData } from '@/hooks/useAsyncData';
 
 function formatSkillName(tag: string): string {
   return tag
@@ -21,11 +20,11 @@ function formatSkillName(tag: string): string {
 
 export default function ProfileSkillsScreen() {
   const { theme } = useAppTheme();
-  const { data: mastery, loading, error } = useAsyncData<SkillMastery[]>(
-    'ProfileSkillsScreen',
-    async () => await getAllMastery(),
-    []
-  );
+  const {
+    data: mastery,
+    loading,
+    error,
+  } = useAsyncData<SkillMastery[]>('ProfileSkillsScreen', async () => await getAllMastery(), []);
 
   const lowest = useMemo(() => {
     return [...(mastery || [])]
@@ -43,7 +42,6 @@ export default function ProfileSkillsScreen() {
         accentColor="#F59E0B"
       />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-
         {loading ? (
           <LoadingRow label="Loading…" />
         ) : error ? (
@@ -74,7 +72,12 @@ export default function ProfileSkillsScreen() {
                         Probability: {pct}%
                       </Text>
                     </View>
-                    <View style={[styles.badge, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+                    <View
+                      style={[
+                        styles.badge,
+                        { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+                      ]}
+                    >
                       <Text style={[styles.badgeText, { color: theme.colors.text }]}>{pct}%</Text>
                     </View>
                   </View>
@@ -153,4 +156,3 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
-

@@ -8,8 +8,8 @@ jest.mock('@/services/env/supabaseConfig', () => ({
   getSupabaseRedirectUrl: jest.fn(() => 'fluentia://sign-in'),
 }));
 
-const { getSupabaseClient } = require('@/services/supabase/client');
 const { getSupabaseRedirectUrl } = require('@/services/env/supabaseConfig');
+const { getSupabaseClient } = require('@/services/supabase/client');
 
 describe('auth facade (Supabase)', () => {
   beforeEach(() => {
@@ -17,7 +17,9 @@ describe('auth facade (Supabase)', () => {
   });
 
   it('signInWithEmailPassword returns session from underlying auth call', async () => {
-    const signInMock = jest.fn().mockResolvedValue({ data: { session: { user: { id: 'u1' } } }, error: null });
+    const signInMock = jest
+      .fn()
+      .mockResolvedValue({ data: { session: { user: { id: 'u1' } } }, error: null });
     (getSupabaseClient as jest.Mock).mockReturnValue({ auth: { signInWithPassword: signInMock } });
 
     const result = await signInWithEmailPassword('a@example.com', 'secret');

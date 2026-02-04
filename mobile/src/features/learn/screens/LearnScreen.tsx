@@ -1,36 +1,44 @@
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useRef } from 'react';
 import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const CONTENT_PADDING_H = 20;
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-
-import { LoadingScreen } from '@/components/ui';
 import {
   LearnHeader,
   LearningPathCarousel,
   ReviewSection,
-  SuggestedForYouSection,
 } from '@/components/learn';
-import { getSuggestions, type ModuleSuggestion } from '@/services/api/learn';
-import { clearLearnScreenCache, getCachedLearnScreenData, preloadLearnScreenData } from '@/services/api/learn-screen-cache';
-import { getDashboard } from '@/services/api/profile';
-import { getLessons, getModules } from '@/services/api/modules';
-import { getUserLessons } from '@/services/api/progress';
-import { buildLearningPathItems, type LearningPathItem } from '@/features/learn/utils/buildLearningPathItems';
+import { LoadingScreen } from '@/components/ui';
+import {
+  buildLearningPathItems,
+  type LearningPathItem,
+} from '@/features/learn/utils/buildLearningPathItems';
 import { makeSessionId } from '@/features/session/sessionBuilder';
+import { useAsyncData } from '@/hooks/useAsyncData';
+import { getSuggestions, type ModuleSuggestion } from '@/services/api/learn';
+import {
+  clearLearnScreenCache,
+  getCachedLearnScreenData,
+  preloadLearnScreenData,
+} from '@/services/api/learn-screen-cache';
+import { getLessons, getModules } from '@/services/api/modules';
+import { getDashboard } from '@/services/api/profile';
+import { getUserLessons } from '@/services/api/progress';
 import { routeBuilders, routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
-import { useAsyncData } from '@/hooks/useAsyncData';
+
+const CONTENT_PADDING_H = 20;
 
 export default function LearnScreen() {
   const { theme, isDark } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const catalogGradientColors = isDark ? [theme.colors.profileHeader, theme.colors.profileHeader] : [theme.colors.primary, theme.colors.primary];
-  const catalogBadgeBg = isDark ? (theme.colors.profileHeader + '40') : '#DBEAFE';
+  const catalogGradientColors = isDark
+    ? [theme.colors.profileHeader, theme.colors.profileHeader]
+    : [theme.colors.primary, theme.colors.primary];
+  const catalogBadgeBg = isDark ? theme.colors.profileHeader + '40' : '#DBEAFE';
   const catalogBadgeText = isDark ? theme.colors.text : '#264FD4';
   const router = useRouter();
   const hasLoadedOnceRef = useRef(false);
@@ -54,14 +62,20 @@ export default function LearnScreen() {
         userProgress = cached.userProgress;
         dashboard = cached.dashboard;
         suggestions = cached.suggestions;
-        
+
         preloadLearnScreenData().catch(() => {});
       } else {
         [modules, lessons, userProgress, dashboard, suggestions] = await Promise.all([
           getModules().catch(() => []),
           getLessons().catch(() => []),
           getUserLessons().catch(() => []),
-          getDashboard().catch(() => ({ streak: 0, dueReviewCount: 0, activeLessonCount: 0, xpTotal: 0, estimatedReviewMinutes: 0 })),
+          getDashboard().catch(() => ({
+            streak: 0,
+            dueReviewCount: 0,
+            activeLessonCount: 0,
+            xpTotal: 0,
+            estimatedReviewMinutes: 0,
+          })),
           getSuggestions({ limit: 8 }).catch(() => ({ lessons: [], modules: [] })),
         ]);
       }
@@ -97,7 +111,7 @@ export default function LearnScreen() {
         suggestedModule: featuredModuleSuggestion,
       };
     },
-    []
+    [],
   );
 
   const learningPathItems = data?.learningPathItems ?? [];
@@ -128,7 +142,7 @@ export default function LearnScreen() {
       return () => {
         setHasCompletedFocusCheck(false);
       };
-    }, [reload])
+    }, [reload]),
   );
 
   const showLoading = loading || (data != null && !hasCompletedFocusCheck);
@@ -139,7 +153,7 @@ export default function LearnScreen() {
   return (
     <ScrollView
       style={[styles.scrollView, { backgroundColor: theme.colors.background }]}
-        contentContainerStyle={[
+      contentContainerStyle={[
         styles.scrollContent,
         {
           paddingTop: insets.top,
@@ -151,110 +165,139 @@ export default function LearnScreen() {
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
-        <LearnHeader />
-        {dueReviewCount > 0 ? (
-          <>
-            <ReviewSection
-              dueCount={dueReviewCount}
-              estimatedReviewMinutes={estimatedReviewMinutes}
-              onStart={() => {
-                const sessionId = makeSessionId('review');
-                router.push({
-                  pathname: routeBuilders.sessionDetail(sessionId),
-                  params: { kind: 'review', returnTo: routes.tabs.learn },
-                });
-              }}
-            />
-            <View style={[styles.learningPathFullBleed, { width: Dimensions.get('window').width, marginLeft: -(CONTENT_PADDING_H + insets.left), marginRight: -(CONTENT_PADDING_H + insets.right) }]}>
-              <LearningPathCarousel
-                items={learningPathItems}
-                suggestedModuleId={suggestedModule?.module.id ?? null}
-                onPressItem={(route: string) => router.push({
-                  pathname: route,
-                  params: { returnTo: routes.tabs.learn },
-                })}
-              />
-            </View>
-          </>
-        ) : (
-          <>
-            <View style={[styles.learningPathFullBleed, { width: Dimensions.get('window').width, marginLeft: -(CONTENT_PADDING_H + insets.left), marginRight: -(CONTENT_PADDING_H + insets.right) }]}>
-              <LearningPathCarousel
-                items={learningPathItems}
-                suggestedModuleId={suggestedModule?.module.id ?? null}
-                onPressItem={(route: string) => router.push({
-                  pathname: route,
-                  params: { returnTo: routes.tabs.learn },
-                })}
-              />
-            </View>
-            <ReviewSection
-              dueCount={dueReviewCount}
-              estimatedReviewMinutes={estimatedReviewMinutes}
-              onStart={() => {
-                const sessionId = makeSessionId('review');
-                router.push({
-                  pathname: routeBuilders.sessionDetail(sessionId),
-                  params: { kind: 'review', returnTo: routes.tabs.learn },
-                });
-              }}
-            />
-          </>
-        )}
-
-        <View style={styles.allModulesSection}>
-          <View style={styles.allModulesHeader}>
-            <View style={styles.allModulesHeaderLeft}>
-              <Text style={[styles.allModulesTitle, { color: theme.colors.text }]}>
-                All Modules
-              </Text>
-              <View style={[styles.allModulesBadge, { backgroundColor: catalogBadgeBg }]}>
-                <Text style={[styles.allModulesBadgeText, { color: catalogBadgeText }]}>Catalog</Text>
-              </View>
-            </View>
-          </View>
-          <Text style={[styles.allModulesSubtitle, { color: theme.colors.mutedText }]}>
-            Explore every course and find your next lesson
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Browse all modules"
-            onPress={() => router.push({
-              pathname: routes.course.list,
-              params: { returnTo: routes.tabs.learn },
-            })}
-            style={({ pressed }) => [
-              styles.allModulesCard,
+      <LearnHeader />
+      {dueReviewCount > 0 ? (
+        <>
+          <ReviewSection
+            dueCount={dueReviewCount}
+            estimatedReviewMinutes={estimatedReviewMinutes}
+            onStart={() => {
+              const sessionId = makeSessionId('review');
+              router.push({
+                pathname: routeBuilders.sessionDetail(sessionId),
+                params: { kind: 'review', returnTo: routes.tabs.learn },
+              });
+            }}
+          />
+          <View
+            style={[
+              styles.learningPathFullBleed,
               {
-                opacity: pressed ? 0.95 : 1,
-                transform: [{ scale: pressed ? 0.98 : 1 }],
-                shadowColor: isDark ? theme.colors.profileHeader : undefined,
+                width: Dimensions.get('window').width,
+                marginLeft: -(CONTENT_PADDING_H + insets.left),
+                marginRight: -(CONTENT_PADDING_H + insets.right),
               },
             ]}
           >
-            <LinearGradient
-              colors={catalogGradientColors}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.allModulesGradient}
-            >
-              <View style={styles.allModulesCardContent}>
-                <View style={[styles.allModulesIconWrap, { backgroundColor: theme.colors.ctaCardAccent }]}>
-                  <Ionicons name="library-outline" size={28} color="#FFFFFF" />
-                </View>
-                <View style={styles.allModulesCardText}>
-                  <Text style={styles.allModulesCardTitle}>Browse full catalog</Text>
-                  <Text style={styles.allModulesCardSubtitle}>
-                    All courses in one place — start any module
-                  </Text>
-                </View>
-                <View style={[styles.allModulesArrowWrap, { backgroundColor: theme.colors.ctaCardAccent }]}>
-                  <Ionicons name="arrow-forward" size={22} color="#FFFFFF" />
-                </View>
-              </View>
-            </LinearGradient>
-          </Pressable>
+            <LearningPathCarousel
+              items={learningPathItems}
+              suggestedModuleId={suggestedModule?.module.id ?? null}
+              onPressItem={(route: string) =>
+                router.push({
+                  pathname: route,
+                  params: { returnTo: routes.tabs.learn },
+                })
+              }
+            />
+          </View>
+        </>
+      ) : (
+        <>
+          <View
+            style={[
+              styles.learningPathFullBleed,
+              {
+                width: Dimensions.get('window').width,
+                marginLeft: -(CONTENT_PADDING_H + insets.left),
+                marginRight: -(CONTENT_PADDING_H + insets.right),
+              },
+            ]}
+          >
+            <LearningPathCarousel
+              items={learningPathItems}
+              suggestedModuleId={suggestedModule?.module.id ?? null}
+              onPressItem={(route: string) =>
+                router.push({
+                  pathname: route,
+                  params: { returnTo: routes.tabs.learn },
+                })
+              }
+            />
+          </View>
+          <ReviewSection
+            dueCount={dueReviewCount}
+            estimatedReviewMinutes={estimatedReviewMinutes}
+            onStart={() => {
+              const sessionId = makeSessionId('review');
+              router.push({
+                pathname: routeBuilders.sessionDetail(sessionId),
+                params: { kind: 'review', returnTo: routes.tabs.learn },
+              });
+            }}
+          />
+        </>
+      )}
+
+      <View style={styles.allModulesSection}>
+        <View style={styles.allModulesHeader}>
+          <View style={styles.allModulesHeaderLeft}>
+            <Text style={[styles.allModulesTitle, { color: theme.colors.text }]}>All Modules</Text>
+            <View style={[styles.allModulesBadge, { backgroundColor: catalogBadgeBg }]}>
+              <Text style={[styles.allModulesBadgeText, { color: catalogBadgeText }]}>Catalog</Text>
+            </View>
+          </View>
         </View>
+        <Text style={[styles.allModulesSubtitle, { color: theme.colors.mutedText }]}>
+          Explore every course and find your next lesson
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Browse all modules"
+          onPress={() =>
+            router.push({
+              pathname: routes.course.list,
+              params: { returnTo: routes.tabs.learn },
+            })
+          }
+          style={({ pressed }) => [
+            styles.allModulesCard,
+            {
+              opacity: pressed ? 0.95 : 1,
+              transform: [{ scale: pressed ? 0.98 : 1 }],
+              shadowColor: isDark ? theme.colors.profileHeader : undefined,
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={catalogGradientColors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.allModulesGradient}
+          >
+            <View style={styles.allModulesCardContent}>
+              <View
+                style={[styles.allModulesIconWrap, { backgroundColor: theme.colors.ctaCardAccent }]}
+              >
+                <Ionicons name="library-outline" size={28} color="#FFFFFF" />
+              </View>
+              <View style={styles.allModulesCardText}>
+                <Text style={styles.allModulesCardTitle}>Browse full catalog</Text>
+                <Text style={styles.allModulesCardSubtitle}>
+                  All courses in one place — start any module
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.allModulesArrowWrap,
+                  { backgroundColor: theme.colors.ctaCardAccent },
+                ]}
+              >
+                <Ionicons name="arrow-forward" size={22} color="#FFFFFF" />
+              </View>
+            </View>
+          </LinearGradient>
+        </Pressable>
+      </View>
     </ScrollView>
   );
 }

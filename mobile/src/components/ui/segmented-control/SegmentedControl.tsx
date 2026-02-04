@@ -27,13 +27,7 @@ const SEGMENT_RADIUS = 10;
 const CONTAINER_PADDING = 3;
 const ANIMATION_DURATION = 250;
 
-export function SegmentedControl({
-  value,
-  onChange,
-  color,
-  containerColor,
-  pillColor,
-}: Props) {
+export function SegmentedControl({ value, onChange, color, containerColor, pillColor }: Props) {
   const { theme } = useAppTheme();
   const pillPosition = useRef(new Animated.Value(value === 'review' ? 0 : 1)).current;
   const [segmentWidth, setSegmentWidth] = React.useState(0);

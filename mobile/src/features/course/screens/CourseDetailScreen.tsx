@@ -1,26 +1,30 @@
-import { useLocalSearchParams, router } from 'expo-router';
-import { useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, SafeAreaView } from 'react-native';
-import { LoadingScreen } from '@/components/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams, router } from 'expo-router';
+import React, { useMemo, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, ScrollView, SafeAreaView } from 'react-native';
 
-import { getModule, getModuleLessons, getLessonTeachings, type Module, type Lesson } from '@/services/api/modules';
+import { ModuleCompleteBanner, OfflineNotice } from '@/components/course';
+import { ScreenHeader } from '@/components/navigation';
+import { LoadingScreen, MetaRow, TappableCard } from '@/components/ui';
+import { buildLessonOutcome } from '@/features/learn/utils/lessonOutcome';
+import { makeSessionId } from '@/features/session/sessionBuilder';
+import { useAsyncData } from '@/hooks/useAsyncData';
 import { getSuggestions } from '@/services/api/learn';
+import {
+  getModule,
+  getModuleLessons,
+  getLessonTeachings,
+  type Module,
+  type Lesson,
+} from '@/services/api/modules';
 import { getRecentActivity, type RecentActivity } from '@/services/api/profile';
+import { getUserLessons, type UserLessonProgress } from '@/services/api/progress';
+import { preloadSessionPlan } from '@/services/api/session-plan-cache';
+import { createLogger } from '@/services/logging';
 import { routeBuilders } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
-import { makeSessionId } from '@/features/session/sessionBuilder';
-import { preloadSessionPlan } from '@/services/api/session-plan-cache';
-import { getUserLessons, type UserLessonProgress } from '@/services/api/progress';
-import { buildLessonOutcome } from '@/features/learn/utils/lessonOutcome';
-import { ScreenHeader } from '@/components/navigation';
-import { MetaRow, TappableCard } from '@/components/ui';
-import { ModuleCompleteBanner, OfflineNotice } from '@/components/course';
-import { useAsyncData } from '@/hooks/useAsyncData';
-import { createLogger } from '@/services/logging';
-import React from 'react';
 
 const Logger = createLogger('CourseDetailScreen');
 
@@ -84,7 +88,7 @@ export default function CourseDetail() {
       blueLight: theme.colors.ctaCardAccent,
       blueDark: theme.colors.primary,
     }),
-    [isDark, theme.colors.primary, theme.colors.ctaCardAccent]
+    [isDark, theme.colors.primary, theme.colors.ctaCardAccent],
   );
   const [lessonOutcomes, setLessonOutcomes] = useState<Record<string, string>>({});
   const [lessonsLoadError, setLessonsLoadError] = useState<string | null>(null);
@@ -106,7 +110,7 @@ export default function CourseDetail() {
       }
 
       const moduleData = await getModule(String(slug));
-      
+
       let lessonsData: Lesson[] = [];
       let progressData: UserLessonProgress[] = [];
       let recent: RecentActivity | null = null;
@@ -118,7 +122,10 @@ export default function CourseDetail() {
           getModuleLessons(moduleData.id),
           getUserLessons().catch(() => [] as UserLessonProgress[]),
           getRecentActivity().catch(() => null),
-          getSuggestions({ moduleId: moduleData.id, limit: 1 }).catch(() => ({ lessons: [], modules: [] })),
+          getSuggestions({ moduleId: moduleData.id, limit: 1 }).catch(() => ({
+            lessons: [],
+            modules: [],
+          })),
         ]);
         lessonsData = lessons;
         progressData = progress;
@@ -126,7 +133,7 @@ export default function CourseDetail() {
         const first = suggestions?.lessons?.[0];
         suggestedLessonId = first?.lesson?.id ?? null;
         suggestedLessonTitle = first?.lesson?.title ?? null;
-        
+
         const lessonsToPreload = lessonsData.slice(0, 5);
         lessonsToPreload.forEach((lesson, index) => {
           setTimeout(() => {
@@ -139,7 +146,10 @@ export default function CourseDetail() {
         setLessonsLoadError(lessonErr instanceof Error ? lessonErr.message : String(lessonErr));
         const [activity, suggestions] = await Promise.all([
           getRecentActivity().catch(() => null),
-          getSuggestions({ moduleId: moduleData.id, limit: 1 }).catch(() => ({ lessons: [], modules: [] })),
+          getSuggestions({ moduleId: moduleData.id, limit: 1 }).catch(() => ({
+            lessons: [],
+            modules: [],
+          })),
         ]);
         recent = activity;
         const first = suggestions?.lessons?.[0];
@@ -156,7 +166,7 @@ export default function CourseDetail() {
         suggestedLessonTitle,
       };
     },
-    [slug]
+    [slug],
   );
 
   const module = data?.module ?? null;
@@ -198,8 +208,9 @@ export default function CourseDetail() {
   }, [lessons]);
 
   const displayTitle = module?.title ?? '';
-  const displayDescription = module?.description || 'A tailored course based on your onboarding preferences.';
-  
+  const displayDescription =
+    module?.description || 'A tailored course based on your onboarding preferences.';
+
   const totalItems = lessons.reduce((sum, lesson) => sum + (lesson.numberOfItems || 0), 0);
 
   const progressByLessonId = useMemo(() => {
@@ -240,7 +251,12 @@ export default function CourseDetail() {
     // user already has unfinished progress here.
     const inProgressInThisModule = userProgress
       .filter((p) => p.lesson?.module?.id === moduleId)
-      .filter((p) => p.totalTeachings > 0 && p.completedTeachings > 0 && p.completedTeachings < p.totalTeachings)
+      .filter(
+        (p) =>
+          p.totalTeachings > 0 &&
+          p.completedTeachings > 0 &&
+          p.completedTeachings < p.totalTeachings,
+      )
       .sort((a, b) => {
         const ar = a.totalTeachings > 0 ? a.completedTeachings / a.totalTeachings : 0;
         const br = b.totalTeachings > 0 ? b.completedTeachings / b.totalTeachings : 0;
@@ -296,7 +312,7 @@ export default function CourseDetail() {
   const handlePrimaryActionPress = () => {
     if (!primaryAction || !slug) return;
     const sessionId = makeSessionId('learn');
-    const courseDetailRoute = returnTo 
+    const courseDetailRoute = returnTo
       ? `${routeBuilders.courseDetail(slug)}?returnTo=${encodeURIComponent(returnTo)}`
       : routeBuilders.courseDetail(slug);
     router.push({
@@ -345,11 +361,12 @@ export default function CourseDetail() {
     );
   }
 
-  const progressPercent = lessons.length > 0 ? Math.round((completedLessonsCount / lessons.length) * 100) : 0;
+  const progressPercent =
+    lessons.length > 0 ? Math.round((completedLessonsCount / lessons.length) * 100) : 0;
   const totalMin = Math.ceil(totalItems * 1.5);
 
   return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={styles.navBar}>
         <Pressable
           accessibilityRole="button"
@@ -386,7 +403,12 @@ export default function CourseDetail() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.modulePill, { backgroundColor: cover.pillBg, borderColor: cover.pillBorder }]}>
+        <View
+          style={[
+            styles.modulePill,
+            { backgroundColor: cover.pillBg, borderColor: cover.pillBorder },
+          ]}
+        >
           <Ionicons name="book-outline" size={12} color={cover.blue} />
           <Text style={[styles.modulePillText, { color: cover.blue }]}>MODULE</Text>
         </View>
@@ -401,15 +423,32 @@ export default function CourseDetail() {
               <Text style={[styles.progressLabel, { color: cover.muted }]}>
                 {completedLessonsCount} of {lessons.length} lessons complete
               </Text>
-              <Text style={[styles.progressPercent, { color: cover.blue }]}>{progressPercent}%</Text>
+              <Text style={[styles.progressPercent, { color: cover.blue }]}>
+                {progressPercent}%
+              </Text>
             </View>
-            <View style={[styles.progressBarBg, { backgroundColor: cover.progressBg, borderColor: cover.progressBorder }]}>
-              <View style={[styles.progressBarFill, { width: `${progressPercent}%`, backgroundColor: cover.blue }]} />
+            <View
+              style={[
+                styles.progressBarBg,
+                { backgroundColor: cover.progressBg, borderColor: cover.progressBorder },
+              ]}
+            >
+              <View
+                style={[
+                  styles.progressBarFill,
+                  { width: `${progressPercent}%`, backgroundColor: cover.blue },
+                ]}
+              />
             </View>
           </View>
         )}
 
-        <View style={[styles.summaryCard, { backgroundColor: theme.colors.card, borderColor: cover.cardBorder }]}>
+        <View
+          style={[
+            styles.summaryCard,
+            { backgroundColor: theme.colors.card, borderColor: cover.cardBorder },
+          ]}
+        >
           <LinearGradient
             colors={[cover.blueLight, cover.blue, cover.blueDark]}
             start={{ x: 0, y: 0 }}
@@ -420,13 +459,27 @@ export default function CourseDetail() {
           </LinearGradient>
           {lessons.length > 0 && (
             <View style={styles.metaRow}>
-              <View style={[styles.metaPill, { backgroundColor: cover.metaBg, borderColor: cover.metaBorder }]}>
+              <View
+                style={[
+                  styles.metaPill,
+                  { backgroundColor: cover.metaBg, borderColor: cover.metaBorder },
+                ]}
+              >
                 <Ionicons name="time-outline" size={14} color={cover.mutedDesc} />
-                <Text style={[styles.metaPillText, { color: cover.metaText }]}>~{totalMin} min</Text>
+                <Text style={[styles.metaPillText, { color: cover.metaText }]}>
+                  ~{totalMin} min
+                </Text>
               </View>
-              <View style={[styles.metaPill, { backgroundColor: cover.metaBg, borderColor: cover.metaBorder }]}>
+              <View
+                style={[
+                  styles.metaPill,
+                  { backgroundColor: cover.metaBg, borderColor: cover.metaBorder },
+                ]}
+              >
                 <Ionicons name="document-text-outline" size={14} color={cover.mutedDesc} />
-                <Text style={[styles.metaPillText, { color: cover.metaText }]}>{totalItems} {totalItems === 1 ? 'exercise' : 'exercises'}</Text>
+                <Text style={[styles.metaPillText, { color: cover.metaText }]}>
+                  {totalItems} {totalItems === 1 ? 'exercise' : 'exercises'}
+                </Text>
               </View>
             </View>
           )}
@@ -437,7 +490,10 @@ export default function CourseDetail() {
 
         {moduleCompleted && (
           <View style={styles.bannerRow}>
-            <ModuleCompleteBanner moduleTitle={module.title} exampleOutcome={completionExampleOutcome} />
+            <ModuleCompleteBanner
+              moduleTitle={module.title}
+              exampleOutcome={completionExampleOutcome}
+            />
           </View>
         )}
         {lessons.length === 0 && lessonsLoadError ? (
@@ -452,7 +508,11 @@ export default function CourseDetail() {
             accessibilityLabel={primaryAction.label}
             onPress={handlePrimaryActionPress}
             onPressIn={handlePrimaryActionPressIn}
-            style={({ pressed }) => [styles.primaryCtaWrap, { shadowColor: cover.blue }, pressed && { opacity: 0.95 }]}
+            style={({ pressed }) => [
+              styles.primaryCtaWrap,
+              { shadowColor: cover.blue },
+              pressed && { opacity: 0.95 },
+            ]}
           >
             <LinearGradient
               colors={[cover.blueLight, cover.blue, cover.blueDark]}
@@ -487,98 +547,122 @@ export default function CourseDetail() {
           </LinearGradient>
           <View style={styles.tipTextWrap}>
             <Text style={[styles.tipTitle, { color: cover.title }]}>Start small</Text>
-            <Text style={[styles.tipDescription, { color: cover.mutedDesc }]}>Just 5 minutes builds momentum.</Text>
+            <Text style={[styles.tipDescription, { color: cover.mutedDesc }]}>
+              Just 5 minutes builds momentum.
+            </Text>
           </View>
         </LinearGradient>
 
         {lessons.length > 0 ? (
-          <View
-            collapsable={false}
-            style={styles.lessonsSection}
-          >
-          <Text style={[styles.lessonsSectionTitle, { color: cover.title }]}>
-            Lessons
-          </Text>
-          <View style={styles.lessonsList}>
-            {lessons.map((lesson, index) => {
-              const progress = progressByLessonId.get(lesson.id);
-              const completed = progress?.completedTeachings ?? 0;
-              const total = progress?.totalTeachings ?? (lesson.numberOfItems || 0);
-              const preview = lessonOutcomes[lesson.id] ?? lesson.description ?? null;
-              const statusLabel =
-                total <= 0 || completed === 0
-                  ? 'Not started'
-                  : completed >= total
-                    ? 'Completed'
-                    : 'In progress';
-              const progressLabel = total > 0 ? `${completed} of ${total}` : '0 of 0';
-              const durationMin = lesson.numberOfItems ? Math.ceil(lesson.numberOfItems * 1.5) : 5;
+          <View collapsable={false} style={styles.lessonsSection}>
+            <Text style={[styles.lessonsSectionTitle, { color: cover.title }]}>Lessons</Text>
+            <View style={styles.lessonsList}>
+              {lessons.map((lesson, index) => {
+                const progress = progressByLessonId.get(lesson.id);
+                const completed = progress?.completedTeachings ?? 0;
+                const total = progress?.totalTeachings ?? (lesson.numberOfItems || 0);
+                const preview = lessonOutcomes[lesson.id] ?? lesson.description ?? null;
+                const statusLabel =
+                  total <= 0 || completed === 0
+                    ? 'Not started'
+                    : completed >= total
+                      ? 'Completed'
+                      : 'In progress';
+                const progressLabel = total > 0 ? `${completed} of ${total}` : '0 of 0';
+                const durationMin = lesson.numberOfItems
+                  ? Math.ceil(lesson.numberOfItems * 1.5)
+                  : 5;
 
-              const handleLessonPress = () => {
-                const sessionId = makeSessionId('learn');
-                const courseDetailRoute = returnTo 
-                  ? `${routeBuilders.courseDetail(slug)}?returnTo=${encodeURIComponent(returnTo)}`
-                  : routeBuilders.courseDetail(slug);
-                router.push({
-                  pathname: routeBuilders.sessionDetail(sessionId),
-                  params: { lessonId: lesson.id, kind: 'learn', returnTo: courseDetailRoute },
-                });
-              };
+                const handleLessonPress = () => {
+                  const sessionId = makeSessionId('learn');
+                  const courseDetailRoute = returnTo
+                    ? `${routeBuilders.courseDetail(slug)}?returnTo=${encodeURIComponent(returnTo)}`
+                    : routeBuilders.courseDetail(slug);
+                  router.push({
+                    pathname: routeBuilders.sessionDetail(sessionId),
+                    params: { lessonId: lesson.id, kind: 'learn', returnTo: courseDetailRoute },
+                  });
+                };
 
-              const isCompleted = statusLabel === 'Completed';
-              const pillBg = isCompleted ? theme.colors.success + '18' : cover.metaBg;
-              const pillBorder = isCompleted ? theme.colors.success + '40' : cover.metaBorder;
-              const metaRow = (
-                <View style={styles.lessonMetaRow}>
-                  <View style={[styles.lessonStatusPill, { backgroundColor: pillBg, borderColor: pillBorder }]}>
-                    {isCompleted ? (
-                      <Ionicons name="checkmark-circle" size={14} color={theme.colors.success} />
-                    ) : (
-                      <View style={[styles.lessonStatusDot, { backgroundColor: theme.colors.mutedText }]} />
-                    )}
-                    <Text style={[styles.lessonMetaText, { color: isCompleted ? theme.colors.success : cover.mutedDesc }]}>{statusLabel}</Text>
+                const isCompleted = statusLabel === 'Completed';
+                const pillBg = isCompleted ? theme.colors.success + '18' : cover.metaBg;
+                const pillBorder = isCompleted ? theme.colors.success + '40' : cover.metaBorder;
+                const metaRow = (
+                  <View style={styles.lessonMetaRow}>
+                    <View
+                      style={[
+                        styles.lessonStatusPill,
+                        { backgroundColor: pillBg, borderColor: pillBorder },
+                      ]}
+                    >
+                      {isCompleted ? (
+                        <Ionicons name="checkmark-circle" size={14} color={theme.colors.success} />
+                      ) : (
+                        <View
+                          style={[
+                            styles.lessonStatusDot,
+                            { backgroundColor: theme.colors.mutedText },
+                          ]}
+                        />
+                      )}
+                      <Text
+                        style={[
+                          styles.lessonMetaText,
+                          { color: isCompleted ? theme.colors.success : cover.mutedDesc },
+                        ]}
+                      >
+                        {statusLabel}
+                      </Text>
+                    </View>
+                    <MetaRow
+                      text={progressLabel}
+                      icon="document-text-outline"
+                      textColor={theme.colors.mutedText}
+                    />
+                    <MetaRow
+                      text={`~${durationMin} min`}
+                      icon="time-outline"
+                      textColor={theme.colors.mutedText}
+                    />
                   </View>
-                  <MetaRow text={progressLabel} icon="document-text-outline" textColor={theme.colors.mutedText} />
-                  <MetaRow text={`~${durationMin} min`} icon="time-outline" textColor={theme.colors.mutedText} />
-                </View>
-              );
-              const leftIcon = (
-                <LinearGradient
-                  colors={[cover.blueLight, cover.blue]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.lessonNumberBadge}
-                >
-                  <Text style={styles.lessonNumberText}>{index + 1}</Text>
-                </LinearGradient>
-              );
-              return (
-                <TappableCard
-                  key={lesson.id}
-                  title={lesson.title}
-                  subtitle={preview ?? undefined}
-                  leftIcon={leftIcon}
-                  metaRow={metaRow}
-                  onPress={() => {
-                    preloadSessionPlan(lesson.id).catch(() => {});
-                    handleLessonPress();
-                  }}
-                  accessibilityLabel={`Open lesson ${lesson.title}`}
-                  accessibilityHint="Starts a session for this lesson"
-                  style={styles.lessonCardSpacing}
-                />
-              );
-            })}
+                );
+                const leftIcon = (
+                  <LinearGradient
+                    colors={[cover.blueLight, cover.blue]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.lessonNumberBadge}
+                  >
+                    <Text style={styles.lessonNumberText}>{index + 1}</Text>
+                  </LinearGradient>
+                );
+                return (
+                  <TappableCard
+                    key={lesson.id}
+                    title={lesson.title}
+                    subtitle={preview ?? undefined}
+                    leftIcon={leftIcon}
+                    metaRow={metaRow}
+                    onPress={() => {
+                      preloadSessionPlan(lesson.id).catch(() => {});
+                      handleLessonPress();
+                    }}
+                    accessibilityLabel={`Open lesson ${lesson.title}`}
+                    accessibilityHint="Starts a session for this lesson"
+                    style={styles.lessonCardSpacing}
+                  />
+                );
+              })}
+            </View>
           </View>
-        </View>
-      ) : (
-        <View style={styles.emptyState}>
-          <Text style={[styles.emptyStateText, { color: theme.colors.mutedText }]}>
-            No lessons available yet
-          </Text>
-        </View>
-      )}
-    </ScrollView>
+        ) : (
+          <View style={styles.emptyState}>
+            <Text style={[styles.emptyStateText, { color: theme.colors.mutedText }]}>
+              No lessons available yet
+            </Text>
+          </View>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }

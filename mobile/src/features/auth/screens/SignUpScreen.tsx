@@ -4,12 +4,11 @@ import { View, Text, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, ScrollView, StaticCard } from '@/components/ui';
-
 import { resolvePostAuthDestination, signUpWithEmail } from '@/services/api/auth';
+import { createLogger } from '@/services/logging';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme } from '@/services/theme/tokens';
 import { announce } from '@/utils/a11y';
-import { createLogger } from '@/services/logging';
 
 const logger = createLogger('SignUp');
 
@@ -33,12 +32,15 @@ export default function SignUp() {
   const trimmedName = name.trim();
   const passwordsMatch = password === confirmPassword;
   const emailError =
-    trimmedEmail.length > 0 && !emailRegex.test(trimmedEmail) ? 'Enter a valid email address.' : null;
+    trimmedEmail.length > 0 && !emailRegex.test(trimmedEmail)
+      ? 'Enter a valid email address.'
+      : null;
   const passwordError =
     password.length > 0 && password.length < MIN_PASSWORD
       ? `Password must be at least ${MIN_PASSWORD} characters.`
       : null;
-  const confirmError = !passwordsMatch && confirmPassword.length > 0 ? 'Passwords do not match.' : null;
+  const confirmError =
+    !passwordsMatch && confirmPassword.length > 0 ? 'Passwords do not match.' : null;
   const canSubmit =
     emailRegex.test(trimmedEmail) && password.length >= MIN_PASSWORD && passwordsMatch && !loading;
 
@@ -101,16 +103,31 @@ export default function SignUp() {
       >
         <StaticCard style={styles.card}>
           <View style={styles.stepRow}>
-            <View style={[styles.stepDot, styles.stepDotActive, { backgroundColor: theme.colors.primary }]} />
+            <View
+              style={[
+                styles.stepDot,
+                styles.stepDotActive,
+                { backgroundColor: theme.colors.primary },
+              ]}
+            />
             <View style={[styles.stepDot, { backgroundColor: theme.colors.border }]} />
             <View style={[styles.stepDot, { backgroundColor: theme.colors.border }]} />
           </View>
           <Text style={[styles.labelSmall, { color: theme.colors.mutedText }]}>Step 1 of 3</Text>
-          <Text style={[styles.title, { color: theme.colors.text }]} accessibilityRole="header">Create your account</Text>
+          <Text style={[styles.title, { color: theme.colors.text }]} accessibilityRole="header">
+            Create your account
+          </Text>
 
           <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Name</Text>
           <TextInput
-            style={[styles.input, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, color: theme.colors.text }]}
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.colors.card,
+                borderColor: theme.colors.border,
+                color: theme.colors.text,
+              },
+            ]}
             value={name}
             onChangeText={setName}
             placeholder="Your name"
@@ -126,7 +143,14 @@ export default function SignUp() {
           <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Email</Text>
           <TextInput
             ref={emailRef}
-            style={[styles.input, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, color: theme.colors.text }]}
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.colors.card,
+                borderColor: theme.colors.border,
+                color: theme.colors.text,
+              },
+            ]}
             value={email}
             onChangeText={setEmail}
             placeholder="you@example.com"
@@ -150,7 +174,14 @@ export default function SignUp() {
           <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Password</Text>
           <TextInput
             ref={passwordRef}
-            style={[styles.input, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, color: theme.colors.text }]}
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.colors.card,
+                borderColor: theme.colors.border,
+                color: theme.colors.text,
+              },
+            ]}
             value={password}
             onChangeText={setPassword}
             placeholder={`Min. ${MIN_PASSWORD} characters`}
@@ -173,7 +204,14 @@ export default function SignUp() {
           <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Confirm password</Text>
           <TextInput
             ref={confirmRef}
-            style={[styles.input, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, color: theme.colors.text }]}
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.colors.card,
+                borderColor: theme.colors.border,
+                color: theme.colors.text,
+              },
+            ]}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             placeholder="Confirm password"

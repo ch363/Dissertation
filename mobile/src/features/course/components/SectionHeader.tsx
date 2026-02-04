@@ -13,13 +13,7 @@ export function SectionHeader({ title }: SectionHeaderProps) {
 
   return (
     <View style={styles.wrap}>
-      <Text
-        style={[
-          styles.title,
-          { color: theme.colors.mutedText },
-        ]}
-        numberOfLines={1}
-      >
+      <Text style={[styles.title, { color: theme.colors.mutedText }]} numberOfLines={1}>
         {title}
       </Text>
       <View style={[styles.line, { backgroundColor: theme.colors.border }]} />

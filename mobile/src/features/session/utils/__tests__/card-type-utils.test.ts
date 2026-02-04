@@ -5,6 +5,7 @@ import {
   cardRequiresTextInput,
   canSubmitCard,
 } from '../card-type-utils';
+
 import { CardKind } from '@/types/session';
 
 describe('Card Type Utils', () => {

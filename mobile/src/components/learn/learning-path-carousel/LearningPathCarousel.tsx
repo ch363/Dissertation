@@ -3,13 +3,12 @@ import React, { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ScrollView } from '@/components/ui';
+import { getModuleIllustrationSource } from './moduleIllustrations';
 
+import { ScrollView } from '@/components/ui';
 import type { LearningPathItem } from '@/features/learn/utils/buildLearningPathItems';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
-
-import { getModuleIllustrationSource } from './moduleIllustrations';
 
 /** Shorter strip: fixed height so illustrations are compact and consistent. */
 const ILLUSTRATION_HEIGHT = 80;
@@ -123,7 +122,13 @@ export function LearningPathCarousel({ items, suggestedModuleId, onPressItem }: 
               disabled={isLocked}
               accessibilityRole="button"
               accessibilityLabel={
-                isLocked ? `${item.title}, locked` : isNext ? `Next: ${item.title}, ${nextUpMinutes} minutes` : isSuggested ? `Suggested for you: ${item.title}` : item.title
+                isLocked
+                  ? `${item.title}, locked`
+                  : isNext
+                    ? `Next: ${item.title}, ${nextUpMinutes} minutes`
+                    : isSuggested
+                      ? `Suggested for you: ${item.title}`
+                      : item.title
               }
               accessibilityHint={isLocked ? undefined : 'Double tap to open module'}
               style={({ pressed }) => [
@@ -160,18 +165,27 @@ export function LearningPathCarousel({ items, suggestedModuleId, onPressItem }: 
               <View style={styles.cardContent}>
                 <View style={styles.rowNext}>
                   {isNext ? (
-                    <Text style={[styles.nextUpLabel, { color: theme.colors.primary }]} numberOfLines={1}>
+                    <Text
+                      style={[styles.nextUpLabel, { color: theme.colors.primary }]}
+                      numberOfLines={1}
+                    >
                       Next lesson: {item.title} ({nextUpMinutes} min)
                     </Text>
                   ) : isSuggested ? (
-                    <Text style={[styles.suggestedLabel, { color: theme.colors.primary }]} numberOfLines={1}>
+                    <Text
+                      style={[styles.suggestedLabel, { color: theme.colors.primary }]}
+                      numberOfLines={1}
+                    >
                       Suggested for you
                     </Text>
                   ) : null}
                 </View>
                 <View style={styles.rowCategory}>
                   {item.category ? (
-                    <Text style={[styles.category, { color: theme.colors.mutedText }]} numberOfLines={1}>
+                    <Text
+                      style={[styles.category, { color: theme.colors.mutedText }]}
+                      numberOfLines={1}
+                    >
                       {item.category}
                     </Text>
                   ) : null}
@@ -186,13 +200,22 @@ export function LearningPathCarousel({ items, suggestedModuleId, onPressItem }: 
                       {item.title}
                     </Text>
                     {isLocked ? (
-                      <Ionicons name="lock-closed" size={16} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
+                      <Ionicons
+                        name="lock-closed"
+                        size={16}
+                        color={theme.colors.mutedText}
+                        accessible={false}
+                        importantForAccessibility="no"
+                      />
                     ) : null}
                   </View>
                 </View>
                 <View style={styles.rowProgress}>
                   {item.status === 'active' && totalLessons > 0 ? (
-                    <View style={styles.progressGroup} accessibilityLabel={`Progress: ${completedLessons} of ${totalLessons} lessons completed, ${Math.round(progressPercent)}%`}>
+                    <View
+                      style={styles.progressGroup}
+                      accessibilityLabel={`Progress: ${completedLessons} of ${totalLessons} lessons completed, ${Math.round(progressPercent)}%`}
+                    >
                       <View style={styles.progressRow}>
                         <Text style={[styles.progressText, { color: theme.colors.mutedText }]}>
                           {completedLessons}/{totalLessons} completed
@@ -201,7 +224,12 @@ export function LearningPathCarousel({ items, suggestedModuleId, onPressItem }: 
                           {Math.round(progressPercent)}%
                         </Text>
                       </View>
-                      <View style={[styles.progressBar, { backgroundColor: `${theme.colors.border}80` }]}>
+                      <View
+                        style={[
+                          styles.progressBar,
+                          { backgroundColor: `${theme.colors.border}80` },
+                        ]}
+                      >
                         <View
                           style={[
                             styles.progressFill,
@@ -217,13 +245,20 @@ export function LearningPathCarousel({ items, suggestedModuleId, onPressItem }: 
                     <View style={styles.progressGroup}>
                       <View style={styles.progressRow}>
                         <Text style={[styles.progressText, { color: theme.colors.mutedText }]}>
-                          {totalLessons > 0 ? `${completedLessons}/${totalLessons} completed` : '0 completed'}
+                          {totalLessons > 0
+                            ? `${completedLessons}/${totalLessons} completed`
+                            : '0 completed'}
                         </Text>
                         <Text style={[styles.progressPercent, { color: theme.colors.mutedText }]}>
                           {totalLessons > 0 ? `${Math.round(progressPercent)}%` : '—'}
                         </Text>
                       </View>
-                      <View style={[styles.progressBar, { backgroundColor: `${theme.colors.border}80` }]}>
+                      <View
+                        style={[
+                          styles.progressBar,
+                          { backgroundColor: `${theme.colors.border}80` },
+                        ]}
+                      >
                         <View
                           style={[
                             styles.progressFill,
@@ -239,7 +274,9 @@ export function LearningPathCarousel({ items, suggestedModuleId, onPressItem }: 
                   {item.status === 'active' && item.ctaLabel ? (
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel={isNext ? `${item.ctaLabel}, ${item.title}` : item.ctaLabel}
+                      accessibilityLabel={
+                        isNext ? `${item.ctaLabel}, ${item.title}` : item.ctaLabel
+                      }
                       onPress={() => onPressItem(item.route)}
                       style={({ pressed }) => [
                         styles.ctaButton,
@@ -255,7 +292,9 @@ export function LearningPathCarousel({ items, suggestedModuleId, onPressItem }: 
                     </Pressable>
                   ) : isLocked ? (
                     <View style={[styles.lockedButton, { backgroundColor: theme.colors.border }]}>
-                      <Text style={[styles.lockedLabel, { color: theme.colors.mutedText }]}>Locked</Text>
+                      <Text style={[styles.lockedLabel, { color: theme.colors.mutedText }]}>
+                        Locked
+                      </Text>
                     </View>
                   ) : null}
                 </View>

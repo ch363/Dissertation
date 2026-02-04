@@ -1,6 +1,9 @@
 export type HomeState = 'HAS_ACTIVE_LESSON' | 'HAS_DUE_LESSONS' | 'ALL_CAUGHT_UP';
 
-export function deriveHomeState(args: { activeLesson: unknown | null; dueLessons: unknown[] }): HomeState {
+export function deriveHomeState(args: {
+  activeLesson: unknown | null;
+  dueLessons: unknown[];
+}): HomeState {
   const { activeLesson, dueLessons } = args;
   if (activeLesson) return 'HAS_ACTIVE_LESSON';
   if (dueLessons.length > 0) return 'HAS_DUE_LESSONS';

@@ -1,6 +1,10 @@
-import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 
+import { formatLessonDetail } from '../utils/formatLessonDetail';
+import { selectHomeNextAction, type HomeNextAction } from '../utils/selectHomeNextAction';
+
+import { buildLessonOutcome } from '@/features/learn/utils/lessonOutcome';
 import { getSuggestions } from '@/services/api/learn';
 import { getAllMastery } from '@/services/api/mastery';
 import { getLesson, getLessonTeachings } from '@/services/api/modules';
@@ -12,9 +16,6 @@ import {
   type AccuracyByDeliveryMethod,
   type GrammaticalAccuracyByDeliveryMethod,
 } from '@/services/api/profile';
-import { selectHomeNextAction, type HomeNextAction } from '../utils/selectHomeNextAction';
-import { buildLessonOutcome } from '@/features/learn/utils/lessonOutcome';
-import { formatLessonDetail } from '../utils/formatLessonDetail';
 import { createLogger } from '@/services/logging';
 
 const logger = createLogger('useHomeData');
@@ -28,7 +29,7 @@ export interface HomeData {
   accuracyToday: number | null;
   dueReviewCount: number;
   estimatedReviewMinutes: number | null;
-  mastery: Array<{ skillTag: string; masteryProbability: number }>;
+  mastery: { skillTag: string; masteryProbability: number }[];
   accuracyByDeliveryMethod: AccuracyByDeliveryMethod | null;
   grammaticalAccuracyByDeliveryMethod: GrammaticalAccuracyByDeliveryMethod | null;
   nextAction: HomeNextAction | null;
@@ -55,14 +56,17 @@ export function useHomeData(): HomeData {
   const [accuracyToday, setAccuracyToday] = useState<number | null>(null);
   const [dueReviewCount, setDueReviewCount] = useState<number>(0);
   const [xpTotal, setXpTotal] = useState<number>(0);
-  const [mastery, setMastery] = useState<Array<{ skillTag: string; masteryProbability: number }>>([]);
+  const [mastery, setMastery] = useState<{ skillTag: string; masteryProbability: number }[]>([]);
   const [estimatedReviewMinutes, setEstimatedReviewMinutes] = useState<number | null>(null);
   const [nextAction, setNextAction] = useState<HomeNextAction | null>(null);
   const [nextLessonItemCount, setNextLessonItemCount] = useState<number | null>(null);
-  const [accuracyByDeliveryMethod, setAccuracyByDeliveryMethod] = useState<AccuracyByDeliveryMethod | null>(null);
+  const [accuracyByDeliveryMethod, setAccuracyByDeliveryMethod] =
+    useState<AccuracyByDeliveryMethod | null>(null);
   const [grammaticalAccuracyByDeliveryMethod, setGrammaticalAccuracyByDeliveryMethod] =
     useState<GrammaticalAccuracyByDeliveryMethod | null>(null);
-  const [whyThisText, setWhyThisText] = useState<string>('You\'ll build confidence with practical phrases.');
+  const [whyThisText, setWhyThisText] = useState<string>(
+    "You'll build confidence with practical phrases.",
+  );
   const [lastActivityTopic, setLastActivityTopic] = useState<string | null>(null);
   const [inProgressLesson, setInProgressLesson] = useState<{
     lessonId: string;
@@ -77,26 +81,27 @@ export function useHomeData(): HomeData {
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
-      
-      const [profile, dashboardData, statsData, recentActivity, suggestions, masteryData] = await Promise.all([
-        getMyProfile().catch(() => null),
-        getDashboard().catch(() => ({
-          streak: 0,
-          dueReviewCount: 0,
-          activeLessonCount: 0,
-          xpTotal: 0,
-          weeklyXP: 0,
-          weeklyXPChange: 0,
-          accuracyPercentage: 0,
-          accuracyByDeliveryMethod: {},
-          grammaticalAccuracyByDeliveryMethod: {},
-          studyTimeMinutes: 0,
-        })),
-        getStats().catch(() => ({ minutesToday: 0, completedItemsToday: 0 })),
-        getRecentActivity().catch(() => null),
-        getSuggestions({ limit: 1 }).catch(() => ({ lessons: [], modules: [] })),
-        getAllMastery().catch(() => []),
-      ]);
+
+      const [profile, dashboardData, statsData, recentActivity, suggestions, masteryData] =
+        await Promise.all([
+          getMyProfile().catch(() => null),
+          getDashboard().catch(() => ({
+            streak: 0,
+            dueReviewCount: 0,
+            activeLessonCount: 0,
+            xpTotal: 0,
+            weeklyXP: 0,
+            weeklyXPChange: 0,
+            accuracyPercentage: 0,
+            accuracyByDeliveryMethod: {},
+            grammaticalAccuracyByDeliveryMethod: {},
+            studyTimeMinutes: 0,
+          })),
+          getStats().catch(() => ({ minutesToday: 0, completedItemsToday: 0 })),
+          getRecentActivity().catch(() => null),
+          getSuggestions({ limit: 1 }).catch(() => ({ lessons: [], modules: [] })),
+          getAllMastery().catch(() => []),
+        ]);
 
       const name = profile?.name?.trim();
       setDisplayName(name || null);
@@ -112,7 +117,9 @@ export function useHomeData(): HomeData {
       setXpTotal(dashboardData.xpTotal || 0);
       setMastery(masteryData);
       setAccuracyByDeliveryMethod(dashboardData.accuracyByDeliveryMethod || null);
-      setGrammaticalAccuracyByDeliveryMethod(dashboardData.grammaticalAccuracyByDeliveryMethod || null);
+      setGrammaticalAccuracyByDeliveryMethod(
+        dashboardData.grammaticalAccuracyByDeliveryMethod || null,
+      );
 
       if (dashboardData.estimatedReviewMinutes != null) {
         setEstimatedReviewMinutes(dashboardData.estimatedReviewMinutes);
@@ -137,7 +144,9 @@ export function useHomeData(): HomeData {
           const teachings = await getLessonTeachings(lessonDetail.id).catch(() => null);
           const outcome = buildLessonOutcome(lessonDetail, teachings || []);
           setNextLessonItemCount(outcome.totalTeachings || null);
-          const formatted = formatLessonDetail({ lessonTitle: outcome.lesson.title || outcome.module.title });
+          const formatted = formatLessonDetail({
+            lessonTitle: outcome.lesson.title || outcome.module.title,
+          });
           setWhyThisText(formatted.why);
           setInProgressLesson({
             lessonId: lessonDetail.id,

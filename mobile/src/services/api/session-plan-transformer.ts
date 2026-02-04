@@ -1,6 +1,6 @@
-import { CardKind, Card, SessionPlan } from '@/types/session';
 import { DELIVERY_METHOD, getCardKindForDeliveryMethod } from '@/features/session/delivery-methods';
 import { createLogger } from '@/services/logging';
+import { CardKind, Card, SessionPlan } from '@/types/session';
 
 const logger = createLogger('SessionPlanTransformer');
 
@@ -43,7 +43,7 @@ interface BackendPracticeItem {
   lessonId: string;
   prompt?: string;
   deliveryMethod: string;
-  options?: Array<{ id: string; label: string }>;
+  options?: { id: string; label: string }[];
   correctOptionId?: string;
   text?: string;
   answer?: string;
@@ -72,7 +72,7 @@ export function transformSessionPlan(
 
   logger.info('Transforming session plan', {
     stepsCount: backendPlan.steps?.length || 0,
-    steps: backendPlan.steps?.map(s => ({ type: s.type, hasItem: !!s.item })) || [],
+    steps: backendPlan.steps?.map((s) => ({ type: s.type, hasItem: !!s.item })) || [],
   });
 
   for (const step of backendPlan.steps || []) {
@@ -93,7 +93,9 @@ export function transformSessionPlan(
     } else if (step.type === 'practice') {
       const item = step.item as BackendPracticeItem;
       if (seenQuestionIds.has(item.questionId)) {
-        logger.info('Skipping duplicate practice step for question', { questionId: item.questionId });
+        logger.info('Skipping duplicate practice step for question', {
+          questionId: item.questionId,
+        });
         continue;
       }
       seenQuestionIds.add(item.questionId);
@@ -111,8 +113,9 @@ export function transformSessionPlan(
         hasCorrectOptionId: !!item.correctOptionId,
       });
 
-      const deliveryMethodTyped = deliveryMethod as typeof DELIVERY_METHOD[keyof typeof DELIVERY_METHOD];
-      
+      const deliveryMethodTyped =
+        deliveryMethod as (typeof DELIVERY_METHOD)[keyof typeof DELIVERY_METHOD];
+
       if (deliveryMethodTyped === DELIVERY_METHOD.MULTIPLE_CHOICE) {
         if (item.options && item.options.length > 0 && item.correctOptionId) {
           cards.push({
@@ -157,7 +160,7 @@ export function transformSessionPlan(
             answer: item.answer,
             hint: item.hint,
             audioUrl: item.audioUrl,
-            options: item.options?.map(opt => ({
+            options: item.options?.map((opt) => ({
               id: opt.id || `opt-${opt.label}`,
               label: opt.label,
             })),
@@ -236,15 +239,15 @@ export function transformSessionPlan(
             hasAnswer: !!item.answer,
           });
         }
-        } else {
-          logger.warn('Unknown delivery method', { deliveryMethod, questionId: item.questionId });
-        }
+      } else {
+        logger.warn('Unknown delivery method', { deliveryMethod, questionId: item.questionId });
+      }
     }
   }
 
   logger.info('Transformation complete. Cards created', {
     cardCount: cards.length,
-    cardTypes: cards.map(c => c.kind),
+    cardTypes: cards.map((c) => c.kind),
   });
 
   return {

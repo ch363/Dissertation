@@ -1,6 +1,6 @@
 /**
  * Delivery Method Constants and Mapping
- * 
+ *
  * This file defines the mapping between backend delivery methods and frontend card types.
  * It serves as the single source of truth for how delivery methods are handled in the UI.
  */
@@ -19,7 +19,7 @@ export const DELIVERY_METHOD = {
   TEXT_TRANSLATION: 'TEXT_TRANSLATION',
 } as const;
 
-export type DeliveryMethod = typeof DELIVERY_METHOD[keyof typeof DELIVERY_METHOD];
+export type DeliveryMethod = (typeof DELIVERY_METHOD)[keyof typeof DELIVERY_METHOD];
 
 /**
  * Mapping from backend delivery method to frontend CardKind

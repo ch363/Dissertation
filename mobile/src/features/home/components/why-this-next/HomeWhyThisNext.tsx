@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useRef } from 'react';
 import {
   AppState,
@@ -10,7 +11,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
@@ -25,7 +25,11 @@ const BULLET_SIZE = 4;
 // Blue palette for Focus card (with shimmer)
 const FOCUS_ICON_GRADIENT = ['#3B82F6', '#2563EB', '#60A5FA'] as const;
 const FOCUS_CARD_BG_LIGHT = ['#EFF6FF', '#FFFFFF', '#F5F7FF'] as const;
-const FOCUS_OVERLAY = ['rgba(219, 234, 254, 0.4)', 'transparent', 'rgba(219, 234, 254, 0.4)'] as const;
+const FOCUS_OVERLAY = [
+  'rgba(219, 234, 254, 0.4)',
+  'transparent',
+  'rgba(219, 234, 254, 0.4)',
+] as const;
 const FOCUS_DIVIDER = ['transparent', '#BFDBFE', 'transparent'] as const;
 const FOCUS_PROGRESS = ['#3B82F6', '#2563EB', '#60A5FA'] as const;
 
@@ -69,8 +73,7 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
 }: Props) {
   const { theme, isDark } = useAppTheme();
   const reduceMotion = useReducedMotion();
-  const useTopicAsTitle =
-    typeof topic === 'string' && topic.startsWith('Focus: ');
+  const useTopicAsTitle = typeof topic === 'string' && topic.startsWith('Focus: ');
   const hasLessonData = primaryLine != null && primaryLine !== '';
 
   // Animated values
@@ -173,12 +176,16 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
       <View style={styles.premiumContainer}>
         {/* Base gradient: indigo-50 → white → purple-50 (matches web) */}
         <LinearGradient
-          colors={isDark ? [theme.colors.card, theme.colors.background, theme.colors.card] : [...FOCUS_CARD_BG_LIGHT]}
+          colors={
+            isDark
+              ? [theme.colors.card, theme.colors.background, theme.colors.card]
+              : [...FOCUS_CARD_BG_LIGHT]
+          }
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.baseGradient}
         />
-        
+
         {/* Animated overlay: indigo-100/40 → transparent → purple-100/40, opacity 0.3 → 0.6 → 0.3 */}
         <Animated.View style={[styles.overlayGradient, { opacity: overlayOpacity }]}>
           <LinearGradient
@@ -188,7 +195,7 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
             style={StyleSheet.absoluteFill}
           />
         </Animated.View>
-        
+
         {/* Border glow - indigo-200/60 */}
         <View style={[styles.glowBorder, !isDark && styles.glowBorderLight]} />
 
@@ -237,7 +244,7 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
                 />
               </LinearGradient>
             </View>
-            
+
             <View style={styles.titleWrapper}>
               <Text
                 style={[styles.premiumTitle, { color: theme.colors.text }]}
@@ -271,41 +278,45 @@ export const HomeWhyThisNext = React.memo(function HomeWhyThisNext({
                   >
                     Next lesson: {primaryLine}
                   </Text>
-                  
-                  {progressLine != null && progressLine !== '' ? (
-                    (() => {
-                      const parts = String(progressLine).split(' • ');
-                      const first = parts[0] ?? '';
-                      const second = parts[1];
-                      return (
-                        <View style={styles.metaRow}>
-                          <Text
-                            style={[styles.metaText, { color: theme.colors.mutedText }]}
-                            numberOfLines={1}
-                            maxFontSizeMultiplier={1.3}
-                          >
-                            {first}
-                          </Text>
-                          <View style={[styles.bullet, { backgroundColor: theme.colors.mutedText }]} />
-                          {second != null && second !== '' ? (
+
+                  {progressLine != null && progressLine !== ''
+                    ? (() => {
+                        const parts = String(progressLine).split(' • ');
+                        const first = parts[0] ?? '';
+                        const second = parts[1];
+                        return (
+                          <View style={styles.metaRow}>
                             <Text
                               style={[styles.metaText, { color: theme.colors.mutedText }]}
                               numberOfLines={1}
                               maxFontSizeMultiplier={1.3}
                             >
-                              {second}
+                              {first}
                             </Text>
-                          ) : null}
-                        </View>
-                      );
-                    })()
-                  ) : null}
+                            <View
+                              style={[styles.bullet, { backgroundColor: theme.colors.mutedText }]}
+                            />
+                            {second != null && second !== '' ? (
+                              <Text
+                                style={[styles.metaText, { color: theme.colors.mutedText }]}
+                                numberOfLines={1}
+                                maxFontSizeMultiplier={1.3}
+                              >
+                                {second}
+                              </Text>
+                            ) : null}
+                          </View>
+                        );
+                      })()
+                    : null}
 
                   {/* Premium Progress Bar */}
                   {progressValue !== null ? (
                     <View style={styles.progressContainer}>
                       <LinearGradient
-                        colors={isDark ? [theme.colors.border, theme.colors.card] : ['#E5E7EB', '#F3F4F6']}
+                        colors={
+                          isDark ? [theme.colors.border, theme.colors.card] : ['#E5E7EB', '#F3F4F6']
+                        }
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={styles.progressTrack}

@@ -1,11 +1,12 @@
 import type { Session, User } from '@supabase/supabase-js';
 
-import { getSupabaseClient } from '@/services/supabase/client';
-import { getSupabaseRedirectUrl } from '@/services/env/supabaseConfig';
 import { apiClient } from './client';
-import { routes } from '@/services/navigation/routes';
 import { ensureProfileSeed } from './profile';
+
+import { getSupabaseRedirectUrl } from '@/services/env/supabaseConfig';
 import { createLogger } from '@/services/logging';
+import { routes } from '@/services/navigation/routes';
+import { getSupabaseClient } from '@/services/supabase/client';
 
 const Logger = createLogger('AuthAPI');
 
@@ -28,7 +29,7 @@ export async function signUpWithEmail(
 ): Promise<SignUpResult> {
   const supabase = getSupabaseClient();
   const redirectUrl = getSupabaseRedirectUrl();
-  
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -37,7 +38,7 @@ export async function signUpWithEmail(
       emailRedirectTo: redirectUrl,
     },
   });
-  
+
   if (error) throw error;
   return { user: data.user, session: data.session };
 }
@@ -109,15 +110,18 @@ export async function setSessionFromEmailLink(
 export async function resolvePostAuthDestination(userId: string): Promise<string> {
   try {
     await ensureProfileSeed();
-    
+
     const hasOnboarding = await apiClient.get<{ hasOnboarding: boolean }>('/onboarding/has');
-    
-    Logger.info('resolvePostAuthDestination', { userId, hasOnboarding: hasOnboarding.hasOnboarding });
-    
+
+    Logger.info('resolvePostAuthDestination', {
+      userId,
+      hasOnboarding: hasOnboarding.hasOnboarding,
+    });
+
     if (hasOnboarding.hasOnboarding) {
       return routes.tabs.home;
     }
-    
+
     return routes.onboarding.welcome;
   } catch (err) {
     Logger.error('resolvePostAuthDestination: Error', err);

@@ -42,7 +42,6 @@ export function buildLessonSessionPlan(lessonId: string): SessionPlan {
   };
 }
 
-
 export function makeSessionId(prefix: SessionKind | 'session' = 'session') {
   return `${prefix}-${Date.now()}`;
 }

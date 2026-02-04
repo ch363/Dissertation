@@ -1,7 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -20,26 +20,23 @@ export function HomeStreakCard({ streakDays }: Props) {
   const valueText = `${streakDays} ${streakDays === 1 ? 'day' : 'days'}`;
 
   // Cyan gradient colors matching web: from-cyan-50 to-cyan-100/70
-  const gradientColors = isDark 
+  const gradientColors = isDark
     ? ['rgba(6, 182, 212, 0.15)', 'rgba(8, 145, 178, 0.12)']
     : ['#ECFEFF', 'rgba(207, 250, 254, 0.7)'];
-  
+
   // Cyan-600 for icon color
   const iconColor = isDark ? '#06b6d4' : '#0891b2';
-  
+
   // Border color: cyan-200/50
   const borderColor = isDark ? 'rgba(165, 243, 252, 0.2)' : 'rgba(165, 243, 252, 0.5)';
-  
+
   // Text colors matching web
   const overlineColor = isDark ? '#67e8f9' : '#0e7490'; // cyan-700 equivalent
   const titleColor = isDark ? '#f9fafb' : '#111827'; // gray-900
   const subtitleColor = isDark ? '#d1d5db' : '#4b5563'; // gray-600
 
   return (
-    <View
-      accessibilityRole="none"
-      accessibilityLabel={`Current streak, ${valueText}`}
-    >
+    <View accessibilityRole="none" accessibilityLabel={`Current streak, ${valueText}`}>
       <LinearGradient
         colors={gradientColors}
         start={{ x: 0, y: 0 }}

@@ -18,7 +18,8 @@ export default function TypingScreen() {
           </View>
           <Text style={[styles.title, { color: theme.colors.text }]}>Typing Practice</Text>
           <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
-            Improve your typing speed and accuracy by practicing translations. This feature is coming soon!
+            Improve your typing speed and accuracy by practicing translations. This feature is
+            coming soon!
           </Text>
         </View>
       </View>

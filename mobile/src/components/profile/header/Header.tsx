@@ -39,7 +39,11 @@ export function ProfileHeader({ title, subtitle, avatarUrl, onAvatarPress, right
         </View>
       )}
       <View style={{ flex: 1 }}>
-        <Text style={[styles.title, { color: theme.colors.text }]} numberOfLines={1} ellipsizeMode="tail">
+        <Text
+          style={[styles.title, { color: theme.colors.text }]}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
           {title}
         </Text>
         {subtitle ? (

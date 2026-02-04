@@ -1,13 +1,14 @@
 import { getSessionPlan } from './learn';
 import { transformSessionPlan } from './session-plan-transformer';
+
 import { makeSessionId } from '@/features/session/sessionBuilder';
-import { SessionPlan } from '@/types/session';
+import { CacheManager } from '@/services/cache/cache-utils';
+import { createLogger } from '@/services/logging';
 import {
   getSessionDefaultMode,
   getSessionDefaultTimeBudgetSec,
 } from '@/services/preferences/settings-facade';
-import { createLogger } from '@/services/logging';
-import { CacheManager } from '@/services/cache/cache-utils';
+import { SessionPlan } from '@/types/session';
 
 const logger = createLogger('SessionPlanCache');
 
@@ -54,7 +55,7 @@ export async function preloadSessionPlan(lessonId: string): Promise<void> {
   } catch (error: any) {
     const msg = error?.message ?? String(error);
     const isTimeout = typeof msg === 'string' && msg.toLowerCase().includes('timeout');
-      logger.warn(
+    logger.warn(
       isTimeout
         ? `Preload session plan timed out (best-effort, will load on demand).`
         : `Preload session plan failed (best-effort): ${msg}`,

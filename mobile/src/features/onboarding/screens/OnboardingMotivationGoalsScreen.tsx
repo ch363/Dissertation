@@ -7,29 +7,29 @@ export default function MotivationGoals() {
   const { answers, setAnswerAndSave } = useOnboarding();
 
   const options = [
-    { 
-      key: 'travel', 
-      icon: 'airplane-outline', 
+    {
+      key: 'travel',
+      icon: 'airplane-outline',
       label: 'For travel',
-      description: 'Explore new places and cultures'
+      description: 'Explore new places and cultures',
     },
-    { 
-      key: 'family', 
-      icon: 'people-outline', 
+    {
+      key: 'family',
+      icon: 'people-outline',
       label: 'To connect with family/friends',
-      description: 'Stay in touch with loved ones'
+      description: 'Stay in touch with loved ones',
     },
-    { 
-      key: 'study', 
-      icon: 'school-outline', 
+    {
+      key: 'study',
+      icon: 'school-outline',
       label: 'For study/career',
-      description: 'Advance your professional goals'
+      description: 'Advance your professional goals',
     },
-    { 
-      key: 'fun', 
-      icon: 'game-controller-outline', 
+    {
+      key: 'fun',
+      icon: 'game-controller-outline',
       label: 'For fun/personal growth',
-      description: 'Learn something new for yourself'
+      description: 'Learn something new for yourself',
     },
   ];
 

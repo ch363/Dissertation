@@ -5,10 +5,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui';
 import { resendConfirmationEmail } from '@/services/api/auth';
+import { createLogger } from '@/services/logging';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme } from '@/services/theme/tokens';
 import { announce } from '@/utils/a11y';
-import { createLogger } from '@/services/logging';
 
 const logger = createLogger('VerifyEmailScreen');
 
@@ -44,19 +44,27 @@ export default function VerifyEmail() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <Text style={[styles.title, { color: theme.colors.text }]} accessibilityRole="header">Check your email</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]} accessibilityRole="header">
+          Check your email
+        </Text>
         <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
           We sent a confirmation link to {email || 'your email address'}. Tap the link to activate
           your account, then log in.
         </Text>
 
         {resendMessage && (
-          <Text style={[styles.successMessage, { color: theme.colors.success }]} accessibilityRole="alert">
+          <Text
+            style={[styles.successMessage, { color: theme.colors.success }]}
+            accessibilityRole="alert"
+          >
             {resendMessage}
           </Text>
         )}
         {resendError && (
-          <Text style={[styles.errorMessage, { color: theme.colors.error }]} accessibilityRole="alert">
+          <Text
+            style={[styles.errorMessage, { color: theme.colors.error }]}
+            accessibilityRole="alert"
+          >
             {resendError}
           </Text>
         )}

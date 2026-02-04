@@ -3,10 +3,7 @@ export interface CacheEntry<T> {
   timestamp: number;
 }
 
-export function isCacheValid<T>(
-  cached: CacheEntry<T> | undefined,
-  ttl: number,
-): boolean {
+export function isCacheValid<T>(cached: CacheEntry<T> | undefined, ttl: number): boolean {
   if (!cached) return false;
   const age = Date.now() - cached.timestamp;
   return age < ttl;

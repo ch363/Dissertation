@@ -1,16 +1,17 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { CARD_TYPE_COLORS } from '../../constants/cardTypeColors';
+
 import { SpeakerButton } from '@/components/ui';
+import { createLogger } from '@/services/logging';
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
 import { TeachCard as TeachCardType } from '@/types/session';
-import { createLogger } from '@/services/logging';
-import { CARD_TYPE_COLORS } from '../../constants/cardTypeColors';
 
 const logger = createLogger('TeachCard');
 
@@ -89,13 +90,15 @@ export function TeachCard({ card }: Props) {
       {/* Main Teach Card – gradient, 32px radius (Figma: rounded-[32px], from-blue-50 via-indigo-50 to-blue-50) */}
       <LinearGradient
         colors={CARD_GRADIENT}
-        style={[styles.teachCard, isSpeaking && styles.teachCardSpeaking, { borderLeftWidth: 3, borderLeftColor: CARD_TYPE_COLORS.teach.border }]}
+        style={[
+          styles.teachCard,
+          isSpeaking && styles.teachCardSpeaking,
+          { borderLeftWidth: 3, borderLeftColor: CARD_TYPE_COLORS.teach.border },
+        ]}
       >
         <View style={styles.teachCardInner}>
           {/* Emoji at top */}
-          {card.content.emoji ? (
-            <Text style={styles.teachEmoji}>{card.content.emoji}</Text>
-          ) : null}
+          {card.content.emoji ? <Text style={styles.teachEmoji}>{card.content.emoji}</Text> : null}
 
           {/* Phrase + translation (Figma: text-7xl bold, then text-lg medium) */}
           <View style={styles.phraseBlock}>
@@ -124,7 +127,12 @@ export function TeachCard({ card }: Props) {
       {/* Usage Note – slate-50 style, rounded-3xl, book icon + text only (no "Usage Note" title) */}
       {card.content.usageNote ? (
         <View style={styles.usageNoteCard}>
-          <Ionicons name="book-outline" size={18} color={USAGE_ICON_SLATE} style={styles.usageNoteIcon} />
+          <Ionicons
+            name="book-outline"
+            size={18}
+            color={USAGE_ICON_SLATE}
+            style={styles.usageNoteIcon}
+          />
           <Text style={[styles.usageNoteText, { color: theme.colors.mutedText }]}>
             {card.content.usageNote}
           </Text>

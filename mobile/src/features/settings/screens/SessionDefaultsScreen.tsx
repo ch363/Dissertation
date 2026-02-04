@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import Slider from '@react-native-community/slider';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -8,7 +8,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { ScreenHeader } from '@/components/navigation';
 import { ScrollView, StaticCard } from '@/components/ui';
+import { getLesson } from '@/services/api/modules';
 import { routes } from '@/services/navigation/routes';
+import type { SessionDefaultMode } from '@/services/preferences';
 import {
   useAppTheme,
   getSessionDefaultMode,
@@ -18,8 +20,6 @@ import {
   getSessionDefaultLessonId,
   setSessionDefaultLessonId,
 } from '@/services/preferences/settings-facade';
-import { getLesson } from '@/services/api/modules';
-import type { SessionDefaultMode } from '@/services/preferences';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
 const ICON_GRADIENTS = {
@@ -209,7 +209,10 @@ export default function SessionDefaultsScreen() {
   }, [mode]);
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top']}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.colors.background }]}
+      edges={['top']}
+    >
       <ScreenHeader
         title="Session defaults"
         onBackPress={handleBack}
@@ -296,7 +299,9 @@ export default function SessionDefaultsScreen() {
                 <Ionicons name="time-outline" size={20} color="#FFFFFF" />
               </SettingIconBox>
               <View style={styles.settingRowContent}>
-                <Text style={[styles.settingRowLabel, { color: theme.colors.text }]}>Time budget</Text>
+                <Text style={[styles.settingRowLabel, { color: theme.colors.text }]}>
+                  Time budget
+                </Text>
                 <Text style={[styles.settingRowSubtitle, { color: theme.colors.mutedText }]}>
                   {formatBudget(timeBudgetSec)}
                 </Text>
@@ -318,7 +323,9 @@ export default function SessionDefaultsScreen() {
                     thumbTintColor={theme.colors.primary}
                     accessibilityLabel="Time budget"
                     accessibilityHint="Adjusts the session time limit"
-                    accessibilityValue={{ text: formatBudget(timeBudgetSecState ?? timeBudgetSec ?? null) }}
+                    accessibilityValue={{
+                      text: formatBudget(timeBudgetSecState ?? timeBudgetSec ?? null),
+                    }}
                   />
                 </View>
                 <Pressable
@@ -327,7 +334,9 @@ export default function SessionDefaultsScreen() {
                   onPress={clearBudget}
                   style={({ pressed }) => [styles.actionRow, pressed && styles.actionRowPressed]}
                 >
-                  <Text style={[styles.actionRowLabel, { color: theme.colors.text }]}>No limit</Text>
+                  <Text style={[styles.actionRowLabel, { color: theme.colors.text }]}>
+                    No limit
+                  </Text>
                   <Ionicons name="close-circle-outline" size={20} color={theme.colors.mutedText} />
                 </Pressable>
                 <Text style={[styles.helper, { color: theme.colors.mutedText }, styles.helperPad]}>
@@ -342,7 +351,9 @@ export default function SessionDefaultsScreen() {
                   onPress={() => setAndPersistBudgetMinutes(10)}
                   style={({ pressed }) => [styles.actionRow, pressed && styles.actionRowPressed]}
                 >
-                  <Text style={[styles.actionRowLabel, { color: theme.colors.text }]}>Set a limit</Text>
+                  <Text style={[styles.actionRowLabel, { color: theme.colors.text }]}>
+                    Set a limit
+                  </Text>
                   <Ionicons name="chevron-forward" size={20} color={theme.colors.mutedText} />
                 </Pressable>
                 <Text style={[styles.helper, { color: theme.colors.mutedText }, styles.helperPad]}>
@@ -412,7 +423,9 @@ export default function SessionDefaultsScreen() {
                   onPress={clearLessonFilter}
                   style={({ pressed }) => [styles.actionRow, pressed && styles.actionRowPressed]}
                 >
-                  <Text style={[styles.actionRowLabel, { color: theme.colors.error }]}>Clear lesson filter</Text>
+                  <Text style={[styles.actionRowLabel, { color: theme.colors.error }]}>
+                    Clear lesson filter
+                  </Text>
                   <Ionicons name="trash-outline" size={20} color={theme.colors.error} />
                 </Pressable>
               </>
@@ -517,4 +530,3 @@ const styles = StyleSheet.create({
     paddingVertical: baseTheme.spacing.sm,
   },
 });
-

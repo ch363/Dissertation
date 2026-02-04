@@ -5,9 +5,9 @@ import { StyleSheet, Text, View } from 'react-native';
 import { LoadingScreen } from '@/components/ui';
 import { resolvePostAuthDestination } from '@/features/auth/flows/resolvePostAuthDestination';
 import { useAuth } from '@/services/auth/AuthProvider';
+import { createLogger } from '@/services/logging';
 import { isPublicRootSegment } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
-import { createLogger } from '@/services/logging';
 
 const Logger = createLogger('RouteGuard');
 
@@ -45,7 +45,7 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
       const isOnboardingRoute = pathname.startsWith('/(onboarding)');
       const isAuthRoute = pathname.startsWith('/(auth)');
       const isIndexRoute = pathname === '/' || pathname === '';
-      
+
       if (isOnboardingRoute || isAuthRoute) {
         redirectingRef.current = false;
         return;
@@ -132,7 +132,7 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
       <LoadingScreen
         title="Checking session..."
         subtitle="Please wait while we confirm your account."
-        safeArea={true}
+        safeArea
       />
     );
   }

@@ -12,7 +12,9 @@ export default function OnboardingWelcome() {
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" />
-        <Text style={[styles.headline, { color: theme.colors.text }]}>Learn Italian,{'\n'}your way.</Text>
+        <Text style={[styles.headline, { color: theme.colors.text }]}>
+          Learn Italian,{'\n'}your way.
+        </Text>
         <Text style={[styles.subtext, { color: theme.colors.mutedText }]}>
           Just a few quick questions to{'\n'}personalize your learning experience (1–2 mins)
         </Text>

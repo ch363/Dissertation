@@ -2,15 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
-import {
-  Alert,
-  View,
-  Text,
-  StyleSheet,
-  Switch,
-  Pressable,
-  ScrollView,
-} from 'react-native';
+import { Alert, View, Text, StyleSheet, Switch, Pressable, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { StaticCard } from '@/components/ui';
@@ -95,7 +87,10 @@ function SettingToggleRow({
       <View style={styles.settingRowContent}>
         <Text style={[styles.settingRowLabel, { color: theme.colors.text }]}>{label}</Text>
         {subtitle ? (
-          <Text style={[styles.settingRowSubtitle, { color: theme.colors.mutedText }]} numberOfLines={2}>
+          <Text
+            style={[styles.settingRowSubtitle, { color: theme.colors.mutedText }]}
+            numberOfLines={2}
+          >
             {subtitle}
           </Text>
         ) : null}
@@ -145,7 +140,10 @@ function SettingNavRow({
       <View style={styles.settingRowContent}>
         <Text style={[styles.settingRowLabel, { color: theme.colors.text }]}>{label}</Text>
         {subtitle ? (
-          <Text style={[styles.settingRowSubtitle, { color: theme.colors.mutedText }]} numberOfLines={2}>
+          <Text
+            style={[styles.settingRowSubtitle, { color: theme.colors.mutedText }]}
+            numberOfLines={2}
+          >
             {subtitle}
           </Text>
         ) : null}
@@ -187,160 +185,157 @@ export default function SettingsScreen() {
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
-        <View style={styles.header}>
-          <Pressable
-            onPress={() => router.back()}
-            style={({ pressed }) => [
-              styles.backButton,
-              { opacity: pressed ? 0.5 : 1 },
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-            accessibilityHint="Returns to the previous screen"
-          >
-            <Ionicons name="chevron-back" size={28} color={theme.colors.primary} />
-          </Pressable>
+      <View style={styles.header}>
+        <Pressable
+          onPress={() => router.back()}
+          style={({ pressed }) => [styles.backButton, { opacity: pressed ? 0.5 : 1 }]}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+          accessibilityHint="Returns to the previous screen"
+        >
+          <Ionicons name="chevron-back" size={28} color={theme.colors.primary} />
+        </Pressable>
 
-          <View style={styles.titleRow}>
-            <Text style={[styles.title, { color: theme.colors.text }]}>Settings</Text>
-            <Text style={[styles.intro, { color: theme.colors.mutedText }]}>
-              Tailor Fluentia to how you learn best
-            </Text>
-          </View>
+        <View style={styles.titleRow}>
+          <Text style={[styles.title, { color: theme.colors.text }]}>Settings</Text>
+          <Text style={[styles.intro, { color: theme.colors.mutedText }]}>
+            Tailor Fluentia to how you learn best
+          </Text>
         </View>
+      </View>
 
-        {/* Help - placed high so it's visible without scrolling */}
-        <Section title="HELP" color={theme.colors.mutedText}>
-          <StaticCard style={styles.card}>
-            <SettingNavRow
-              icon={<Ionicons name="book-outline" size={18} color="#FFFFFF" />}
-              iconColors={ICON_GRADIENTS.blue}
-              label="Help"
-              subtitle="Getting started and tips for success"
-              onPress={() => router.push(routes.tabs.settings.help)}
-              accessibilityLabel="Open Help"
-              accessibilityHint="View getting started and tips"
-            />
-            <SettingNavRow
-              icon={<Ionicons name="help-circle-outline" size={18} color="#FFFFFF" />}
-              iconColors={ICON_GRADIENTS.blue}
-              label="FAQ"
-              subtitle="Frequently asked questions"
-              onPress={() => router.push(routes.tabs.settings.faq)}
-              accessibilityLabel="Open FAQ"
-              accessibilityHint="View frequently asked questions"
-            />
-          </StaticCard>
-        </Section>
+      {/* Help - placed high so it's visible without scrolling */}
+      <Section title="HELP" color={theme.colors.mutedText}>
+        <StaticCard style={styles.card}>
+          <SettingNavRow
+            icon={<Ionicons name="book-outline" size={18} color="#FFFFFF" />}
+            iconColors={ICON_GRADIENTS.blue}
+            label="Help"
+            subtitle="Getting started and tips for success"
+            onPress={() => router.push(routes.tabs.settings.help)}
+            accessibilityLabel="Open Help"
+            accessibilityHint="View getting started and tips"
+          />
+          <SettingNavRow
+            icon={<Ionicons name="help-circle-outline" size={18} color="#FFFFFF" />}
+            iconColors={ICON_GRADIENTS.blue}
+            label="FAQ"
+            subtitle="Frequently asked questions"
+            onPress={() => router.push(routes.tabs.settings.faq)}
+            accessibilityLabel="Open FAQ"
+            accessibilityHint="View frequently asked questions"
+          />
+        </StaticCard>
+      </Section>
 
-        {/* Appearance */}
-        <Section title="APPEARANCE" color={theme.colors.mutedText}>
-          <StaticCard style={styles.card}>
-            <SettingToggleRow
-              icon={<Ionicons name="moon-outline" size={18} color="#FFFFFF" />}
-              iconColors={ICON_GRADIENTS.primary}
-              label="Dark Mode"
-              value={isDark}
-              onValueChange={(v) => setMode(v ? 'dark' : 'light')}
-              accessibilityLabel="Dark Mode"
-              trackColor={theme.colors.success}
-            />
-          </StaticCard>
-        </Section>
+      {/* Appearance */}
+      <Section title="APPEARANCE" color={theme.colors.mutedText}>
+        <StaticCard style={styles.card}>
+          <SettingToggleRow
+            icon={<Ionicons name="moon-outline" size={18} color="#FFFFFF" />}
+            iconColors={ICON_GRADIENTS.primary}
+            label="Dark Mode"
+            value={isDark}
+            onValueChange={(v) => setMode(v ? 'dark' : 'light')}
+            accessibilityLabel="Dark Mode"
+            trackColor={theme.colors.success}
+          />
+        </StaticCard>
+      </Section>
 
-        {/* Learning */}
-        <Section title="LEARNING" color={theme.colors.mutedText}>
-          <StaticCard style={styles.cardLearning}>
-            <SettingNavRow
-              icon={<Ionicons name="chatbubble-outline" size={18} color="#FFFFFF" />}
-              iconColors={ICON_GRADIENTS.blue}
-              label="Speech"
-              onPress={() => router.push(routes.tabs.settings.speech)}
-              accessibilityLabel="Open Speech Settings"
-              accessibilityHint="Configure text to speech and speed"
-            />
-            <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-            <SettingNavRow
-              icon={<Ionicons name="time-outline" size={18} color="#FFFFFF" />}
-              iconColors={ICON_GRADIENTS.orange}
-              label="Session defaults"
-              subtitle="Preferred session length and exercise types"
-              onPress={() => router.push(routes.tabs.settings.session)}
-              accessibilityLabel="Open Session defaults"
-            />
-            <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
-            <SettingToggleRow
-              icon={<Ionicons name="sparkles-outline" size={18} color="#FFFFFF" />}
-              iconColors={ICON_GRADIENTS.purple}
-              label="Adaptivity"
-              subtitle="Adjusts difficulty and review timing based on your performance"
-              value={adaptivity}
-              onValueChange={async (v) => {
-                setAdaptivity(v);
-                await setAdaptivityEnabled(v);
-              }}
-              accessibilityLabel="Adaptivity"
-              trackColor={theme.colors.success}
-            />
-          </StaticCard>
-        </Section>
+      {/* Learning */}
+      <Section title="LEARNING" color={theme.colors.mutedText}>
+        <StaticCard style={styles.cardLearning}>
+          <SettingNavRow
+            icon={<Ionicons name="chatbubble-outline" size={18} color="#FFFFFF" />}
+            iconColors={ICON_GRADIENTS.blue}
+            label="Speech"
+            onPress={() => router.push(routes.tabs.settings.speech)}
+            accessibilityLabel="Open Speech Settings"
+            accessibilityHint="Configure text to speech and speed"
+          />
+          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+          <SettingNavRow
+            icon={<Ionicons name="time-outline" size={18} color="#FFFFFF" />}
+            iconColors={ICON_GRADIENTS.orange}
+            label="Session defaults"
+            subtitle="Preferred session length and exercise types"
+            onPress={() => router.push(routes.tabs.settings.session)}
+            accessibilityLabel="Open Session defaults"
+          />
+          <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+          <SettingToggleRow
+            icon={<Ionicons name="sparkles-outline" size={18} color="#FFFFFF" />}
+            iconColors={ICON_GRADIENTS.purple}
+            label="Adaptivity"
+            subtitle="Adjusts difficulty and review timing based on your performance"
+            value={adaptivity}
+            onValueChange={async (v) => {
+              setAdaptivity(v);
+              await setAdaptivityEnabled(v);
+            }}
+            accessibilityLabel="Adaptivity"
+            trackColor={theme.colors.success}
+          />
+        </StaticCard>
+      </Section>
 
-        {/* Notifications */}
-        <Section title="NOTIFICATIONS" color={theme.colors.mutedText}>
-          <StaticCard style={styles.card}>
-            <SettingToggleRow
-              icon={<Ionicons name="notifications-outline" size={18} color="#FFFFFF" />}
-              iconColors={ICON_GRADIENTS.red}
-              label="Notifications"
-              value={notifications}
-              onValueChange={async (v) => {
-                setNotifications(v);
-                await setNotificationsEnabled(v);
-              }}
-              accessibilityLabel="Notifications"
-              trackColor={theme.colors.success}
-            />
-          </StaticCard>
-        </Section>
+      {/* Notifications */}
+      <Section title="NOTIFICATIONS" color={theme.colors.mutedText}>
+        <StaticCard style={styles.card}>
+          <SettingToggleRow
+            icon={<Ionicons name="notifications-outline" size={18} color="#FFFFFF" />}
+            iconColors={ICON_GRADIENTS.red}
+            label="Notifications"
+            value={notifications}
+            onValueChange={async (v) => {
+              setNotifications(v);
+              await setNotificationsEnabled(v);
+            }}
+            accessibilityLabel="Notifications"
+            trackColor={theme.colors.success}
+          />
+        </StaticCard>
+      </Section>
 
-        {/* Account */}
-        <Section title="ACCOUNT" color={theme.colors.mutedText}>
-          <StaticCard
-            style={[
-              styles.card,
-              styles.accountCard,
-              { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
-            ]}
-          >
-            <Pressable
-              style={({ pressed }) => [styles.settingRow, pressed && styles.settingRowPressed]}
-              onPress={() => {
-                Alert.alert('Sign out?', 'You will need to sign in again to continue.', [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Sign out',
-                    style: 'destructive',
-                    onPress: async () => {
-                      await signOut();
-                      router.replace(routes.auth.signIn);
-                    },
+      {/* Account */}
+      <Section title="ACCOUNT" color={theme.colors.mutedText}>
+        <StaticCard
+          style={[
+            styles.card,
+            styles.accountCard,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+          ]}
+        >
+          <Pressable
+            style={({ pressed }) => [styles.settingRow, pressed && styles.settingRowPressed]}
+            onPress={() => {
+              Alert.alert('Sign out?', 'You will need to sign in again to continue.', [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Sign out',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await signOut();
+                    router.replace(routes.auth.signIn);
                   },
-                ]);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Sign out"
-              accessibilityHint="Signs you out of your account"
-            >
-              <SettingIconBox colors={ICON_GRADIENTS.red}>
-                <Ionicons name="exit-outline" size={18} color="#FFFFFF" />
-              </SettingIconBox>
-              <View style={styles.settingRowContent}>
-                <Text style={[styles.settingRowLabel, { color: theme.colors.error }]}>Sign out</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={theme.colors.error} />
-            </Pressable>
-          </StaticCard>
-        </Section>
+                },
+              ]);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Sign out"
+            accessibilityHint="Signs you out of your account"
+          >
+            <SettingIconBox colors={ICON_GRADIENTS.red}>
+              <Ionicons name="exit-outline" size={18} color="#FFFFFF" />
+            </SettingIconBox>
+            <View style={styles.settingRowContent}>
+              <Text style={[styles.settingRowLabel, { color: theme.colors.error }]}>Sign out</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.error} />
+          </Pressable>
+        </StaticCard>
+      </Section>
     </ScrollView>
   );
 }

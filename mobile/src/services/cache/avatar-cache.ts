@@ -13,7 +13,9 @@ async function getFileSystemModule(): Promise<typeof import('expo-file-system') 
     try {
       FileSystemModule = await import('expo-file-system');
     } catch (error) {
-      Logger.warn('expo-file-system native module not available; avatar caching disabled', { error });
+      Logger.warn('expo-file-system native module not available; avatar caching disabled', {
+        error,
+      });
       return null;
     }
   }
@@ -43,7 +45,7 @@ async function ensureCacheDirectory(): Promise<void> {
   if (!FileSystem || !cacheDir) return;
 
   const dirInfo = await FileSystem.getInfoAsync(cacheDir);
-  
+
   if (!dirInfo.exists) {
     await FileSystem.makeDirectoryAsync(cacheDir, { intermediates: true });
   }
@@ -57,12 +59,12 @@ export async function cacheAvatarFile(uri: string, userId: string): Promise<stri
     await ensureCacheDirectory();
     const cachedPath = await getCachedAvatarFilePath(userId);
     if (!cachedPath) return uri;
-    
+
     await FileSystem.copyAsync({
       from: uri,
       to: cachedPath,
     });
-    
+
     return cachedPath;
   } catch (error) {
     Logger.error('Failed to cache avatar file', error);
@@ -78,11 +80,11 @@ export async function getCachedAvatarPath(userId: string): Promise<string | null
     const cachedPath = await getCachedAvatarFilePath(userId);
     if (!cachedPath) return null;
     const fileInfo = await FileSystem.getInfoAsync(cachedPath);
-    
+
     if (fileInfo.exists && !fileInfo.isDirectory) {
       return cachedPath;
     }
-    
+
     return null;
   } catch (error) {
     Logger.error('Failed to check cached avatar', error);
@@ -98,7 +100,7 @@ export async function clearCachedAvatar(userId: string): Promise<void> {
     const cachedPath = await getCachedAvatarFilePath(userId);
     if (!cachedPath) return;
     const fileInfo = await FileSystem.getInfoAsync(cachedPath);
-    
+
     if (fileInfo.exists) {
       await FileSystem.deleteAsync(cachedPath, { idempotent: true });
     }
@@ -111,11 +113,11 @@ export async function getAvatarUri(userId: string, url: string | null): Promise<
   if (!url) {
     return null;
   }
-  
+
   const cachedPath = await getCachedAvatarPath(userId);
   if (cachedPath) {
     return cachedPath;
   }
-  
+
   return url;
 }

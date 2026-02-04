@@ -1,6 +1,6 @@
 /**
  * Color coding for card/delivery types
- * 
+ *
  * Following HCI best practices for recognition over recall:
  * - Each delivery method has a distinct, semantically meaningful color
  * - Colors are applied consistently to borders and instruction labels
@@ -16,7 +16,7 @@ export const CARD_TYPE_COLORS = {
     instruction: '#2563EB', // blue-600
     light: '#DBEAFE', // blue-100
   },
-  
+
   // Multiple choice - Vibrant purple (recall and selection)
   multipleChoice: {
     primary: '#8B5CF6', // violet-500
@@ -24,7 +24,7 @@ export const CARD_TYPE_COLORS = {
     instruction: '#7C3AED', // violet-600
     light: '#EDE9FE', // violet-100
   },
-  
+
   // Fill in the blank - Warm amber (partial recall with context)
   fillBlank: {
     primary: '#F59E0B', // amber-500
@@ -32,7 +32,7 @@ export const CARD_TYPE_COLORS = {
     instruction: '#D97706', // amber-600
     light: '#FEF3C7', // amber-100
   },
-  
+
   // Translation - Emerald green (production/creation)
   translate: {
     primary: '#10B981', // emerald-500
@@ -40,7 +40,7 @@ export const CARD_TYPE_COLORS = {
     instruction: '#059669', // emerald-600
     light: '#D1FAE5', // emerald-100
   },
-  
+
   // Listening (Type What You Hear) - Teal (audio input)
   listeningType: {
     primary: '#14B8A6', // teal-500
@@ -48,7 +48,7 @@ export const CARD_TYPE_COLORS = {
     instruction: '#0D9488', // teal-600
     light: '#CCFBF1', // teal-100
   },
-  
+
   // Pronunciation (Speak) - Coral/orange (speech output)
   listeningSpeak: {
     primary: '#F97316', // orange-500
@@ -84,7 +84,5 @@ export function getCardTypeColors(cardKind: string) {
  * Get listening card colors based on mode
  */
 export function getListeningCardColors(mode?: 'type' | 'speak') {
-  return mode === 'speak' 
-    ? CARD_TYPE_COLORS.listeningSpeak 
-    : CARD_TYPE_COLORS.listeningType;
+  return mode === 'speak' ? CARD_TYPE_COLORS.listeningSpeak : CARD_TYPE_COLORS.listeningType;
 }

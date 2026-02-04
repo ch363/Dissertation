@@ -83,8 +83,12 @@ export default function UpdatePassword() {
   }, [url, ensureSessionFromUrl]);
 
   const passwordsMatch = newPassword === confirmPassword;
-  const passwordError = newPassword.length > 0 && newPassword.length < 6 ? 'Password must be at least 6 characters.' : null;
-  const confirmError = !passwordsMatch && confirmPassword.length > 0 ? 'Passwords do not match.' : null;
+  const passwordError =
+    newPassword.length > 0 && newPassword.length < 6
+      ? 'Password must be at least 6 characters.'
+      : null;
+  const confirmError =
+    !passwordsMatch && confirmPassword.length > 0 ? 'Passwords do not match.' : null;
   const canSubmit = sessionReady && passwordsMatch && newPassword.length >= 6 && !loading;
 
   const handleUpdate = async () => {
@@ -119,7 +123,9 @@ export default function UpdatePassword() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title} accessibilityRole="header">Set a new password</Text>
+      <Text style={styles.title} accessibilityRole="header">
+        Set a new password
+      </Text>
       {statusText ? <Text style={styles.subtitle}>{statusText}</Text> : null}
 
       {processing ? (

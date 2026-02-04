@@ -1,9 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScrollView } from 'react-native';
 
 import { HelpContent } from '@/features/settings/components/help/HelpContent';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
@@ -14,7 +13,10 @@ export default function OnboardingHelpScreen() {
   const handleBack = useCallback(() => router.back(), []);
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]} edges={['top']}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.colors.background }]}
+      edges={['top']}
+    >
       <View style={styles.header}>
         <TouchableOpacity
           onPress={handleBack}

@@ -61,10 +61,7 @@ export function SpeakerButton({
         >
           {/* Gradient fill – same size as button so it stays centered */}
           <View style={[StyleSheet.absoluteFill, sizeStyle]} pointerEvents="none">
-            <LinearGradient
-              colors={SPEAKER_GRADIENT}
-              style={StyleSheet.absoluteFill}
-            />
+            <LinearGradient colors={SPEAKER_GRADIENT} style={StyleSheet.absoluteFill} />
           </View>
           {/* Active ring as separate overlay – avoids border offset on Pressable */}
           {isPlaying ? (
@@ -83,19 +80,13 @@ export function SpeakerButton({
           ) : null}
           {/* Icon centered in full button area */}
           <View style={[StyleSheet.absoluteFill, styles.iconWrap]}>
-            <Ionicons
-              name={isPlaying ? 'pause' : 'volume-high'}
-              size={iconSize}
-              color="#fff"
-            />
+            <Ionicons name={isPlaying ? 'pause' : 'volume-high'} size={iconSize} color="#fff" />
           </View>
         </Pressable>
       </View>
       {showTapHint && !isPlaying ? (
         <View style={styles.tapHintPill}>
-          <Text style={[styles.tapHint, { color: theme.colors.mutedText }]}>
-            {tapHintText}
-          </Text>
+          <Text style={[styles.tapHint, { color: theme.colors.mutedText }]}>{tapHintText}</Text>
         </View>
       ) : null}
     </View>

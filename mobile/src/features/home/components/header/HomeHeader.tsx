@@ -29,7 +29,12 @@ export function HomeHeader({ onPressSettings }: Props) {
         />
       </Pressable>
 
-      <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" accessible={false} />
+      <Image
+        source={require('@/assets/logo.png')}
+        style={styles.logo}
+        resizeMode="contain"
+        accessible={false}
+      />
     </View>
   );
 }

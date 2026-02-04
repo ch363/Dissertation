@@ -1,9 +1,10 @@
-import { getDashboard } from './profile';
 import { getSuggestions } from './learn';
 import { getLessons, getModules } from './modules';
+import { getDashboard } from './profile';
 import { getUserLessons } from './progress';
-import { createLogger } from '@/services/logging';
+
 import { CacheManager } from '@/services/cache/cache-utils';
+import { createLogger } from '@/services/logging';
 
 const logger = createLogger('LearnScreenCache');
 
@@ -23,7 +24,12 @@ export async function preloadLearnScreenData(): Promise<void> {
       getModules().catch(() => []),
       getLessons().catch(() => []),
       getUserLessons().catch(() => []),
-      getDashboard().catch(() => ({ streak: 0, dueReviewCount: 0, activeLessonCount: 0, xpTotal: 0 })),
+      getDashboard().catch(() => ({
+        streak: 0,
+        dueReviewCount: 0,
+        activeLessonCount: 0,
+        xpTotal: 0,
+      })),
       getSuggestions({ limit: 8 }).catch(() => ({ lessons: [], modules: [] })),
     ]);
 

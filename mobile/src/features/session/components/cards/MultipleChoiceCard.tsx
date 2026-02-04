@@ -8,15 +8,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { CARD_TYPE_COLORS } from '../../constants/cardTypeColors';
+
 import { SpeakerButton } from '@/components/ui';
+import { createLogger } from '@/services/logging';
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
 import { MultipleChoiceCard as MultipleChoiceCardType } from '@/types/session';
 import { announce } from '@/utils/a11y';
-import { createLogger } from '@/services/logging';
-import { CARD_TYPE_COLORS } from '../../constants/cardTypeColors';
 
 const logger = createLogger('MultipleChoiceCard');
 
@@ -83,7 +84,11 @@ export function MultipleChoiceCard({
         const rate = await getTtsRate();
         await SafeSpeech.stop();
         await new Promise((r) => setTimeout(r, 150));
-        const hasItalian = /[àèéìíîòóùú]/.test(label) || /^(ciao|grazie|acqua|vino|formaggio|scusa|bene|sì|no|buongiorno|buonasera|arrivederci|per favore|prego)$/i.test(label);
+        const hasItalian =
+          /[àèéìíîòóùú]/.test(label) ||
+          /^(ciao|grazie|acqua|vino|formaggio|scusa|bene|sì|no|buongiorno|buonasera|arrivederci|per favore|prego)$/i.test(
+            label,
+          );
         await SafeSpeech.speak(label, { language: hasItalian ? 'it-IT' : 'es-ES', rate });
       } catch (e) {
         logger.debug('Failed to speak correct answer (non-critical)', e);
@@ -98,9 +103,10 @@ export function MultipleChoiceCard({
     const hasItalianChars = /[àèéìíîòóùú]/.test(t);
     const hasSpanishChars = /[ñáéíóúü¿¡]/.test(t);
     const isCommonItalian =
-      /^(ciao|grazie|prego|scusa|bene|sì|no|buongiorno|buonasera|arrivederci|per favore|acqua|vino|formaggio)$/i.test(t);
-    const isCommonSpanish =
-      /^(agua|vino|hola|gracias|sí|no|buenos días|por favor)$/i.test(t);
+      /^(ciao|grazie|prego|scusa|bene|sì|no|buongiorno|buonasera|arrivederci|per favore|acqua|vino|formaggio)$/i.test(
+        t,
+      );
+    const isCommonSpanish = /^(agua|vino|hola|gracias|sí|no|buenos días|por favor)$/i.test(t);
     return hasItalianChars || hasSpanishChars || isCommonItalian || isCommonSpanish;
   }
 
@@ -114,8 +120,12 @@ export function MultipleChoiceCard({
       setIsPlaying(true);
       const rate = await getTtsRate();
       await SafeSpeech.stop();
-      await new Promise(resolve => setTimeout(resolve, 100));
-      const hasItalian = /[àèéìíîòóùú]/.test(card.sourceText) || /^(ciao|grazie|prego|scusa|bene|sì|no|buongiorno|buonasera|per favore|acqua|vino|formaggio)$/i.test(card.sourceText.trim());
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const hasItalian =
+        /[àèéìíîòóùú]/.test(card.sourceText) ||
+        /^(ciao|grazie|prego|scusa|bene|sì|no|buongiorno|buonasera|per favore|acqua|vino|formaggio)$/i.test(
+          card.sourceText.trim(),
+        );
       await SafeSpeech.speak(card.sourceText, { language: hasItalian ? 'it-IT' : 'es-ES', rate });
       const estimatedDuration = Math.max(2000, card.sourceText.length * 150);
       setTimeout(() => setIsPlaying(false), estimatedDuration);
@@ -132,8 +142,12 @@ export function MultipleChoiceCard({
       if (!enabled) return;
       const rate = await getTtsRate();
       await SafeSpeech.stop();
-      await new Promise(resolve => setTimeout(resolve, 80));
-      const hasItalian = /[àèéìíîòóùú]/.test(label) || /^(ciao|grazie|acqua|vino|formaggio|scusa|bene|sì|no|buongiorno|buonasera|arrivederci|per favore|prego)$/i.test(label);
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      const hasItalian =
+        /[àèéìíîòóùú]/.test(label) ||
+        /^(ciao|grazie|acqua|vino|formaggio|scusa|bene|sì|no|buongiorno|buonasera|arrivederci|per favore|prego)$/i.test(
+          label,
+        );
       await SafeSpeech.speak(label, { language: hasItalian ? 'it-IT' : 'es-ES', rate });
     } catch (error) {
       logger.debug('Failed to speak option (non-critical)', error);
@@ -141,13 +155,16 @@ export function MultipleChoiceCard({
   };
 
   const isTranslation = !!card.sourceText;
-  const showPromptSpeaker = isTranslation && !!card.sourceText && isTargetLanguageText(card.sourceText);
+  const showPromptSpeaker =
+    isTranslation && !!card.sourceText && isTargetLanguageText(card.sourceText);
 
   return (
     <View style={styles.container}>
       {/* Instruction – Card type color for instant recognition */}
       {isTranslation && (
-        <Text style={[styles.instruction, { color: FIGMA.instruction }]}>TRANSLATE THIS SENTENCE</Text>
+        <Text style={[styles.instruction, { color: FIGMA.instruction }]}>
+          TRANSLATE THIS SENTENCE
+        </Text>
       )}
 
       {/* Word with Audio – only show speaker when prompt is target language (not English) */}
@@ -173,15 +190,33 @@ export function MultipleChoiceCard({
 
       {/* Multiple Choice Options – Figma: space-y-3; px-6 py-4 rounded-2xl; selected gradient + blue-400 border */}
       {!card.options || card.options.length === 0 ? (
-        <View style={[styles.errorContainer, { backgroundColor: FIGMA.optionBg, borderColor: FIGMA.optionBorder }]}>
-          <Text style={[styles.errorText, { color: theme.colors.mutedText }]}>No options available</Text>
+        <View
+          style={[
+            styles.errorContainer,
+            { backgroundColor: FIGMA.optionBg, borderColor: FIGMA.optionBorder },
+          ]}
+        >
+          <Text style={[styles.errorText, { color: theme.colors.mutedText }]}>
+            No options available
+          </Text>
         </View>
       ) : (
-        <View style={[styles.optionsContainer, !isTranslation && { borderLeftWidth: 3, borderLeftColor: CARD_TYPE_COLORS.multipleChoice.border, paddingLeft: baseTheme.spacing.sm, borderRadius: baseTheme.radius.sm }]}>
+        <View
+          style={[
+            styles.optionsContainer,
+            !isTranslation && {
+              borderLeftWidth: 3,
+              borderLeftColor: CARD_TYPE_COLORS.multipleChoice.border,
+              paddingLeft: baseTheme.spacing.sm,
+              borderRadius: baseTheme.radius.sm,
+            },
+          ]}
+        >
           {card.options.map((opt) => {
             const isSelected = selectedOptionId === opt.id;
             const isCorrectOption = opt.id === card.correctOptionId;
-            const showAsCorrect = showResult && isCorrectOption && (isCorrect === true || showCorrectAnswer);
+            const showAsCorrect =
+              showResult && isCorrectOption && (isCorrect === true || showCorrectAnswer);
             const showAsSelected = isSelected && !showResult;
             const showAsIncorrectSelected = showResult && isSelected && !isCorrectOption;
 
@@ -204,16 +239,22 @@ export function MultipleChoiceCard({
                   void handleSpeakOption(opt.label);
                   onSelectOption?.(opt.id);
                 }}
-                style={[styles.optionOuter, { borderColor }, showAsSelected && styles.optionSelectedShadow]}
+                style={[
+                  styles.optionOuter,
+                  { borderColor },
+                  showAsSelected && styles.optionSelectedShadow,
+                ]}
               >
-                {(showAsSelected && !showResult) ? (
+                {showAsSelected && !showResult ? (
                   <LinearGradient
                     colors={FIGMA.optionSelectedBg}
                     style={styles.optionInner}
                     start={{ x: 0, y: 1 }}
                     end={{ x: 1, y: 0 }}
                   >
-                    <Text style={[styles.optionLabel, { color: FIGMA.optionTextSelected }]}>{opt.label}</Text>
+                    <Text style={[styles.optionLabel, { color: FIGMA.optionTextSelected }]}>
+                      {opt.label}
+                    </Text>
                   </LinearGradient>
                 ) : (
                   <View
@@ -228,7 +269,17 @@ export function MultipleChoiceCard({
                       },
                     ]}
                   >
-                    <Text style={[styles.optionLabel, { color: showAsCorrect || showAsIncorrectSelected ? theme.colors.text : FIGMA.optionText }]}>
+                    <Text
+                      style={[
+                        styles.optionLabel,
+                        {
+                          color:
+                            showAsCorrect || showAsIncorrectSelected
+                              ? theme.colors.text
+                              : FIGMA.optionText,
+                        },
+                      ]}
+                    >
                       {opt.label}
                     </Text>
                     {showAsCorrect ? (
@@ -246,13 +297,21 @@ export function MultipleChoiceCard({
 
       {/* Feedback Banner – after check: correct (green) or incorrect (red) */}
       {showResult && isCorrect === true && (
-        <View style={[styles.feedbackBanner, { backgroundColor: FIGMA.feedbackSuccess }]} accessibilityRole="alert">
+        <View
+          style={[styles.feedbackBanner, { backgroundColor: FIGMA.feedbackSuccess }]}
+          accessibilityRole="alert"
+        >
           <Ionicons name="checkmark-circle" size={20} color={FIGMA.ctaText} />
-          <Text style={[styles.feedbackText, { color: FIGMA.ctaText }]}>Excellent! That's correct!</Text>
+          <Text style={[styles.feedbackText, { color: FIGMA.ctaText }]}>
+            Excellent! That's correct!
+          </Text>
         </View>
       )}
       {showResult && isCorrect === false && (
-        <View style={[styles.feedbackBanner, { backgroundColor: FIGMA.optionIncorrectBorder }]} accessibilityRole="alert">
+        <View
+          style={[styles.feedbackBanner, { backgroundColor: FIGMA.optionIncorrectBorder }]}
+          accessibilityRole="alert"
+        >
           <Ionicons name="close-circle" size={20} color={FIGMA.ctaText} />
           <Text style={[styles.feedbackText, { color: FIGMA.ctaText }]}>That's incorrect.</Text>
         </View>

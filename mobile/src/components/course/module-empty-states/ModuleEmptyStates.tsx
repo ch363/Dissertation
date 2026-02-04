@@ -1,10 +1,10 @@
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
+import { Button, StaticCard } from '@/components/ui';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
-import { Button, StaticCard } from '@/components/ui';
 
 function toYouCanNowSentence(outcome: string): string {
   const trimmed = outcome.trim();
@@ -23,10 +23,21 @@ export function ModuleCompleteBanner({
   exampleOutcome?: string | null;
 }) {
   const { theme } = useAppTheme();
-  const sub = exampleOutcome ? toYouCanNowSentence(exampleOutcome) : 'You can now use what you learned with confidence.';
+  const sub = exampleOutcome
+    ? toYouCanNowSentence(exampleOutcome)
+    : 'You can now use what you learned with confidence.';
 
   return (
-    <StaticCard title={`${moduleTitle} complete!`} titleVariant="subtle" leftIcon={<Text style={styles.emoji} accessibilityLabel="Celebration">🎉</Text>} style={styles.card}>
+    <StaticCard
+      title={`${moduleTitle} complete!`}
+      titleVariant="subtle"
+      leftIcon={
+        <Text style={styles.emoji} accessibilityLabel="Celebration">
+          🎉
+        </Text>
+      }
+      style={styles.card}
+    >
       <Text style={[styles.subtitle, { color: theme.colors.mutedText }]} numberOfLines={2}>
         {sub}
       </Text>
@@ -34,14 +45,15 @@ export function ModuleCompleteBanner({
   );
 }
 
-export function OfflineNotice({
-  onRetry,
-}: {
-  onRetry: () => void;
-}) {
+export function OfflineNotice({ onRetry }: { onRetry: () => void }) {
   const { theme } = useAppTheme();
   return (
-    <StaticCard title="You're offline" titleVariant="subtle" leftIcon={<Ionicons name="cloud-offline-outline" size={18} color={theme.colors.mutedText} />} style={styles.card}>
+    <StaticCard
+      title="You're offline"
+      titleVariant="subtle"
+      leftIcon={<Ionicons name="cloud-offline-outline" size={18} color={theme.colors.mutedText} />}
+      style={styles.card}
+    >
       <Text style={[styles.subtitle, { color: theme.colors.mutedText }]} numberOfLines={2}>
         Connect to the internet to load lessons and progress.
       </Text>

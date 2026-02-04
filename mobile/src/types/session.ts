@@ -41,7 +41,7 @@ export type FillBlankCard = BaseCard & {
   answer: string;
   hint?: string;
   audioUrl?: string; // Audio for "Listen and complete"
-  options?: Array<{ id: string; label: string }>; // Options for tap-to-fill
+  options?: { id: string; label: string }[]; // Options for tap-to-fill
 };
 
 export type TranslateCard = BaseCard & {

@@ -1,23 +1,30 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState, useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View, Animated, ActivityIndicator, Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import Constants from 'expo-constants';
 import * as FileSystem from 'expo-file-system';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  Animated,
+  ActivityIndicator,
+  Platform,
+} from 'react-native';
+
+import { getListeningCardColors } from '../../constants/cardTypeColors';
 
 import { ContentContinueButton, SpeakerButton } from '@/components/ui';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
+import { createLogger } from '@/services/logging';
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
-import {
-  ListeningCard as ListeningCardType,
-  PronunciationResult,
-} from '@/types/session';
+import { ListeningCard as ListeningCardType, PronunciationResult } from '@/types/session';
 import { announce } from '@/utils/a11y';
-import { useReducedMotion } from '@/hooks/useReducedMotion';
-import { createLogger } from '@/services/logging';
-import { getListeningCardColors } from '../../constants/cardTypeColors';
 
 const logger = createLogger('ListeningCard');
 
@@ -56,7 +63,7 @@ export function ListeningCard({
   onAnswerChange,
   showResult = false,
   isCorrect,
-  grammaticalCorrectness,
+  grammaticalCorrectness: _grammaticalCorrectness,
   onCheckAnswer,
   onContinue,
   pronunciationResult,
@@ -64,7 +71,7 @@ export function ListeningCard({
   onPracticeAgain,
 }: Props) {
   const ctx = useAppTheme();
-  const theme = ctx?.theme ?? baseTheme;
+  const _theme = ctx?.theme ?? baseTheme;
   const [isPlaying, setIsPlaying] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [hasRecorded, setHasRecorded] = useState(false);
@@ -73,20 +80,21 @@ export function ListeningCard({
   const [isPlayingRecording, setIsPlayingRecording] = useState(false);
   const [_recordingDuration, setRecordingDuration] = useState<number | null>(null);
   const [_recordingFileSize, setRecordingFileSize] = useState<number | null>(null);
-  const [expandedWordIndex, setExpandedWordIndex] = useState<number | null>(null);
+  const [_expandedWordIndex, setExpandedWordIndex] = useState<number | null>(null);
   const playbackSoundRef = useRef<Audio.Sound | null>(null);
   const mode = card.mode || 'type'; // 'type' or 'speak'
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
   const recordingRef = useRef<Audio.Recording | null>(null);
   const reduceMotion = useReducedMotion();
-  
+
   // Get colors based on mode for instant recognition
   const cardColors = getListeningCardColors(mode);
-  
+
   // Check if running on iOS Simulator
-  const isIOSSimulator = Platform.OS === 'ios' && 
-    (Constants?.deviceName?.includes('Simulator') || 
-     Constants?.executionEnvironment === 'storeClient');
+  const isIOSSimulator =
+    Platform.OS === 'ios' &&
+    (Constants?.deviceName?.includes('Simulator') ||
+      Constants?.executionEnvironment === 'storeClient');
 
   // Animation for recording button
   useEffect(() => {
@@ -127,7 +135,7 @@ export function ListeningCard({
     if (isPlaying) {
       return;
     }
-    
+
     try {
       const enabled = await getTtsEnabled();
       if (!enabled) return;
@@ -135,8 +143,8 @@ export function ListeningCard({
       const rate = await getTtsRate();
       await SafeSpeech.stop();
       // Small delay to ensure stop completes
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       // For "Type What You Hear", speak the expected answer
       // For "Speak This Phrase", speak the phrase to practice
       const textToSpeak = card.expected || card.audioUrl || '';
@@ -144,9 +152,9 @@ export function ListeningCard({
         setIsPlaying(false);
         return;
       }
-      
+
       await SafeSpeech.speak(textToSpeak, { language: 'it-IT', rate });
-      
+
       // Reset playing state after estimated duration
       const estimatedDuration = Math.max(2000, textToSpeak.length * 150);
       setTimeout(() => setIsPlaying(false), estimatedDuration);
@@ -163,7 +171,7 @@ export function ListeningCard({
       if (!enabled) return;
       const rate = await getTtsRate();
       await SafeSpeech.stop();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
       await SafeSpeech.speak(word, { language: 'it-IT', rate });
     } catch (error) {
       logger.error('Failed to play word audio', error as Error);
@@ -175,11 +183,15 @@ export function ListeningCard({
   useEffect(() => {
     return () => {
       if (recordingRef.current) {
-        recordingRef.current.stopAndUnloadAsync().catch((err) => logger.error('Failed to stop recording on cleanup', err as Error));
+        recordingRef.current
+          .stopAndUnloadAsync()
+          .catch((err) => logger.error('Failed to stop recording on cleanup', err as Error));
         recordingRef.current = null;
       }
       if (playbackSoundRef.current) {
-        playbackSoundRef.current.unloadAsync().catch((err) => logger.error('Failed to unload playback sound on cleanup', err as Error));
+        playbackSoundRef.current
+          .unloadAsync()
+          .catch((err) => logger.error('Failed to unload playback sound on cleanup', err as Error));
         playbackSoundRef.current = null;
       }
     };
@@ -194,11 +206,17 @@ export function ListeningCard({
     setRecordingDuration(null);
     setIsPlayingRecording(false);
     if (recordingRef.current) {
-      recordingRef.current.stopAndUnloadAsync().catch((err) => logger.error('Failed to stop recording on card change', err as Error));
+      recordingRef.current
+        .stopAndUnloadAsync()
+        .catch((err) => logger.error('Failed to stop recording on card change', err as Error));
       recordingRef.current = null;
     }
     if (playbackSoundRef.current) {
-      playbackSoundRef.current.unloadAsync().catch((err) => logger.error('Failed to unload playback sound on card change', err as Error));
+      playbackSoundRef.current
+        .unloadAsync()
+        .catch((err) =>
+          logger.error('Failed to unload playback sound on card change', err as Error),
+        );
       playbackSoundRef.current = null;
     }
   }, [card.id]);
@@ -206,7 +224,7 @@ export function ListeningCard({
   const handleStartRecording = async () => {
     try {
       setRecordingError(null);
-      
+
       // Request permissions
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== 'granted') {
@@ -242,7 +260,7 @@ export function ListeningCard({
 
       // Small delay to ensure audio session is fully activated
       // This is critical to avoid the "background" error
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Create a new recording optimized for speech recognition.
       // Use WAV/PCM with 16kHz sample rate for best compatibility.
@@ -273,7 +291,7 @@ export function ListeningCard({
           },
         },
         undefined, // onRecordingStatusUpdate callback (optional)
-        1000 // progressUpdateIntervalMillis
+        1000, // progressUpdateIntervalMillis
       );
 
       recordingRef.current = recording;
@@ -284,7 +302,7 @@ export function ListeningCard({
       logger.info('Recording started successfully');
     } catch (error: any) {
       logger.error('Failed to start recording', error as Error);
-      
+
       // Provide user-friendly error message
       let errorMessage = 'Failed to start recording. Please try again.';
       if (error?.message?.includes('background')) {
@@ -292,10 +310,10 @@ export function ListeningCard({
       } else if (error?.message) {
         errorMessage = error.message;
       }
-      
+
       setRecordingError(errorMessage);
       setIsRecording(false);
-      
+
       // Clean up on error
       if (recordingRef.current) {
         try {
@@ -305,7 +323,7 @@ export function ListeningCard({
         }
         recordingRef.current = null;
       }
-      
+
       // Reset audio mode on error
       try {
         await Audio.setAudioModeAsync({
@@ -328,10 +346,10 @@ export function ListeningCard({
       // Stop and unload the recording
       const status = await recordingRef.current.getStatusAsync();
       await recordingRef.current.stopAndUnloadAsync();
-      
+
       // Get the URI
       const uri = recordingRef.current.getURI();
-      
+
       if (!uri) {
         setRecordingError('Failed to save recording.');
         setIsRecording(false);
@@ -354,16 +372,19 @@ export function ListeningCard({
         playsInSilentModeIOS: false,
       });
 
-      logger.info('Recording saved', { 
-        uri, 
+      logger.info('Recording saved', {
+        uri,
         duration: duration ? `${duration.toFixed(1)}s` : 'unknown',
         fileSize: fileSize ? `${(fileSize / 1024).toFixed(2)} KB` : 'unknown',
-        isIOSSimulator
+        isIOSSimulator,
       });
 
       // Warn if on iOS Simulator and file size is suspiciously small
       if (isIOSSimulator && fileSize !== null && fileSize < 1000) {
-        logger.warn('iOS Simulator detected: Recording may not work properly. File size is very small', { fileSize });
+        logger.warn(
+          'iOS Simulator detected: Recording may not work properly. File size is very small',
+          { fileSize },
+        );
       }
 
       setRecordedAudioUri(uri);
@@ -379,7 +400,9 @@ export function ListeningCard({
       setRecordingError(error?.message || 'Failed to stop recording.');
       setIsRecording(false);
       if (recordingRef.current) {
-        recordingRef.current.stopAndUnloadAsync().catch((err) => logger.error('Failed to stop recording on cleanup', err as Error));
+        recordingRef.current
+          .stopAndUnloadAsync()
+          .catch((err) => logger.error('Failed to stop recording on cleanup', err as Error));
         recordingRef.current = null;
       }
     }
@@ -394,7 +417,7 @@ export function ListeningCard({
       setIsPlayingRecording(true);
       setRecordingError(null);
       announce('Playing your recording');
-      
+
       // Unload any existing sound
       if (playbackSoundRef.current) {
         await playbackSoundRef.current.unloadAsync();
@@ -406,9 +429,9 @@ export function ListeningCard({
       // Load and play the recording
       const { sound } = await Audio.Sound.createAsync(
         { uri: recordedAudioUri },
-        { shouldPlay: true }
+        { shouldPlay: true },
       );
-      
+
       playbackSoundRef.current = sound;
 
       // Wait for playback to finish
@@ -416,22 +439,29 @@ export function ListeningCard({
         if (!status.isLoaded) {
           // Handle error status
           if ('error' in status && status.error) {
-            const playbackError = typeof status.error === 'string' ? new Error(status.error) : (status.error as Error);
+            const playbackError =
+              typeof status.error === 'string' ? new Error(status.error) : (status.error as Error);
             logger.error('Playback error', playbackError);
             setIsPlayingRecording(false);
             setRecordingError('Failed to play recording. The file may be empty or corrupted.');
-            sound.unloadAsync().catch((err) => logger.error('Failed to unload sound on playback error', err as Error));
+            sound
+              .unloadAsync()
+              .catch((err) =>
+                logger.error('Failed to unload sound on playback error', err as Error),
+              );
             playbackSoundRef.current = null;
           }
           return;
         }
-        
+
         // Handle success status
         if (status.didJustFinish) {
           logger.info('Playback finished');
           announce('Playback finished');
           setIsPlayingRecording(false);
-          sound.unloadAsync().catch((err) => logger.error('Failed to unload sound after playback', err as Error));
+          sound
+            .unloadAsync()
+            .catch((err) => logger.error('Failed to unload sound after playback', err as Error));
           playbackSoundRef.current = null;
         }
       });
@@ -440,19 +470,31 @@ export function ListeningCard({
       setIsPlayingRecording(false);
       const errorMsg = error?.message || 'Failed to play back recording.';
       setRecordingError(errorMsg);
-      
+
       // If on iOS Simulator, provide helpful message
       if (isIOSSimulator) {
-        setRecordingError('iOS Simulator doesn\'t support audio recording. Please test on a real device.');
+        setRecordingError(
+          "iOS Simulator doesn't support audio recording. Please test on a real device.",
+        );
       }
     }
   };
 
-    if (mode === 'speak') {
+  if (mode === 'speak') {
     // ——— Screen 1: Loading (Figma: Analyzing your pronunciation) ———
     if (isPronunciationProcessing) {
       return (
-        <View style={[styles.pronunciationContainer, { borderLeftWidth: 3, borderLeftColor: cardColors.border, paddingLeft: baseTheme.spacing.sm, borderRadius: baseTheme.radius.sm }]}>
+        <View
+          style={[
+            styles.pronunciationContainer,
+            {
+              borderLeftWidth: 3,
+              borderLeftColor: cardColors.border,
+              paddingLeft: baseTheme.spacing.sm,
+              borderRadius: baseTheme.radius.sm,
+            },
+          ]}
+        >
           <View style={styles.pronunciationLoadingContent}>
             <ActivityIndicator size="large" color="#14B8A6" style={styles.pronunciationSpinner} />
             <Text style={styles.pronunciationLoadingTitle}>Analysing pronunciation...</Text>
@@ -471,15 +513,30 @@ export function ListeningCard({
         { label: 'Excellent', min: 90, max: 100 },
       ];
       const scoreLabel = scoreLabels.find(
-        (s) => pronunciationResult.overallScore >= s.min && pronunciationResult.overallScore <= s.max
+        (s) =>
+          pronunciationResult.overallScore >= s.min && pronunciationResult.overallScore <= s.max,
       );
-      const wordsNeedingImprovement = pronunciationResult.words.filter((w) => w.feedback === 'could_improve');
+      const wordsNeedingImprovement = pronunciationResult.words.filter(
+        (w) => w.feedback === 'could_improve',
+      );
       const firstImproveWord = wordsNeedingImprovement[0];
       const shouldShowSpecificWord = wordsNeedingImprovement.length === 1;
 
       return (
-        <View style={[styles.pronunciationContainer, { borderLeftWidth: 3, borderLeftColor: cardColors.border, paddingLeft: baseTheme.spacing.sm, borderRadius: baseTheme.radius.sm }]}>
-          <Text style={[styles.pronunciationResultHeading, { color: cardColors.instruction }]}>PRONUNCIATION RESULT</Text>
+        <View
+          style={[
+            styles.pronunciationContainer,
+            {
+              borderLeftWidth: 3,
+              borderLeftColor: cardColors.border,
+              paddingLeft: baseTheme.spacing.sm,
+              borderRadius: baseTheme.radius.sm,
+            },
+          ]}
+        >
+          <Text style={[styles.pronunciationResultHeading, { color: cardColors.instruction }]}>
+            PRONUNCIATION RESULT
+          </Text>
           <Text style={styles.pronunciationPhrase}>{card.expected}</Text>
           <Text style={styles.pronunciationTranslation}>
             {card.translation ? `(${card.translation})` : ''}
@@ -523,13 +580,17 @@ export function ListeningCard({
                   <View
                     style={[
                       styles.pronunciationWordBadge,
-                      word.feedback === 'perfect' ? styles.pronunciationWordBadgePerfect : styles.pronunciationWordBadgeImprove,
+                      word.feedback === 'perfect'
+                        ? styles.pronunciationWordBadgePerfect
+                        : styles.pronunciationWordBadgeImprove,
                     ]}
                   >
                     <Text
                       style={[
                         styles.pronunciationWordBadgeText,
-                        word.feedback === 'perfect' ? styles.pronunciationWordBadgeTextPerfect : styles.pronunciationWordBadgeTextImprove,
+                        word.feedback === 'perfect'
+                          ? styles.pronunciationWordBadgeTextPerfect
+                          : styles.pronunciationWordBadgeTextImprove,
                       ]}
                     >
                       {word.feedback === 'perfect' ? 'Perfect' : 'Could improve'}
@@ -562,7 +623,12 @@ export function ListeningCard({
                   : 'Practice again'
               }
             >
-              <Ionicons name="refresh" size={20} color="#fff" style={styles.pronunciationPracticeAgainIcon} />
+              <Ionicons
+                name="refresh"
+                size={20}
+                color="#fff"
+                style={styles.pronunciationPracticeAgainIcon}
+              />
               <Text style={styles.pronunciationPracticeAgainText}>
                 {shouldShowSpecificWord
                   ? `Practice "${firstImproveWord.word}" again`
@@ -585,10 +651,25 @@ export function ListeningCard({
     // Dynamic layout: middle section uses flex so spacing shrinks when needed and everything fits on one page.
     return (
       <View style={styles.pronunciationContainer}>
-        <Text style={[styles.pronunciationInstruction, { color: cardColors.instruction }]}>SPEAK THIS PHRASE</Text>
-        <View style={[styles.pronunciationInputMiddle, { borderLeftWidth: 3, borderLeftColor: cardColors.border, paddingLeft: baseTheme.spacing.sm, borderRadius: baseTheme.radius.sm }]}>
+        <Text style={[styles.pronunciationInstruction, { color: cardColors.instruction }]}>
+          SPEAK THIS PHRASE
+        </Text>
+        <View
+          style={[
+            styles.pronunciationInputMiddle,
+            {
+              borderLeftWidth: 3,
+              borderLeftColor: cardColors.border,
+              paddingLeft: baseTheme.spacing.sm,
+              borderRadius: baseTheme.radius.sm,
+            },
+          ]}
+        >
           <View style={styles.pronunciationPhraseRow}>
-            <View style={[styles.pronunciationPhraseBlock, styles.pronunciationPhraseBlockInInput]} collapsable={false}>
+            <View
+              style={[styles.pronunciationPhraseBlock, styles.pronunciationPhraseBlockInInput]}
+              collapsable={false}
+            >
               <Text
                 style={styles.pronunciationPhrase}
                 numberOfLines={4}
@@ -610,14 +691,21 @@ export function ListeningCard({
               accessibilityLabel="Listen to pronunciation"
             />
           </View>
-          <View style={[styles.pronunciationRecordSection, styles.pronunciationRecordSectionInInput]}>
+          <View
+            style={[styles.pronunciationRecordSection, styles.pronunciationRecordSectionInInput]}
+          >
             <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={isRecording ? 'Release to stop recording' : 'Hold to record'}
-                accessibilityHint={isRecording ? undefined : 'Press and hold the button while you speak'}
+                accessibilityHint={
+                  isRecording ? undefined : 'Press and hold the button while you speak'
+                }
                 accessibilityState={{ selected: isRecording, disabled: isPronunciationProcessing }}
-                style={[styles.pronunciationRecordButton, isRecording && styles.pronunciationRecordButtonActive]}
+                style={[
+                  styles.pronunciationRecordButton,
+                  isRecording && styles.pronunciationRecordButtonActive,
+                ]}
                 onPressIn={() => {
                   if (!isRecording && !isPronunciationProcessing) handleStartRecording();
                 }}
@@ -632,14 +720,21 @@ export function ListeningCard({
             <Text style={styles.pronunciationRecordHint}>Hold to record your pronunciation</Text>
           </View>
           <View style={[styles.pronunciationTipBox, styles.pronunciationTipBoxInInput]}>
-            <Ionicons name="bulb-outline" size={20} color={baseTheme.colors.mutedText} style={styles.pronunciationTipIcon} />
+            <Ionicons
+              name="bulb-outline"
+              size={20}
+              color={baseTheme.colors.mutedText}
+              style={styles.pronunciationTipIcon}
+            />
             <Text style={styles.pronunciationTipText}>Find a quiet space for best results</Text>
           </View>
         </View>
         {isIOSSimulator && (
           <View style={styles.simulatorWarning}>
             <Text style={styles.warningText}>⚠️ iOS Simulator: Microphone may not work</Text>
-            <Text style={styles.warningSubtext}>Try: System Settings → Privacy → Microphone → Allow Xcode</Text>
+            <Text style={styles.warningSubtext}>
+              Try: System Settings → Privacy → Microphone → Allow Xcode
+            </Text>
           </View>
         )}
         {recordingError ? (
@@ -648,7 +743,13 @@ export function ListeningCard({
           </Text>
         ) : null}
         <ContentContinueButton
-          title={isPronunciationProcessing ? 'Processing…' : hasRecorded ? 'Continue' : 'Record to continue'}
+          title={
+            isPronunciationProcessing
+              ? 'Processing…'
+              : hasRecorded
+                ? 'Continue'
+                : 'Record to continue'
+          }
           onPress={() => {
             if (!hasRecorded || !recordedAudioUri || !onCheckAnswer) return;
             onCheckAnswer(recordedAudioUri);
@@ -669,12 +770,23 @@ export function ListeningCard({
   // Type What You Hear Mode (P28/P29)
   return (
     <View style={styles.container}>
-      <Text style={[styles.instruction, { color: cardColors.instruction }]}>TYPE WHAT YOU HEAR</Text>
+      <Text style={[styles.instruction, { color: cardColors.instruction }]}>
+        TYPE WHAT YOU HEAR
+      </Text>
 
       {!showResult ? (
         // Input Screen
         <>
-          <View style={[styles.audioCard, { borderLeftWidth: 3, borderLeftColor: cardColors.border, paddingLeft: baseTheme.spacing.sm }]}>
+          <View
+            style={[
+              styles.audioCard,
+              {
+                borderLeftWidth: 3,
+                borderLeftColor: cardColors.border,
+                paddingLeft: baseTheme.spacing.sm,
+              },
+            ]}
+          >
             <SpeakerButton
               size={72}
               isPlaying={isPlaying}
@@ -710,7 +822,16 @@ export function ListeningCard({
       ) : (
         // Result Screen
         <>
-          <View style={[styles.audioCard, { borderLeftWidth: 3, borderLeftColor: cardColors.border, paddingLeft: baseTheme.spacing.sm }]}>
+          <View
+            style={[
+              styles.audioCard,
+              {
+                borderLeftWidth: 3,
+                borderLeftColor: cardColors.border,
+                paddingLeft: baseTheme.spacing.sm,
+              },
+            ]}
+          >
             <SpeakerButton
               size={72}
               isPlaying={isPlaying}
@@ -719,7 +840,13 @@ export function ListeningCard({
             />
           </View>
 
-          <View style={[styles.resultCard, isCorrect ? styles.resultCardCorrect : styles.resultCardWrong, { borderLeftWidth: 3, borderLeftColor: cardColors.border }]}>
+          <View
+            style={[
+              styles.resultCard,
+              isCorrect ? styles.resultCardCorrect : styles.resultCardWrong,
+              { borderLeftWidth: 3, borderLeftColor: cardColors.border },
+            ]}
+          >
             <Ionicons
               name={isCorrect ? 'checkmark-circle' : 'close-circle'}
               size={48}

@@ -1,7 +1,8 @@
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
@@ -26,7 +27,10 @@ export function ContinueLearningCTA({
   onPress,
 }: Props) {
   const { theme } = useAppTheme();
-  const gradientColors = [theme.colors.primary, theme.colors.profileHeader || theme.colors.primary] as const;
+  const gradientColors = [
+    theme.colors.primary,
+    theme.colors.profileHeader || theme.colors.primary,
+  ] as const;
 
   return (
     <Pressable
@@ -54,7 +58,12 @@ export function ContinueLearningCTA({
               <Text style={styles.title}>{title}</Text>
               <Text style={styles.subtitle}>{subtitle}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={28} color="rgba(255,255,255,0.7)" style={styles.chevron} />
+            <Ionicons
+              name="chevron-forward"
+              size={28}
+              color="rgba(255,255,255,0.7)"
+              style={styles.chevron}
+            />
           </View>
           {(timeEstimate || xpReward) && (
             <View style={styles.footerRow}>

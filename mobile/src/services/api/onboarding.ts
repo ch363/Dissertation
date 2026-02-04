@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+
 import type { OnboardingAnswers } from '@/types/onboarding';
 
 export interface OnboardingResponse {

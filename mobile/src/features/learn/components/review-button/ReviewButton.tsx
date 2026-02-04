@@ -3,9 +3,9 @@ import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 
 import { Button } from '@/components/ui';
 import { getProgressSummary, type ProgressSummary } from '@/services/api/progress';
+import { createLogger } from '@/services/logging';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
-import { createLogger } from '@/services/logging';
 
 const logger = createLogger('ReviewButton');
 
@@ -84,9 +84,7 @@ export function ReviewButton({
             },
           ]}
         >
-          <Text style={styles.badgeText}>
-            {dueReviewCount > 99 ? '99+' : dueReviewCount}
-          </Text>
+          <Text style={styles.badgeText}>{dueReviewCount > 99 ? '99+' : dueReviewCount}</Text>
         </View>
       )}
     </View>

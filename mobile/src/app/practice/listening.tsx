@@ -18,7 +18,8 @@ export default function ListeningScreen() {
           </View>
           <Text style={[styles.title, { color: theme.colors.text }]}>Listening Practice</Text>
           <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
-            Enhance your listening comprehension and pronunciation skills. This feature is coming soon!
+            Enhance your listening comprehension and pronunciation skills. This feature is coming
+            soon!
           </Text>
         </View>
       </View>

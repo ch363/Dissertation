@@ -2,15 +2,23 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
+import type { SkillMastery } from '@/services/api/mastery';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
-import type { SkillMastery } from '@/services/api/mastery';
 
 type Props = {
   mastery: SkillMastery[];
 };
 
-function CircularProgress({ progress, size = 60, strokeWidth = 6 }: { progress: number; size?: number; strokeWidth?: number }) {
+function CircularProgress({
+  progress,
+  size = 60,
+  strokeWidth = 6,
+}: {
+  progress: number;
+  size?: number;
+  strokeWidth?: number;
+}) {
   const { theme } = useAppTheme();
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -47,7 +55,7 @@ function CircularProgress({ progress, size = 60, strokeWidth = 6 }: { progress: 
 function SkillItem({ skill }: { skill: SkillMastery }) {
   const { theme } = useAppTheme();
   const percentage = Math.round(skill.masteryProbability * 100);
-  
+
   const formatSkillName = (tag: string): string => {
     return tag
       .split(/[-_]/)

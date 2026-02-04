@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -29,7 +29,7 @@ function LoadingSpinner() {
         duration: 2000,
         easing: Easing.bezier(0.4, 0, 0.2, 1),
         useNativeDriver: true,
-      })
+      }),
     );
     animation.start();
     return () => animation.stop();
@@ -43,7 +43,11 @@ function LoadingSpinner() {
   return (
     <Animated.View style={[styles.spinnerWrap, { transform: [{ rotate: '-90deg' }] }]}>
       <Animated.View style={{ transform: [{ rotate }] }}>
-        <Svg width={SPINNER_SIZE} height={SPINNER_SIZE} viewBox={`0 0 ${SPINNER_SIZE} ${SPINNER_SIZE}`}>
+        <Svg
+          width={SPINNER_SIZE}
+          height={SPINNER_SIZE}
+          viewBox={`0 0 ${SPINNER_SIZE} ${SPINNER_SIZE}`}
+        >
           <Defs>
             <LinearGradient id="spinnerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
               <Stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8} />
@@ -82,10 +86,7 @@ export function LoadingScreen({ title, safeArea = true }: LoadingScreenProps) {
       <View style={styles.spinnerContainer}>
         <LoadingSpinner />
       </View>
-      <Text
-        style={[styles.title, { color: theme.colors.mutedText }]}
-        accessibilityRole="header"
-      >
+      <Text style={[styles.title, { color: theme.colors.mutedText }]} accessibilityRole="header">
         {title}
       </Text>
     </View>

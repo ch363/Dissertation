@@ -1,7 +1,7 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -34,7 +34,8 @@ export default function FlashcardsScreen() {
               <View style={styles.cardText}>
                 <Text style={styles.title}>Flashcards</Text>
                 <Text style={styles.subtitle}>
-                  Practice with interactive flashcards to reinforce your learning. This feature is coming soon!
+                  Practice with interactive flashcards to reinforce your learning. This feature is
+                  coming soon!
                 </Text>
               </View>
             </View>

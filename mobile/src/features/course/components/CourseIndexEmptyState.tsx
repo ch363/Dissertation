@@ -17,9 +17,7 @@ export function CourseIndexEmptyState({ onClearSearch }: CourseIndexEmptyStatePr
       <View style={[styles.iconWrap, { backgroundColor: theme.colors.border }]}>
         <Ionicons name="search" size={32} color={theme.colors.mutedText} />
       </View>
-      <Text style={[styles.title, { color: theme.colors.text }]}>
-        No modules found
-      </Text>
+      <Text style={[styles.title, { color: theme.colors.text }]}>No modules found</Text>
       <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
         Try adjusting your search or filters
       </Text>
@@ -34,9 +32,7 @@ export function CourseIndexEmptyState({ onClearSearch }: CourseIndexEmptyStatePr
             pressed && styles.buttonPressed,
           ]}
         >
-          <Text style={[styles.buttonText, { color: theme.colors.onPrimary }]}>
-            Clear search
-          </Text>
+          <Text style={[styles.buttonText, { color: theme.colors.onPrimary }]}>Clear search</Text>
         </Pressable>
       ) : null}
     </View>

@@ -17,15 +17,15 @@ export async function preloadSpeech(): Promise<void> {
   if (isInitialized && SpeechModule) {
     return;
   }
-  
+
   if (preloadPromise) {
     return preloadPromise;
   }
-  
+
   preloadPromise = (async () => {
     try {
       SpeechModule = await import('expo-speech');
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
       isInitialized = true;
       logger.info('TTS module preloaded successfully');
     } catch (error) {
@@ -33,7 +33,7 @@ export async function preloadSpeech(): Promise<void> {
       isInitialized = false;
     }
   })();
-  
+
   return preloadPromise;
 }
 
@@ -41,7 +41,7 @@ async function ensureInitialized(): Promise<boolean> {
   if (isInitialized && SpeechModule) {
     return true;
   }
-  
+
   // Wait for preload if in progress
   if (preloadPromise) {
     await preloadPromise;
@@ -49,10 +49,10 @@ async function ensureInitialized(): Promise<boolean> {
       return true;
     }
   }
-  
+
   try {
     SpeechModule = await import('expo-speech');
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
     isInitialized = true;
     return true;
   } catch (error) {
@@ -70,9 +70,9 @@ function normalizeTextForTts(text: string): string {
   if (!text || text.trim().length === 0) return text;
   const normalized = text.normalize('NFC');
   return normalized
-    .replace(/\u2019/g, "'")  // RIGHT SINGLE QUOTATION MARK (common in "l'una")
-    .replace(/\u2018/g, "'")  // LEFT SINGLE QUOTATION MARK
-    .replace(/\u2032/g, "'")   // PRIME
+    .replace(/\u2019/g, "'") // RIGHT SINGLE QUOTATION MARK (common in "l'una")
+    .replace(/\u2018/g, "'") // LEFT SINGLE QUOTATION MARK
+    .replace(/\u2032/g, "'") // PRIME
     .replace(/\u00B4/g, "'"); // ACUTE ACCENT when used as apostrophe
 }
 
@@ -90,22 +90,22 @@ export async function speak(text: string, options?: SpeakOptions) {
     isSpeaking = false;
     return;
   }
-  
+
   if (isSpeaking) {
     try {
       SpeechModule.stop();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     } catch (error) {
       logger.debug('TTS stop error (ignored)', { error });
     }
   }
-  
+
   isSpeaking = false;
-  
+
   if (!isWarmedUp) {
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  
+
   try {
     isSpeaking = true;
     logger.info('TTS: Speaking', { textPreview: normalizedText.substring(0, 30) });
@@ -149,12 +149,12 @@ export async function speak(text: string, options?: SpeakOptions) {
 
 export async function stop() {
   isSpeaking = false;
-  
+
   const initialized = await ensureInitialized();
   if (!initialized || !SpeechModule) {
     return;
   }
-  
+
   try {
     SpeechModule.stop();
     logger.debug('TTS: stop() called');
@@ -175,18 +175,18 @@ export async function warmupTts(): Promise<void> {
       logger.warn('TTS: Cannot warmup - module not initialized');
       return;
     }
-    
+
     if (isWarmedUp) {
       logger.debug('TTS: Already warmed up, skipping');
       return;
     }
-    
+
     const testText = 'a';
-    
+
     return new Promise<void>((resolve) => {
       try {
         isSpeaking = false;
-        
+
         let resolved = false;
         const resolveOnce = () => {
           if (!resolved) {
@@ -197,9 +197,9 @@ export async function warmupTts(): Promise<void> {
             resolve();
           }
         };
-        
+
         logger.info('TTS: Starting warmup...');
-        
+
         SpeechModule.speak(testText, {
           language: 'it-IT',
           rate: 3.0,
@@ -219,7 +219,7 @@ export async function warmupTts(): Promise<void> {
             setTimeout(() => resolveOnce(), 200);
           },
         });
-        
+
         setTimeout(() => {
           try {
             SpeechModule?.stop();
@@ -230,7 +230,7 @@ export async function warmupTts(): Promise<void> {
             setTimeout(() => resolveOnce(), 300);
           }
         }, 150);
-        
+
         setTimeout(() => {
           if (!resolved) {
             logger.warn('TTS: Warmup timeout - marking as warmed up anyway');

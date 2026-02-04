@@ -1,23 +1,36 @@
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, ScrollView } from 'react-native';
 
-import { ContentContinueButton } from '@/components/ui';
-import { theme } from '@/services/theme/tokens';
-import { AttemptLog, Card, CardKind, SessionPlan, SessionKind } from '@/types/session';
 import { getDeliveryMethodForCardKind } from '../../delivery-methods';
-import { validateAnswer, validatePronunciation, recordQuestionAttempt, completeTeaching, updateDeliveryMethodScore } from '@/services/api/progress';
-import { PronunciationResult } from '@/types/session';
-import * as SpeechRecognition from '@/services/speech-recognition';
 import { CardRenderer } from '../card-renderer/CardRenderer';
 import { LessonProgressHeader } from '../lesson-progress-header/LessonProgressHeader';
-import { routeBuilders, routes } from '@/services/navigation/routes';
-import { clearCachedSessionPlan } from '@/services/api/session-plan-cache';
-import { getDashboard } from '@/services/api/profile';
-import { createLogger } from '@/services/logging';
-import * as Haptics from 'expo-haptics';
+
+import { ContentContinueButton } from '@/components/ui';
 import { makeSessionId } from '@/features/session/sessionBuilder';
+import { getDashboard } from '@/services/api/profile';
+import {
+  validateAnswer,
+  validatePronunciation,
+  recordQuestionAttempt,
+  completeTeaching,
+  updateDeliveryMethodScore,
+} from '@/services/api/progress';
+import { clearCachedSessionPlan } from '@/services/api/session-plan-cache';
+import { createLogger } from '@/services/logging';
+import { routeBuilders, routes } from '@/services/navigation/routes';
+import * as SpeechRecognition from '@/services/speech-recognition';
+import { theme } from '@/services/theme/tokens';
+import {
+  AttemptLog,
+  Card,
+  CardKind,
+  SessionPlan,
+  SessionKind,
+  PronunciationResult,
+} from '@/types/session';
 
 const logger = createLogger('SessionRunner');
 
@@ -26,7 +39,8 @@ function getPhraseFromCard(card: Card): string | null {
   if (card.kind === CardKind.Teach) return card.content.phrase ?? null;
   if (card.kind === CardKind.MultipleChoice) return card.sourceText ?? null;
   if (card.kind === CardKind.FillBlank) return card.text ?? null;
-  if (card.kind === CardKind.TranslateToEn || card.kind === CardKind.TranslateFromEn) return card.source ?? null;
+  if (card.kind === CardKind.TranslateToEn || card.kind === CardKind.TranslateFromEn)
+    return card.source ?? null;
   if (card.kind === CardKind.Listening) return card.expected ?? null;
   return null;
 }
@@ -46,9 +60,11 @@ function buildAttemptCountsByPhrase(attempts: AttemptLog[], cards: Card[]): Reco
 }
 
 /** Extract phrase + translation from review session cards for the summary screen. Dedupes by phrase. */
-function getReviewedTeachingsFromPlan(cards: Card[]): Array<{ phrase: string; translation?: string; emoji?: string }> {
+function getReviewedTeachingsFromPlan(
+  cards: Card[],
+): { phrase: string; translation?: string; emoji?: string }[] {
   const seen = new Set<string>();
-  const out: Array<{ phrase: string; translation?: string; emoji?: string }> = [];
+  const out: { phrase: string; translation?: string; emoji?: string }[] = [];
   for (const card of cards) {
     let phrase = '';
     let translation: string | undefined;
@@ -79,10 +95,7 @@ function getReviewedTeachingsFromPlan(cards: Card[]): Array<{ phrase: string; tr
 }
 
 function isHapticsUsable(): boolean {
-  return !!(
-    Haptics.ImpactFeedbackStyle &&
-    typeof Haptics.impactAsync === 'function'
-  );
+  return !!(Haptics.ImpactFeedbackStyle && typeof Haptics.impactAsync === 'function');
 }
 
 /**
@@ -92,9 +105,7 @@ async function triggerHaptic(style: 'light' | 'medium') {
   if (!isHapticsUsable()) return;
   try {
     const feedbackStyle =
-      style === 'light'
-        ? Haptics.ImpactFeedbackStyle.Light
-        : Haptics.ImpactFeedbackStyle.Medium;
+      style === 'light' ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium;
     await Haptics.impactAsync(feedbackStyle);
   } catch (error) {
     logger.debug('Haptic feedback failed', { error });
@@ -132,7 +143,16 @@ type Props = {
   onComplete: (attempts: AttemptLog[]) => void;
 };
 
-export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeBudgetSec, returnTo, onComplete }: Props) {
+export function SessionRunner({
+  plan,
+  sessionId,
+  kind,
+  lessonId,
+  planMode,
+  timeBudgetSec,
+  returnTo,
+  onComplete,
+}: Props) {
   const [index, setIndex] = useState(0);
   const [attempts, setAttempts] = useState<AttemptLog[]>([]);
   const [selectedOptionId, setSelectedOptionId] = useState<string | undefined>(undefined);
@@ -191,7 +211,6 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
     clearCachedSessionPlan(lessonId);
   };
 
-
   // When index changes: restore saved state for that card so answers remain when going back
   useEffect(() => {
     if (currentCard) {
@@ -237,27 +256,38 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
   }, [index, currentCard]);
 
   const isLast = index >= total - 1;
-  
+
   // Determine if we can proceed based on card type
   // For type-based cards, must check answer first (showResult must be true)
-  const isTranslationMCQ = currentCard.kind === CardKind.MultipleChoice && 
-    'sourceText' in currentCard && !!currentCard.sourceText;
-  
+  const isTranslationMCQ =
+    currentCard.kind === CardKind.MultipleChoice &&
+    'sourceText' in currentCard &&
+    !!currentCard.sourceText;
+
   // Check if current card is a flashcard
   const isFlashcard = 'isFlashcard' in currentCard && currentCard.isFlashcard;
-  
+
   const canProceed =
     currentCard.kind === CardKind.Teach ||
     (currentCard.kind === CardKind.MultipleChoice
-      ? (isTranslationMCQ
-          ? showResult && selectedOptionId !== undefined && (isCorrect || incorrectAttemptCount >= INCORRECT_ATTEMPTS_BEFORE_SHOWING_ANSWER)
-          : showResult && selectedOptionId !== undefined && (isCorrect || incorrectAttemptCount >= INCORRECT_ATTEMPTS_BEFORE_SHOWING_ANSWER))
+      ? isTranslationMCQ
+        ? showResult &&
+          selectedOptionId !== undefined &&
+          (isCorrect || incorrectAttemptCount >= INCORRECT_ATTEMPTS_BEFORE_SHOWING_ANSWER)
+        : showResult &&
+          selectedOptionId !== undefined &&
+          (isCorrect || incorrectAttemptCount >= INCORRECT_ATTEMPTS_BEFORE_SHOWING_ANSWER)
       : currentCard.kind === CardKind.FillBlank
         ? showResult && isCorrect && selectedAnswer !== undefined // Must have correct answer selected
-        : currentCard.kind === CardKind.TranslateToEn || currentCard.kind === CardKind.TranslateFromEn
+        : currentCard.kind === CardKind.TranslateToEn ||
+            currentCard.kind === CardKind.TranslateFromEn
           ? isFlashcard
             ? flashcardRating !== undefined // Flashcard: need rating
-            : showResult && userAnswer.trim().length > 0 && (isCorrect || meaningCorrect || incorrectAttemptCount >= INCORRECT_ATTEMPTS_BEFORE_SHOWING_ANSWER) // Text translation: proceed only when correct, meaning-correct, or 3rd attempt
+            : showResult &&
+              userAnswer.trim().length > 0 &&
+              (isCorrect ||
+                meaningCorrect ||
+                incorrectAttemptCount >= INCORRECT_ATTEMPTS_BEFORE_SHOWING_ANSWER) // Text translation: proceed only when correct, meaning-correct, or 3rd attempt
           : currentCard.kind === CardKind.Listening
             ? isSpeakListening
               ? showResult // Speech practice: proceed after attempt (result may be unavailable on error)
@@ -267,13 +297,13 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
   const handleSelectOption = async (optionId: string) => {
     if (currentCard.kind === CardKind.MultipleChoice) {
       setSelectedOptionId(optionId);
-      
+
       // For translation MCQ (with sourceText), automatically check answer
       const isTranslationMCQ = 'sourceText' in currentCard && !!currentCard.sourceText;
       if (isTranslationMCQ) {
         // Check if the selected option is correct before validation
         const isCorrectOption = optionId === currentCard.correctOptionId;
-        
+
         // Haptic feedback immediately based on whether the option is correct
         // This provides instant feedback when user selects an option
         if (isCorrectOption) {
@@ -281,7 +311,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
         } else {
           triggerHaptic('medium');
         }
-        
+
         // Pass optionId directly to avoid state timing issues
         await handleCheckAnswer(optionId);
       }
@@ -309,7 +339,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
 
     try {
       // Check if this is a pronunciation validation (TEXT_TO_SPEECH mode)
-      const isPronunciationMode = 
+      const isPronunciationMode =
         currentCard.kind === CardKind.Listening &&
         'mode' in currentCard &&
         currentCard.mode === 'speak' &&
@@ -319,7 +349,10 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
         // Handle pronunciation validation (with timeout so UI never stays stuck)
         const PRONUNCIATION_CLIENT_TIMEOUT_MS = 30_000;
         const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Pronunciation validation timed out')), PRONUNCIATION_CLIENT_TIMEOUT_MS);
+          setTimeout(
+            () => reject(new Error('Pronunciation validation timed out')),
+            PRONUNCIATION_CLIENT_TIMEOUT_MS,
+          );
         });
 
         logger.info('Processing pronunciation recording', { audioUri, questionId });
@@ -337,81 +370,81 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
             return;
           }
 
-        // IMPORTANT: use the local `audioUri` (state updates are async)
-        const normalizedUri = audioUri.toLowerCase();
-        const audioFormat = normalizedUri.endsWith('.m4a')
-          ? 'm4a'
-          : normalizedUri.endsWith('.flac')
-            ? 'flac'
-            : 'wav';
-        
-        logger.info('Audio file loaded', { 
-          format: audioFormat, 
-          base64Length: audioFile.base64.length,
-          uri: audioFile.uri 
-        });
-        
-        const pronunciationResponse = await Promise.race([
-          validatePronunciation(questionId, audioFile.base64, audioFormat),
-          timeoutPromise,
-        ]);
-        logger.info('Pronunciation response received', {
-          isCorrect: pronunciationResponse.isCorrect,
-          overallScore: pronunciationResponse.overallScore,
-          transcription: pronunciationResponse.transcription
-        });
-        setPronunciationResult(pronunciationResponse);
-        // Populate `userAnswer` so the app has a consistent "answer" string for attempts/analytics.
-        setUserAnswer(pronunciationResponse.transcription ?? '');
-        setIsCorrect(pronunciationResponse.isCorrect);
-        setShowResult(true);
+          // IMPORTANT: use the local `audioUri` (state updates are async)
+          const normalizedUri = audioUri.toLowerCase();
+          const audioFormat = normalizedUri.endsWith('.m4a')
+            ? 'm4a'
+            : normalizedUri.endsWith('.flac')
+              ? 'flac'
+              : 'wav';
 
-        // Haptic feedback based on correctness
-        if (pronunciationResponse.isCorrect) {
-          triggerHaptic('light');
-        } else {
-          triggerHaptic('medium');
-        }
+          logger.info('Audio file loaded', {
+            format: audioFormat,
+            base64Length: audioFile.base64.length,
+            uri: audioFile.uri,
+          });
 
-        // Record attempt
-        const timeToComplete = cardStartTime ? Date.now() - cardStartTime : undefined;
-        const attemptNumber = attempts.filter((a) => a.cardId === currentCard.id).length + 1;
+          const pronunciationResponse = await Promise.race([
+            validatePronunciation(questionId, audioFile.base64, audioFormat),
+            timeoutPromise,
+          ]);
+          logger.info('Pronunciation response received', {
+            isCorrect: pronunciationResponse.isCorrect,
+            overallScore: pronunciationResponse.overallScore,
+            transcription: pronunciationResponse.transcription,
+          });
+          setPronunciationResult(pronunciationResponse);
+          // Populate `userAnswer` so the app has a consistent "answer" string for attempts/analytics.
+          setUserAnswer(pronunciationResponse.transcription ?? '');
+          setIsCorrect(pronunciationResponse.isCorrect);
+          setShowResult(true);
 
-        let awardedXp: number | undefined;
-        if (!recordedAttempts.has(currentCard.id)) {
-          try {
-            const attemptResponse = await recordQuestionAttempt(questionId, {
-              deliveryMethod,
-              score: pronunciationResponse.score,
-              timeToComplete,
-              percentageAccuracy: pronunciationResponse.overallScore,
-              attempts: attemptNumber,
-            } as any);
-            awardedXp = attemptResponse.awardedXp;
-            invalidateLessonPlanCache();
-
-            const delta = pronunciationResponse.isCorrect ? 0.1 : -0.05;
-            try {
-              await updateDeliveryMethodScore(deliveryMethod, { delta });
-            } catch (error) {
-              logger.error('Error updating delivery method score', error as Error);
-            }
-
-            setRecordedAttempts((prev) => new Set(prev).add(currentCard.id));
-          } catch (error) {
-            logger.error('Error recording question attempt', error as Error);
+          // Haptic feedback based on correctness
+          if (pronunciationResponse.isCorrect) {
+            triggerHaptic('light');
+          } else {
+            triggerHaptic('medium');
           }
-        }
 
-        const newAttempt: AttemptLog = {
-          cardId: currentCard.id,
-          attemptNumber,
-          answer: pronunciationResponse.transcription,
-          isCorrect: pronunciationResponse.isCorrect,
-          elapsedMs: timeToComplete || 0,
-          awardedXp,
-        };
-        setAttempts((prev) => [...prev, newAttempt]);
+          // Record attempt
+          const timeToComplete = cardStartTime ? Date.now() - cardStartTime : undefined;
+          const attemptNumber = attempts.filter((a) => a.cardId === currentCard.id).length + 1;
+
+          let awardedXp: number | undefined;
+          if (!recordedAttempts.has(currentCard.id)) {
+            try {
+              const attemptResponse = await recordQuestionAttempt(questionId, {
+                deliveryMethod,
+                score: pronunciationResponse.score,
+                timeToComplete,
+                percentageAccuracy: pronunciationResponse.overallScore,
+                attempts: attemptNumber,
+              } as any);
+              awardedXp = attemptResponse.awardedXp;
+              invalidateLessonPlanCache();
+
+              const delta = pronunciationResponse.isCorrect ? 0.1 : -0.05;
+              try {
+                await updateDeliveryMethodScore(deliveryMethod, { delta });
+              } catch (error) {
+                logger.error('Error updating delivery method score', error as Error);
+              }
+
+              setRecordedAttempts((prev) => new Set(prev).add(currentCard.id));
+            } catch (error) {
+              logger.error('Error recording question attempt', error as Error);
+            }
+          }
+
+          const newAttempt: AttemptLog = {
+            cardId: currentCard.id,
+            attemptNumber,
+            answer: pronunciationResponse.transcription,
+            isCorrect: pronunciationResponse.isCorrect,
+            elapsedMs: timeToComplete || 0,
+            awardedXp,
+          };
+          setAttempts((prev) => [...prev, newAttempt]);
         } catch (pronunciationError) {
           logger.error('Pronunciation validation failed or timed out', pronunciationError as Error);
           setIsCorrect(false);
@@ -451,23 +484,25 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
       // For MultipleChoice we have correctOptionId on the card – use it for UI correctness
       // so the feedback banner and haptics match the option styling (green/red).
       const effectiveCorrect =
-        currentCard.kind === CardKind.MultipleChoice &&
-        'correctOptionId' in currentCard
+        currentCard.kind === CardKind.MultipleChoice && 'correctOptionId' in currentCard
           ? userAnswerValue === currentCard.correctOptionId
           : validationResult.isCorrect;
 
       setIsCorrect(effectiveCorrect);
       setShowResult(true);
-      setGrammaticalCorrectness(
-        validationResult.grammaticalCorrectness ?? null,
-      );
+      setGrammaticalCorrectness(validationResult.grammaticalCorrectness ?? null);
       setMeaningCorrect(validationResult.meaningCorrect ?? false);
       setNaturalPhrasing(validationResult.naturalPhrasing);
       setFeedbackWhy(validationResult.feedbackWhy);
       setAcceptedVariants(validationResult.acceptedVariants ?? []);
       setValidationFeedback(validationResult.feedback);
 
-      if (!effectiveCorrect && (currentCard.kind === CardKind.TranslateToEn || currentCard.kind === CardKind.TranslateFromEn || currentCard.kind === CardKind.MultipleChoice)) {
+      if (
+        !effectiveCorrect &&
+        (currentCard.kind === CardKind.TranslateToEn ||
+          currentCard.kind === CardKind.TranslateFromEn ||
+          currentCard.kind === CardKind.MultipleChoice)
+      ) {
         setIncorrectAttemptCount((prev) => prev + 1);
       }
 
@@ -487,8 +522,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
       if (!recordedAttempts.has(currentCard.id)) {
         try {
           const percentageAccuracy =
-            validationResult.grammaticalCorrectness ??
-            (validationResult.isCorrect ? 100 : 0);
+            validationResult.grammaticalCorrectness ?? (validationResult.isCorrect ? 100 : 0);
           const attemptResponse = await recordQuestionAttempt(questionId, {
             deliveryMethod,
             score: validationResult.score,
@@ -538,19 +572,17 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
   const handleSelectAnswer = async (answer: string) => {
     if (currentCard.kind === CardKind.FillBlank) {
       setSelectedAnswer(answer);
-      
+
       // Immediately validate the answer when option is selected
       if (currentCard.id.startsWith('question-')) {
         const questionId = currentCard.id.replace('question-', '');
         const deliveryMethod = getDeliveryMethodForCardKind(currentCard.kind);
-        
+
         try {
           const validationResult = await validateAnswer(questionId, answer, deliveryMethod);
           setIsCorrect(validationResult.isCorrect);
           setShowResult(true);
-          setGrammaticalCorrectness(
-            validationResult.grammaticalCorrectness ?? null,
-          );
+          setGrammaticalCorrectness(validationResult.grammaticalCorrectness ?? null);
 
           // Haptic feedback immediately based on correctness
           if (validationResult.isCorrect) {
@@ -568,8 +600,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           if (!recordedAttempts.has(currentCard.id)) {
             try {
               const percentageAccuracy =
-                validationResult.grammaticalCorrectness ??
-                (validationResult.isCorrect ? 100 : 0);
+                validationResult.grammaticalCorrectness ?? (validationResult.isCorrect ? 100 : 0);
               const attemptResponse = await recordQuestionAttempt(questionId, {
                 deliveryMethod,
                 score: validationResult.score,
@@ -600,7 +631,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
               // Continue even if API call fails
             }
           }
-          
+
           // If correct, we can proceed immediately
           // If incorrect, user must select correct answer
         } catch (error) {
@@ -628,7 +659,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
 
     // For cards that don't need result screen, validate and create attempt
     let nextAttempts = attempts;
-    
+
     // Flashcard cards: save rating as attempt and send to backend
     const isFlashcard = 'isFlashcard' in currentCard && currentCard.isFlashcard;
     if (
@@ -638,7 +669,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
     ) {
       // For flashcards, rating determines correctness: 0 = wrong, 2.5 = mid, 5 = correct
       const isCorrect = flashcardRating >= 2.5; // 2.5 and 5 are considered correct
-      
+
       // Send rating to backend API for scoring
       let awardedXp: number | undefined;
       if (currentCard.id.startsWith('question-')) {
@@ -647,13 +678,13 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           currentCard.kind,
           currentCard.isFlashcard,
         );
-        
+
         try {
           // Record the attempt with the rating as the score
           // Rating: 0 = 0% (wrong), 2.5 = 50% (mid), 5 = 100% (correct)
           const score = flashcardRating === 0 ? 0 : flashcardRating === 2.5 ? 50 : 100;
           const timeToComplete = cardStartTime ? Date.now() - cardStartTime : undefined;
-          
+
           const attemptResponse = await recordQuestionAttempt(questionId, {
             deliveryMethod,
             score,
@@ -678,7 +709,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           // Continue even if API call fails
         }
       }
-      
+
       const newAttempt: AttemptLog = {
         cardId: currentCard.id,
         attemptNumber: 1,
@@ -828,11 +859,11 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
   // Figma / Professional App Redesign: full-screen gradient (slate-50 → blue-50 → indigo-50)
   const sessionBgGradient = ['#f8fafc', '#eff6ff', '#eef2ff'] as const;
 
-  const footerLabel =
-    isLast ? 'Finish' : 'Continue';
+  const footerLabel = isLast ? 'Finish' : 'Continue';
 
   const isTranslateTextInput =
-    (currentCard.kind === CardKind.TranslateToEn || currentCard.kind === CardKind.TranslateFromEn) &&
+    (currentCard.kind === CardKind.TranslateToEn ||
+      currentCard.kind === CardKind.TranslateFromEn) &&
     !('isFlashcard' in currentCard && currentCard.isFlashcard);
   const showSuggestedAnswer =
     isTranslateTextInput && incorrectAttemptCount >= INCORRECT_ATTEMPTS_BEFORE_SHOWING_ANSWER;
@@ -851,11 +882,10 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           onBackPress={handleBack}
           returnTo={returnTo}
         />
-
       </View>
 
-      <ScrollView 
-        style={styles.cardArea} 
+      <ScrollView
+        style={styles.cardArea}
         contentContainerStyle={styles.cardAreaContent}
         showsVerticalScrollIndicator={false}
       >

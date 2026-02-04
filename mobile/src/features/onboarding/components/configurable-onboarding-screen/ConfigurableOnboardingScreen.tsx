@@ -8,9 +8,10 @@
 import { router } from 'expo-router';
 import React from 'react';
 
+import { OnboardingScreenConfig } from '../../config/screens.config';
+
 import { OptionQuestion } from '@/components/onboarding';
 import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
-import { OnboardingScreenConfig } from '../../config/screens.config';
 
 interface ConfigurableOnboardingScreenProps {
   config: OnboardingScreenConfig;

@@ -1,7 +1,7 @@
-import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import React from 'react';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { ModuleSuggestion } from '@/services/api/learn';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
@@ -17,22 +17,15 @@ export function SuggestedForYouSection({ suggestion, onPress }: Props) {
   const { module: mod, reason } = suggestion;
   const imageUrl = mod.imageUrl ?? null;
 
-  const gradientColors: [string, string] = [
-    theme.colors.primary,
-    theme.colors.ctaCardAccent,
-  ];
+  const gradientColors: [string, string] = [theme.colors.primary, theme.colors.ctaCardAccent];
 
   return (
     <View style={styles.section}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>
-            Suggested for you
-          </Text>
+          <Text style={[styles.title, { color: theme.colors.text }]}>Suggested for you</Text>
           <View style={[styles.badge, { backgroundColor: theme.colors.primary + '18' }]}>
-            <Text style={[styles.badgeText, { color: theme.colors.primary }]}>
-              Personalised
-            </Text>
+            <Text style={[styles.badgeText, { color: theme.colors.primary }]}>Personalised</Text>
           </View>
         </View>
       </View>
@@ -67,16 +60,10 @@ export function SuggestedForYouSection({ suggestion, onPress }: Props) {
               <View style={[styles.iconWrap, { backgroundColor: theme.colors.ctaCardAccent }]}>
                 <Ionicons name="sparkles" size={24} color="#FFFFFF" />
               </View>
-              <Text
-                style={[styles.moduleTitle, { color: '#FFFFFF' }]}
-                numberOfLines={2}
-              >
+              <Text style={[styles.moduleTitle, { color: '#FFFFFF' }]} numberOfLines={2}>
                 {mod.title}
               </Text>
-              <Text
-                style={[styles.reason, { color: 'rgba(255,255,255,0.92)' }]}
-                numberOfLines={2}
-              >
+              <Text style={[styles.reason, { color: 'rgba(255,255,255,0.92)' }]} numberOfLines={2}>
                 {reason}
               </Text>
               <View style={styles.ctaRow}>

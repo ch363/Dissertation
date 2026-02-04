@@ -1,6 +1,6 @@
 /**
  * Card Components Index
- * 
+ *
  * Central export for all card components.
  * Each card type has its own component file for better organization.
  */

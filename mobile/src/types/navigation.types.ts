@@ -41,7 +41,9 @@ export interface RouteDescriptor {
  * Navigation object methods
  */
 export interface Navigation {
-  emit: (event: { type: string; target: string; canPreventDefault?: boolean }) => { defaultPrevented: boolean };
+  emit: (event: { type: string; target: string; canPreventDefault?: boolean }) => {
+    defaultPrevented: boolean;
+  };
   navigate: (name: string, params?: Record<string, unknown>) => void;
   goBack: () => void;
   setParams: (params: Record<string, unknown>) => void;

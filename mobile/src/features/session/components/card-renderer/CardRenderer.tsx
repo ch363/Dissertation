@@ -8,8 +8,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 
-import { theme } from '@/services/theme/tokens';
-import { Card, CardKind, PronunciationResult } from '@/types/session';
 import {
   TeachCard,
   MultipleChoiceCard,
@@ -17,6 +15,9 @@ import {
   TranslateCard,
   ListeningCard,
 } from '../cards';
+
+import { theme } from '@/services/theme/tokens';
+import { Card, CardKind, PronunciationResult } from '@/types/session';
 
 type Props = {
   card: Card;

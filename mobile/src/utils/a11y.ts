@@ -17,4 +17,3 @@ export function announce(message: string) {
     }
   } catch {}
 }
-

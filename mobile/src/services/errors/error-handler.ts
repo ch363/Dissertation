@@ -1,5 +1,6 @@
-import { ApiClientError } from '@/services/api/types';
 import { createLogger } from '../logging';
+
+import { ApiClientError } from '@/services/api/types';
 
 const logger = createLogger('ErrorHandler');
 

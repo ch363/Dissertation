@@ -3,14 +3,14 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { OnboardingProvider } from '@/features/onboarding/providers/OnboardingProvider';
 import { SupabaseConfigGate } from '@/services/api/SupabaseConfigGate';
-import { clearSessionPlanCache } from '@/services/api/session-plan-cache';
 import { preloadLearnScreenData } from '@/services/api/learn-screen-cache';
 import { preloadProfileScreenData } from '@/services/api/profile-screen-cache';
+import { clearSessionPlanCache } from '@/services/api/session-plan-cache';
 import { AuthProvider, useAuth } from '@/services/auth/AuthProvider';
+import { createLogger } from '@/services/logging';
 import { RouteGuard } from '@/services/navigation/RouteGuard';
 import { ThemeProvider } from '@/services/theme/ThemeProvider';
 import { preloadSpeech, warmupTts } from '@/services/tts';
-import { createLogger } from '@/services/logging';
 
 const Logger = createLogger('AppProviders');
 
@@ -35,10 +35,10 @@ function PreloadManager({ children }: Props) {
         // First, preload the module
         await preloadSpeech();
         Logger.info('TTS module preloaded at app startup');
-        
+
         // Then warmup the audio system by doing a test speak
         // This initializes the native audio device and eliminates first-click delay
-        await new Promise(resolve => setTimeout(resolve, 200)); // Small delay after preload
+        await new Promise((resolve) => setTimeout(resolve, 200)); // Small delay after preload
         await warmupTts();
         Logger.info('TTS warmed up successfully at app startup - ready for first click');
       } catch (error) {
@@ -46,7 +46,7 @@ function PreloadManager({ children }: Props) {
         // Continue anyway - TTS will initialize on first use
       }
     };
-    
+
     // Start initialization immediately, don't wait
     initializeTts();
   }, []);

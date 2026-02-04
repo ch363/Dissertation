@@ -1,12 +1,10 @@
 import { Platform } from 'react-native';
 
 import { apiClient } from './client';
-import { getSupabaseClient } from '@/services/supabase/client';
-import {
-  cacheAvatarFile,
-  clearCachedAvatar,
-} from '@/services/cache/avatar-cache';
+
+import { cacheAvatarFile, clearCachedAvatar } from '@/services/cache/avatar-cache';
 import { createLogger } from '@/services/logging';
+import { getSupabaseClient } from '@/services/supabase/client';
 
 const Logger = createLogger('ProfileAPI');
 
@@ -69,70 +67,67 @@ export interface StatsData {
 }
 
 export interface RecentActivity {
-  recentLesson:
-    | {
-        lesson: {
-          id: string;
-          title: string;
-          imageUrl: string | null;
-          module: {
-            id: string;
-            title: string;
-          };
-        };
-        lastAccessedAt: string;
-        completedTeachings: number;
-        totalTeachings: number;
-        dueReviewCount: number;
-      }
-    | null;
-  recentTeaching:
-    | {
-        teaching: {
-          id: string;
-          userLanguageString: string;
-          learningLanguageString: string;
-        };
-        lesson: {
-          id: string;
-          title: string;
-          module: {
-            id: string;
-            title: string;
-          };
-        };
-        completedAt: string;
-      }
-    | null;
-  recentQuestion:
-    | {
-        question: {
-          id: string;
-        };
-        teaching: {
-          id: string;
-          userLanguageString: string;
-          learningLanguageString: string;
-        };
-        lesson: {
-          id: string;
-          title: string;
-          module: {
-            id: string;
-            title: string;
-          };
-        };
-        lastRevisedAt: string;
-        nextReviewDue?: string;
-      }
-    | null;
+  recentLesson: {
+    lesson: {
+      id: string;
+      title: string;
+      imageUrl: string | null;
+      module: {
+        id: string;
+        title: string;
+      };
+    };
+    lastAccessedAt: string;
+    completedTeachings: number;
+    totalTeachings: number;
+    dueReviewCount: number;
+  } | null;
+  recentTeaching: {
+    teaching: {
+      id: string;
+      userLanguageString: string;
+      learningLanguageString: string;
+    };
+    lesson: {
+      id: string;
+      title: string;
+      module: {
+        id: string;
+        title: string;
+      };
+    };
+    completedAt: string;
+  } | null;
+  recentQuestion: {
+    question: {
+      id: string;
+    };
+    teaching: {
+      id: string;
+      userLanguageString: string;
+      learningLanguageString: string;
+    };
+    lesson: {
+      id: string;
+      title: string;
+      module: {
+        id: string;
+        title: string;
+      };
+    };
+    lastRevisedAt: string;
+    nextReviewDue?: string;
+  } | null;
 }
 
 export async function getMyProfile(): Promise<Profile | null> {
   return apiClient.get<Profile>('/me/profile');
 }
 
-export async function upsertMyProfile(data: { name?: string; avatarUrl?: string }): Promise<Profile> {
+export async function upsertMyProfile(data: {
+  name?: string;
+  avatarUrl?: string;
+}): Promise<Profile> {
   if (data.name || data.avatarUrl) {
     return apiClient.patch<Profile>('/me', data);
   }
@@ -169,10 +164,7 @@ export async function ensureProfileSeed(name?: string): Promise<Profile> {
   }
 
   const finalName = cleanProvided || derivedName;
-  return apiClient.post<Profile>(
-    '/me/profile/ensure',
-    finalName ? { name: finalName } : undefined,
-  );
+  return apiClient.post<Profile>('/me/profile/ensure', finalName ? { name: finalName } : undefined);
 }
 
 export async function getDashboard(options?: { tzOffsetMinutes?: number }): Promise<DashboardData> {
@@ -248,26 +240,24 @@ export async function uploadAvatar(imageUri: string, userId: string): Promise<st
       const ab = await resp.arrayBuffer();
       bytes = new Uint8Array(ab);
     } else {
-      throw new Error('File system is not available. Please rebuild the app (expo run:ios / expo run:android).');
+      throw new Error(
+        'File system is not available. Please rebuild the app (expo run:ios / expo run:android).',
+      );
     }
 
     const supabase = getSupabaseClient();
 
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(fileName, bytes, {
-        contentType: `image/${extension === 'jpg' ? 'jpeg' : extension}`,
-        upsert: true,
-      });
+    const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, bytes, {
+      contentType: `image/${extension === 'jpg' ? 'jpeg' : extension}`,
+      upsert: true,
+    });
 
     if (uploadError) {
       Logger.error('Supabase Storage upload error', uploadError);
       throw new Error(`Failed to upload avatar: ${uploadError.message}`);
     }
 
-    const { data: urlData } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(fileName);
+    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
 
     if (!urlData?.publicUrl) {
       throw new Error('Failed to get public URL from Supabase Storage');
@@ -298,14 +288,16 @@ export async function refreshSignedAvatarUrlFromUrl(url: string): Promise<string
   try {
     const supabase = getSupabaseClient();
     const urlObj = new URL(url);
-    const isSupabaseStorage = urlObj.hostname.includes('supabase.co') && 
-                              urlObj.pathname.includes('/storage/v1/object/');
+    const isSupabaseStorage =
+      urlObj.hostname.includes('supabase.co') && urlObj.pathname.includes('/storage/v1/object/');
 
     if (!isSupabaseStorage) {
       return url;
     }
 
-    const pathMatch = urlObj.pathname.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+)/);
+    const pathMatch = urlObj.pathname.match(
+      /\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+)/,
+    );
     if (!pathMatch) {
       return url;
     }
@@ -313,15 +305,11 @@ export async function refreshSignedAvatarUrlFromUrl(url: string): Promise<string
     const [, bucket, filePath] = pathMatch;
 
     if (urlObj.searchParams.has('token')) {
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .createSignedUrl(filePath, 3600);
+      const { data, error } = await supabase.storage.from(bucket).createSignedUrl(filePath, 3600);
 
       if (error) {
         Logger.error('Failed to create signed URL', error);
-        const { data: publicData } = supabase.storage
-          .from(bucket)
-          .getPublicUrl(filePath);
+        const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(filePath);
         return publicData?.publicUrl || url;
       }
 

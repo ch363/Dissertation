@@ -35,7 +35,16 @@ export default function CompletionRedirect() {
         teachingsMastered: params.teachingsMastered,
       },
     });
-  }, [params.sessionId, params.kind, params.lessonId, params.planMode, params.timeBudgetSec, params.returnTo, params.totalXp, params.teachingsMastered]);
+  }, [
+    params.sessionId,
+    params.kind,
+    params.lessonId,
+    params.planMode,
+    params.timeBudgetSec,
+    params.returnTo,
+    params.totalXp,
+    params.teachingsMastered,
+  ]);
 
   return <View />;
 }

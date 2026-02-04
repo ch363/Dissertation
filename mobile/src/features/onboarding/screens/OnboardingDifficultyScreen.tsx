@@ -7,23 +7,23 @@ export default function Difficulty() {
   const { answers, setAnswerAndSave } = useOnboarding();
 
   const options = [
-    { 
-      key: 'easy', 
-      icon: 'happy-outline', 
+    {
+      key: 'easy',
+      icon: 'happy-outline',
       label: 'Keep it easy',
-      description: 'Comfortable pace with gentle progression'
+      description: 'Comfortable pace with gentle progression',
     },
-    { 
-      key: 'balanced', 
-      icon: 'scale-outline', 
+    {
+      key: 'balanced',
+      icon: 'scale-outline',
       label: 'Balanced challenge',
-      description: 'Mix of review and new material'
+      description: 'Mix of review and new material',
     },
-    { 
-      key: 'hard', 
-      icon: 'flame-outline', 
+    {
+      key: 'hard',
+      icon: 'flame-outline',
       label: 'Push me hard',
-      description: 'Aggressive learning with tough questions'
+      description: 'Aggressive learning with tough questions',
     },
   ];
 

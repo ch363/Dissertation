@@ -8,13 +8,7 @@ import {
   Delete,
   Query,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-  ApiQuery,
-} from '@nestjs/swagger';
+import { ApiTags } from '@nestjs/swagger';
 import { TeachingsService } from './teachings.service';
 import { CreateTeachingDto } from './dto/create-teaching.dto';
 import { UpdateTeachingDto } from './dto/update-teaching.dto';

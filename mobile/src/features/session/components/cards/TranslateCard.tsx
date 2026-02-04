@@ -3,14 +3,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState, useEffect } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { CARD_TYPE_COLORS } from '../../constants/cardTypeColors';
+
 import { SpeakerButton } from '@/components/ui';
+import { createLogger } from '@/services/logging';
 import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
 import { TranslateCard as TranslateCardType } from '@/types/session';
-import { createLogger } from '@/services/logging';
-import { CARD_TYPE_COLORS } from '../../constants/cardTypeColors';
 
 const Logger = createLogger('TranslateCard');
 
@@ -50,15 +51,15 @@ export function TranslateCard({
   showHint,
   showResult = false,
   isCorrect,
-  grammaticalCorrectness,
+  grammaticalCorrectness: _grammaticalCorrectness,
   meaningCorrect,
   naturalPhrasing,
   feedbackWhy,
   acceptedVariants = [],
-  validationFeedback,
+  validationFeedback: _validationFeedback,
   showSuggestedAnswer = false,
   onCheckAnswer,
-  onTryAgain,
+  onTryAgain: _onTryAgain,
   onRating,
   selectedRating,
 }: Props) {
@@ -72,14 +73,14 @@ export function TranslateCard({
   // Hint starts collapsed (showHint from parent is undefined by default) for productive struggle; label shows "Show hint" / "Hide hint".
   const [showHintState, setShowHintState] = useState(showHint ?? false);
   const [showWhy, setShowWhy] = useState(false);
-  
+
   // Reset flip state and Why disclosure when card changes
   useEffect(() => {
     setIsFlipped(false);
     setHasRevealedAnswer(false);
     setShowWhy(false);
   }, [card.id]);
-  
+
   const handleFlip = () => {
     if (!isFlipped) setHasRevealedAnswer(true);
     setIsFlipped(!isFlipped);
@@ -90,7 +91,7 @@ export function TranslateCard({
     if (isPlaying) {
       return;
     }
-    
+
     try {
       const enabled = await getTtsEnabled();
       if (!enabled) return;
@@ -98,18 +99,18 @@ export function TranslateCard({
       const rate = await getTtsRate();
       await SafeSpeech.stop();
       // Small delay to ensure stop completes
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       // Speak the source text (language string like "Ciao")
       const textToSpeak = card.source || '';
       if (!textToSpeak) {
         setIsPlaying(false);
         return;
       }
-      
+
       const language = card.kind === 'translate_to_en' ? 'it-IT' : 'en-US';
       await SafeSpeech.speak(textToSpeak, { language, rate });
-      
+
       // Reset playing state after estimated duration
       const estimatedDuration = Math.max(2000, textToSpeak.length * 150);
       setTimeout(() => setIsPlaying(false), estimatedDuration);
@@ -128,12 +129,13 @@ export function TranslateCard({
           <>
             <LinearGradient
               colors={FLASHCARD_GRADIENT}
-              style={[styles.flashcardTeachCard, { borderLeftWidth: 3, borderLeftColor: CARD_TYPE_COLORS.translate.border }]}
+              style={[
+                styles.flashcardTeachCard,
+                { borderLeftWidth: 3, borderLeftColor: CARD_TYPE_COLORS.translate.border },
+              ]}
             >
               <View style={styles.flashcardTeachCardInner}>
-                {card.emoji ? (
-                  <Text style={styles.flashcardTeachEmoji}>{card.emoji}</Text>
-                ) : null}
+                {card.emoji ? <Text style={styles.flashcardTeachEmoji}>{card.emoji}</Text> : null}
                 <View style={styles.flashcardPhraseBlock}>
                   <Text style={[styles.flashcardTeachPhrase, { color: theme.colors.text }]}>
                     {card.source}
@@ -158,7 +160,13 @@ export function TranslateCard({
               style={styles.flipButton}
               onPress={handleFlip}
             >
-              <Ionicons name="swap-horizontal" size={20} color="#fff" accessible={false} importantForAccessibility="no" />
+              <Ionicons
+                name="swap-horizontal"
+                size={20}
+                color="#fff"
+                accessible={false}
+                importantForAccessibility="no"
+              />
               <Text style={styles.flipButtonText}>Flip to see answer</Text>
             </Pressable>
 
@@ -175,9 +183,18 @@ export function TranslateCard({
                       styles.ratingButtonHard,
                       selectedRating === 0 && styles.ratingButtonSelected,
                     ]}
-                    onPress={() => { Logger.info('Rating button pressed: Hard (0)'); onRating?.(0); }}
+                    onPress={() => {
+                      Logger.info('Rating button pressed: Hard (0)');
+                      onRating?.(0);
+                    }}
                   >
-                    <Ionicons name="thumbs-down" size={24} color="#dc3545" accessible={false} importantForAccessibility="no" />
+                    <Ionicons
+                      name="thumbs-down"
+                      size={24}
+                      color="#dc3545"
+                      accessible={false}
+                      importantForAccessibility="no"
+                    />
                     <Text style={[styles.ratingButtonText, styles.ratingButtonTextHard]}>Hard</Text>
                   </Pressable>
                   <Pressable
@@ -189,9 +206,18 @@ export function TranslateCard({
                       styles.ratingButtonGood,
                       selectedRating === 2.5 && styles.ratingButtonSelected,
                     ]}
-                    onPress={() => { Logger.info('Rating button pressed: Good (2.5)'); onRating?.(2.5); }}
+                    onPress={() => {
+                      Logger.info('Rating button pressed: Good (2.5)');
+                      onRating?.(2.5);
+                    }}
                   >
-                    <Ionicons name="remove" size={24} color="#ffc107" accessible={false} importantForAccessibility="no" />
+                    <Ionicons
+                      name="remove"
+                      size={24}
+                      color="#ffc107"
+                      accessible={false}
+                      importantForAccessibility="no"
+                    />
                     <Text style={[styles.ratingButtonText, styles.ratingButtonTextGood]}>Good</Text>
                   </Pressable>
                   <Pressable
@@ -203,9 +229,18 @@ export function TranslateCard({
                       styles.ratingButtonEasy,
                       selectedRating === 5 && styles.ratingButtonSelected,
                     ]}
-                    onPress={() => { Logger.info('Rating button pressed: Easy (5)'); onRating?.(5); }}
+                    onPress={() => {
+                      Logger.info('Rating button pressed: Easy (5)');
+                      onRating?.(5);
+                    }}
                   >
-                    <Ionicons name="thumbs-up" size={24} color="#28a745" accessible={false} importantForAccessibility="no" />
+                    <Ionicons
+                      name="thumbs-up"
+                      size={24}
+                      color="#28a745"
+                      accessible={false}
+                      importantForAccessibility="no"
+                    />
                     <Text style={[styles.ratingButtonText, styles.ratingButtonTextEasy]}>Easy</Text>
                   </Pressable>
                 </View>
@@ -218,17 +253,21 @@ export function TranslateCard({
             <View style={styles.flashcardBackWrap}>
               <LinearGradient
                 colors={FLASHCARD_GRADIENT}
-                style={[styles.flashcardTeachCard, styles.flashcardTeachCardBack, { borderLeftWidth: 3, borderLeftColor: CARD_TYPE_COLORS.translate.border }]}
+                style={[
+                  styles.flashcardTeachCard,
+                  styles.flashcardTeachCardBack,
+                  { borderLeftWidth: 3, borderLeftColor: CARD_TYPE_COLORS.translate.border },
+                ]}
               >
                 <View style={styles.flashcardBackInner}>
-                  {card.emoji ? (
-                    <Text style={styles.flashcardBackEmoji}>{card.emoji}</Text>
-                  ) : null}
+                  {card.emoji ? <Text style={styles.flashcardBackEmoji}>{card.emoji}</Text> : null}
                   <View style={styles.flashcardBackPhraseBlock}>
                     <Text style={[styles.flashcardBackPhrase, { color: theme.colors.text }]}>
                       {card.source}
                     </Text>
-                    <Text style={[styles.flashcardBackTranslation, { color: theme.colors.mutedText }]}>
+                    <Text
+                      style={[styles.flashcardBackTranslation, { color: theme.colors.mutedText }]}
+                    >
                       {card.expected}
                     </Text>
                   </View>
@@ -246,8 +285,18 @@ export function TranslateCard({
 
               {card.usageNote ? (
                 <View style={styles.flashcardUsageNoteCardCompact}>
-                  <Ionicons name="book-outline" size={16} color={FLASHCARD_USAGE_ICON_SLATE} style={styles.flashcardUsageNoteIcon} />
-                  <Text style={[styles.flashcardUsageNoteTextCompact, { color: theme.colors.mutedText }]}>
+                  <Ionicons
+                    name="book-outline"
+                    size={16}
+                    color={FLASHCARD_USAGE_ICON_SLATE}
+                    style={styles.flashcardUsageNoteIcon}
+                  />
+                  <Text
+                    style={[
+                      styles.flashcardUsageNoteTextCompact,
+                      { color: theme.colors.mutedText },
+                    ]}
+                  >
                     {card.usageNote}
                   </Text>
                 </View>
@@ -261,7 +310,13 @@ export function TranslateCard({
               style={styles.flipButtonCompact}
               onPress={handleFlip}
             >
-              <Ionicons name="swap-horizontal" size={18} color="#fff" accessible={false} importantForAccessibility="no" />
+              <Ionicons
+                name="swap-horizontal"
+                size={18}
+                color="#fff"
+                accessible={false}
+                importantForAccessibility="no"
+              />
               <Text style={styles.flipButtonText}>Flip to see question</Text>
             </Pressable>
 
@@ -277,9 +332,18 @@ export function TranslateCard({
                     styles.ratingButtonHard,
                     selectedRating === 0 && styles.ratingButtonSelected,
                   ]}
-                  onPress={() => { Logger.info('Rating button pressed: Hard (0)'); onRating?.(0); }}
+                  onPress={() => {
+                    Logger.info('Rating button pressed: Hard (0)');
+                    onRating?.(0);
+                  }}
                 >
-                  <Ionicons name="thumbs-down" size={20} color="#dc3545" accessible={false} importantForAccessibility="no" />
+                  <Ionicons
+                    name="thumbs-down"
+                    size={20}
+                    color="#dc3545"
+                    accessible={false}
+                    importantForAccessibility="no"
+                  />
                   <Text style={[styles.ratingButtonText, styles.ratingButtonTextHard]}>Hard</Text>
                 </Pressable>
                 <Pressable
@@ -291,9 +355,18 @@ export function TranslateCard({
                     styles.ratingButtonGood,
                     selectedRating === 2.5 && styles.ratingButtonSelected,
                   ]}
-                  onPress={() => { Logger.info('Rating button pressed: Good (2.5)'); onRating?.(2.5); }}
+                  onPress={() => {
+                    Logger.info('Rating button pressed: Good (2.5)');
+                    onRating?.(2.5);
+                  }}
                 >
-                  <Ionicons name="remove" size={20} color="#ffc107" accessible={false} importantForAccessibility="no" />
+                  <Ionicons
+                    name="remove"
+                    size={20}
+                    color="#ffc107"
+                    accessible={false}
+                    importantForAccessibility="no"
+                  />
                   <Text style={[styles.ratingButtonText, styles.ratingButtonTextGood]}>Good</Text>
                 </Pressable>
                 <Pressable
@@ -305,9 +378,18 @@ export function TranslateCard({
                     styles.ratingButtonEasy,
                     selectedRating === 5 && styles.ratingButtonSelected,
                   ]}
-                  onPress={() => { Logger.info('Rating button pressed: Easy (5)'); onRating?.(5); }}
+                  onPress={() => {
+                    Logger.info('Rating button pressed: Easy (5)');
+                    onRating?.(5);
+                  }}
                 >
-                  <Ionicons name="thumbs-up" size={20} color="#28a745" accessible={false} importantForAccessibility="no" />
+                  <Ionicons
+                    name="thumbs-up"
+                    size={20}
+                    color="#28a745"
+                    accessible={false}
+                    importantForAccessibility="no"
+                  />
                   <Text style={[styles.ratingButtonText, styles.ratingButtonTextEasy]}>Easy</Text>
                 </Pressable>
               </View>
@@ -328,10 +410,17 @@ export function TranslateCard({
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.instruction, { color: CARD_TYPE_COLORS.translate.instruction }]}>{instruction}</Text>
+      <Text style={[styles.instruction, { color: CARD_TYPE_COLORS.translate.instruction }]}>
+        {instruction}
+      </Text>
 
       {/* Source Text Card - Language String (e.g., "Ciao") */}
-      <View style={[styles.sourceCard, { borderLeftWidth: 3, borderLeftColor: CARD_TYPE_COLORS.translate.border }]}>
+      <View
+        style={[
+          styles.sourceCard,
+          { borderLeftWidth: 3, borderLeftColor: CARD_TYPE_COLORS.translate.border },
+        ]}
+      >
         <View style={styles.sourceTextContainer}>
           <Text style={styles.sourceText}>{card.source}</Text>
           <SpeakerButton
@@ -352,10 +441,14 @@ export function TranslateCard({
           style={styles.hintButton}
           onPress={() => setShowHintState(!showHintState)}
         >
-          <Ionicons name="bulb" size={20} color={theme.colors.primary} accessible={false} importantForAccessibility="no" />
-          <Text style={styles.hintButtonText}>
-            {showHintState ? 'Hide hint' : 'Show hint'}
-          </Text>
+          <Ionicons
+            name="bulb"
+            size={20}
+            color={theme.colors.primary}
+            accessible={false}
+            importantForAccessibility="no"
+          />
+          <Text style={styles.hintButtonText}>{showHintState ? 'Hide hint' : 'Show hint'}</Text>
         </Pressable>
       )}
 
@@ -372,7 +465,7 @@ export function TranslateCard({
             ? 'Type your answer in English'
             : 'Type your answer in Italian'}
         </Text>
-          <TextInput
+        <TextInput
           style={styles.textInput}
           value={userAnswer}
           onChangeText={onAnswerChange}
@@ -387,9 +480,7 @@ export function TranslateCard({
       {/* Custom Keyboard Hint (for Italian accents) */}
       {card.targetLanguage === 'it' && (
         <View style={styles.keyboardHint}>
-          <Text style={styles.keyboardHintText}>
-            Use accented characters: à è ì ò
-          </Text>
+          <Text style={styles.keyboardHintText}>Use accented characters: à è ì ò</Text>
         </View>
       )}
 
@@ -427,7 +518,13 @@ export function TranslateCard({
             }
           >
             <Ionicons
-              name={isCorrect ? 'checkmark-circle' : meaningCorrect ? 'information-circle' : 'close-circle'}
+              name={
+                isCorrect
+                  ? 'checkmark-circle'
+                  : meaningCorrect
+                    ? 'information-circle'
+                    : 'close-circle'
+              }
               size={32}
               color={
                 isCorrect
@@ -441,7 +538,9 @@ export function TranslateCard({
             />
             <View style={styles.resultContentCompact}>
               {isCorrect && (
-                <Text style={styles.resultTitleCompact} allowFontScaling>Correct!</Text>
+                <Text style={styles.resultTitleCompact} allowFontScaling>
+                  Correct!
+                </Text>
               )}
               {meaningCorrect && !isCorrect && naturalPhrasing && showSuggestedAnswer && (
                 <>
@@ -491,11 +590,12 @@ export function TranslateCard({
                 </Pressable>
               )}
               {showWhy && feedbackWhy && (
-                <Text style={styles.whyText} allowFontScaling>{feedbackWhy}</Text>
+                <Text style={styles.whyText} allowFontScaling>
+                  {feedbackWhy}
+                </Text>
               )}
             </View>
           </View>
-
         </>
       )}
     </View>

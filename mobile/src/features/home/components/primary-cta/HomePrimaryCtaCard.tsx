@@ -44,7 +44,7 @@ export function HomePrimaryCtaCard({ action, learnAction, onPress }: Props) {
   const { isDark } = useAppTheme();
   // Primary card uses white/blue-100 text
   const metaColor = isDark ? '#dbeafe' : '#dbeafe'; // blue-100
-  
+
   // When primary is review and we have a learn action, show segment and default to review; otherwise follow primary.
   const initialMode: 'review' | 'learn' =
     action.kind === 'review' ? 'review' : learnAction ? 'learn' : 'learn';
@@ -65,7 +65,11 @@ export function HomePrimaryCtaCard({ action, learnAction, onPress }: Props) {
   }
 
   const icon: keyof typeof Ionicons.glyphMap =
-    currentAction.kind === 'review' ? 'refresh' : currentAction.kind === 'continue' ? 'play' : 'book-outline';
+    currentAction.kind === 'review'
+      ? 'refresh'
+      : currentAction.kind === 'continue'
+        ? 'play'
+        : 'book-outline';
 
   const accessibilityLabel =
     currentAction.kind === 'review'
@@ -76,11 +80,7 @@ export function HomePrimaryCtaCard({ action, learnAction, onPress }: Props) {
   const showSegmentedControl = action.kind === 'review' && learnAction != null;
 
   const segmentedControl = showSegmentedControl ? (
-    <SegmentedControl
-      value={mode}
-      onChange={(newMode) => setMode(newMode)}
-      color="#FFFFFF"
-    />
+    <SegmentedControl value={mode} onChange={(newMode) => setMode(newMode)} color="#FFFFFF" />
   ) : null;
 
   return (

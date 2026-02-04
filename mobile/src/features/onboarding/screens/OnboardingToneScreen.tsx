@@ -7,23 +7,23 @@ export default function Tone() {
   const { answers, setAnswerAndSave } = useOnboarding();
 
   const options = [
-    { 
-      key: 'friendly', 
-      icon: 'happy-outline', 
+    {
+      key: 'friendly',
+      icon: 'happy-outline',
       label: 'Friendly',
-      description: 'Warm and approachable communication'
+      description: 'Warm and approachable communication',
     },
-    { 
-      key: 'professional', 
-      icon: 'briefcase-outline', 
+    {
+      key: 'professional',
+      icon: 'briefcase-outline',
       label: 'Professional',
-      description: 'Clear and business-like language'
+      description: 'Clear and business-like language',
     },
-    { 
-      key: 'playful', 
-      icon: 'wine-outline', 
+    {
+      key: 'playful',
+      icon: 'wine-outline',
       label: 'Playful',
-      description: 'Fun and entertaining learning experience'
+      description: 'Fun and entertaining learning experience',
     },
   ];
 

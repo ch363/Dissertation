@@ -1,12 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import {
-  View,
-  TextInput,
-  StyleSheet,
-  type TextInputProps,
-  type ViewStyle,
-} from 'react-native';
+import { View, TextInput, StyleSheet, type ViewStyle } from 'react-native';
 
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -35,12 +29,7 @@ export function SearchField({
 
   return (
     <View style={[styles.wrap, style]}>
-      <Ionicons
-        name="search"
-        size={18}
-        color={theme.colors.mutedText}
-        style={styles.icon}
-      />
+      <Ionicons name="search" size={18} color={theme.colors.mutedText} style={styles.icon} />
       <TextInput
         value={value}
         onChangeText={onChangeText}

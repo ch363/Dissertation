@@ -31,16 +31,31 @@ export function WelcomeContinueCard({
       {showStreak || showMinutesToday ? (
         <View style={styles.metaRow}>
           {showStreak ? (
-            <View style={[styles.flamePill, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
-              <Ionicons name="flame" size={20} color={theme.colors.error} accessible={false} importantForAccessibility="no" />
+            <View
+              style={[
+                styles.flamePill,
+                { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+              ]}
+            >
+              <Ionicons
+                name="flame"
+                size={20}
+                color={theme.colors.error}
+                accessible={false}
+                importantForAccessibility="no"
+              />
             </View>
           ) : null}
           <View style={styles.metaTextWrap}>
             {showStreak ? (
-              <Text style={[styles.metaTitle, { color: theme.colors.text }]}>{`${streakDays} day streak`}</Text>
+              <Text
+                style={[styles.metaTitle, { color: theme.colors.text }]}
+              >{`${streakDays} day streak`}</Text>
             ) : null}
             {showMinutesToday ? (
-              <Text style={[styles.metaSub, { color: theme.colors.mutedText }]}>{`Studied ${minutesToday} min today`}</Text>
+              <Text
+                style={[styles.metaSub, { color: theme.colors.mutedText }]}
+              >{`Studied ${minutesToday} min today`}</Text>
             ) : null}
           </View>
         </View>
@@ -55,8 +70,19 @@ export function WelcomeContinueCard({
           accessibilityHint="Continues to next action"
         />
       ) : (
-        <View style={[styles.messageBlock, { backgroundColor: theme.colors.border + '40', borderColor: theme.colors.border }]}>
-          <Ionicons name="sparkles" size={20} color={theme.colors.primary} accessible={false} importantForAccessibility="no" />
+        <View
+          style={[
+            styles.messageBlock,
+            { backgroundColor: theme.colors.border + '40', borderColor: theme.colors.border },
+          ]}
+        >
+          <Ionicons
+            name="sparkles"
+            size={20}
+            color={theme.colors.primary}
+            accessible={false}
+            importantForAccessibility="no"
+          />
           <Text style={[styles.messageText, { color: theme.colors.text }]}>{message}</Text>
         </View>
       )}

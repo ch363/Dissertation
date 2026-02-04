@@ -4,13 +4,13 @@ import { View, Text, StyleSheet, Image, ActivityIndicator, Alert } from 'react-n
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ContentContinueButton, LoadingScreen } from '@/components/ui';
+import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 import { getCurrentUser } from '@/services/api/auth';
 import { saveOnboarding } from '@/services/api/onboarding';
-import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
+import { createLogger } from '@/services/logging';
 import { routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme } from '@/services/theme/tokens';
-import { createLogger } from '@/services/logging';
 
 const logger = createLogger('OnboardingCompletion');
 
@@ -22,19 +22,15 @@ export default function OnboardingCompletion() {
 
   useEffect(() => {
     if (hasSaved) return;
-    
+
     const hasAnswers = !!answers && Object.keys(answers).length > 0;
     if (!hasAnswers) {
       logger.warn('No answers found, redirecting to welcome');
       router.replace('/(onboarding)/welcome');
-      return;
     }
   }, [answers, hasSaved]);
 
-  async function saveWithRetry(
-    userId: string,
-    maxAttempts = 3,
-  ): Promise<void> {
+  async function saveWithRetry(userId: string, maxAttempts = 3): Promise<void> {
     let lastError: Error | null = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -77,8 +73,7 @@ export default function OnboardingCompletion() {
     } catch (e: any) {
       logger.error('Error saving onboarding', e as Error);
       const message =
-        e?.message ||
-        'Could not save. Check your connection and that the backend is running.';
+        e?.message || 'Could not save. Check your connection and that the backend is running.';
       const buttons = [
         { text: 'Try Again', onPress: () => onContinue() },
         {
@@ -114,19 +109,17 @@ export default function OnboardingCompletion() {
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <Image source={require('@/assets/logo.png')} style={styles.logo} resizeMode="contain" />
-        <Text style={[styles.headline, { color: theme.colors.text }]}>Thanks for completing the setup</Text>
-      <Text style={[styles.subtext, { color: theme.colors.mutedText }]}>
-        We’ll use your answers to tailor Fluentia to your goals and learning style.
-      </Text>
-      {saving ? (
-        <ActivityIndicator color={theme.colors.primary} />
-      ) : (
-        <ContentContinueButton
-          title="Continue"
-          onPress={onContinue}
-          style={styles.cta}
-        />
-      )}
+        <Text style={[styles.headline, { color: theme.colors.text }]}>
+          Thanks for completing the setup
+        </Text>
+        <Text style={[styles.subtext, { color: theme.colors.mutedText }]}>
+          We’ll use your answers to tailor Fluentia to your goals and learning style.
+        </Text>
+        {saving ? (
+          <ActivityIndicator color={theme.colors.primary} />
+        ) : (
+          <ContentContinueButton title="Continue" onPress={onContinue} style={styles.cta} />
+        )}
       </View>
     </SafeAreaView>
   );

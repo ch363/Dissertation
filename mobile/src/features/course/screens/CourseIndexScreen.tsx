@@ -14,15 +14,13 @@ import {
   CourseIndexEmptyState,
   CourseIndexErrorState,
 } from '@/features/course/components';
+import { useAsyncData } from '@/hooks/useAsyncData';
 import { getCachedModules } from '@/services/api/learn-screen-cache';
 import { getModules, type Module } from '@/services/api/modules';
-import { theme as baseTheme } from '@/services/theme/tokens';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
-import { useAsyncData } from '@/hooks/useAsyncData';
+import { theme as baseTheme } from '@/services/theme/tokens';
 
-function groupModulesByCategory(
-  modules: Module[],
-): { category: string; modules: Module[] }[] {
+function groupModulesByCategory(modules: Module[]): { category: string; modules: Module[] }[] {
   const byCategory = new Map<string, Module[]>();
   for (const m of modules) {
     const key = m.category?.trim() || 'Other';
@@ -40,8 +38,7 @@ function filterModulesBySearch(modules: Module[], query: string): Module[] {
   if (!q) return modules;
   return modules.filter(
     (m) =>
-      (m.title ?? '').toLowerCase().includes(q) ||
-      (m.description ?? '').toLowerCase().includes(q),
+      (m.title ?? '').toLowerCase().includes(q) || (m.description ?? '').toLowerCase().includes(q),
   );
 }
 
@@ -51,7 +48,12 @@ export default function CourseIndex() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
 
-  const { data: modules, loading, error, reload } = useAsyncData<Module[]>(
+  const {
+    data: modules,
+    loading,
+    error,
+    reload,
+  } = useAsyncData<Module[]>(
     'CourseIndexScreen',
     async () => {
       const cached = getCachedModules();
@@ -71,23 +73,16 @@ export default function CourseIndex() {
 
   const categories = useMemo(() => {
     const set = new Set<string>();
-    (modules ?? []).forEach((m) =>
-      set.add(m.category?.trim() || 'Other'),
-    );
+    (modules ?? []).forEach((m) => set.add(m.category?.trim() || 'Other'));
     return ['All', ...Array.from(set)];
   }, [modules]);
 
   const filteredByCategory =
     filterCategory === 'All'
       ? filteredBySearch
-      : filteredBySearch.filter(
-          (m) => (m.category?.trim() || 'Other') === filterCategory,
-        );
+      : filteredBySearch.filter((m) => (m.category?.trim() || 'Other') === filterCategory);
 
-  const groups = useMemo(
-    () => groupModulesByCategory(filteredByCategory),
-    [filteredByCategory],
-  );
+  const groups = useMemo(() => groupModulesByCategory(filteredByCategory), [filteredByCategory]);
 
   const handleBack = useCallback(() => {
     if (returnTo) {
@@ -100,8 +95,7 @@ export default function CourseIndex() {
   }, [returnTo]);
 
   const showEmpty =
-    (modules?.length ?? 0) === 0 ||
-    (filteredByCategory.length === 0 && (modules?.length ?? 0) > 0);
+    (modules?.length ?? 0) === 0 || (filteredByCategory.length === 0 && (modules?.length ?? 0) > 0);
 
   return (
     <SafeAreaView
@@ -119,20 +113,12 @@ export default function CourseIndex() {
         ]}
       >
         <View style={styles.headerTop}>
-          <IconButton
-            accessibilityLabel="Back"
-            onPress={handleBack}
-            style={styles.backBtn}
-          >
+          <IconButton accessibilityLabel="Back" onPress={handleBack} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
           </IconButton>
           <View style={styles.headerTitles}>
-            <Text style={[styles.screenTitle, { color: theme.colors.text }]}>
-              Courses
-            </Text>
-            <Text
-              style={[styles.screenSubtitle, { color: theme.colors.mutedText }]}
-            >
+            <Text style={[styles.screenTitle, { color: theme.colors.text }]}>Courses</Text>
+            <Text style={[styles.screenSubtitle, { color: theme.colors.mutedText }]}>
               Choose a module to start learning
             </Text>
           </View>
@@ -146,11 +132,7 @@ export default function CourseIndex() {
           />
         </View>
 
-        <FilterChips
-          options={categories}
-          selected={filterCategory}
-          onSelect={setFilterCategory}
-        />
+        <FilterChips options={categories} selected={filterCategory} onSelect={setFilterCategory} />
       </View>
 
       {/* Content */}
@@ -184,10 +166,12 @@ export default function CourseIndex() {
                     title={module.title}
                     description={module.description ?? ''}
                     imageUrl={module.imageUrl ?? ''}
-                    onPress={() => router.push({
-                      pathname: `/course/${module.id}`,
-                      params: { returnTo: returnTo ?? '/(tabs)/learn' },
-                    })}
+                    onPress={() =>
+                      router.push({
+                        pathname: `/course/${module.id}`,
+                        params: { returnTo: returnTo ?? '/(tabs)/learn' },
+                      })
+                    }
                     accessibilityLabel={`${module.title}. ${module.description ?? ''}. Opens course.`}
                     style={styles.cardSpacing}
                   />

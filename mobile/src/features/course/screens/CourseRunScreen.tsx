@@ -1,20 +1,24 @@
 import { useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import { View, Text } from 'react-native';
-import { LoadingScreen } from '@/components/ui';
 
+import { LoadingScreen } from '@/components/ui';
 import SessionRunnerScreen from '@/features/session/screens/SessionRunnerScreen';
-import { useAppTheme } from '@/services/theme/ThemeProvider';
-import { getModuleLessons } from '@/services/api/modules';
 import { useAsyncData } from '@/hooks/useAsyncData';
+import { getModuleLessons } from '@/services/api/modules';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
 
 export const options = { headerShown: false } as const;
 
 export default function CourseRun() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { theme } = useAppTheme();
-  
-  const { data: firstLessonId, loading, error } = useAsyncData<string>(
+
+  const {
+    data: firstLessonId,
+    loading,
+    error,
+  } = useAsyncData<string>(
     'CourseRunScreen',
     async () => {
       if (!slug) {
@@ -26,7 +30,7 @@ export default function CourseRun() {
       }
       return lessons[0].id;
     },
-    [slug]
+    [slug],
   );
 
   if (loading) {

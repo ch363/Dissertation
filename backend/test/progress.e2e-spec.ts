@@ -6,10 +6,10 @@ import { PrismaService } from '../src/prisma/prisma.service';
 
 describe('Progress (e2e)', () => {
   let app: INestApplication;
-  let prisma: PrismaService;
-  let testUserId: string;
+  let _prisma: PrismaService;
+  let _testUserId: string;
   let testLessonId: string;
-  let testTeachingId: string;
+  let _testTeachingId: string;
   let testQuestionId: string;
 
   beforeEach(async () => {
@@ -28,13 +28,13 @@ describe('Progress (e2e)', () => {
       }),
     );
 
-    prisma = moduleFixture.get<PrismaService>(PrismaService);
+    _prisma = moduleFixture.get<PrismaService>(PrismaService);
 
     // Setup test data
     // Note: In a real test, you'd use a test database
-    testUserId = 'test-user-id';
+    _testUserId = 'test-user-id';
     testLessonId = 'test-lesson-id';
-    testTeachingId = 'test-teaching-id';
+    _testTeachingId = 'test-teaching-id';
     testQuestionId = 'test-question-id';
 
     await app.init();

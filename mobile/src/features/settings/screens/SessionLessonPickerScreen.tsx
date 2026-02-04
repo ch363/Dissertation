@@ -8,8 +8,8 @@ import { LoadingRow } from '@/components/ui';
 import { getLessons, type Lesson } from '@/services/api/modules';
 import { routes } from '@/services/navigation/routes';
 import { setSessionDefaultLessonId } from '@/services/preferences/settings-facade';
-import { theme as baseTheme } from '@/services/theme/tokens';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { theme as baseTheme } from '@/services/theme/tokens';
 
 export default function SessionLessonPickerScreen() {
   const { theme } = useAppTheme();
@@ -78,7 +78,13 @@ export default function SessionLessonPickerScreen() {
             style={styles.backBtn}
             hitSlop={12}
           >
-            <Ionicons name="chevron-back" size={22} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
+            <Ionicons
+              name="chevron-back"
+              size={22}
+              color={theme.colors.mutedText}
+              accessible={false}
+              importantForAccessibility="no"
+            />
           </Pressable>
         )}
 
@@ -92,7 +98,13 @@ export default function SessionLessonPickerScreen() {
             { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
           ]}
         >
-          <Ionicons name="search" size={18} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
+          <Ionicons
+            name="search"
+            size={18}
+            color={theme.colors.mutedText}
+            accessible={false}
+            importantForAccessibility="no"
+          />
           <TextInput
             value={query}
             onChangeText={setQuery}
@@ -124,14 +136,23 @@ export default function SessionLessonPickerScreen() {
           ]}
         >
           <Text style={[styles.clearText, { color: theme.colors.error }]}>Clear lesson filter</Text>
-          <Ionicons name="trash-outline" size={18} color={theme.colors.error} accessible={false} importantForAccessibility="no" />
+          <Ionicons
+            name="trash-outline"
+            size={18}
+            color={theme.colors.error}
+            accessible={false}
+            importantForAccessibility="no"
+          />
         </Pressable>
 
         {loading ? (
           <LoadingRow label="Loading lessons…" />
         ) : error ? (
           <View style={styles.stateRow}>
-            <Text style={[styles.stateText, { color: theme.colors.error }]} accessibilityRole="alert">
+            <Text
+              style={[styles.stateText, { color: theme.colors.error }]}
+              accessibilityRole="alert"
+            >
               {error}
             </Text>
           </View>
@@ -155,7 +176,9 @@ export default function SessionLessonPickerScreen() {
                 ]}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.lessonTitle, { color: theme.colors.text }]}>{item.title}</Text>
+                  <Text style={[styles.lessonTitle, { color: theme.colors.text }]}>
+                    {item.title}
+                  </Text>
                   {item.description ? (
                     <Text
                       style={[styles.lessonSub, { color: theme.colors.mutedText }]}
@@ -165,7 +188,13 @@ export default function SessionLessonPickerScreen() {
                     </Text>
                   ) : null}
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={theme.colors.mutedText}
+                  accessible={false}
+                  importantForAccessibility="no"
+                />
               </Pressable>
             )}
           />
@@ -248,4 +277,3 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 });
-

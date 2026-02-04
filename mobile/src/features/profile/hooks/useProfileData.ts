@@ -1,11 +1,21 @@
+import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 
-import { getMyProfile, upsertMyProfile, getDashboard, type DashboardData, refreshSignedAvatarUrlFromUrl as refreshAvatarUrl, uploadAvatar } from '@/services/api/profile';
-import { getCachedProfileScreenData, preloadProfileScreenData } from '@/services/api/profile-screen-cache';
-import { getProgressSummary, type ProgressSummary } from '@/services/api/progress';
 import { getAllMastery, type SkillMastery } from '@/services/api/mastery';
+import {
+  getMyProfile,
+  upsertMyProfile,
+  getDashboard,
+  type DashboardData,
+  refreshSignedAvatarUrlFromUrl as refreshAvatarUrl,
+  uploadAvatar,
+} from '@/services/api/profile';
+import {
+  getCachedProfileScreenData,
+  preloadProfileScreenData,
+} from '@/services/api/profile-screen-cache';
+import { getProgressSummary, type ProgressSummary } from '@/services/api/progress';
 import { getAvatarUri } from '@/services/cache/avatar-cache';
 import { createLogger } from '@/services/logging';
 
@@ -158,7 +168,10 @@ export function useProfileData() {
           setAvatarUrl(avatarUri);
         } catch (uploadError) {
           logger.error('Error uploading avatar', uploadError as Error);
-          Alert.alert('Upload Error', 'Failed to upload avatar. The image is cached locally. Please try again later.');
+          Alert.alert(
+            'Upload Error',
+            'Failed to upload avatar. The image is cached locally. Please try again later.',
+          );
         }
       }
     } catch (error) {

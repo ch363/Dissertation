@@ -1,7 +1,8 @@
-import { getSupabaseClient } from '@/services/supabase/client';
 import { getApiUrl } from './config';
 import { ApiClientError, type ApiError, isApiEnvelope } from './types';
+
 import { createLogger } from '@/services/logging';
+import { getSupabaseClient } from '@/services/supabase/client';
 
 const logger = createLogger('ApiClient');
 
@@ -27,16 +28,15 @@ class ApiClient {
     }
   }
 
-  private async request<T = unknown>(
-    endpoint: string,
-    options: RequestOptions = {},
-  ): Promise<T> {
+  private async request<T = unknown>(endpoint: string, options: RequestOptions = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
-    
+
     const token = await this.getAuthToken();
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...(typeof options.headers === 'object' && options.headers !== null && !Array.isArray(options.headers)
+      ...(typeof options.headers === 'object' &&
+      options.headers !== null &&
+      !Array.isArray(options.headers)
         ? (options.headers as Record<string, string>)
         : {}),
     };
@@ -84,7 +84,10 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        const errBody = (data && typeof data === 'object' ? data : {}) as { message?: string; error?: string };
+        const errBody = (data && typeof data === 'object' ? data : {}) as {
+          message?: string;
+          error?: string;
+        };
         let errorMessage = errBody.message ?? errBody.error ?? `HTTP ${response.status}`;
 
         if (errBody.message?.includes('Unique constraint')) {
@@ -93,22 +96,14 @@ class ApiClient {
           errorMessage = errBody.message;
         }
 
-        throw new ApiClientError(
-          errorMessage,
-          response.status,
-          response,
-        );
+        throw new ApiClientError(errorMessage, response.status, response);
       }
 
       if (data && typeof data === 'object' && isApiEnvelope(data)) {
         if (data.success) {
           return data.data as T;
         }
-        throw new ApiClientError(
-          data.message || 'Request failed',
-          response.status,
-          response,
-        );
+        throw new ApiClientError(data.message || 'Request failed', response.status, response);
       }
       if (data && typeof data === 'object') {
         const err = data as ApiError;

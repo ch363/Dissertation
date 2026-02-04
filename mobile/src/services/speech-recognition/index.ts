@@ -28,33 +28,33 @@ function encodeBase64(bytes: Uint8Array): string {
   const base64Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
   let result = '';
   let i = 0;
-  
+
   while (i < bytes.length) {
     const a = bytes[i++];
     const b = i < bytes.length ? bytes[i++] : 0;
     const c = i < bytes.length ? bytes[i++] : 0;
-    
+
     const bitmap = (a << 16) | (b << 8) | c;
-    
+
     result += base64Chars.charAt((bitmap >> 18) & 63);
     result += base64Chars.charAt((bitmap >> 12) & 63);
     result += i - 2 < bytes.length ? base64Chars.charAt((bitmap >> 6) & 63) : '=';
     result += i - 1 < bytes.length ? base64Chars.charAt(bitmap & 63) : '=';
   }
-  
+
   return result;
 }
 
 async function readFileAsBase64WithFetch(uri: string): Promise<string> {
   const response = await fetch(uri);
-  
+
   if (!response.ok) {
     throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
   }
 
   const arrayBuffer = await response.arrayBuffer();
   const bytes = new Uint8Array(arrayBuffer);
-  
+
   try {
     let binary = '';
     for (let i = 0; i < bytes.length; i++) {
@@ -69,7 +69,9 @@ async function readFileAsBase64WithFetch(uri: string): Promise<string> {
   }
 }
 
-export async function getAudioFile(uri: string | null): Promise<{ uri: string; base64?: string } | null> {
+export async function getAudioFile(
+  uri: string | null,
+): Promise<{ uri: string; base64?: string } | null> {
   if (!uri) {
     return null;
   }
@@ -102,4 +104,3 @@ export async function getAudioFile(uri: string | null): Promise<{ uri: string; b
     return { uri };
   }
 }
-

@@ -3,8 +3,8 @@ import { router } from 'expo-router';
 import React from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { theme } from '@/services/theme/tokens';
 import { routes } from '@/services/navigation/routes';
+import { theme } from '@/services/theme/tokens';
 
 type Props = {
   title: string;
@@ -28,11 +28,12 @@ export function LessonProgressHeader({ title, current, total, onBackPress, retur
           text: 'Exit',
           style: 'destructive',
           onPress: () => {
-            const destination = (returnTo && returnTo.trim().length > 0) ? returnTo : routes.tabs.home;
+            const destination =
+              returnTo && returnTo.trim().length > 0 ? returnTo : routes.tabs.home;
             router.replace(destination as Parameters<typeof router.replace>[0]);
           },
         },
-      ]
+      ],
     );
   };
 

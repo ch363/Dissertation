@@ -1,13 +1,11 @@
 import * as Haptics from 'expo-haptics';
+
 import { createLogger } from '@/services/logging';
 
 const logger = createLogger('HapticFeedback');
 
 function isHapticsUsable(): boolean {
-  return !!(
-    Haptics.ImpactFeedbackStyle &&
-    typeof Haptics.impactAsync === 'function'
-  );
+  return !!(Haptics.ImpactFeedbackStyle && typeof Haptics.impactAsync === 'function');
 }
 
 export type HapticStyle = 'light' | 'medium' | 'heavy';

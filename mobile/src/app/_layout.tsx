@@ -8,11 +8,11 @@ import { Stack } from 'expo-router';
 import { FlatList, LogBox, Platform, ScrollView, SectionList } from 'react-native';
 import Toast from 'react-native-toast-message';
 
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { AppProviders } from '@/services/app/AppProviders';
+import { createLogger } from '@/services/logging';
 import { RouteGuard } from '@/services/navigation/RouteGuard';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
-import { useReducedMotion } from '@/hooks/useReducedMotion';
-import { createLogger } from '@/services/logging';
 
 const logger = createLogger('RootLayout');
 

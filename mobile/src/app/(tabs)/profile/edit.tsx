@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,12 +16,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useAppTheme } from '@/services/theme/ThemeProvider';
-import { theme as baseTheme } from '@/services/theme/tokens';
-import { getMyProfile, upsertMyProfile, uploadAvatar } from '@/services/api/profile';
-import { getAvatarUri } from '@/services/cache/avatar-cache';
-import { getOnboarding, saveOnboarding } from '@/services/api/onboarding';
 import { getCurrentUser } from '@/services/api/auth';
+import { getOnboarding, saveOnboarding } from '@/services/api/onboarding';
+import { getMyProfile, upsertMyProfile, uploadAvatar } from '@/services/api/profile';
+import type { Profile } from '@/services/api/profile';
+import { getAvatarUri } from '@/services/cache/avatar-cache';
+import { createLogger } from '@/services/logging';
+import { routes } from '@/services/navigation/routes';
 import {
   getAdaptivityEnabled,
   setAdaptivityEnabled,
@@ -31,10 +32,9 @@ import {
   setSessionDefaultTimeBudgetSec,
 } from '@/services/preferences';
 import type { SessionDefaultMode } from '@/services/preferences';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { theme as baseTheme } from '@/services/theme/tokens';
 import type { OnboardingAnswers } from '@/types/onboarding';
-import type { Profile } from '@/services/api/profile';
-import { routes } from '@/services/navigation/routes';
-import { createLogger } from '@/services/logging';
 
 const logger = createLogger('EditProfileScreen');
 
@@ -94,7 +94,9 @@ const MODE_OPTIONS: { value: SessionDefaultMode; label: string }[] = [
 ];
 
 /** Build raw answers from backend response: supports submission.raw, flat answers, or preferences */
-function getRawAnswersFromResponse(answers: Record<string, unknown>): Record<string, unknown> | null {
+function getRawAnswersFromResponse(
+  answers: Record<string, unknown>,
+): Record<string, unknown> | null {
   if (!answers || typeof answers !== 'object') return null;
   const raw = answers.raw;
   if (raw && typeof raw === 'object') return raw as Record<string, unknown>;
@@ -128,7 +130,12 @@ function normalizeAnswers(raw: Record<string, unknown> | null | undefined): Onbo
   if (!raw || typeof raw !== 'object') return {};
   const a = raw as Record<string, unknown>;
   let motivation: OnboardingAnswers['motivation'];
-  if (a.motivation && typeof a.motivation === 'object' && a.motivation !== null && 'key' in a.motivation) {
+  if (
+    a.motivation &&
+    typeof a.motivation === 'object' &&
+    a.motivation !== null &&
+    'key' in a.motivation
+  ) {
     motivation = { key: String((a.motivation as { key: unknown }).key), otherText: undefined };
   } else if (typeof a.motivation === 'string' && a.motivation) {
     motivation = { key: a.motivation, otherText: undefined };
@@ -162,7 +169,13 @@ export default function EditProfileScreen() {
   const [sessionMode, setSessionMode] = useState<SessionDefaultMode>('mixed');
   const [timeBudgetSec, setTimeBudgetSec] = useState<number | null>(null);
   const [onboarding, setOnboarding] = useState<OnboardingAnswers>({});
-  const initialRef = useRef<{ name: string; adaptivity: boolean; sessionMode: SessionDefaultMode; timeBudgetSec: number | null; onboarding: OnboardingAnswers } | null>(null);
+  const initialRef = useRef<{
+    name: string;
+    adaptivity: boolean;
+    sessionMode: SessionDefaultMode;
+    timeBudgetSec: number | null;
+    onboarding: OnboardingAnswers;
+  } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -174,11 +187,15 @@ export default function EditProfileScreen() {
         getSessionDefaultMode(),
         getSessionDefaultTimeBudgetSec(),
       ]);
-      const profileRes = results[0].status === 'fulfilled' ? (results[0].value as Profile | null) : null;
+      const profileRes =
+        results[0].status === 'fulfilled' ? (results[0].value as Profile | null) : null;
       const onboardingRes = results[1].status === 'fulfilled' ? results[1].value : null;
-      const adaptivityVal = results[2].status === 'fulfilled' ? (results[2].value as boolean) : null;
-      const modeVal = results[3].status === 'fulfilled' ? (results[3].value as SessionDefaultMode) : null;
-      const budgetVal = results[4].status === 'fulfilled' ? (results[4].value as number | null) : null;
+      const adaptivityVal =
+        results[2].status === 'fulfilled' ? (results[2].value as boolean) : null;
+      const modeVal =
+        results[3].status === 'fulfilled' ? (results[3].value as SessionDefaultMode) : null;
+      const budgetVal =
+        results[4].status === 'fulfilled' ? (results[4].value as number | null) : null;
       if (profileRes) {
         setProfileId(profileRes.id);
         setName(profileRes.displayName || profileRes.name || '');
@@ -245,7 +262,8 @@ export default function EditProfileScreen() {
       if (initial && adaptivity !== initial.adaptivity) parts.push('adaptive learning');
       if (initial && sessionMode !== initial.sessionMode) parts.push('default session mode');
       if (initial && timeBudgetSec !== initial.timeBudgetSec) parts.push('session length');
-      if (initial && JSON.stringify(onboarding) !== JSON.stringify(initial.onboarding)) parts.push('learning preferences');
+      if (initial && JSON.stringify(onboarding) !== JSON.stringify(initial.onboarding))
+        parts.push('learning preferences');
       const summary = parts.length > 0 ? parts.join(', ') : 'Your profile has been saved.';
       Alert.alert('Profile updated', summary, [
         { text: 'OK', onPress: () => router.replace(routes.tabs.profile.index) },
@@ -293,9 +311,12 @@ export default function EditProfileScreen() {
     setServerAvatarUrl(null);
   }, []);
 
-  const updateOnboarding = useCallback(<K extends keyof OnboardingAnswers>(key: K, value: OnboardingAnswers[K]) => {
-    setOnboarding((prev) => ({ ...prev, [key]: value }));
-  }, []);
+  const updateOnboarding = useCallback(
+    <K extends keyof OnboardingAnswers>(key: K, value: OnboardingAnswers[K]) => {
+      setOnboarding((prev) => ({ ...prev, [key]: value }));
+    },
+    [],
+  );
 
   const initial = initialRef.current;
   const hasChanges =
@@ -334,15 +355,32 @@ export default function EditProfileScreen() {
         <Pressable
           onPress={() => router.back()}
           disabled={saving}
-          style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: baseTheme.spacing.sm, minWidth: 64 }}
+          style={{
+            minHeight: 44,
+            justifyContent: 'center',
+            paddingHorizontal: baseTheme.spacing.sm,
+            minWidth: 64,
+          }}
           accessibilityRole="button"
           accessibilityLabel="Cancel"
         >
-          <Text style={{ fontSize: 17, fontFamily: baseTheme.typography.regular, color: theme.colors.primary }}>
+          <Text
+            style={{
+              fontSize: 17,
+              fontFamily: baseTheme.typography.regular,
+              color: theme.colors.primary,
+            }}
+          >
             Cancel
           </Text>
         </Pressable>
-        <Text style={{ fontSize: 17, fontFamily: baseTheme.typography.semiBold, color: theme.colors.text }}>
+        <Text
+          style={{
+            fontSize: 17,
+            fontFamily: baseTheme.typography.semiBold,
+            color: theme.colors.text,
+          }}
+        >
           Edit Profile
         </Text>
         <Pressable
@@ -453,11 +491,25 @@ export default function EditProfileScreen() {
 
         {/* Learning preferences – Figma: card, subtitle, OptionChip style */}
         <View style={[sectionStyle, { backgroundColor: theme.colors.card }]}>
-          <Text style={[sectionTitleStyle, { color: theme.colors.text }]}>Learning preferences</Text>
-          <Text style={[sectionSubtitleStyle, { color: theme.colors.mutedText, marginBottom: baseTheme.spacing.lg }]}>
+          <Text style={[sectionTitleStyle, { color: theme.colors.text }]}>
+            Learning preferences
+          </Text>
+          <Text
+            style={[
+              sectionSubtitleStyle,
+              { color: theme.colors.mutedText, marginBottom: baseTheme.spacing.lg },
+            ]}
+          >
             Customize your learning experience
           </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: baseTheme.spacing.md }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              gap: baseTheme.spacing.md,
+            }}
+          >
             <View style={{ flex: 1 }}>
               <Text style={[rowLabelStyle, { color: theme.colors.text }]}>Adaptive learning</Text>
               <Text style={[rowHintStyle, { color: theme.colors.mutedText }]}>
@@ -473,7 +525,12 @@ export default function EditProfileScreen() {
             />
           </View>
           <View style={{ marginTop: baseTheme.spacing.lg }}>
-            <Text style={[rowLabelStyle, { color: theme.colors.text, marginBottom: baseTheme.spacing.sm }]}>
+            <Text
+              style={[
+                rowLabelStyle,
+                { color: theme.colors.text, marginBottom: baseTheme.spacing.sm },
+              ]}
+            >
               Default session mode
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -512,10 +569,19 @@ export default function EditProfileScreen() {
             </View>
           </View>
           <View style={{ marginTop: baseTheme.spacing.lg }}>
-            <Text style={[rowLabelStyle, { color: theme.colors.text, marginBottom: baseTheme.spacing.sm }]}>
+            <Text
+              style={[
+                rowLabelStyle,
+                { color: theme.colors.text, marginBottom: baseTheme.spacing.sm },
+              ]}
+            >
               Session length
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8 }}
+            >
               {[5, 10, 15, 20, 30].map((mins) => {
                 const sec = mins * 60;
                 const selected = timeBudgetSec === sec;
@@ -556,7 +622,8 @@ export default function EditProfileScreen() {
                   paddingVertical: chipPaddingV,
                   paddingHorizontal: chipPaddingH,
                   borderRadius: chipBorderRadius,
-                  backgroundColor: timeBudgetSec === null ? theme.colors.primary : theme.colors.background,
+                  backgroundColor:
+                    timeBudgetSec === null ? theme.colors.primary : theme.colors.background,
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 8,
@@ -581,14 +648,26 @@ export default function EditProfileScreen() {
             onPress={() => router.push(routes.tabs.settings.session)}
             style={{ marginTop: baseTheme.spacing.lg }}
           >
-            <Text style={{ fontSize: 14, color: theme.colors.primary }}>More session options →</Text>
+            <Text style={{ fontSize: 14, color: theme.colors.primary }}>
+              More session options →
+            </Text>
           </Pressable>
         </View>
 
         {/* Your setup – Figma: card, subtitle, OptionChip style */}
-        <View style={[sectionStyle, { backgroundColor: theme.colors.card, marginTop: baseTheme.spacing.lg }]}>
+        <View
+          style={[
+            sectionStyle,
+            { backgroundColor: theme.colors.card, marginTop: baseTheme.spacing.lg },
+          ]}
+        >
           <Text style={[sectionTitleStyle, { color: theme.colors.text }]}>Your setup</Text>
-          <Text style={[sectionSubtitleStyle, { color: theme.colors.mutedText, marginBottom: baseTheme.spacing.lg }]}>
+          <Text
+            style={[
+              sectionSubtitleStyle,
+              { color: theme.colors.mutedText, marginBottom: baseTheme.spacing.lg },
+            ]}
+          >
             These shape how content and sessions are tailored for you
           </Text>
 
@@ -683,9 +762,13 @@ const sectionStyle = {
   shadowRadius: 2,
   elevation: 2,
 };
-const sectionTitleStyle = { fontFamily: baseTheme.typography.semiBold, fontSize: 17, marginBottom: 4 };
+const sectionTitleStyle = {
+  fontFamily: baseTheme.typography.semiBold,
+  fontSize: 17,
+  marginBottom: 4,
+};
 const sectionSubtitleStyle = { fontSize: 13, marginTop: 4, lineHeight: 20 };
-const rowStyle = { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' };
+// const _rowStyle = { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' };
 const rowLabelStyle = { fontFamily: baseTheme.typography.medium, fontSize: 15 };
 const rowHintStyle = { fontSize: 13, marginTop: 4, lineHeight: 20 };
 const chipMinHeight = 44;
@@ -709,8 +792,16 @@ function SelectRow({
 }) {
   return (
     <View style={{ marginBottom: baseTheme.spacing.lg }}>
-      <Text style={[rowLabelStyle, { color: theme.colors.text, marginBottom: baseTheme.spacing.sm }]}>{label}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+      <Text
+        style={[rowLabelStyle, { color: theme.colors.text, marginBottom: baseTheme.spacing.sm }]}
+      >
+        {label}
+      </Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: 8 }}
+      >
         {options.map((opt) => {
           const isSelected = selected === opt.key;
           return (
@@ -737,9 +828,7 @@ function SelectRow({
               >
                 {opt.label}
               </Text>
-              {isSelected && (
-                <Ionicons name="checkmark" size={16} color={theme.colors.onPrimary} />
-              )}
+              {isSelected && <Ionicons name="checkmark" size={16} color={theme.colors.onPrimary} />}
             </Pressable>
           );
         })}
@@ -775,13 +864,26 @@ function SelectRowMulti({
   };
   return (
     <View style={{ marginBottom: baseTheme.spacing.lg }}>
-      <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: baseTheme.spacing.sm }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          marginBottom: baseTheme.spacing.sm,
+        }}
+      >
         <Text style={[rowLabelStyle, { color: theme.colors.text }]}>{label}</Text>
         {helperText != null && (
-          <Text style={[rowHintStyle, { color: theme.colors.mutedText, marginBottom: 0 }]}>{helperText}</Text>
+          <Text style={[rowHintStyle, { color: theme.colors.mutedText, marginBottom: 0 }]}>
+            {helperText}
+          </Text>
         )}
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: 8 }}
+      >
         {options.map((opt) => {
           const isSelected = selected.includes(opt.key);
           const disabled = !isSelected && selected.length >= max;
@@ -795,7 +897,11 @@ function SelectRowMulti({
                 paddingVertical: chipPaddingV,
                 paddingHorizontal: chipPaddingH,
                 borderRadius: chipBorderRadius,
-                backgroundColor: disabled ? theme.colors.border : isSelected ? theme.colors.primary : theme.colors.background,
+                backgroundColor: disabled
+                  ? theme.colors.border
+                  : isSelected
+                    ? theme.colors.primary
+                    : theme.colors.background,
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 8,
@@ -811,9 +917,7 @@ function SelectRowMulti({
               >
                 {opt.label}
               </Text>
-              {isSelected && (
-                <Ionicons name="checkmark" size={16} color={theme.colors.onPrimary} />
-              )}
+              {isSelected && <Ionicons name="checkmark" size={16} color={theme.colors.onPrimary} />}
             </Pressable>
           );
         })}

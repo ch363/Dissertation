@@ -17,9 +17,7 @@ export function CourseIndexErrorState({ onRetry }: CourseIndexErrorStateProps) {
       <View style={[styles.iconWrap, { backgroundColor: theme.colors.error + '20' }]}>
         <Ionicons name="cloud-offline" size={32} color={theme.colors.error} />
       </View>
-      <Text style={[styles.title, { color: theme.colors.text }]}>
-        Connection lost
-      </Text>
+      <Text style={[styles.title, { color: theme.colors.text }]}>Connection lost</Text>
       <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
         Check your internet connection and try again
       </Text>
@@ -34,9 +32,7 @@ export function CourseIndexErrorState({ onRetry }: CourseIndexErrorStateProps) {
             pressed && styles.buttonPressed,
           ]}
         >
-          <Text style={[styles.buttonText, { color: theme.colors.onPrimary }]}>
-            Retry
-          </Text>
+          <Text style={[styles.buttonText, { color: theme.colors.onPrimary }]}>Retry</Text>
         </Pressable>
       ) : null}
     </View>

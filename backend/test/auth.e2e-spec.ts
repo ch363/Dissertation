@@ -79,7 +79,7 @@ describe('Auth (e2e)', () => {
       if (app) {
         await app.close();
       }
-    } catch (error) {
+    } catch {
       // Ignore cleanup errors
     }
 
@@ -91,7 +91,7 @@ describe('Auth (e2e)', () => {
           // Ignore disconnect errors (might already be disconnected)
         });
       }
-    } catch (error) {
+    } catch {
       // Ignore cleanup errors
     }
   });

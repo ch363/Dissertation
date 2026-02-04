@@ -1,27 +1,20 @@
 import * as Linking from 'expo-linking';
 import { Link, router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  Image,
-} from 'react-native';
+import { View, Text, StyleSheet, TextInput, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, LoadingScreen, ScrollView, StaticCard } from '@/components/ui';
-
 import {
   resolvePostAuthDestination,
   resolvePostLoginDestination,
   setSessionFromEmailLink,
   signInWithEmailPassword,
 } from '@/services/api/auth';
+import { createLogger } from '@/services/logging';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 import { announce } from '@/utils/a11y';
-import { createLogger } from '@/services/logging';
 
 const logger = createLogger('SignIn');
 
@@ -59,7 +52,9 @@ export default function SignIn() {
 
   const trimmedEmail = email.trim();
   const emailError =
-    trimmedEmail.length > 0 && !emailRegex.test(trimmedEmail) ? 'Enter a valid email address.' : null;
+    trimmedEmail.length > 0 && !emailRegex.test(trimmedEmail)
+      ? 'Enter a valid email address.'
+      : null;
   const passwordError =
     password.length > 0 && password.length < 6 ? 'Password must be at least 6 characters.' : null;
   const canSubmit = emailRegex.test(trimmedEmail) && password.length >= 6 && !loading;
@@ -178,7 +173,9 @@ export default function SignIn() {
           <Text style={[styles.title, { color: theme.colors.text }]} accessibilityRole="header">
             Welcome back
           </Text>
-          <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>Choose how you’d like to continue</Text>
+          <Text style={[styles.subtitle, { color: theme.colors.mutedText }]}>
+            Choose how you’d like to continue
+          </Text>
 
           <View style={styles.dividerRow}>
             <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
@@ -193,7 +190,14 @@ export default function SignIn() {
             placeholder="you@example.com"
             autoCapitalize="none"
             keyboardType="email-address"
-            style={[styles.input, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, color: theme.colors.text }]}
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.colors.card,
+                borderColor: theme.colors.border,
+                color: theme.colors.text,
+              },
+            ]}
             placeholderTextColor={theme.colors.mutedText}
             accessibilityLabel="Email"
             accessibilityHint="Enter your email address"
@@ -215,7 +219,14 @@ export default function SignIn() {
             onChangeText={setPassword}
             placeholder="Password"
             secureTextEntry
-            style={[styles.input, { backgroundColor: theme.colors.card, borderColor: theme.colors.border, color: theme.colors.text }]}
+            style={[
+              styles.input,
+              {
+                backgroundColor: theme.colors.card,
+                borderColor: theme.colors.border,
+                color: theme.colors.text,
+              },
+            ]}
             placeholderTextColor={theme.colors.mutedText}
             accessibilityLabel="Password"
             accessibilityHint="Enter your password"

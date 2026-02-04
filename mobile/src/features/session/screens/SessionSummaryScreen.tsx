@@ -1,19 +1,34 @@
-import { router, useLocalSearchParams, Stack } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { Animated, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router, useLocalSearchParams, Stack } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import {
+  Animated,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, ContentContinueButton, LoadingRow } from '@/components/ui';
 import { makeSessionId } from '@/features/session/sessionBuilder';
-import { routeBuilders, routes } from '@/services/navigation/routes';
-import { getCachedSessionPlan } from '@/services/api/session-plan-cache';
-import { getLesson, getLessonTeachings, getModuleLessons, type Teaching, type Lesson } from '@/services/api/modules';
+import {
+  getLesson,
+  getLessonTeachings,
+  getModuleLessons,
+  type Teaching,
+  type Lesson,
+} from '@/services/api/modules';
 import { getUserLessons, type UserLessonProgress } from '@/services/api/progress';
+import { getCachedSessionPlan } from '@/services/api/session-plan-cache';
+import { createLogger } from '@/services/logging';
+import { routeBuilders, routes } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 import { CardKind } from '@/types/session';
-import { createLogger } from '@/services/logging';
 
 const Logger = createLogger('SessionSummaryScreen');
 
@@ -41,13 +56,18 @@ export default function SessionSummaryScreen() {
   }>();
   const kind = params.kind === 'review' ? 'review' : 'learn';
   const lessonId = params.lessonId;
-  const planMode = params.planMode === 'learn' || params.planMode === 'review' || params.planMode === 'mixed'
-    ? (params.planMode as 'learn' | 'review' | 'mixed')
-    : 'learn';
+  const planMode =
+    params.planMode === 'learn' || params.planMode === 'review' || params.planMode === 'mixed'
+      ? (params.planMode as 'learn' | 'review' | 'mixed')
+      : 'learn';
   const timeBudgetSec = params.timeBudgetSec ? Number(params.timeBudgetSec) : null;
   const returnTo = params.returnTo;
-  const totalXp = params.totalXp != null && params.totalXp !== '' ? parseInt(params.totalXp, 10) : null;
-  const teachingsMastered = params.teachingsMastered != null && params.teachingsMastered !== '' ? parseInt(params.teachingsMastered, 10) : null;
+  const totalXp =
+    params.totalXp != null && params.totalXp !== '' ? parseInt(params.totalXp, 10) : null;
+  const teachingsMastered =
+    params.teachingsMastered != null && params.teachingsMastered !== ''
+      ? parseInt(params.teachingsMastered, 10)
+      : null;
   const showStats = typeof totalXp === 'number' || typeof teachingsMastered === 'number';
   const reviewedTeachingsJson = params.reviewedTeachings;
 
@@ -107,11 +127,11 @@ export default function SessionSummaryScreen() {
         }
         return null;
       })
-      .filter((t) => t !== null) as Array<{
-        phrase: string;
-        translation?: string;
-        emoji?: string;
-      }>;
+      .filter((t) => t !== null) as {
+      phrase: string;
+      translation?: string;
+      emoji?: string;
+    }[];
   }, [sessionPlan]);
 
   useEffect(() => {
@@ -195,19 +215,19 @@ export default function SessionSummaryScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    
+
     const fetchTeachings = async () => {
       setIsInitializing(true);
-      
+
       // Review: use teachings passed from SessionRunner (phrases just reviewed)
       if (kind === 'review' && reviewedTeachingsJson) {
         try {
-          const parsed = JSON.parse(reviewedTeachingsJson) as Array<{
+          const parsed = JSON.parse(reviewedTeachingsJson) as {
             phrase: string;
             translation?: string;
             emoji?: string;
             attempts?: number;
-          }>;
+          }[];
           const converted: (Teaching & { attempts?: number })[] = (parsed || []).map((t, idx) => ({
             id: `reviewed-${idx}`,
             knowledgeLevel: 'beginner',
@@ -278,7 +298,7 @@ export default function SessionSummaryScreen() {
     };
 
     fetchTeachings();
-    
+
     return () => {
       cancelled = true;
     };
@@ -297,7 +317,11 @@ export default function SessionSummaryScreen() {
   }, []);
 
   const handleBackToReview = useCallback(() => {
-    router.replace((returnTo && typeof returnTo === 'string' && returnTo.trim().length > 0 ? returnTo : routes.tabs.learn) as Parameters<typeof router.replace>[0]);
+    router.replace(
+      (returnTo && typeof returnTo === 'string' && returnTo.trim().length > 0
+        ? returnTo
+        : routes.tabs.learn) as Parameters<typeof router.replace>[0],
+    );
   }, [returnTo]);
 
   const handleReturnTo = useCallback(() => {
@@ -318,9 +342,10 @@ export default function SessionSummaryScreen() {
       handleBackToLearn();
       return;
     }
-    const backTo = (returnTo && typeof returnTo === 'string' && returnTo.trim().length > 0) 
-      ? returnTo 
-      : routes.tabs.learn;
+    const backTo =
+      returnTo && typeof returnTo === 'string' && returnTo.trim().length > 0
+        ? returnTo
+        : routes.tabs.learn;
     router.replace({
       pathname: routeBuilders.courseDetail(moduleId),
       params: { returnTo: backTo },
@@ -353,7 +378,8 @@ export default function SessionSummaryScreen() {
     const paddingEst = 48;
     const perTeaching = 88;
     const teachingCount = Math.max(1, teachings.length + (loadingTeachings ? 1 : 0));
-    const estimatedHeight = heroEst + statsEst + actionsEst + paddingEst + teachingCount * perTeaching;
+    const estimatedHeight =
+      heroEst + statsEst + actionsEst + paddingEst + teachingCount * perTeaching;
     const available = windowHeight - reserved;
     const raw = available / estimatedHeight;
     return Math.min(1, Math.max(0.72, raw));
@@ -429,144 +455,272 @@ export default function SessionSummaryScreen() {
 
         <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
           <ScrollView
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: Math.max(theme.spacing.xl, insets.bottom + theme.spacing.md) },
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Main card (Figma: rounded-[32px], blue-tinted gradient) */}
-          <LinearGradient
-            colors={CARD_GRADIENT}
-            style={styles.card}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingBottom: Math.max(theme.spacing.xl, insets.bottom + theme.spacing.md) },
+            ]}
+            showsVerticalScrollIndicator={false}
           >
-            <View style={[styles.cardInner, { padding: scaled.cardInnerPadding, gap: scaled.cardInnerGap }]}>
-              <View style={[styles.hero, { gap: scaled.heroGap }]}>
-                <View style={styles.heroIconWrap}>
-                  <Ionicons name="checkmark-circle" size={Math.round(48 * scale)} color={theme.colors.primary} />
+            {/* Main card (Figma: rounded-[32px], blue-tinted gradient) */}
+            <LinearGradient colors={CARD_GRADIENT} style={styles.card}>
+              <View
+                style={[
+                  styles.cardInner,
+                  { padding: scaled.cardInnerPadding, gap: scaled.cardInnerGap },
+                ]}
+              >
+                <View style={[styles.hero, { gap: scaled.heroGap }]}>
+                  <View style={styles.heroIconWrap}>
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={Math.round(48 * scale)}
+                      color={theme.colors.primary}
+                    />
+                  </View>
+                  <Text style={[styles.title, { fontSize: scaled.titleSize }]}>
+                    {kind === 'review'
+                      ? 'You completed this session!'
+                      : 'You completed this lesson!'}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.subtitle,
+                      { fontSize: scaled.subtitleSize, lineHeight: scaled.subtitleLineHeight },
+                    ]}
+                  >
+                    {kind === 'review'
+                      ? teachings.length > 0
+                        ? "Here's what you reviewed:"
+                        : 'Great job on your review session!'
+                      : teachings.length > 0
+                        ? "Here's a summary of what you learned:"
+                        : "You've completed all the content in this lesson. Great work!"}
+                  </Text>
+                  {showStats && (
+                    <View style={[styles.statsRow, { gap: scaled.statsGap }]}>
+                      {typeof totalXp === 'number' && (
+                        <View style={styles.statPill}>
+                          <Ionicons
+                            name="star"
+                            size={Math.round(18 * scale)}
+                            color={theme.colors.primary}
+                          />
+                          <Text style={[styles.statValue, { fontSize: scaled.statValueSize }]}>
+                            {totalXp}
+                          </Text>
+                          <Text style={[styles.statLabel, { fontSize: scaled.statLabelSize }]}>
+                            XP
+                          </Text>
+                        </View>
+                      )}
+                      {typeof teachingsMastered === 'number' && (
+                        <View style={styles.statPill}>
+                          <Ionicons
+                            name="book"
+                            size={Math.round(18 * scale)}
+                            color={theme.colors.primary}
+                          />
+                          <Text style={[styles.statValue, { fontSize: scaled.statValueSize }]}>
+                            {teachingsMastered}
+                          </Text>
+                          <Text style={[styles.statLabel, { fontSize: scaled.statLabelSize }]}>
+                            {teachingsMastered === 1 ? 'Teaching' : 'Teachings'}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
                 </View>
-                <Text style={[styles.title, { fontSize: scaled.titleSize }]}>
-                  {kind === 'review' ? 'You completed this session!' : 'You completed this lesson!'}
-                </Text>
-                <Text style={[styles.subtitle, { fontSize: scaled.subtitleSize, lineHeight: scaled.subtitleLineHeight }]}>
-                  {kind === 'review'
-                    ? teachings.length > 0
-                      ? "Here's what you reviewed:"
-                      : 'Great job on your review session!'
-                    : teachings.length > 0
-                      ? "Here's a summary of what you learned:"
-                      : "You've completed all the content in this lesson. Great work!"}
-                </Text>
-                {showStats && (
-                  <View style={[styles.statsRow, { gap: scaled.statsGap }]}>
-                    {typeof totalXp === 'number' && (
-                      <View style={styles.statPill}>
-                        <Ionicons name="star" size={Math.round(18 * scale)} color={theme.colors.primary} />
-                        <Text style={[styles.statValue, { fontSize: scaled.statValueSize }]}>{totalXp}</Text>
-                        <Text style={[styles.statLabel, { fontSize: scaled.statLabelSize }]}>XP</Text>
-                      </View>
-                    )}
-                    {typeof teachingsMastered === 'number' && (
-                      <View style={styles.statPill}>
-                        <Ionicons name="book" size={Math.round(18 * scale)} color={theme.colors.primary} />
-                        <Text style={[styles.statValue, { fontSize: scaled.statValueSize }]}>{teachingsMastered}</Text>
-                        <Text style={[styles.statLabel, { fontSize: scaled.statLabelSize }]}>
-                          {teachingsMastered === 1 ? 'Teaching' : 'Teachings'}
-                        </Text>
+
+                {(teachings.length > 0 || loadingTeachings) && (
+                  <View style={[styles.learnedSection, { gap: scaled.sectionGap }]}>
+                    <View style={[styles.sectionHeader, { gap: scaled.sectionHeaderGap }]}>
+                      <Ionicons
+                        name="book-outline"
+                        size={Math.round(18 * scale)}
+                        color={theme.colors.primary}
+                      />
+                      <Text style={[styles.learnedTitle, { fontSize: scaled.learnedTitleSize }]}>
+                        {kind === 'review' ? 'Items you reviewed' : 'What you learned'}
+                      </Text>
+                    </View>
+
+                    {loadingTeachings ? (
+                      <LoadingRow label="Loading content…" />
+                    ) : (
+                      <View style={[styles.contentGrid, { gap: scaled.contentGridGap }]}>
+                        {teachings.map((teaching, index) => {
+                          const attempts =
+                            (teaching as Teaching & { attempts?: number }).attempts ??
+                            attemptCountsByPhrase[teaching.learningLanguageString];
+                          return (
+                            <View
+                              key={teaching.id || index}
+                              style={[
+                                styles.phraseCard,
+                                { padding: scaled.phraseCardPadding, gap: scaled.phraseCardGap },
+                              ]}
+                            >
+                              <View style={[styles.phraseRow, { gap: scaled.phraseRowGap }]}>
+                                {teaching.emoji ? (
+                                  <Text
+                                    style={[
+                                      styles.emoji,
+                                      {
+                                        fontSize: scaled.emojiSize,
+                                        lineHeight: scaled.emojiSize + 2,
+                                      },
+                                    ]}
+                                  >
+                                    {teaching.emoji}
+                                  </Text>
+                                ) : (
+                                  <Ionicons
+                                    name="book-outline"
+                                    size={Math.round(18 * scale)}
+                                    color={theme.colors.mutedText}
+                                    style={styles.phraseIcon}
+                                  />
+                                )}
+                                <View style={styles.phraseContent}>
+                                  <Text
+                                    style={[
+                                      styles.phrase,
+                                      {
+                                        fontSize: scaled.phraseSize,
+                                        lineHeight: scaled.phraseLineHeight,
+                                      },
+                                    ]}
+                                  >
+                                    {teaching.learningLanguageString}
+                                  </Text>
+                                  {teaching.userLanguageString ? (
+                                    <Text
+                                      style={[
+                                        styles.translation,
+                                        {
+                                          fontSize: scaled.translationSize,
+                                          lineHeight: scaled.translationLineHeight,
+                                        },
+                                      ]}
+                                    >
+                                      {teaching.userLanguageString}
+                                    </Text>
+                                  ) : null}
+                                  {typeof attempts === 'number' && attempts > 0 ? (
+                                    <Text
+                                      style={[
+                                        styles.attemptsLabel,
+                                        {
+                                          fontSize: scaled.translationSize,
+                                          lineHeight: scaled.translationLineHeight,
+                                        },
+                                      ]}
+                                    >
+                                      {attempts === 1 ? '1 attempt' : `${attempts} attempts`}
+                                    </Text>
+                                  ) : null}
+                                </View>
+                              </View>
+                              {teaching.tip ? (
+                                <View style={styles.tipContainer}>
+                                  <Ionicons
+                                    name="bulb-outline"
+                                    size={Math.round(12 * scale)}
+                                    color={theme.colors.mutedText}
+                                  />
+                                  <Text
+                                    style={[
+                                      styles.tipText,
+                                      {
+                                        fontSize: scaled.tipSize,
+                                        lineHeight: scaled.tipLineHeight,
+                                      },
+                                    ]}
+                                  >
+                                    {teaching.tip}
+                                  </Text>
+                                </View>
+                              ) : null}
+                            </View>
+                          );
+                        })}
                       </View>
                     )}
                   </View>
                 )}
-              </View>
 
-              {(teachings.length > 0 || loadingTeachings) && (
-                <View style={[styles.learnedSection, { gap: scaled.sectionGap }]}>
-                  <View style={[styles.sectionHeader, { gap: scaled.sectionHeaderGap }]}>
-                    <Ionicons name="book-outline" size={Math.round(18 * scale)} color={theme.colors.primary} />
-                    <Text style={[styles.learnedTitle, { fontSize: scaled.learnedTitleSize }]}>
-                      {kind === 'review' ? 'Items you reviewed' : 'What you learned'}
-                    </Text>
+                {/* Actions: primary CTA then Back (USER_JOURNEYS) */}
+                <View
+                  style={[
+                    styles.actions,
+                    { gap: scaled.actionsGap, marginTop: scaled.actionsMarginTop },
+                  ]}
+                >
+                  {showContinueReviewing ? (
+                    <ContentContinueButton
+                      title="Continue"
+                      onPress={handleContinueReviewing}
+                      accessibilityLabel="Continue reviewing"
+                      accessibilityHint="Starts another review session with remaining due items"
+                    />
+                  ) : nextLesson ? (
+                    <ContentContinueButton
+                      title="Continue"
+                      onPress={handleContinueToNextLesson}
+                      accessibilityLabel="Continue to next lesson"
+                      accessibilityHint="Starts the next lesson in this module"
+                    />
+                  ) : null}
+                  <View
+                    style={[
+                      styles.secondaryRow,
+                      { gap: scaled.secondaryGap, minHeight: scaled.secondaryMinHeight },
+                    ]}
+                  >
+                    <Button
+                      title="Back to home"
+                      onPress={handleBackToHome}
+                      variant="primary"
+                      accessibilityHint="Returns to home"
+                      style={[
+                        styles.secondaryButton,
+                        {
+                          minHeight: scaled.secondaryMinHeight,
+                          backgroundColor: theme.colors.primary,
+                        },
+                      ]}
+                    />
+                    <Button
+                      title={
+                        showBackToModule
+                          ? 'Back to module'
+                          : kind === 'review'
+                            ? 'Back'
+                            : 'Back to learn'
+                      }
+                      onPress={showBackToModule ? handleBackToModule : handleReturnTo}
+                      variant="primary"
+                      accessibilityHint={
+                        showBackToModule
+                          ? 'Returns to course'
+                          : kind === 'review'
+                            ? 'Returns to where you started'
+                            : 'Returns to learn'
+                      }
+                      style={[
+                        styles.secondaryButton,
+                        {
+                          minHeight: scaled.secondaryMinHeight,
+                          backgroundColor: theme.colors.primary,
+                        },
+                      ]}
+                    />
                   </View>
-
-                  {loadingTeachings ? (
-                    <LoadingRow label="Loading content…" />
-                  ) : (
-                    <View style={[styles.contentGrid, { gap: scaled.contentGridGap }]}>
-                      {teachings.map((teaching, index) => {
-                        const attempts =
-                          (teaching as Teaching & { attempts?: number }).attempts ??
-                          attemptCountsByPhrase[teaching.learningLanguageString];
-                        return (
-                          <View key={teaching.id || index} style={[styles.phraseCard, { padding: scaled.phraseCardPadding, gap: scaled.phraseCardGap }]}>
-                            <View style={[styles.phraseRow, { gap: scaled.phraseRowGap }]}>
-                              {teaching.emoji ? (
-                                <Text style={[styles.emoji, { fontSize: scaled.emojiSize, lineHeight: scaled.emojiSize + 2 }]}>{teaching.emoji}</Text>
-                              ) : (
-                                <Ionicons name="book-outline" size={Math.round(18 * scale)} color={theme.colors.mutedText} style={styles.phraseIcon} />
-                              )}
-                              <View style={styles.phraseContent}>
-                                <Text style={[styles.phrase, { fontSize: scaled.phraseSize, lineHeight: scaled.phraseLineHeight }]}>{teaching.learningLanguageString}</Text>
-                                {teaching.userLanguageString ? (
-                                  <Text style={[styles.translation, { fontSize: scaled.translationSize, lineHeight: scaled.translationLineHeight }]}>{teaching.userLanguageString}</Text>
-                                ) : null}
-                                {typeof attempts === 'number' && attempts > 0 ? (
-                                  <Text style={[styles.attemptsLabel, { fontSize: scaled.translationSize, lineHeight: scaled.translationLineHeight }]}>
-                                    {attempts === 1 ? '1 attempt' : `${attempts} attempts`}
-                                  </Text>
-                                ) : null}
-                              </View>
-                            </View>
-                            {teaching.tip ? (
-                              <View style={styles.tipContainer}>
-                                <Ionicons name="bulb-outline" size={Math.round(12 * scale)} color={theme.colors.mutedText} />
-                                <Text style={[styles.tipText, { fontSize: scaled.tipSize, lineHeight: scaled.tipLineHeight }]}>{teaching.tip}</Text>
-                              </View>
-                            ) : null}
-                          </View>
-                        );
-                      })}
-                    </View>
-                  )}
-                </View>
-              )}
-
-              {/* Actions: primary CTA then Back (USER_JOURNEYS) */}
-              <View style={[styles.actions, { gap: scaled.actionsGap, marginTop: scaled.actionsMarginTop }]}>
-                {showContinueReviewing ? (
-                  <ContentContinueButton
-                    title="Continue"
-                    onPress={handleContinueReviewing}
-                    accessibilityLabel="Continue reviewing"
-                    accessibilityHint="Starts another review session with remaining due items"
-                  />
-                ) : nextLesson ? (
-                  <ContentContinueButton
-                    title="Continue"
-                    onPress={handleContinueToNextLesson}
-                    accessibilityLabel="Continue to next lesson"
-                    accessibilityHint="Starts the next lesson in this module"
-                  />
-                ) : null}
-                <View style={[styles.secondaryRow, { gap: scaled.secondaryGap, minHeight: scaled.secondaryMinHeight }]}>
-                  <Button
-                    title="Back to home"
-                    onPress={handleBackToHome}
-                    variant="primary"
-                    accessibilityHint="Returns to home"
-                    style={[styles.secondaryButton, { minHeight: scaled.secondaryMinHeight, backgroundColor: theme.colors.primary }]}
-                  />
-                  <Button
-                    title={showBackToModule ? 'Back to module' : kind === 'review' ? 'Back' : 'Back to learn'}
-                    onPress={showBackToModule ? handleBackToModule : handleReturnTo}
-                    variant="primary"
-                    accessibilityHint={showBackToModule ? 'Returns to course' : kind === 'review' ? 'Returns to where you started' : 'Returns to learn'}
-                    style={[styles.secondaryButton, { minHeight: scaled.secondaryMinHeight, backgroundColor: theme.colors.primary }]}
-                  />
                 </View>
               </View>
-            </View>
-          </LinearGradient>
-        </ScrollView>
+            </LinearGradient>
+          </ScrollView>
         </Animated.View>
       </SafeAreaView>
     </View>
@@ -574,7 +728,7 @@ export default function SessionSummaryScreen() {
 }
 
 const CARD_RADIUS = 32;
-const BUTTON_RADIUS = 20;
+const _BUTTON_RADIUS = 20;
 const USAGE_RADIUS = 24;
 
 const styles = StyleSheet.create({

@@ -42,7 +42,10 @@ export function buildLearningPathItems(args: {
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
   );
 
-  const moduleCompletion = new Map<string, { completed: boolean; completedLessons: number; totalLessons: number }>();
+  const moduleCompletion = new Map<
+    string,
+    { completed: boolean; completedLessons: number; totalLessons: number }
+  >();
   for (const mod of sortedModules) {
     const moduleLessons = lessonsByModuleId.get(mod.id) ?? [];
     const totalLessons = moduleLessons.length;
@@ -64,24 +67,36 @@ export function buildLearningPathItems(args: {
   const unlockedByIndex = sortedModules.map(() => true);
 
   return sortedModules.map((mod, idx) => {
-    const completion = moduleCompletion.get(mod.id) ?? { completed: false, completedLessons: 0, totalLessons: 0 };
+    const completion = moduleCompletion.get(mod.id) ?? {
+      completed: false,
+      completedLessons: 0,
+      totalLessons: 0,
+    };
     const isUnlocked = unlockedByIndex[idx];
     const status: 'active' | 'locked' = isUnlocked ? 'active' : 'locked';
 
-    const totalSegments = clamp(Math.min(maxSegments, completion.totalLessons || 1), 1, maxSegments);
-    const ratio = completion.totalLessons > 0 ? completion.completedLessons / completion.totalLessons : 0;
-    const completedSegments = completion.totalLessons > 0 ? clamp(Math.round(ratio * totalSegments), 0, totalSegments) : 0;
+    const totalSegments = clamp(
+      Math.min(maxSegments, completion.totalLessons || 1),
+      1,
+      maxSegments,
+    );
+    const ratio =
+      completion.totalLessons > 0 ? completion.completedLessons / completion.totalLessons : 0;
+    const completedSegments =
+      completion.totalLessons > 0 ? clamp(Math.round(ratio * totalSegments), 0, totalSegments) : 0;
 
     const moduleLessonsForEst = lessonsByModuleId.get(mod.id) ?? [];
     const totalItems = moduleLessonsForEst.reduce((sum, l) => sum + (l.numberOfItems ?? 0), 0);
     const MIN_EST_MINUTES = 3;
     const MAX_EST_MINUTES = 15;
     const rawMinutes = Math.ceil(totalItems * 0.5);
-    const estimatedMinutes = totalItems > 0 ? clamp(rawMinutes, MIN_EST_MINUTES, MAX_EST_MINUTES) : undefined;
+    const estimatedMinutes =
+      totalItems > 0 ? clamp(rawMinutes, MIN_EST_MINUTES, MAX_EST_MINUTES) : undefined;
 
-    const subtitle = completion.totalLessons > 0
-      ? `${completion.completedLessons}/${completion.totalLessons} completed`
-      : 'No lessons yet';
+    const subtitle =
+      completion.totalLessons > 0
+        ? `${completion.completedLessons}/${completion.totalLessons} completed`
+        : 'No lessons yet';
 
     const ctaLabel =
       completion.completedLessons === 0
@@ -107,4 +122,3 @@ export function buildLearningPathItems(args: {
     };
   });
 }
-

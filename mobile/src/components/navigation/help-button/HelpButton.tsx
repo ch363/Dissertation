@@ -26,8 +26,7 @@ export function HelpButton({
 }: Props) {
   const { theme } = useAppTheme();
   const isElevated = variant === 'elevated';
-  const color =
-    iconColor ?? (isElevated ? theme.colors.text : theme.colors.mutedText);
+  const color = iconColor ?? (isElevated ? theme.colors.text : theme.colors.mutedText);
 
   const pathname = usePathname();
   const onPress = () => {
@@ -41,13 +40,7 @@ export function HelpButton({
     });
   };
 
-  const icon = (
-    <Ionicons
-      name="help-circle-outline"
-      size={isElevated ? 20 : 22}
-      color={color}
-    />
-  );
+  const icon = <Ionicons name="help-circle-outline" size={isElevated ? 20 : 22} color={color} />;
 
   if (isElevated) {
     return (

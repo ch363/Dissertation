@@ -1,21 +1,30 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback } from 'react';
-import { FlatList, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  FlatList,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { LoadingRow, TappableCard } from '@/components/ui';
-import { useAppTheme } from '@/services/theme/ThemeProvider';
-import { theme as baseTheme } from '@/services/theme/tokens';
-import { getLessons, getLessonTeachings, type Lesson } from '@/services/api/modules';
-import { getUserLessons, type UserLessonProgress } from '@/services/api/progress';
 import { LessonMicroProgress } from '@/components/learn';
+import { LoadingRow, TappableCard } from '@/components/ui';
 import { buildLessonOutcome } from '@/features/learn/utils/lessonOutcome';
 import { useAsyncData } from '@/hooks/useAsyncData';
+import { getLessons, getLessonTeachings, type Lesson } from '@/services/api/modules';
+import { getUserLessons, type UserLessonProgress } from '@/services/api/progress';
+import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { theme as baseTheme } from '@/services/theme/tokens';
 
 type LessonFilter = 'all' | 'not_started' | 'in_progress' | 'completed';
 
-const FILTER_OPTIONS: Array<{ value: LessonFilter; label: string }> = [
+const FILTER_OPTIONS: { value: LessonFilter; label: string }[] = [
   { value: 'all', label: 'All lessons' },
   { value: 'not_started', label: 'Not started' },
   { value: 'in_progress', label: 'In progress' },
@@ -50,43 +59,46 @@ export default function LessonListScreen() {
       ]);
       return { lessons: lessonsData, userProgress: progressData };
     },
-    []
+    [],
   );
 
   const lessons = data?.lessons ?? [];
   const userProgress = data?.userProgress ?? [];
 
-  const preloadLessonOutcomes = useCallback(async (lessonsData: Lesson[]) => {
-    const missing = lessonsData
-      .map((l) => l.id)
-      .filter((id) => !lessonOutcomes[id] && !outcomeRequestsRef.current.has(id))
-      .slice(0, 25);
+  const preloadLessonOutcomes = useCallback(
+    async (lessonsData: Lesson[]) => {
+      const missing = lessonsData
+        .map((l) => l.id)
+        .filter((id) => !lessonOutcomes[id] && !outcomeRequestsRef.current.has(id))
+        .slice(0, 25);
 
-    if (missing.length === 0) return;
+      if (missing.length === 0) return;
 
-    missing.forEach((id) => outcomeRequestsRef.current.add(id));
+      missing.forEach((id) => outcomeRequestsRef.current.add(id));
 
-    const results = await Promise.allSettled(
-      missing.map(async (lessonId) => {
-        const teachings = await getLessonTeachings(lessonId).catch(() => []);
-        const outcome = buildLessonOutcome(teachings);
-        return outcome ? { lessonId, outcome } : null;
-      }),
-    );
+      const results = await Promise.allSettled(
+        missing.map(async (lessonId) => {
+          const teachings = await getLessonTeachings(lessonId).catch(() => []);
+          const outcome = buildLessonOutcome(teachings);
+          return outcome ? { lessonId, outcome } : null;
+        }),
+      );
 
-    setLessonOutcomes((prev) => {
-      const next = { ...prev };
-      for (const r of results) {
-        if (r.status !== 'fulfilled') continue;
-        const v = r.value;
-        if (!v) continue;
-        next[v.lessonId] = v.outcome;
-      }
-      return next;
-    });
+      setLessonOutcomes((prev) => {
+        const next = { ...prev };
+        for (const r of results) {
+          if (r.status !== 'fulfilled') continue;
+          const v = r.value;
+          if (!v) continue;
+          next[v.lessonId] = v.outcome;
+        }
+        return next;
+      });
 
-    missing.forEach((id) => outcomeRequestsRef.current.delete(id));
-  }, [lessonOutcomes]);
+      missing.forEach((id) => outcomeRequestsRef.current.delete(id));
+    },
+    [lessonOutcomes],
+  );
 
   React.useEffect(() => {
     if (lessons.length > 0) {
@@ -97,7 +109,7 @@ export default function LessonListScreen() {
   useFocusEffect(
     useCallback(() => {
       reload();
-    }, [reload])
+    }, [reload]),
   );
 
   const progressByLessonId = React.useMemo(() => {
@@ -140,7 +152,13 @@ export default function LessonListScreen() {
       <View style={styles.progressRow} accessibilityLabel="Lesson progress">
         <LessonMicroProgress completed={completed} total={total} />
         {isCompleted ? (
-          <Ionicons name="checkmark-circle" size={16} color={theme.colors.secondary} accessible={false} importantForAccessibility="no" />
+          <Ionicons
+            name="checkmark-circle"
+            size={16}
+            color={theme.colors.secondary}
+            accessible={false}
+            importantForAccessibility="no"
+          />
         ) : null}
       </View>
     );
@@ -182,7 +200,9 @@ export default function LessonListScreen() {
         />
       </View>
       <View style={styles.controls}>
-        <Text style={[styles.pathwayLabel, { color: theme.colors.mutedText }]}>CEFR A1 pathway</Text>
+        <Text style={[styles.pathwayLabel, { color: theme.colors.mutedText }]}>
+          CEFR A1 pathway
+        </Text>
         <View
           style={[
             styles.searchBar,
@@ -190,11 +210,19 @@ export default function LessonListScreen() {
               backgroundColor: hasActiveSearch
                 ? `${theme.colors.primary}${isDark ? '18' : '0A'}`
                 : theme.colors.card,
-              borderColor: hasActiveSearch ? `${theme.colors.primary}${isDark ? '55' : '33'}` : theme.colors.border,
+              borderColor: hasActiveSearch
+                ? `${theme.colors.primary}${isDark ? '55' : '33'}`
+                : theme.colors.border,
             },
           ]}
         >
-          <Ionicons name="search" size={16} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
+          <Ionicons
+            name="search"
+            size={16}
+            color={theme.colors.mutedText}
+            accessible={false}
+            importantForAccessibility="no"
+          />
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -215,7 +243,13 @@ export default function LessonListScreen() {
               hitSlop={10}
               style={styles.iconButton}
             >
-              <Ionicons name="close-circle" size={18} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
+              <Ionicons
+                name="close-circle"
+                size={18}
+                color={theme.colors.mutedText}
+                accessible={false}
+                importantForAccessibility="no"
+              />
             </Pressable>
           ) : null}
         </View>
@@ -231,7 +265,9 @@ export default function LessonListScreen() {
                 backgroundColor: hasActiveFilter
                   ? `${theme.colors.primary}${isDark ? '18' : '0A'}`
                   : theme.colors.card,
-                borderColor: hasActiveFilter ? `${theme.colors.primary}${isDark ? '55' : '33'}` : theme.colors.border,
+                borderColor: hasActiveFilter
+                  ? `${theme.colors.primary}${isDark ? '55' : '33'}`
+                  : theme.colors.border,
                 opacity: pressed ? 0.9 : 1,
               },
             ]}
@@ -246,7 +282,13 @@ export default function LessonListScreen() {
             <Text style={[styles.filterLabel, { color: theme.colors.text }]} numberOfLines={1}>
               {filterLabel}
             </Text>
-            <Ionicons name="chevron-down" size={14} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
+            <Ionicons
+              name="chevron-down"
+              size={14}
+              color={theme.colors.mutedText}
+              accessible={false}
+              importantForAccessibility="no"
+            />
           </Pressable>
 
           <Text style={[styles.countText, { color: theme.colors.mutedText }]} numberOfLines={1}>
@@ -274,7 +316,9 @@ export default function LessonListScreen() {
           }}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>No lessons found</Text>
+              <Text style={[styles.emptyTitle, { color: theme.colors.text }]}>
+                No lessons found
+              </Text>
               <Text style={[styles.emptySubtitle, { color: theme.colors.mutedText }]}>
                 Try a different search or filter.
               </Text>
@@ -330,9 +374,17 @@ export default function LessonListScreen() {
                     },
                   ]}
                 >
-                  <Text style={[styles.modalOptionText, { color: theme.colors.text }]}>{opt.label}</Text>
+                  <Text style={[styles.modalOptionText, { color: theme.colors.text }]}>
+                    {opt.label}
+                  </Text>
                   {selected ? (
-                    <Ionicons name="checkmark" size={18} color={theme.colors.primary} accessible={false} importantForAccessibility="no" />
+                    <Ionicons
+                      name="checkmark"
+                      size={18}
+                      color={theme.colors.primary}
+                      accessible={false}
+                      importantForAccessibility="no"
+                    />
                   ) : null}
                 </Pressable>
               );

@@ -37,7 +37,9 @@ export function LessonMicroProgress({ completed, total }: LessonMicroProgressPro
   const { theme } = useAppTheme();
 
   const safeTotal = Number.isFinite(total) ? Math.max(0, total) : 0;
-  const safeCompleted = Number.isFinite(completed) ? clamp(completed, 0, safeTotal || completed) : 0;
+  const safeCompleted = Number.isFinite(completed)
+    ? clamp(completed, 0, safeTotal || completed)
+    : 0;
 
   const status = getStatus(safeCompleted, safeTotal);
   const label = getLabel(status);
@@ -96,7 +98,10 @@ export function LessonMicroProgress({ completed, total }: LessonMicroProgressPro
               <View
                 style={[
                   styles.barFill,
-                  { width: `${Math.round(fraction * 100)}%`, backgroundColor: theme.colors.primary },
+                  {
+                    width: `${Math.round(fraction * 100)}%`,
+                    backgroundColor: theme.colors.primary,
+                  },
                 ]}
               />
             </View>
@@ -149,4 +154,3 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 });
-

@@ -58,13 +58,16 @@ export function getCardId(card: Card): string {
   return 'unknown';
 }
 
-export function canSubmitCard(card: Card, state: {
-  selectedOptionId?: string;
-  selectedAnswer?: string;
-  userAnswer?: string;
-  pronunciationResult?: unknown;
-  flashcardRating?: number;
-}): boolean {
+export function canSubmitCard(
+  card: Card,
+  state: {
+    selectedOptionId?: string;
+    selectedAnswer?: string;
+    userAnswer?: string;
+    pronunciationResult?: unknown;
+    flashcardRating?: number;
+  },
+): boolean {
   if (isTeachCard(card)) return true;
 
   if (isMCQCard(card)) return !!state.selectedOptionId;

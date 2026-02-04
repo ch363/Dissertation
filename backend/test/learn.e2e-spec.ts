@@ -6,7 +6,7 @@ import { PrismaService } from '../src/prisma/prisma.service';
 
 describe('Learn (e2e)', () => {
   let app: INestApplication;
-  let prisma: PrismaService;
+  let _prisma: PrismaService;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -24,7 +24,7 @@ describe('Learn (e2e)', () => {
       }),
     );
 
-    prisma = moduleFixture.get<PrismaService>(PrismaService);
+    _prisma = moduleFixture.get<PrismaService>(PrismaService);
 
     await app.init();
   });

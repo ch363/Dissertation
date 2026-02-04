@@ -1,6 +1,6 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -41,10 +41,13 @@ export function ProgressBar({
 }: Props) {
   const { theme } = useAppTheme();
   const pct = Math.max(0, Math.min(1, progress));
-  const safeXpPerLevel = Number.isFinite(xpPerLevel) && (xpPerLevel as number) > 0 ? (xpPerLevel as number) : 100;
+  const safeXpPerLevel =
+    Number.isFinite(xpPerLevel) && (xpPerLevel as number) > 0 ? (xpPerLevel as number) : 100;
   const safeCurrentXp = Number.isFinite(currentXP) ? (currentXP as number) : null;
   const xpInLevel =
-    safeCurrentXp === null ? null : ((safeCurrentXp % safeXpPerLevel) + safeXpPerLevel) % safeXpPerLevel;
+    safeCurrentXp === null
+      ? null
+      : ((safeCurrentXp % safeXpPerLevel) + safeXpPerLevel) % safeXpPerLevel;
   const xpRemaining = safeXpPerLevel - (xpInLevel ?? 0);
   const progressPercent = Math.round(pct * 100);
   const nextLevel = currentLevel !== undefined ? currentLevel + 1 : undefined;
@@ -83,31 +86,49 @@ export function ProgressBar({
             style={[styles.fill, { width: `${pct * 100}%` }]}
           />
         ) : (
-          <View style={[styles.fill, { width: `${pct * 100}%`, backgroundColor: theme.colors.primary }]} />
+          <View
+            style={[styles.fill, { width: `${pct * 100}%`, backgroundColor: theme.colors.primary }]}
+          />
         )}
       </View>
       {showHeading && xpInLevel !== null && (
         <View style={styles.xpRow}>
           <View style={styles.xpLeft}>
             <Text style={[styles.xpCurrent, { color: theme.colors.text }]}>{xpInLevel} XP</Text>
-            <Text style={[styles.xpPercent, { color: theme.colors.primary }]}>{progressPercent}%</Text>
+            <Text style={[styles.xpPercent, { color: theme.colors.primary }]}>
+              {progressPercent}%
+            </Text>
           </View>
-          <Text style={[styles.xpTotal, { color: theme.colors.mutedText }]}>{safeXpPerLevel} XP</Text>
+          <Text style={[styles.xpTotal, { color: theme.colors.mutedText }]}>
+            {safeXpPerLevel} XP
+          </Text>
         </View>
       )}
       {milestones && (
         <View style={[styles.milestonesRow, { borderTopColor: theme.colors.border }]}>
           <View style={styles.milestoneItem}>
-            <Text style={[styles.milestoneValue, { color: theme.colors.text }]}>{milestones.dailyGoalValue}</Text>
-            <Text style={[styles.milestoneLabel, { color: theme.colors.mutedText }]}>{milestones.dailyGoalLabel}</Text>
+            <Text style={[styles.milestoneValue, { color: theme.colors.text }]}>
+              {milestones.dailyGoalValue}
+            </Text>
+            <Text style={[styles.milestoneLabel, { color: theme.colors.mutedText }]}>
+              {milestones.dailyGoalLabel}
+            </Text>
           </View>
           <View style={styles.milestoneItem}>
-            <Text style={[styles.milestoneValue, { color: theme.colors.text }]}>{milestones.thisWeekValue}</Text>
-            <Text style={[styles.milestoneLabel, { color: theme.colors.mutedText }]}>{milestones.thisWeekLabel}</Text>
+            <Text style={[styles.milestoneValue, { color: theme.colors.text }]}>
+              {milestones.thisWeekValue}
+            </Text>
+            <Text style={[styles.milestoneLabel, { color: theme.colors.mutedText }]}>
+              {milestones.thisWeekLabel}
+            </Text>
           </View>
           <View style={styles.milestoneItem}>
-            <Text style={[styles.milestoneValue, { color: theme.colors.text }]}>{milestones.nextMilestoneValue}</Text>
-            <Text style={[styles.milestoneLabel, { color: theme.colors.mutedText }]}>{milestones.nextMilestoneLabel}</Text>
+            <Text style={[styles.milestoneValue, { color: theme.colors.text }]}>
+              {milestones.nextMilestoneValue}
+            </Text>
+            <Text style={[styles.milestoneLabel, { color: theme.colors.mutedText }]}>
+              {milestones.nextMilestoneLabel}
+            </Text>
           </View>
         </View>
       )}

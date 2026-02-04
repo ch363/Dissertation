@@ -38,14 +38,18 @@ export function selectHomeNextAction(args: {
     return {
       kind: 'review',
       dueReviewCount,
-      statusMessage: dueReviewCount === 1 ? 'You have review due today' : `You have ${dueReviewCount} reviews due today`,
+      statusMessage:
+        dueReviewCount === 1
+          ? 'You have review due today'
+          : `You have ${dueReviewCount} reviews due today`,
     };
   }
 
   const recent = args.recentActivity?.recentLesson ?? null;
   if (recent?.lesson?.id) {
     const totalTeachings = recent.totalTeachings ?? (recent.completedTeachings || 1);
-    const isIncomplete = typeof recent.completedTeachings === 'number' && recent.completedTeachings < totalTeachings;
+    const isIncomplete =
+      typeof recent.completedTeachings === 'number' && recent.completedTeachings < totalTeachings;
     if (isIncomplete) {
       const remainingTeachings = Math.max(0, totalTeachings - recent.completedTeachings);
       const minutesAway = Math.max(1, Math.ceil(remainingTeachings * 2));
@@ -80,4 +84,3 @@ export function selectHomeNextAction(args: {
     statusMessage: 'You’re all caught up. Want to start something new?',
   };
 }
-
