@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -47,6 +47,7 @@ function filterModulesBySearch(modules: Module[], query: string): Module[] {
 
 export default function CourseIndex() {
   const { theme } = useAppTheme();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
 
@@ -89,8 +90,14 @@ export default function CourseIndex() {
   );
 
   const handleBack = useCallback(() => {
-    router.back();
-  }, []);
+    if (returnTo) {
+      router.replace(returnTo);
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/learn');
+    }
+  }, [returnTo]);
 
   const showEmpty =
     (modules?.length ?? 0) === 0 ||
@@ -177,7 +184,10 @@ export default function CourseIndex() {
                     title={module.title}
                     description={module.description ?? ''}
                     imageUrl={module.imageUrl ?? ''}
-                    onPress={() => router.push(`/course/${module.id}`)}
+                    onPress={() => router.push({
+                      pathname: `/course/${module.id}`,
+                      params: { returnTo: returnTo ?? '/(tabs)/learn' },
+                    })}
                     accessibilityLabel={`${module.title}. ${module.description ?? ''}. Opens course.`}
                     style={styles.cardSpacing}
                   />
@@ -232,11 +242,11 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: baseTheme.spacing.lg,
-    paddingTop: baseTheme.spacing.lg,
+    paddingTop: baseTheme.spacing.md,
     paddingBottom: baseTheme.spacing.xl * 2,
   },
   section: {
-    marginBottom: baseTheme.spacing.xl,
+    marginBottom: baseTheme.spacing.md,
   },
   cardList: {
     marginBottom: 0,

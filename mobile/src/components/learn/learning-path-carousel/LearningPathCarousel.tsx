@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScrollView } from '@/components/ui';
 
@@ -8,57 +9,62 @@ import type { LearningPathItem } from '@/features/learn/utils/buildLearningPathI
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
-const SKELETON_PLACEHOLDER = '#E8ECF2';
+import { getModuleIllustrationSource } from './moduleIllustrations';
 
-function ModuleCoverImage({ uri }: { uri: string }) {
-  const [loaded, setLoaded] = useState(false);
-  const pulse = useRef(new Animated.Value(0.4)).current;
-  const imageOpacity = useRef(new Animated.Value(0)).current;
+/** Shorter strip: fixed height so illustrations are compact and consistent. */
+const ILLUSTRATION_HEIGHT = 80;
+const CARD_WIDTH = 300;
+/** Fixed card height so all cards align; illustration + content area match across cards. */
+const CARD_HEIGHT = 330;
 
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          toValue: 0.75,
-          duration: 700,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulse, {
-          toValue: 0.4,
-          duration: 700,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [pulse]);
+/** Picks a consistent icon for the module (fallback when image fails or no source). */
+function getModuleIcon(title: string): keyof typeof Ionicons.glyphMap {
+  const t = title.toLowerCase();
+  if (t.includes('travel')) return 'airplane';
+  if (t.includes('food') || t.includes('restaurant')) return 'restaurant';
+  if (t.includes('family')) return 'people';
+  if (t.includes('work') || t.includes('business')) return 'briefcase';
+  if (t.includes('shopping')) return 'cart';
+  if (t.includes('weather')) return 'sunny';
+  if (t.includes('basics') || t.includes('phrase') || t.includes('grammar')) return 'book';
+  return 'school';
+}
 
-  const onLoad = () => {
-    setLoaded(true);
-    Animated.timing(imageOpacity, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  };
+function ModuleIllustration({
+  title,
+  iconColor,
+  backgroundColor,
+}: {
+  title: string;
+  iconColor: string;
+  backgroundColor: string;
+}) {
+  const icon = getModuleIcon(title);
+  const imageSource = getModuleIllustrationSource(title);
+  const [imageError, setImageError] = useState(false);
+  const showImage = Boolean(imageSource && !imageError);
 
   return (
-    <View style={styles.imageContainer}>
-      {!loaded && (
-        <Animated.View
-          style={[StyleSheet.absoluteFill, { backgroundColor: SKELETON_PLACEHOLDER, opacity: pulse }]}
+    <View style={[styles.illustrationStrip, { backgroundColor }]}>
+      {showImage && imageSource ? (
+        <Image
+          source={imageSource}
+          style={styles.illustrationImage}
+          resizeMode="cover"
+          onError={() => setImageError(true)}
+          accessible
+          accessibilityLabel={`Illustration for ${title}`}
         />
+      ) : (
+        <Ionicons name={icon} size={36} color={iconColor} />
       )}
-      <Animated.View style={[StyleSheet.absoluteFill, styles.image, { opacity: imageOpacity }]}>
-        <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" onLoadEnd={onLoad} />
-      </Animated.View>
     </View>
   );
 }
 
 type Props = {
   items: LearningPathItem[];
+  suggestedModuleId?: string | null;
   onPressItem: (route: string) => void;
 };
 
@@ -71,14 +77,20 @@ function getNextIndex(items: LearningPathItem[]): number {
   );
 }
 
-export function LearningPathCarousel({ items, onPressItem }: Props) {
+const HEADER_PADDING_H = 20;
+
+export function LearningPathCarousel({ items, suggestedModuleId, onPressItem }: Props) {
   const { theme } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const nextIndex = getNextIndex(items);
-  const activeCount = items.filter(i => i.status === 'active').length;
+  const headerPadding = {
+    paddingLeft: HEADER_PADDING_H + insets.left,
+    paddingRight: HEADER_PADDING_H + insets.right,
+  };
 
   return (
     <View style={styles.section}>
-      <View style={styles.sectionHeader}>
+      <View style={[styles.sectionHeader, headerPadding]}>
         <View style={styles.headerContent}>
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Learning Path</Text>
         </View>
@@ -92,11 +104,13 @@ export function LearningPathCarousel({ items, onPressItem }: Props) {
         contentContainerStyle={{
           gap: baseTheme.spacing.sm,
           paddingBottom: 6,
+          paddingLeft: HEADER_PADDING_H + insets.left,
         }}
       >
         {items.map((item, index) => {
           const isLocked = item.status === 'locked';
           const isNext = index === nextIndex;
+          const isSuggested = suggestedModuleId != null && item.id === suggestedModuleId && !isNext;
           const totalLessons = item.totalLessons ?? 0;
           const completedLessons = item.completedLessons ?? 0;
           const progressPercent = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0;
@@ -109,12 +123,11 @@ export function LearningPathCarousel({ items, onPressItem }: Props) {
               disabled={isLocked}
               accessibilityRole="button"
               accessibilityLabel={
-                isLocked ? `${item.title}, locked` : isNext ? `Next: ${item.title}, ${nextUpMinutes} minutes` : item.title
+                isLocked ? `${item.title}, locked` : isNext ? `Next: ${item.title}, ${nextUpMinutes} minutes` : isSuggested ? `Suggested for you: ${item.title}` : item.title
               }
               accessibilityHint={isLocked ? undefined : 'Double tap to open module'}
               style={({ pressed }) => [
                 styles.card,
-                isNext && styles.cardNext,
                 {
                   backgroundColor: theme.colors.card,
                   shadowColor: '#000',
@@ -128,86 +141,124 @@ export function LearningPathCarousel({ items, onPressItem }: Props) {
                     borderColor: theme.colors.primary + '40',
                     borderWidth: 1.5,
                   }),
+                  ...(isSuggested && {
+                    shadowOpacity: 0.1,
+                    shadowRadius: 10,
+                    shadowOffset: { width: 0, height: 3 },
+                    elevation: 3,
+                    borderColor: theme.colors.primary + '30',
+                    borderWidth: 1.5,
+                  }),
                 },
               ]}
             >
-              {item.imageUrl ? (
-                <ModuleCoverImage uri={item.imageUrl} />
-              ) : null}
+              <ModuleIllustration
+                title={item.title}
+                iconColor={theme.colors.primary}
+                backgroundColor={theme.colors.primary + '14'}
+              />
               <View style={styles.cardContent}>
-                {isNext && (
-                  <Text style={[styles.nextUpLabel, { color: theme.colors.primary }]} numberOfLines={1}>
-                    Next lesson: {item.title} ({nextUpMinutes} min)
-                  </Text>
-                )}
-                {item.category && (
-                  <Text style={[styles.category, { color: theme.colors.mutedText }]} numberOfLines={1}>
-                    {item.category}
-                  </Text>
-                )}
-                <View style={styles.cardHeader}>
-                  <Text
-                    style={[styles.cardTitle, { color: theme.colors.text }]}
-                    numberOfLines={2}
-                    ellipsizeMode="tail"
-                  >
-                    {item.title}
-                  </Text>
+                <View style={styles.rowNext}>
                   {isNext ? (
-                    <View style={[styles.nextBadge, { backgroundColor: theme.colors.primary }]}>
-                      <Text style={[styles.nextBadgeText, { color: theme.colors.onPrimary }]}>Next</Text>
-                    </View>
-                  ) : isLocked ? (
-                    <Ionicons name="lock-closed" size={16} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
+                    <Text style={[styles.nextUpLabel, { color: theme.colors.primary }]} numberOfLines={1}>
+                      Next lesson: {item.title} ({nextUpMinutes} min)
+                    </Text>
+                  ) : isSuggested ? (
+                    <Text style={[styles.suggestedLabel, { color: theme.colors.primary }]} numberOfLines={1}>
+                      Suggested for you
+                    </Text>
                   ) : null}
                 </View>
-                
-                {item.status === 'active' && totalLessons > 0 ? (
-                  <View style={styles.progressGroup} accessibilityLabel={`Progress: ${completedLessons} of ${totalLessons} lessons completed, ${Math.round(progressPercent)}%`}>
-                    <View style={styles.progressRow}>
-                      <Text style={[styles.progressText, { color: theme.colors.mutedText }]}>
-                        {completedLessons}/{totalLessons} completed
-                      </Text>
-                      <Text style={[styles.progressPercent, { color: theme.colors.mutedText }]}>
-                        {Math.round(progressPercent)}%
-                      </Text>
-                    </View>
-                    <View style={[styles.progressBar, { backgroundColor: `${theme.colors.border}80` }]}>
-                      <View
-                        style={[
-                          styles.progressFill,
-                          {
-                            backgroundColor: theme.colors.primary,
-                            width: `${progressPercent}%`,
-                          },
-                        ]}
-                      />
-                    </View>
-                  </View>
-                ) : null}
-
-                {item.status === 'active' && item.ctaLabel ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={isNext ? `${item.ctaLabel}, ${item.title}` : item.ctaLabel}
-                    onPress={() => onPressItem(item.route)}
-                    style={({ pressed }) => [
-                      styles.ctaButton,
-                      {
-                        backgroundColor: theme.colors.primary,
-                        opacity: pressed ? 0.8 : 1,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.ctaLabel, { color: theme.colors.onPrimary }]}>
-                      {item.ctaLabel}
+                <View style={styles.rowCategory}>
+                  {item.category ? (
+                    <Text style={[styles.category, { color: theme.colors.mutedText }]} numberOfLines={1}>
+                      {item.category}
                     </Text>
-                  </Pressable>
-                ) : isLocked ? (
-                  <View style={[styles.lockedButton, { backgroundColor: theme.colors.border }]}>
-                    <Text style={[styles.lockedLabel, { color: theme.colors.mutedText }]}>Locked</Text>
+                  ) : null}
+                </View>
+                <View style={styles.rowTitle}>
+                  <View style={styles.cardHeader}>
+                    <Text
+                      style={[styles.cardTitle, { color: theme.colors.text }]}
+                      numberOfLines={2}
+                      ellipsizeMode="tail"
+                    >
+                      {item.title}
+                    </Text>
+                    {isLocked ? (
+                      <Ionicons name="lock-closed" size={16} color={theme.colors.mutedText} accessible={false} importantForAccessibility="no" />
+                    ) : null}
                   </View>
-                ) : null}
+                </View>
+                <View style={styles.rowProgress}>
+                  {item.status === 'active' && totalLessons > 0 ? (
+                    <View style={styles.progressGroup} accessibilityLabel={`Progress: ${completedLessons} of ${totalLessons} lessons completed, ${Math.round(progressPercent)}%`}>
+                      <View style={styles.progressRow}>
+                        <Text style={[styles.progressText, { color: theme.colors.mutedText }]}>
+                          {completedLessons}/{totalLessons} completed
+                        </Text>
+                        <Text style={[styles.progressPercent, { color: theme.colors.mutedText }]}>
+                          {Math.round(progressPercent)}%
+                        </Text>
+                      </View>
+                      <View style={[styles.progressBar, { backgroundColor: `${theme.colors.border}80` }]}>
+                        <View
+                          style={[
+                            styles.progressFill,
+                            {
+                              backgroundColor: theme.colors.primary,
+                              width: `${progressPercent}%`,
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={styles.progressGroup}>
+                      <View style={styles.progressRow}>
+                        <Text style={[styles.progressText, { color: theme.colors.mutedText }]}>
+                          {totalLessons > 0 ? `${completedLessons}/${totalLessons} completed` : '0 completed'}
+                        </Text>
+                        <Text style={[styles.progressPercent, { color: theme.colors.mutedText }]}>
+                          {totalLessons > 0 ? `${Math.round(progressPercent)}%` : '—'}
+                        </Text>
+                      </View>
+                      <View style={[styles.progressBar, { backgroundColor: `${theme.colors.border}80` }]}>
+                        <View
+                          style={[
+                            styles.progressFill,
+                            { backgroundColor: theme.colors.primary, width: `${progressPercent}%` },
+                          ]}
+                        />
+                      </View>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.rowSpacer} />
+                <View style={styles.rowButton}>
+                  {item.status === 'active' && item.ctaLabel ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={isNext ? `${item.ctaLabel}, ${item.title}` : item.ctaLabel}
+                      onPress={() => onPressItem(item.route)}
+                      style={({ pressed }) => [
+                        styles.ctaButton,
+                        {
+                          backgroundColor: theme.colors.primary,
+                          opacity: pressed ? 0.8 : 1,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.ctaLabel, { color: theme.colors.onPrimary }]}>
+                        {item.ctaLabel}
+                      </Text>
+                    </Pressable>
+                  ) : isLocked ? (
+                    <View style={[styles.lockedButton, { backgroundColor: theme.colors.border }]}>
+                      <Text style={[styles.lockedLabel, { color: theme.colors.mutedText }]}>Locked</Text>
+                    </View>
+                  ) : null}
+                </View>
               </View>
             </Pressable>
           );
@@ -219,11 +270,11 @@ export function LearningPathCarousel({ items, onPressItem }: Props) {
 
 const styles = StyleSheet.create({
   section: {
-    marginTop: 16,
-    gap: 12,
+    marginTop: 14,
+    gap: 10,
   },
   sectionHeader: {
-    gap: 6,
+    gap: 4,
   },
   headerContent: {
     flexDirection: 'row',
@@ -268,7 +319,8 @@ const styles = StyleSheet.create({
     fontFamily: baseTheme.typography.bold,
   },
   card: {
-    width: 300,
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
     borderRadius: 24,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -279,33 +331,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#F1F5F9',
   },
-  cardNext: {
-    width: 316,
-    marginHorizontal: -2,
-  },
   nextUpLabel: {
     fontFamily: baseTheme.typography.semiBold,
     fontSize: 13,
     letterSpacing: 0.2,
   },
-  nextBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+  suggestedLabel: {
+    fontFamily: baseTheme.typography.semiBold,
+    fontSize: 13,
+    letterSpacing: 0.2,
   },
-  nextBadgeText: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 11,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-  },
-  imageContainer: {
+  illustrationStrip: {
     width: '100%',
-    aspectRatio: 16 / 9,
-    backgroundColor: '#f0f0f0',
-    position: 'relative',
+    height: ILLUSTRATION_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
-  image: {
+  illustrationImage: {
     width: '100%',
     height: '100%',
   },
@@ -323,8 +366,32 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardContent: {
-    padding: 20,
-    gap: 8,
+    flex: 1,
+    padding: 14,
+    gap: 3,
+  },
+  rowNext: {
+    minHeight: 16,
+    justifyContent: 'center',
+  },
+  rowCategory: {
+    minHeight: 16,
+    justifyContent: 'center',
+  },
+  rowTitle: {
+    minHeight: 34,
+    justifyContent: 'center',
+  },
+  rowProgress: {
+    minHeight: 40,
+    justifyContent: 'center',
+  },
+  rowSpacer: {
+    flex: 1,
+  },
+  rowButton: {
+    minHeight: 40,
+    justifyContent: 'flex-end',
   },
   category: {
     fontFamily: baseTheme.typography.medium,
@@ -345,8 +412,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   progressGroup: {
-    gap: 8,
-    marginTop: 8,
+    gap: 3,
   },
   progressRow: {
     flexDirection: 'row',
@@ -372,9 +438,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   ctaButton: {
-    marginTop: 16,
     borderRadius: 16,
-    paddingVertical: 14,
+    paddingVertical: 10,
     alignItems: 'center',
   },
   ctaLabel: {
@@ -383,9 +448,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   lockedButton: {
-    marginTop: 16,
     borderRadius: 16,
-    paddingVertical: 14,
+    paddingVertical: 10,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',

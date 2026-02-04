@@ -53,6 +53,8 @@ interface BackendPracticeItem {
   sourceText?: string; // For translation MCQ
   translation?: string; // For TEXT_TO_SPEECH
   explanation?: string;
+  emoji?: string; // For FLASHCARD – match teach card
+  tip?: string; // For FLASHCARD – usage note
 }
 
 interface BackendRecapItem {
@@ -224,6 +226,8 @@ export function transformSessionPlan(
             hint: item.hint,
             audioUrl: item.audioUrl,
             isFlashcard: true,
+            emoji: item.emoji,
+            usageNote: item.tip,
           });
         } else {
           logger.warn('FLASHCARD question missing source or answer', {

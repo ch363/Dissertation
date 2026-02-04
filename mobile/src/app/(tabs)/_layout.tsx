@@ -19,13 +19,16 @@ function CustomTabBar({ state, descriptors, navigation }: CustomTabBarProps) {
   const focusedKey = state.routes?.[state.index]?.key;
   const currentRouteName = state.routes?.[state.index]?.name ?? '';
 
-  // Hide tab bar on Review screen (full-screen experience).
-  const currentTab = state.routes?.[state.index];
-  const nestedState = currentTab?.state as { routes?: { name: string }[]; index?: number } | undefined;
-  const nestedRouteName = nestedState?.routes?.[nestedState?.index ?? 0]?.name;
-  const isOnReviewScreen =
-    (currentRouteName === 'learn' || currentRouteName === 'learn/index') && nestedRouteName === 'review';
-  if (isOnReviewScreen) return null;
+  // Hide tab bar on sub-screens (only show on main tabs)
+  // Also check if we're on a nested screen within a stack (e.g., learn/list, profile/edit)
+  const currentRoute = state.routes[state.index];
+  const isOnMainTab = allowed.has(currentRouteName);
+  const isOnNestedScreen = currentRoute?.state?.index !== undefined && currentRoute.state.index > 0;
+  
+  const shouldShowTabBar = isOnMainTab && !isOnNestedScreen;
+  if (!shouldShowTabBar) {
+    return null;
+  }
 
   const targetPathForRouteName = (routeName: string) => {
     // Use /learn (no /index) so the learn stack shows its index screen. Using /learn/index

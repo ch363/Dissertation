@@ -199,19 +199,4 @@ describe('LearnService', () => {
       );
     });
   });
-
-  describe('getReviewSummary', () => {
-    it('should return due count from ProgressService and a subtitle', async () => {
-      const userId = 'user-1';
-      mockProgressService.getDueReviewCount.mockResolvedValue(2);
-
-      const summary = await service.getReviewSummary(userId);
-
-      expect(mockProgressService.getDueReviewCount).toHaveBeenCalledWith(userId);
-      expect(summary.dueCount).toBe(2);
-      expect(summary.progress).toBeGreaterThanOrEqual(0);
-      expect(summary.progress).toBeLessThanOrEqual(1);
-      expect(summary.subtitle).toContain('2 items');
-    });
-  });
 });

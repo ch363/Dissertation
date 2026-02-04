@@ -493,6 +493,8 @@ export class SessionPlanService {
             id: true,
             userLanguageString: true,
             learningLanguageString: true,
+            emoji: true,
+            tip: true,
           },
         },
       },
@@ -595,6 +597,10 @@ export class SessionPlanService {
           baseItem.source = questionData.source;
           baseItem.answer = questionData.answer;
           baseItem.hint = questionData.hint;
+          if (question.teaching) {
+            baseItem.emoji = question.teaching.emoji ?? undefined;
+            baseItem.tip = question.teaching.tip ?? undefined;
+          }
         } else if (
           deliveryMethod === DELIVERY_METHOD.SPEECH_TO_TEXT ||
           deliveryMethod === DELIVERY_METHOD.TEXT_TO_SPEECH

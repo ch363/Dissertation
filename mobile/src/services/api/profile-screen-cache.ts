@@ -1,4 +1,4 @@
-import { getMyProfile, getDashboard, getRecentActivity } from './profile';
+import { getMyProfile, getDashboard } from './profile';
 import { getProgressSummary } from './progress';
 import { getAllMastery } from './mastery';
 import { createLogger } from '@/services/logging';
@@ -9,7 +9,6 @@ const logger = createLogger('ProfileScreenCache');
 export interface ProfileScreenCacheData {
   profile: Awaited<ReturnType<typeof getMyProfile>>;
   dashboard: Awaited<ReturnType<typeof getDashboard>>;
-  recentActivity: Awaited<ReturnType<typeof getRecentActivity>>;
   progress: Awaited<ReturnType<typeof getProgressSummary>>;
   mastery: Awaited<ReturnType<typeof getAllMastery>>;
 }
@@ -18,7 +17,7 @@ const cache = new CacheManager<ProfileScreenCacheData>(5 * 60 * 1000);
 
 export async function preloadProfileScreenData(profileId: string | null): Promise<void> {
   try {
-    const [profile, dashboard, recentActivity, mastery] = await Promise.all([
+    const [profile, dashboard, mastery] = await Promise.all([
       getMyProfile().catch(() => null),
       getDashboard().catch(() => ({
         streak: 0,
@@ -33,7 +32,6 @@ export async function preloadProfileScreenData(profileId: string | null): Promis
         grammaticalAccuracyByDeliveryMethod: {},
         studyTimeMinutes: 0,
       })),
-      getRecentActivity().catch(() => null),
       getAllMastery().catch(() => []),
     ]);
 
@@ -50,7 +48,6 @@ export async function preloadProfileScreenData(profileId: string | null): Promis
     cache.set('profile-screen', {
       profile,
       dashboard,
-      recentActivity,
       progress,
       mastery,
     });

@@ -30,6 +30,9 @@ export interface PracticeStepItem {
   source?: string;
   sourceText?: string;
   translation?: string;
+  /** Teaching emoji/tip for FLASHCARD so frontend can match teach card styling */
+  emoji?: string;
+  tip?: string;
 }
 
 export interface RecapStepItem {

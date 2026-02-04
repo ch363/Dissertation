@@ -20,6 +20,7 @@ export class ContentLookupService {
     return hash % 2 === 0;
   }
 
+  // Detects if text is likely Italian based on accent characters or common Italian words
   private isLikelyItalian(text: string): boolean {
     if (!text) return false;
     const lowerText = text.toLowerCase().trim();
@@ -45,6 +46,31 @@ export class ContentLookupService {
       'sto',
       'bene',
       'male',
+      'quanto',
+      'costa',
+      'dove',
+      'si',
+      'trova',
+      'biglietto',
+      'un',
+      'una',
+      'il',
+      'la',
+      'lo',
+      'sono',
+      'che',
+      'questa',
+      'questo',
+      'con',
+      'per',
+      'di',
+      'da',
+      'in',
+      'a',
+      'ho',
+      'è',
+      'hai',
+      'ha',
     ];
     const isCommonItalian = commonItalianWords.some(
       (word) =>

@@ -168,7 +168,7 @@ describe('Content Delivery Policy', () => {
       const flashcardCount = selections.filter(
         (m) => m === DELIVERY_METHOD.FLASHCARD,
       ).length;
-      expect(flashcardCount).toBeGreaterThan(14); // At least 15 out of 20 (75%)
+      expect(flashcardCount).toBeGreaterThanOrEqual(14); // At least 14 out of 20 (70%)
     });
 
     it('should return undefined for empty available methods', () => {

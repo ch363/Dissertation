@@ -10,12 +10,13 @@ import { theme as baseTheme } from '@/services/theme/tokens';
 import * as SafeSpeech from '@/services/tts';
 import { TeachCard as TeachCardType } from '@/types/session';
 import { createLogger } from '@/services/logging';
+import { CARD_TYPE_COLORS } from '../../constants/cardTypeColors';
 
 const logger = createLogger('TeachCard');
 
 // Professional App Redesign / Figma (LessonScreen) colours
 const CARD_GRADIENT = ['#eff6ff', '#e0e7ff', '#eff6ff'] as const;
-const CARD_BORDER = 'rgba(191, 219, 254, 0.5)';
+const CARD_BORDER = CARD_TYPE_COLORS.teach.border; // Use card type color for recognition
 const USAGE_CARD_BG = 'rgba(248, 250, 252, 0.8)';
 const USAGE_ICON_SLATE = '#94a3b8';
 
@@ -88,7 +89,7 @@ export function TeachCard({ card }: Props) {
       {/* Main Teach Card – gradient, 32px radius (Figma: rounded-[32px], from-blue-50 via-indigo-50 to-blue-50) */}
       <LinearGradient
         colors={CARD_GRADIENT}
-        style={[styles.teachCard, isSpeaking && styles.teachCardSpeaking]}
+        style={[styles.teachCard, isSpeaking && styles.teachCardSpeaking, { borderLeftWidth: 3, borderLeftColor: CARD_TYPE_COLORS.teach.border }]}
       >
         <View style={styles.teachCardInner}>
           {/* Emoji at top */}

@@ -1,11 +1,12 @@
 import { router, useLocalSearchParams, Stack } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import { Animated, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { Button, LoadingRow } from '@/components/ui';
+import { Button, ContentContinueButton, LoadingRow } from '@/components/ui';
+import { makeSessionId } from '@/features/session/sessionBuilder';
 import { routeBuilders, routes } from '@/services/navigation/routes';
 import { getCachedSessionPlan } from '@/services/api/session-plan-cache';
 import { getLesson, getLessonTeachings, getModuleLessons, type Teaching, type Lesson } from '@/services/api/modules';
@@ -36,6 +37,7 @@ export default function SessionSummaryScreen() {
     totalXp?: string;
     teachingsMastered?: string;
     reviewedTeachings?: string;
+    attemptCountsByPhrase?: string;
   }>();
   const kind = params.kind === 'review' ? 'review' : 'learn';
   const lessonId = params.lessonId;
@@ -49,11 +51,36 @@ export default function SessionSummaryScreen() {
   const showStats = typeof totalXp === 'number' || typeof teachingsMastered === 'number';
   const reviewedTeachingsJson = params.reviewedTeachings;
 
+  const attemptCountsByPhrase = useMemo((): Record<string, number> => {
+    const raw = params.attemptCountsByPhrase;
+    if (!raw) return {};
+    try {
+      return (JSON.parse(raw) as Record<string, number>) ?? {};
+    } catch {
+      return {};
+    }
+  }, [params.attemptCountsByPhrase]);
+
   const [teachings, setTeachings] = useState<Teaching[]>([]);
   const [loadingTeachings, setLoadingTeachings] = useState(false);
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [nextLesson, setNextLesson] = useState<Lesson | null>(null);
   const [moduleHasRemainingLessons, setModuleHasRemainingLessons] = useState<boolean | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  // Fade in content when initialization completes
+  useEffect(() => {
+    if (!isInitializing) {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      fadeAnim.setValue(0);
+    }
+  }, [isInitializing, fadeAnim]);
 
   const sessionPlan = useMemo(() => {
     if (lessonId && kind === 'learn') {
@@ -96,6 +123,9 @@ export default function SessionSummaryScreen() {
         } catch (error) {
           Logger.error('Failed to load lesson', error);
         }
+      } else {
+        // No lesson to fetch for review mode
+        setLesson(null);
       }
     };
 
@@ -164,7 +194,11 @@ export default function SessionSummaryScreen() {
   }, [lesson?.moduleId, kind, lessonId]);
 
   useEffect(() => {
+    let cancelled = false;
+    
     const fetchTeachings = async () => {
+      setIsInitializing(true);
+      
       // Review: use teachings passed from SessionRunner (phrases just reviewed)
       if (kind === 'review' && reviewedTeachingsJson) {
         try {
@@ -172,8 +206,9 @@ export default function SessionSummaryScreen() {
             phrase: string;
             translation?: string;
             emoji?: string;
+            attempts?: number;
           }>;
-          const converted: Teaching[] = (parsed || []).map((t, idx) => ({
+          const converted: (Teaching & { attempts?: number })[] = (parsed || []).map((t, idx) => ({
             id: `reviewed-${idx}`,
             knowledgeLevel: 'beginner',
             emoji: t.emoji ?? null,
@@ -184,10 +219,17 @@ export default function SessionSummaryScreen() {
             lessonId: '',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
+            ...(typeof t.attempts === 'number' ? { attempts: t.attempts } : {}),
           }));
-          setTeachings(converted);
+          if (!cancelled) {
+            setTeachings(converted);
+            setIsInitializing(false);
+          }
         } catch (e) {
           Logger.error('Failed to parse reviewed teachings', e);
+          if (!cancelled) {
+            setIsInitializing(false);
+          }
         }
         return;
       }
@@ -205,7 +247,10 @@ export default function SessionSummaryScreen() {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }));
-        setTeachings(convertedTeachings);
+        if (!cancelled) {
+          setTeachings(convertedTeachings);
+          setIsInitializing(false);
+        }
         return;
       }
 
@@ -213,16 +258,30 @@ export default function SessionSummaryScreen() {
         setLoadingTeachings(true);
         try {
           const teachingsData = await getLessonTeachings(lessonId);
-          setTeachings(teachingsData);
+          if (!cancelled) {
+            setTeachings(teachingsData);
+          }
         } catch (error) {
           Logger.error('Failed to load lesson teachings', error);
         } finally {
-          setLoadingTeachings(false);
+          if (!cancelled) {
+            setLoadingTeachings(false);
+            setIsInitializing(false);
+          }
+        }
+      } else {
+        // No teachings to load
+        if (!cancelled) {
+          setIsInitializing(false);
         }
       }
     };
 
     fetchTeachings();
+    
+    return () => {
+      cancelled = true;
+    };
   }, [lessonId, kind, cachedTeachings, reviewedTeachingsJson]);
 
   const handleBack = useCallback(() => {
@@ -238,8 +297,8 @@ export default function SessionSummaryScreen() {
   }, []);
 
   const handleBackToReview = useCallback(() => {
-    router.replace(routes.tabs.review);
-  }, []);
+    router.replace((returnTo && typeof returnTo === 'string' && returnTo.trim().length > 0 ? returnTo : routes.tabs.learn) as Parameters<typeof router.replace>[0]);
+  }, [returnTo]);
 
   const handleReturnTo = useCallback(() => {
     if (returnTo && typeof returnTo === 'string' && returnTo.trim().length > 0) {
@@ -259,12 +318,22 @@ export default function SessionSummaryScreen() {
       handleBackToLearn();
       return;
     }
-    router.replace(routeBuilders.courseDetail(moduleId));
-  }, [lesson?.moduleId, handleBackToLearn]);
+    const backTo = (returnTo && typeof returnTo === 'string' && returnTo.trim().length > 0) 
+      ? returnTo 
+      : routes.tabs.learn;
+    router.replace({
+      pathname: routeBuilders.courseDetail(moduleId),
+      params: { returnTo: backTo },
+    });
+  }, [lesson?.moduleId, handleBackToLearn, returnTo]);
 
   const handleContinueToNextLesson = useCallback(() => {
     if (nextLesson) {
-      router.replace(routeBuilders.lessonStart(nextLesson.id) as Parameters<typeof router.replace>[0]);
+      const sessionId = makeSessionId('learn');
+      router.replace({
+        pathname: routeBuilders.sessionDetail(sessionId),
+        params: { lessonId: nextLesson.id, kind: 'learn', returnTo: routes.tabs.learn },
+      });
     }
   }, [nextLesson]);
 
@@ -272,7 +341,7 @@ export default function SessionSummaryScreen() {
   // Review: we only navigate here when there are zero due (SessionRunner checks first).
   // Never show "Continue reviewing" on this screen to avoid wrong counts and loops.
   const showContinueReviewing = false;
-  const headerTitle = lesson?.title || (kind === 'review' ? 'Review Summary' : 'Lesson Summary');
+  const headerTitle = lesson?.title || 'Session Summary';
 
   const { height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -314,7 +383,6 @@ export default function SessionSummaryScreen() {
       tipLineHeight: Math.round(18 * scale),
       actionsGap: Math.round(theme.spacing.md * scale),
       actionsMarginTop: Math.round(theme.spacing.md * scale),
-      primaryButtonMinHeight: Math.round(56 * scale),
       secondaryMinHeight: Math.round(50 * scale),
       secondaryGap: Math.round(theme.spacing.sm * scale),
       statsGap: Math.round(theme.spacing.sm * scale),
@@ -323,6 +391,20 @@ export default function SessionSummaryScreen() {
     }),
     [scale],
   );
+
+  if (isInitializing) {
+    return (
+      <View style={styles.safe}>
+        <LinearGradient colors={GRADIENT_BG} style={StyleSheet.absoluteFill} />
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
+          <Stack.Screen options={{ title: headerTitle, headerShown: false }} />
+          <View style={styles.loadingContainer}>
+            <LoadingRow label="Loading summary…" />
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.safe}>
@@ -345,7 +427,8 @@ export default function SessionSummaryScreen() {
           <View style={styles.headerSpacer} />
         </View>
 
-        <ScrollView
+        <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+          <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
             { paddingBottom: Math.max(theme.spacing.xl, insets.bottom + theme.spacing.md) },
@@ -363,11 +446,13 @@ export default function SessionSummaryScreen() {
                   <Ionicons name="checkmark-circle" size={Math.round(48 * scale)} color={theme.colors.primary} />
                 </View>
                 <Text style={[styles.title, { fontSize: scaled.titleSize }]}>
-                  {kind === 'review' ? 'You completed this review!' : 'You completed this lesson!'}
+                  {kind === 'review' ? 'You completed this session!' : 'You completed this lesson!'}
                 </Text>
                 <Text style={[styles.subtitle, { fontSize: scaled.subtitleSize, lineHeight: scaled.subtitleLineHeight }]}>
                   {kind === 'review'
-                    ? 'Great job on your review session!'
+                    ? teachings.length > 0
+                      ? "Here's what you reviewed:"
+                      : 'Great job on your review session!'
                     : teachings.length > 0
                       ? "Here's a summary of what you learned:"
                       : "You've completed all the content in this lesson. Great work!"}
@@ -399,7 +484,7 @@ export default function SessionSummaryScreen() {
                   <View style={[styles.sectionHeader, { gap: scaled.sectionHeaderGap }]}>
                     <Ionicons name="book-outline" size={Math.round(18 * scale)} color={theme.colors.primary} />
                     <Text style={[styles.learnedTitle, { fontSize: scaled.learnedTitleSize }]}>
-                      {kind === 'review' ? 'Phrases you reviewed' : 'What you learned'}
+                      {kind === 'review' ? 'Items you reviewed' : 'What you learned'}
                     </Text>
                   </View>
 
@@ -407,29 +492,39 @@ export default function SessionSummaryScreen() {
                     <LoadingRow label="Loading content…" />
                   ) : (
                     <View style={[styles.contentGrid, { gap: scaled.contentGridGap }]}>
-                      {teachings.map((teaching, index) => (
-                        <View key={teaching.id || index} style={[styles.phraseCard, { padding: scaled.phraseCardPadding, gap: scaled.phraseCardGap }]}>
-                          <View style={[styles.phraseRow, { gap: scaled.phraseRowGap }]}>
-                            {teaching.emoji ? (
-                              <Text style={[styles.emoji, { fontSize: scaled.emojiSize, lineHeight: scaled.emojiSize + 2 }]}>{teaching.emoji}</Text>
-                            ) : (
-                              <Ionicons name="book-outline" size={Math.round(18 * scale)} color={theme.colors.mutedText} style={styles.phraseIcon} />
-                            )}
-                            <View style={styles.phraseContent}>
-                              <Text style={[styles.phrase, { fontSize: scaled.phraseSize, lineHeight: scaled.phraseLineHeight }]}>{teaching.learningLanguageString}</Text>
-                              {teaching.userLanguageString ? (
-                                <Text style={[styles.translation, { fontSize: scaled.translationSize, lineHeight: scaled.translationLineHeight }]}>{teaching.userLanguageString}</Text>
-                              ) : null}
+                      {teachings.map((teaching, index) => {
+                        const attempts =
+                          (teaching as Teaching & { attempts?: number }).attempts ??
+                          attemptCountsByPhrase[teaching.learningLanguageString];
+                        return (
+                          <View key={teaching.id || index} style={[styles.phraseCard, { padding: scaled.phraseCardPadding, gap: scaled.phraseCardGap }]}>
+                            <View style={[styles.phraseRow, { gap: scaled.phraseRowGap }]}>
+                              {teaching.emoji ? (
+                                <Text style={[styles.emoji, { fontSize: scaled.emojiSize, lineHeight: scaled.emojiSize + 2 }]}>{teaching.emoji}</Text>
+                              ) : (
+                                <Ionicons name="book-outline" size={Math.round(18 * scale)} color={theme.colors.mutedText} style={styles.phraseIcon} />
+                              )}
+                              <View style={styles.phraseContent}>
+                                <Text style={[styles.phrase, { fontSize: scaled.phraseSize, lineHeight: scaled.phraseLineHeight }]}>{teaching.learningLanguageString}</Text>
+                                {teaching.userLanguageString ? (
+                                  <Text style={[styles.translation, { fontSize: scaled.translationSize, lineHeight: scaled.translationLineHeight }]}>{teaching.userLanguageString}</Text>
+                                ) : null}
+                                {typeof attempts === 'number' && attempts > 0 ? (
+                                  <Text style={[styles.attemptsLabel, { fontSize: scaled.translationSize, lineHeight: scaled.translationLineHeight }]}>
+                                    {attempts === 1 ? '1 attempt' : `${attempts} attempts`}
+                                  </Text>
+                                ) : null}
+                              </View>
                             </View>
+                            {teaching.tip ? (
+                              <View style={styles.tipContainer}>
+                                <Ionicons name="bulb-outline" size={Math.round(12 * scale)} color={theme.colors.mutedText} />
+                                <Text style={[styles.tipText, { fontSize: scaled.tipSize, lineHeight: scaled.tipLineHeight }]}>{teaching.tip}</Text>
+                              </View>
+                            ) : null}
                           </View>
-                          {teaching.tip ? (
-                            <View style={styles.tipContainer}>
-                              <Ionicons name="bulb-outline" size={Math.round(12 * scale)} color={theme.colors.mutedText} />
-                              <Text style={[styles.tipText, { fontSize: scaled.tipSize, lineHeight: scaled.tipLineHeight }]}>{teaching.tip}</Text>
-                            </View>
-                          ) : null}
-                        </View>
-                      ))}
+                        );
+                      })}
                     </View>
                   )}
                 </View>
@@ -438,40 +533,41 @@ export default function SessionSummaryScreen() {
               {/* Actions: primary CTA then Back (USER_JOURNEYS) */}
               <View style={[styles.actions, { gap: scaled.actionsGap, marginTop: scaled.actionsMarginTop }]}>
                 {showContinueReviewing ? (
-                  <Button
-                    title="Continue reviewing"
+                  <ContentContinueButton
+                    title="Continue"
                     onPress={handleContinueReviewing}
+                    accessibilityLabel="Continue reviewing"
                     accessibilityHint="Starts another review session with remaining due items"
-                    style={[styles.primaryButton, { minHeight: scaled.primaryButtonMinHeight }]}
                   />
                 ) : nextLesson ? (
-                  <Button
-                    title="Continue to next lesson"
+                  <ContentContinueButton
+                    title="Continue"
                     onPress={handleContinueToNextLesson}
+                    accessibilityLabel="Continue to next lesson"
                     accessibilityHint="Starts the next lesson in this module"
-                    style={[styles.primaryButton, { minHeight: scaled.primaryButtonMinHeight }]}
                   />
                 ) : null}
                 <View style={[styles.secondaryRow, { gap: scaled.secondaryGap, minHeight: scaled.secondaryMinHeight }]}>
                   <Button
                     title="Back to home"
                     onPress={handleBackToHome}
-                    variant="secondary"
+                    variant="primary"
                     accessibilityHint="Returns to home"
-                    style={[styles.secondaryButton, { minHeight: scaled.secondaryMinHeight, backgroundColor: theme.colors.success }]}
+                    style={[styles.secondaryButton, { minHeight: scaled.secondaryMinHeight, backgroundColor: theme.colors.primary }]}
                   />
                   <Button
-                    title={showBackToModule ? 'Back to module' : kind === 'review' ? 'Back to review' : 'Back to learn'}
+                    title={showBackToModule ? 'Back to module' : kind === 'review' ? 'Back' : 'Back to learn'}
                     onPress={showBackToModule ? handleBackToModule : handleReturnTo}
-                    variant="secondary"
-                    accessibilityHint={showBackToModule ? 'Returns to course' : 'Returns to learn or review'}
-                    style={[styles.secondaryButton, { minHeight: scaled.secondaryMinHeight, backgroundColor: theme.colors.success }]}
+                    variant="primary"
+                    accessibilityHint={showBackToModule ? 'Returns to course' : kind === 'review' ? 'Returns to where you started' : 'Returns to learn'}
+                    style={[styles.secondaryButton, { minHeight: scaled.secondaryMinHeight, backgroundColor: theme.colors.primary }]}
                   />
                 </View>
               </View>
             </View>
           </LinearGradient>
         </ScrollView>
+        </Animated.View>
       </SafeAreaView>
     </View>
   );
@@ -487,6 +583,12 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing.lg,
   },
   headerRow: {
     flexDirection: 'row',
@@ -641,6 +743,11 @@ const styles = StyleSheet.create({
     color: theme.colors.mutedText,
     lineHeight: 20,
   },
+  attemptsLabel: {
+    fontFamily: theme.typography.regular,
+    color: theme.colors.mutedText,
+    marginTop: 2,
+  },
   tipContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -661,10 +768,6 @@ const styles = StyleSheet.create({
   actions: {
     gap: theme.spacing.md,
     marginTop: theme.spacing.md,
-  },
-  primaryButton: {
-    minHeight: 56,
-    borderRadius: BUTTON_RADIUS,
   },
   secondaryRow: {
     flexDirection: 'row',

@@ -53,6 +53,9 @@ export type TranslateCard = BaseCard & {
   audioUrl?: string; // Audio preview for source text
   isFlashcard?: boolean; // If true, shows flip card interaction
   example?: string; // Example sentence for flashcard back view
+  /** Match teach card: emoji + usage note for same look as teaching */
+  emoji?: string;
+  usageNote?: string;
 };
 
 export type ListeningCard = BaseCard & {

@@ -238,6 +238,9 @@ export function createProfileScreenStyles(theme: Theme) {
   statIconOrange: {
     backgroundColor: '#EA580C' + '20',
   },
+  statIconStreak: {
+    backgroundColor: '#0891b2' + '20', // cyan-600 tint to match HomeStreakCard
+  },
   statIconPurple: {
     backgroundColor: '#9333EA' + '20',
   },
@@ -287,14 +290,10 @@ export function createProfileScreenStyles(theme: Theme) {
     fontFamily: baseTheme.typography.bold,
     color: c.text,
   },
-  viewAllButtonWrap: {
-    flexShrink: 0,
-  },
   viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    flexWrap: 'nowrap',
     flexShrink: 0,
   },
   viewAllButtonPressed: {
@@ -304,13 +303,6 @@ export function createProfileScreenStyles(theme: Theme) {
     fontSize: 14,
     lineHeight: 16,
     fontFamily: baseTheme.typography.semiBold,
-    flexShrink: 0,
-  },
-  viewAllChevronWrap: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: 16,
-    flexShrink: 0,
   },
   levelInfo: {
     flexDirection: 'row',
@@ -440,11 +432,13 @@ export function createProfileScreenStyles(theme: Theme) {
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 14,
+    flexWrap: 'nowrap',
   },
   skillHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexShrink: 1,
   },
   skillBadge: {
     backgroundColor: c.primary + '30',
@@ -621,100 +615,6 @@ export function createProfileScreenStyles(theme: Theme) {
   settingsRowSubtitle: {
     fontSize: 13,
     fontFamily: baseTheme.typography.regular,
-  },
-
-  // Activity Section Styles
-  activitySection: {
-    backgroundColor: c.card,
-    borderRadius: 24,
-    padding: 20,
-    shadowColor: c.border,
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: c.border,
-  },
-  activityHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  activityHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  activityBadge: {
-    backgroundColor: c.border + '60',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  activityBadgeText: {
-    fontSize: 12,
-    fontFamily: baseTheme.typography.bold,
-    color: c.mutedText,
-  },
-  activityList: {
-    gap: 12,
-  },
-  activityItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    padding: 12,
-    borderRadius: 16,
-  },
-  activityItemPressed: {
-    opacity: 0.92,
-    backgroundColor: c.border + '40',
-  },
-  activityIcon: {
-    borderRadius: 12,
-    padding: 12,
-  },
-  activityContent: {
-    flex: 1,
-    minWidth: 0,
-  },
-  activityTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 2,
-  },
-  activityTitle: {
-    fontSize: 14,
-    fontFamily: baseTheme.typography.semiBold,
-    color: c.text,
-  },
-  activitySubtitle: {
-    fontSize: 12,
-    fontFamily: baseTheme.typography.medium,
-    color: c.mutedText,
-  },
-  activityTime: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
-  },
-  activityTimeText: {
-    fontSize: 12,
-    color: c.mutedText,
-  },
-  activityXpBadge: {
-    backgroundColor: c.primary + '25',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  activityXpText: {
-    fontSize: 12,
-    fontFamily: baseTheme.typography.bold,
   },
 
   // Modal Styles

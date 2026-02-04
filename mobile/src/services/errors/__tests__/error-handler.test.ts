@@ -78,6 +78,16 @@ describe('Error Handler', () => {
   });
 
   describe('executeSafely', () => {
+    let consoleErrorSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleErrorSpy.mockRestore();
+    });
+
     it('should return result on success', async () => {
       const operation = async () => 'success';
       const result = await executeSafely(operation, 'test', 'fallback');

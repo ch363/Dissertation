@@ -85,18 +85,17 @@ export class XpService {
 
   private calculateXp(event: XpEvent): number {
     if (event.type === 'attempt') {
-      let xp = 5;
+      let xp = 2;
 
       if (event.correct) {
-        xp += 10;
+        xp += 4;
 
         if (event.timeMs < 5000) {
-          xp += 5;
+          xp += 2;
         } else if (event.timeMs < 10000) {
-          xp += 3;
-        } else if (event.timeMs < 20000) {
           xp += 1;
         }
+        // 10–20s and 20s+ get no time bonus (was +1)
       }
 
       return xp;

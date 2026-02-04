@@ -16,12 +16,13 @@ import * as SafeSpeech from '@/services/tts';
 import { MultipleChoiceCard as MultipleChoiceCardType } from '@/types/session';
 import { announce } from '@/utils/a11y';
 import { createLogger } from '@/services/logging';
+import { CARD_TYPE_COLORS } from '../../constants/cardTypeColors';
 
 const logger = createLogger('MultipleChoiceCard');
 
 // Figma design tokens (from MultipleChoiceScreen – blue/indigo/slate/emerald)
 const FIGMA = {
-  instruction: 'rgba(5, 150, 105, 0.8)', // emerald-600/80
+  instruction: CARD_TYPE_COLORS.multipleChoice.instruction, // Card type color for recognition
   word: '#0f172a', // slate-900
   optionBorder: '#e2e8f0', // slate-200
   optionBorderHover: '#cbd5e1', // slate-300
@@ -56,6 +57,7 @@ export function MultipleChoiceCard({
   onSelectOption,
   showResult = false,
   isCorrect,
+  showCorrectAnswer = false,
   onCheckAnswer,
 }: Props) {
   const ctx = useAppTheme();
@@ -143,7 +145,7 @@ export function MultipleChoiceCard({
 
   return (
     <View style={styles.container}>
-      {/* Instruction – Figma: text-xs font-semibold text-emerald-600/80 tracking-wide uppercase, mb-6 */}
+      {/* Instruction – Card type color for instant recognition */}
       {isTranslation && (
         <Text style={[styles.instruction, { color: FIGMA.instruction }]}>TRANSLATE THIS SENTENCE</Text>
       )}
@@ -175,11 +177,11 @@ export function MultipleChoiceCard({
           <Text style={[styles.errorText, { color: theme.colors.mutedText }]}>No options available</Text>
         </View>
       ) : (
-        <View style={styles.optionsContainer}>
+        <View style={[styles.optionsContainer, !isTranslation && { borderLeftWidth: 3, borderLeftColor: CARD_TYPE_COLORS.multipleChoice.border, paddingLeft: baseTheme.spacing.sm, borderRadius: baseTheme.radius.sm }]}>
           {card.options.map((opt) => {
             const isSelected = selectedOptionId === opt.id;
             const isCorrectOption = opt.id === card.correctOptionId;
-            const showAsCorrect = showResult && isCorrectOption;
+            const showAsCorrect = showResult && isCorrectOption && (isCorrect === true || showCorrectAnswer);
             const showAsSelected = isSelected && !showResult;
             const showAsIncorrectSelected = showResult && isSelected && !isCorrectOption;
 
@@ -312,6 +314,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     marginBottom: 32,
+    borderLeftWidth: 3,
+    borderLeftColor: CARD_TYPE_COLORS.multipleChoice.border,
+    paddingLeft: baseTheme.spacing.sm,
+    borderRadius: baseTheme.radius.sm,
   },
   sourceText: {
     fontFamily: baseTheme.typography.semiBold,

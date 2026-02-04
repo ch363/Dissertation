@@ -10,6 +10,7 @@ import * as SafeSpeech from '@/services/tts';
 import { FillBlankCard as FillBlankCardType } from '@/types/session';
 import { announce } from '@/utils/a11y';
 import { createLogger } from '@/services/logging';
+import { CARD_TYPE_COLORS } from '../../constants/cardTypeColors';
 
 const logger = createLogger('FillBlankCard');
 
@@ -115,10 +116,10 @@ export function FillBlankCard({ card, selectedAnswer, onSelectAnswer, showResult
 
   return (
     <View style={[styles.container, { gap: theme.spacing.md }]}>
-      <Text style={[styles.instruction, { color: theme.colors.success }]}>FILL IN THE BLANK</Text>
+      <Text style={[styles.instruction, { color: CARD_TYPE_COLORS.fillBlank.instruction }]}>FILL IN THE BLANK</Text>
 
       {/* Main Question Card */}
-      <View style={[styles.questionCard, { backgroundColor: theme.colors.card }]}>
+      <View style={[styles.questionCard, { backgroundColor: theme.colors.card, borderLeftWidth: 3, borderLeftColor: CARD_TYPE_COLORS.fillBlank.border, paddingLeft: theme.spacing.sm }]}>
         {/* Audio button - always show if text is available */}
         {(card.audioUrl || card.text) && (
           <View style={styles.audioButton}>
@@ -267,10 +268,10 @@ const styles = StyleSheet.create({
   },
   instruction: {
     fontFamily: baseTheme.typography.bold,
-    fontSize: 14,
+    fontSize: 12,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    marginBottom: baseTheme.spacing.xs,
+    marginBottom: 4,
   },
   questionCard: {
     borderRadius: 16,

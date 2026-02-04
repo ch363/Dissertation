@@ -1,8 +1,9 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, Text, View, ScrollView } from 'react-native';
+import { StyleSheet, View, ScrollView } from 'react-native';
 
+import { ContentContinueButton } from '@/components/ui';
 import { theme } from '@/services/theme/tokens';
 import { AttemptLog, Card, CardKind, SessionPlan, SessionKind } from '@/types/session';
 import { getDeliveryMethodForCardKind } from '../../delivery-methods';
@@ -13,13 +14,36 @@ import { CardRenderer } from '../card-renderer/CardRenderer';
 import { LessonProgressHeader } from '../lesson-progress-header/LessonProgressHeader';
 import { routeBuilders, routes } from '@/services/navigation/routes';
 import { clearCachedSessionPlan } from '@/services/api/session-plan-cache';
-import { clearReviewScreenCache } from '@/services/api/review-screen-cache';
 import { getDashboard } from '@/services/api/profile';
 import { createLogger } from '@/services/logging';
 import * as Haptics from 'expo-haptics';
 import { makeSessionId } from '@/features/session/sessionBuilder';
 
 const logger = createLogger('SessionRunner');
+
+/** Get the canonical phrase string for a card (used to match attempts to summary list items). */
+function getPhraseFromCard(card: Card): string | null {
+  if (card.kind === CardKind.Teach) return card.content.phrase ?? null;
+  if (card.kind === CardKind.MultipleChoice) return card.sourceText ?? null;
+  if (card.kind === CardKind.FillBlank) return card.text ?? null;
+  if (card.kind === CardKind.TranslateToEn || card.kind === CardKind.TranslateFromEn) return card.source ?? null;
+  if (card.kind === CardKind.Listening) return card.expected ?? null;
+  return null;
+}
+
+/** Build map of phrase -> max attempt number from attempt logs and plan cards. */
+function buildAttemptCountsByPhrase(attempts: AttemptLog[], cards: Card[]): Record<string, number> {
+  const byPhrase: Record<string, number> = {};
+  const cardById = new Map(cards.map((c) => [c.id, c]));
+  for (const a of attempts) {
+    const card = cardById.get(a.cardId);
+    const phrase = card ? getPhraseFromCard(card) : null;
+    if (phrase) {
+      byPhrase[phrase] = Math.max(byPhrase[phrase] ?? 0, a.attemptNumber);
+    }
+  }
+  return byPhrase;
+}
 
 /** Extract phrase + translation from review session cards for the summary screen. Dedupes by phrase. */
 function getReviewedTeachingsFromPlan(cards: Card[]): Array<{ phrase: string; translation?: string; emoji?: string }> {
@@ -77,6 +101,8 @@ async function triggerHaptic(style: 'light' | 'medium') {
   }
 }
 
+const INCORRECT_ATTEMPTS_BEFORE_SHOWING_ANSWER = 3;
+
 /** Per-card state we persist when navigating back/forward so answers remain visible */
 interface SavedCardState {
   selectedOptionId: string | undefined;
@@ -92,6 +118,7 @@ interface SavedCardState {
   acceptedVariants: string[];
   validationFeedback: string | undefined;
   pronunciationResult: PronunciationResult | null;
+  incorrectAttemptCount: number;
 }
 
 type Props = {
@@ -126,6 +153,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
   const [feedbackWhy, setFeedbackWhy] = useState<string | undefined>(undefined);
   const [acceptedVariants, setAcceptedVariants] = useState<string[]>([]);
   const [validationFeedback, setValidationFeedback] = useState<string | undefined>(undefined);
+  const [incorrectAttemptCount, setIncorrectAttemptCount] = useState(0);
   const currentCard = plan.cards[index];
   const total = useMemo(() => plan.cards.length, [plan.cards]);
   const isSpeakListening =
@@ -151,6 +179,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
       acceptedVariants,
       validationFeedback,
       pronunciationResult,
+      incorrectAttemptCount,
     };
   };
 
@@ -162,9 +191,6 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
     clearCachedSessionPlan(lessonId);
   };
 
-  const invalidateReviewScreenCache = () => {
-    if (kind === 'review') clearReviewScreenCache();
-  };
 
   // When index changes: restore saved state for that card so answers remain when going back
   useEffect(() => {
@@ -189,6 +215,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
       setAcceptedVariants(saved.acceptedVariants);
       setValidationFeedback(saved.validationFeedback);
       setPronunciationResult(saved.pronunciationResult);
+      setIncorrectAttemptCount(saved.incorrectAttemptCount ?? 0);
       setAudioRecordingUri(null);
     } else {
       setSelectedOptionId(undefined);
@@ -205,6 +232,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
       setFeedbackWhy(undefined);
       setAcceptedVariants([]);
       setValidationFeedback(undefined);
+      setIncorrectAttemptCount(0);
     }
   }, [index, currentCard]);
 
@@ -221,15 +249,15 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
   const canProceed =
     currentCard.kind === CardKind.Teach ||
     (currentCard.kind === CardKind.MultipleChoice
-      ? isTranslationMCQ 
-        ? showResult && selectedOptionId !== undefined // Translation MCQ: auto-checked, need result
-        : showResult && selectedOptionId !== undefined // Regular MCQ: Must check answer first
+      ? (isTranslationMCQ
+          ? showResult && selectedOptionId !== undefined && (isCorrect || incorrectAttemptCount >= INCORRECT_ATTEMPTS_BEFORE_SHOWING_ANSWER)
+          : showResult && selectedOptionId !== undefined && (isCorrect || incorrectAttemptCount >= INCORRECT_ATTEMPTS_BEFORE_SHOWING_ANSWER))
       : currentCard.kind === CardKind.FillBlank
         ? showResult && isCorrect && selectedAnswer !== undefined // Must have correct answer selected
         : currentCard.kind === CardKind.TranslateToEn || currentCard.kind === CardKind.TranslateFromEn
           ? isFlashcard
             ? flashcardRating !== undefined // Flashcard: need rating
-            : showResult && userAnswer.trim().length > 0 && (isCorrect || meaningCorrect) // Type translation: Must check answer first; can proceed when correct or meaning-correct
+            : showResult && userAnswer.trim().length > 0 && (isCorrect || meaningCorrect || incorrectAttemptCount >= INCORRECT_ATTEMPTS_BEFORE_SHOWING_ANSWER) // Text translation: proceed only when correct, meaning-correct, or 3rd attempt
           : currentCard.kind === CardKind.Listening
             ? isSpeakListening
               ? showResult // Speech practice: proceed after attempt (result may be unavailable on error)
@@ -361,7 +389,6 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
             } as any);
             awardedXp = attemptResponse.awardedXp;
             invalidateLessonPlanCache();
-            invalidateReviewScreenCache();
 
             const delta = pronunciationResponse.isCorrect ? 0.1 : -0.05;
             try {
@@ -440,6 +467,10 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
       setAcceptedVariants(validationResult.acceptedVariants ?? []);
       setValidationFeedback(validationResult.feedback);
 
+      if (!effectiveCorrect && (currentCard.kind === CardKind.TranslateToEn || currentCard.kind === CardKind.TranslateFromEn || currentCard.kind === CardKind.MultipleChoice)) {
+        setIncorrectAttemptCount((prev) => prev + 1);
+      }
+
       // Haptic feedback based on correctness
       if (effectiveCorrect) {
         triggerHaptic('light');
@@ -467,8 +498,6 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           } as any);
           awardedXp = attemptResponse.awardedXp;
           invalidateLessonPlanCache();
-          invalidateReviewScreenCache();
-
           // Update delivery method score based on performance
           const delta = validationResult.isCorrect ? 0.1 : -0.05;
           try {
@@ -550,7 +579,6 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
               } as any);
               awardedXp = attemptResponse.awardedXp;
               invalidateLessonPlanCache();
-              invalidateReviewScreenCache();
 
               // Store awardedXp for this card
               if (awardedXp !== undefined) {
@@ -596,13 +624,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
   };
 
   const handleNext = async () => {
-    // Allow "Continue" when showing the wrong-answer translate footer (Try again / Continue)
-    const isTranslateWrongAnswerFooter =
-      (currentCard.kind === CardKind.TranslateToEn || currentCard.kind === CardKind.TranslateFromEn) &&
-      !('isFlashcard' in currentCard && currentCard.isFlashcard) &&
-      showResult &&
-      !isCorrect;
-    if (!canProceed && !isTranslateWrongAnswerFooter) return;
+    if (!canProceed) return;
 
     // For cards that don't need result screen, validate and create attempt
     let nextAttempts = attempts;
@@ -641,8 +663,6 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           } as any);
           awardedXp = attemptResponse.awardedXp;
           invalidateLessonPlanCache();
-          invalidateReviewScreenCache();
-
           // Update delivery method score based on performance
           const delta = isCorrect ? 0.1 : -0.05;
           try {
@@ -721,9 +741,6 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
     }
 
     if (isLast) {
-      // Ensure review overview refetches fresh due count when user returns to Review tab
-      if (kind === 'review') clearReviewScreenCache();
-
       // Calculate XP and teachings mastered for summary screen
       const totalXp = nextAttempts
         .filter((a) => a.awardedXp !== undefined)
@@ -740,7 +757,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
             const nextSessionId = makeSessionId('review');
             router.replace({
               pathname: routeBuilders.sessionDetail(nextSessionId),
-              params: { kind: 'review', returnTo: returnTo ?? routes.tabs.review },
+              params: { kind: 'review', returnTo: returnTo ?? routes.tabs.learn },
             });
             onComplete(nextAttempts);
             return;
@@ -751,9 +768,18 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
         }
       }
 
-      // For review, extract teachings from cards so summary can show "phrases you reviewed"
+      const attemptCountsByPhrase = buildAttemptCountsByPhrase(nextAttempts, plan.cards);
+
+      // For review, extract teachings from cards so summary can show "phrases you reviewed" with attempt counts
       const reviewedTeachingsJson =
-        kind === 'review' ? JSON.stringify(getReviewedTeachingsFromPlan(plan.cards)) : undefined;
+        kind === 'review'
+          ? JSON.stringify(
+              getReviewedTeachingsFromPlan(plan.cards).map((t) => ({
+                ...t,
+                attempts: attemptCountsByPhrase[t.phrase] ?? 1,
+              })),
+            )
+          : undefined;
 
       // Navigate to standard session summary (one screen for all completion flows)
       router.replace({
@@ -767,6 +793,7 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           totalXp: totalXp.toString(),
           teachingsMastered: teachingsMastered.toString(),
           ...(reviewedTeachingsJson ? { reviewedTeachings: reviewedTeachingsJson } : {}),
+          attemptCountsByPhrase: JSON.stringify(attemptCountsByPhrase),
         },
       });
 
@@ -800,7 +827,18 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
 
   // Figma / Professional App Redesign: full-screen gradient (slate-50 → blue-50 → indigo-50)
   const sessionBgGradient = ['#f8fafc', '#eff6ff', '#eef2ff'] as const;
-  const primaryButtonGradient = ['#2563eb', '#4f46e5'] as const; // blue-600 to indigo-600
+
+  const footerLabel =
+    isLast ? 'Finish' : 'Continue';
+
+  const isTranslateTextInput =
+    (currentCard.kind === CardKind.TranslateToEn || currentCard.kind === CardKind.TranslateFromEn) &&
+    !('isFlashcard' in currentCard && currentCard.isFlashcard);
+  const showSuggestedAnswer =
+    isTranslateTextInput && incorrectAttemptCount >= INCORRECT_ATTEMPTS_BEFORE_SHOWING_ANSWER;
+  const showCorrectAnswer =
+    currentCard.kind === CardKind.MultipleChoice &&
+    incorrectAttemptCount >= INCORRECT_ATTEMPTS_BEFORE_SHOWING_ANSWER;
 
   return (
     <View style={styles.container}>
@@ -837,6 +875,8 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
           feedbackWhy={feedbackWhy}
           acceptedVariants={acceptedVariants}
           validationFeedback={validationFeedback}
+          showSuggestedAnswer={showSuggestedAnswer}
+          showCorrectAnswer={showCorrectAnswer}
           onCheckAnswer={handleCheckAnswerWrapper}
           onContinue={isSpeakListening ? handleNext : undefined}
           onTryAgain={handleTryAgain}
@@ -861,42 +901,13 @@ export function SessionRunner({ plan, sessionId, kind, lessonId, planMode, timeB
 
       {!isSpeakListening ? (
         <View style={styles.footer}>
-          {((currentCard.kind === CardKind.TranslateToEn ||
-            currentCard.kind === CardKind.TranslateFromEn) &&
-            !('isFlashcard' in currentCard && currentCard.isFlashcard) &&
-            showResult &&
-            !isCorrect) ? (
-            <Pressable
-              style={styles.primaryButton}
-              onPress={handleNext}
-              accessibilityRole="button"
-              accessibilityLabel="Continue"
-            >
-              <LinearGradient
-                colors={primaryButtonGradient}
-                style={StyleSheet.absoluteFill}
-              />
-              <Text style={styles.primaryButtonLabel}>Continue</Text>
-            </Pressable>
-          ) : (
-            <Pressable
-              style={[styles.primaryButton, !canProceed && styles.primaryButtonDisabled]}
-              onPress={handleNext}
-              disabled={!canProceed}
-            >
-              <LinearGradient
-                colors={primaryButtonGradient}
-                style={StyleSheet.absoluteFill}
-              />
-              <Text style={styles.primaryButtonLabel}>
-                {currentCard.kind === CardKind.Teach && !isLast
-                  ? 'Start Practice'
-                  : isLast
-                    ? 'Finish'
-                    : 'Next'}
-              </Text>
-            </Pressable>
-          )}
+          <ContentContinueButton
+            title={footerLabel}
+            onPress={handleNext}
+            disabled={!canProceed}
+            accessibilityLabel={footerLabel}
+            accessibilityHint={isLast ? 'Ends the session' : 'Goes to next question'}
+          />
         </View>
       ) : null}
     </View>
@@ -941,28 +952,6 @@ const styles = StyleSheet.create({
   },
   secondaryButtonLabel: {
     color: theme.colors.primary,
-    fontFamily: theme.typography.semiBold,
-    fontSize: 16,
-  },
-  primaryButton: {
-    minHeight: 56,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-  },
-  primaryButtonFlex: {
-    flex: 1,
-  },
-  primaryButtonDisabled: {
-    opacity: 0.5,
-  },
-  primaryButtonLabel: {
-    color: '#fff',
     fontFamily: theme.typography.semiBold,
     fontSize: 16,
   },

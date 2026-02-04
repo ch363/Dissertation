@@ -29,14 +29,14 @@ export function SectionHeader({ title }: SectionHeaderProps) {
 
 const styles = StyleSheet.create({
   wrap: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
   title: {
     fontFamily: baseTheme.typography.semiBold,
     fontSize: 12,
     letterSpacing: 1,
     textTransform: 'uppercase',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   line: {
     height: 1,

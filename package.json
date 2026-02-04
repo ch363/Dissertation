@@ -1,0 +1,9 @@
+{
+  "name": "dissertation",
+  "private": true,
+  "scripts": {
+    "test": "npm run test --prefix backend && npm run test --prefix mobile",
+    "test:backend": "npm run test --prefix backend",
+    "test:mobile": "npm run test --prefix mobile"
+  }
+}

@@ -66,7 +66,7 @@ export function HelpContent() {
           <View style={helpStyles.instructionContent}>
             <Text style={[helpStyles.instructionTitle, { color: theme.colors.text }]}>Learn</Text>
             <Text style={[helpStyles.instructionBody, { color: theme.colors.mutedText }]}>
-              Browse lessons and your learning path. Start a lesson or head to Review to practise vocabulary.
+              Browse lessons and your learning path. Start a lesson or tap Review to practise vocabulary.
             </Text>
           </View>
         </View>

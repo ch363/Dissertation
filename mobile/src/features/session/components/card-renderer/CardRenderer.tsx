@@ -35,6 +35,8 @@ type Props = {
   acceptedVariants?: string[];
   validationFeedback?: string;
   showHint?: boolean;
+  showSuggestedAnswer?: boolean;
+  showCorrectAnswer?: boolean;
   onCheckAnswer?: (audioUri?: string) => void;
   onContinue?: () => void;
   onTryAgain?: () => void;
@@ -62,6 +64,8 @@ export function CardRenderer({
   acceptedVariants,
   validationFeedback,
   showHint,
+  showSuggestedAnswer,
+  showCorrectAnswer,
   onCheckAnswer,
   onContinue,
   onTryAgain,
@@ -96,6 +100,8 @@ export function CardRenderer({
         acceptedVariants,
         validationFeedback,
         showHint,
+        showSuggestedAnswer,
+        showCorrectAnswer,
         onCheckAnswer,
         onContinue,
         onTryAgain,
@@ -126,6 +132,8 @@ function renderCardByKind(
   acceptedVariants?: string[],
   validationFeedback?: string,
   showHint?: boolean,
+  showSuggestedAnswer?: boolean,
+  showCorrectAnswer?: boolean,
   onCheckAnswer?: (audioUri?: string) => void,
   onContinue?: () => void,
   onTryAgain?: () => void,
@@ -144,6 +152,7 @@ function renderCardByKind(
           onSelectOption={onSelectOption}
           showResult={showResult}
           isCorrect={isCorrect}
+          showCorrectAnswer={showCorrectAnswer}
           onCheckAnswer={onCheckAnswer}
         />
       );
@@ -174,6 +183,7 @@ function renderCardByKind(
           feedbackWhy={feedbackWhy}
           acceptedVariants={acceptedVariants}
           validationFeedback={validationFeedback}
+          showSuggestedAnswer={showSuggestedAnswer}
           onCheckAnswer={onCheckAnswer}
           onTryAgain={onTryAgain}
           onRating={onRating}

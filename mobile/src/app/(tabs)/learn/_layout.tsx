@@ -10,8 +10,7 @@ export default function LearnLayout() {
   const reduceMotion = useReducedMotion();
   const navigation = useNavigation();
 
-  // When user taps the Learn tab while already in this stack (e.g. on Review),
-  // pop to the Learn root so they land on Learn index, not stuck on Review.
+  // When user taps the Learn tab while already in this stack, pop to the Learn root.
   useEffect(() => {
     const parent = navigation.getParent();
     const unsub = parent?.addListener?.('tabPress', () => {
@@ -33,12 +32,6 @@ export default function LearnLayout() {
     >
       <Stack.Screen name="index" options={{ headerShown: false, title: 'Learn' }} />
       <Stack.Screen name="list" options={{ title: 'Lessons', headerBackTitle: 'Learn' }} />
-      <Stack.Screen
-        name="review"
-        options={{
-          headerShown: false,
-        }}
-      />
     </Stack>
   );
 }

@@ -95,6 +95,7 @@ describe('ProgressService', () => {
   };
 
   beforeEach(async () => {
+    mockPrismaService.user.update.mockResolvedValue({ knowledgePoints: 0 });
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProgressService,

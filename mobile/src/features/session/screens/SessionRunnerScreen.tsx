@@ -231,16 +231,8 @@ export default function SessionRunnerScreen(props?: Props) {
       lessonStartedRef.current = null;
       endLesson(resolvedLessonId).catch((err) => logger.error('Failed to end lesson', err));
     }
-    router.replace({
-      pathname: routeBuilders.sessionSummary(sessionId),
-      params: {
-        kind: resolvedKind,
-        lessonId: resolvedLessonId,
-        planMode: resolvedMode,
-        timeBudgetSec: resolvedTimeBudgetSec ? String(resolvedTimeBudgetSec) : '',
-        ...(returnTo ? { returnTo } : {}),
-      },
-    });
+    // SessionRunner already navigates to summary with full params (reviewedTeachings, totalXp, teachingsMastered).
+    // Do not replace here or we overwrite those params and the summary list stays empty.
   };
 
   const screenHeight = Dimensions.get('window').height;

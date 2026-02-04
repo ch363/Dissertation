@@ -3,10 +3,9 @@ import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { LoadingScreen } from '@/components/ui';
+import { ContentContinueButton, LoadingScreen } from '@/components/ui';
 import { getCurrentUser } from '@/services/api/auth';
 import { saveOnboarding } from '@/services/api/onboarding';
-import { PrimaryButton } from '@/components/onboarding';
 import { useOnboarding } from '@/features/onboarding/providers/OnboardingProvider';
 import { routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
@@ -122,11 +121,10 @@ export default function OnboardingCompletion() {
       {saving ? (
         <ActivityIndicator color={theme.colors.primary} />
       ) : (
-        <PrimaryButton
+        <ContentContinueButton
           title="Continue"
           onPress={onContinue}
           style={styles.cta}
-          textStyle={styles.ctaText}
         />
       )}
       </View>
@@ -162,9 +160,5 @@ const styles = StyleSheet.create({
   },
   cta: {
     width: '100%',
-    borderRadius: 20,
-  },
-  ctaText: {
-    fontSize: 18,
   },
 });

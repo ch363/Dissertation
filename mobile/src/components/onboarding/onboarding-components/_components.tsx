@@ -5,7 +5,7 @@ import { View, Text, StyleSheet, Pressable, Modal, Dimensions } from 'react-nati
 import type { AccessibilityRole } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ScrollView } from '@/components/ui';
+import { ContentContinueButton, ScrollView } from '@/components/ui';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme } from '@/services/theme/tokens';
 
@@ -400,7 +400,7 @@ export function OptionQuestion({
     <QuestionScreen
       footer={
         <StickyCTA>
-          <PrimaryButton title={nextLabel} onPress={goNext} disabled={!allowAdvance} />
+          <ContentContinueButton title={nextLabel} onPress={goNext} disabled={!allowAdvance} />
           {showSkip ? (
             <>
               <Spacer size={6} />

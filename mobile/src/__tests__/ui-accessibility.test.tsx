@@ -6,6 +6,11 @@ import { Button, IconButton, ListRow } from '@/components/ui';
 import { TabBarButton } from '@/components/navigation';
 import { ThemeProvider } from '@/services/theme/ThemeProvider';
 
+jest.mock('@/services/theme/ThemeProvider', () => ({
+  ThemeProvider: ({ children }: { children: React.ReactNode }) => children,
+  useAppTheme: () => ({ theme: require('@/services/theme/tokens').lightTheme, isDark: false }),
+}));
+
 function wrap(node: React.ReactElement) {
   return <ThemeProvider>{node}</ThemeProvider>;
 }

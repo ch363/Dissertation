@@ -1,7 +1,9 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useRef } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const CONTENT_PADDING_H = 20;
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -14,11 +16,11 @@ import {
 } from '@/components/learn';
 import { getSuggestions, type ModuleSuggestion } from '@/services/api/learn';
 import { clearLearnScreenCache, getCachedLearnScreenData, preloadLearnScreenData } from '@/services/api/learn-screen-cache';
-import { preloadReviewScreenData } from '@/services/api/review-screen-cache';
 import { getDashboard } from '@/services/api/profile';
 import { getLessons, getModules } from '@/services/api/modules';
 import { getUserLessons } from '@/services/api/progress';
 import { buildLearningPathItems, type LearningPathItem } from '@/features/learn/utils/buildLearningPathItems';
+import { makeSessionId } from '@/features/session/sessionBuilder';
 import { routeBuilders, routes } from '@/services/navigation/routes';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
@@ -54,7 +56,6 @@ export default function LearnScreen() {
         suggestions = cached.suggestions;
         
         preloadLearnScreenData().catch(() => {});
-        preloadReviewScreenData().catch(() => {});
       } else {
         [modules, lessons, userProgress, dashboard, suggestions] = await Promise.all([
           getModules().catch(() => []),
@@ -63,7 +64,6 @@ export default function LearnScreen() {
           getDashboard().catch(() => ({ streak: 0, dueReviewCount: 0, activeLessonCount: 0, xpTotal: 0, estimatedReviewMinutes: 0 })),
           getSuggestions({ limit: 8 }).catch(() => ({ lessons: [], modules: [] })),
         ]);
-        preloadReviewScreenData().catch(() => {});
       }
 
       const learningPathItems = buildLearningPathItems({
@@ -139,13 +139,13 @@ export default function LearnScreen() {
   return (
     <ScrollView
       style={[styles.scrollView, { backgroundColor: theme.colors.background }]}
-      contentContainerStyle={[
+        contentContainerStyle={[
         styles.scrollContent,
         {
           paddingTop: insets.top,
           paddingBottom: 100 + insets.bottom,
-          paddingLeft: 20 + insets.left,
-          paddingRight: 20 + insets.right,
+          paddingLeft: CONTENT_PADDING_H + insets.left,
+          paddingRight: CONTENT_PADDING_H + insets.right,
         },
       ]}
       showsVerticalScrollIndicator={false}
@@ -157,31 +157,49 @@ export default function LearnScreen() {
             <ReviewSection
               dueCount={dueReviewCount}
               estimatedReviewMinutes={estimatedReviewMinutes}
-              onStart={() => router.push({ pathname: routes.tabs.review, params: { from: 'learn' } })}
+              onStart={() => {
+                const sessionId = makeSessionId('review');
+                router.push({
+                  pathname: routeBuilders.sessionDetail(sessionId),
+                  params: { kind: 'review', returnTo: routes.tabs.learn },
+                });
+              }}
             />
-            <LearningPathCarousel
-              items={learningPathItems}
-              onPressItem={(route: string) => router.push(route)}
-            />
+            <View style={[styles.learningPathFullBleed, { width: Dimensions.get('window').width, marginLeft: -(CONTENT_PADDING_H + insets.left), marginRight: -(CONTENT_PADDING_H + insets.right) }]}>
+              <LearningPathCarousel
+                items={learningPathItems}
+                suggestedModuleId={suggestedModule?.module.id ?? null}
+                onPressItem={(route: string) => router.push({
+                  pathname: route,
+                  params: { returnTo: routes.tabs.learn },
+                })}
+              />
+            </View>
           </>
         ) : (
           <>
-            <LearningPathCarousel
-              items={learningPathItems}
-              onPressItem={(route: string) => router.push(route)}
-            />
+            <View style={[styles.learningPathFullBleed, { width: Dimensions.get('window').width, marginLeft: -(CONTENT_PADDING_H + insets.left), marginRight: -(CONTENT_PADDING_H + insets.right) }]}>
+              <LearningPathCarousel
+                items={learningPathItems}
+                suggestedModuleId={suggestedModule?.module.id ?? null}
+                onPressItem={(route: string) => router.push({
+                  pathname: route,
+                  params: { returnTo: routes.tabs.learn },
+                })}
+              />
+            </View>
             <ReviewSection
               dueCount={dueReviewCount}
               estimatedReviewMinutes={estimatedReviewMinutes}
-              onStart={() => router.push({ pathname: routes.tabs.review, params: { from: 'learn' } })}
+              onStart={() => {
+                const sessionId = makeSessionId('review');
+                router.push({
+                  pathname: routeBuilders.sessionDetail(sessionId),
+                  params: { kind: 'review', returnTo: routes.tabs.learn },
+                });
+              }}
             />
           </>
-        )}
-        {suggestedModule != null && (
-          <SuggestedForYouSection
-            suggestion={suggestedModule}
-            onPress={() => router.push(routeBuilders.courseDetail(suggestedModule.module.id))}
-          />
         )}
 
         <View style={styles.allModulesSection}>
@@ -201,7 +219,10 @@ export default function LearnScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Browse all modules"
-            onPress={() => router.push(routes.course.list)}
+            onPress={() => router.push({
+              pathname: routes.course.list,
+              params: { returnTo: routes.tabs.learn },
+            })}
             style={({ pressed }) => [
               styles.allModulesCard,
               {
@@ -244,6 +265,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+  },
+  learningPathFullBleed: {
+    width: '100%',
   },
   allModulesSection: {
     marginTop: 24,

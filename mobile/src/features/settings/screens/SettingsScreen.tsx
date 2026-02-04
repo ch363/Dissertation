@@ -9,19 +9,11 @@ import {
   StyleSheet,
   Switch,
   Pressable,
-  Image,
-  ActivityIndicator,
   ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { HelpButton } from '@/components/navigation';
 import { StaticCard } from '@/components/ui';
-import {
-  getMyProfile,
-  refreshSignedAvatarUrlFromUrl as refreshAvatarUrl,
-} from '@/services/api/profile';
-import { getAvatarUri } from '@/services/cache/avatar-cache';
 import { signOut } from '@/services/api/auth';
 import { routes } from '@/services/navigation/routes';
 import {
@@ -171,9 +163,6 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const [adaptivity, setAdaptivity] = useState<boolean>(true);
   const [notifications, setNotifications] = useState<boolean>(true);
-  const [displayName, setDisplayName] = useState<string | null>(null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
@@ -181,44 +170,6 @@ export default function SettingsScreen() {
       setNotifications(await getNotificationsEnabled());
     })();
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const profile = await getMyProfile();
-        if (cancelled) return;
-        setDisplayName(profile?.displayName ?? profile?.name ?? 'User');
-        if (profile?.avatarUrl && profile?.id) {
-          try {
-            const fresh = await refreshAvatarUrl(profile.avatarUrl);
-            const uri = await getAvatarUri(profile.id, fresh);
-            if (!cancelled) setAvatarUrl(uri);
-          } catch {
-            const uri = await getAvatarUri(profile.id, profile.avatarUrl);
-            if (!cancelled) setAvatarUrl(uri);
-          }
-        }
-      } catch {
-        if (!cancelled) setDisplayName('User');
-      } finally {
-        if (!cancelled) setProfileLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const initials = displayName
-    ? displayName
-        .trim()
-        .split(/\s+/)
-        .map((s) => s[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2) || 'U'
-    : 'U';
 
   return (
     <ScrollView
@@ -236,64 +187,27 @@ export default function SettingsScreen() {
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
-        <View style={styles.titleRow}>
-          <View>
+        <View style={styles.header}>
+          <Pressable
+            onPress={() => router.back()}
+            style={({ pressed }) => [
+              styles.backButton,
+              { opacity: pressed ? 0.5 : 1 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            accessibilityHint="Returns to the previous screen"
+          >
+            <Ionicons name="chevron-back" size={28} color={theme.colors.primary} />
+          </Pressable>
+
+          <View style={styles.titleRow}>
             <Text style={[styles.title, { color: theme.colors.text }]}>Settings</Text>
             <Text style={[styles.intro, { color: theme.colors.mutedText }]}>
               Tailor Fluentia to how you learn best
             </Text>
           </View>
-          <HelpButton
-            variant="elevated"
-            onPress={() => router.push(routes.tabs.settings.faq)}
-            accessibilityLabel="FAQ"
-            accessibilityHint="Opens frequently asked questions"
-          />
         </View>
-
-        {/* Profile card */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.profileCard,
-            {
-              backgroundColor: theme.colors.card,
-              borderColor: theme.colors.border,
-              opacity: pressed ? 0.95 : 1,
-            },
-          ]}
-          onPress={() => router.push('/(tabs)/profile?edit=1')}
-          accessibilityRole="button"
-          accessibilityLabel="Open profile and preferences"
-          accessibilityHint="Change your name, photo, and preferences"
-        >
-          <View style={styles.profileCardInner}>
-            {profileLoading ? (
-              <View style={[styles.profileAvatar, { backgroundColor: theme.colors.border }]}>
-                <ActivityIndicator size="small" color={theme.colors.primary} />
-              </View>
-            ) : avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={styles.profileAvatar} />
-            ) : (
-              <LinearGradient
-                colors={[...ICON_GRADIENTS.primary]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[styles.profileAvatar, styles.profileAvatarGradient]}
-              >
-                <Text style={styles.profileAvatarText}>{initials}</Text>
-              </LinearGradient>
-            )}
-            <View style={styles.profileCardText}>
-              <Text style={[styles.profileCardName, { color: theme.colors.text }]}>
-                {profileLoading ? '…' : displayName ?? 'User'}
-              </Text>
-              <Text style={[styles.profileCardSubtitle, { color: theme.colors.mutedText }]}>
-                Profile, progress & preferences
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.mutedText} />
-          </View>
-        </Pressable>
 
         {/* Help - placed high so it's visible without scrolling */}
         <Section title="HELP" color={theme.colors.mutedText}>
@@ -444,71 +358,40 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: baseTheme.spacing.lg,
     paddingBottom: baseTheme.spacing.xl,
-    gap: 24,
+    gap: 20,
+  },
+  header: {
+    marginBottom: 8,
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+    padding: baseTheme.spacing.xs,
+    marginLeft: -baseTheme.spacing.xs,
+    marginBottom: 4,
   },
   titleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    paddingTop: baseTheme.spacing.sm,
-    paddingBottom: baseTheme.spacing.md,
+    gap: 4,
   },
   title: {
     fontFamily: baseTheme.typography.bold,
     fontSize: 34,
-    letterSpacing: -0.4,
+    letterSpacing: -0.6,
+    lineHeight: 40,
   },
   intro: {
-    marginTop: 2,
     fontFamily: baseTheme.typography.regular,
     fontSize: 15,
     lineHeight: 20,
+    opacity: 0.7,
   },
   sectionWrap: {
-    gap: baseTheme.spacing.sm,
+    gap: 8,
   },
   sectionHeader: {
     fontFamily: baseTheme.typography.semiBold,
     fontSize: 13,
-    letterSpacing: 0.5,
-  },
-  profileCard: {
-    borderRadius: CARD_RADIUS,
-    overflow: 'hidden',
-    borderWidth: 1,
-  },
-  profileCardInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: ROW_PADDING_H,
-    gap: ROW_GAP,
-  },
-  profileAvatar: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profileAvatarGradient: {},
-  profileAvatarText: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 28,
-    color: '#FFFFFF',
-  },
-  profileCardText: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  profileCardName: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 22,
-  },
-  profileCardSubtitle: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 15,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
   },
   card: {
     padding: 0,

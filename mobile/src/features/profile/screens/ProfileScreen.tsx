@@ -1,13 +1,13 @@
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef } from 'react';
-import { View, Text, Pressable, RefreshControl, Image, Alert, ScrollView } from 'react-native';
+import { View, Text, Pressable, RefreshControl, Image, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { LoadingScreen, StaticCard } from '@/components/ui';
-import { routes } from '@/services/navigation/routes';
-import { HelpButton } from '@/components/navigation';
+import { LoadingScreen } from '@/components/ui';
+import { makeSessionId } from '@/features/session/sessionBuilder';
+import { routeBuilders, routes } from '@/services/navigation/routes';
 import { SKILL_CONFIG, DEFAULT_SKILL_CONFIG } from '@/features/profile/profileConstants';
 import { useProfileData } from '@/features/profile/hooks/useProfileData';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
@@ -17,7 +17,7 @@ import { createProfileScreenStyles } from './profileScreenStyles';
 const TAB_BAR_HEIGHT = 84;
 
 export default function Profile() {
-  const { theme } = useAppTheme();
+  const { theme, isDark } = useAppTheme();
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createProfileScreenStyles(theme), [theme]);
   const params = useLocalSearchParams<{ edit?: string }>();
@@ -35,7 +35,6 @@ export default function Profile() {
     currentLevel,
     xpInLevel,
     progressToNext,
-    activityItems,
   } = useProfileData();
 
   const router = useRouter();
@@ -110,32 +109,23 @@ export default function Profile() {
             </View>
 
             <View style={styles.headerRight}>
-              <HelpButton
-                variant="elevated"
-                accessibilityLabel="Help, profile"
-                accessibilityHint="Opens help information"
-              />
               <Pressable
-                onPress={() => {
-                  Alert.alert(
-                    'Profile',
-                    undefined,
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Edit profile',
-                        onPress: () => router.push(routes.tabs.profile.edit),
-                      },
-                    ],
-                    { cancelable: true }
-                  );
-                }}
+                onPress={() => router.push(routes.tabs.settings.root)}
                 style={({ pressed }) => [styles.headerMenuButton, pressed && styles.headerMenuButtonPressed]}
-                accessibilityLabel="More options"
-                accessibilityHint="Opens menu with Edit profile"
+                accessibilityLabel="Settings"
+                accessibilityHint="Opens settings screen"
                 accessibilityRole="button"
               >
-                <Ionicons name="ellipsis-horizontal" size={20} color="#FFFFFF" />
+                <Ionicons name="settings-outline" size={20} color="#FFFFFF" />
+              </Pressable>
+              <Pressable
+                onPress={() => router.push(routes.tabs.profile.edit)}
+                style={({ pressed }) => [styles.headerMenuButton, pressed && styles.headerMenuButtonPressed]}
+                accessibilityLabel="Edit profile"
+                accessibilityHint="Opens profile edit screen"
+                accessibilityRole="button"
+              >
+                <Ionicons name="pencil" size={20} color="#FFFFFF" />
               </Pressable>
             </View>
           </View>
@@ -175,7 +165,7 @@ export default function Profile() {
                     <View style={styles.statCardContent}>
                       <View style={styles.statCardMain}>
                         <View style={[styles.statIconContainer, styles.statIconRedAction]}>
-                          <Ionicons name="time-outline" size={22} color="#DC2626" />
+                          <Ionicons name="refresh" size={22} color="#DC2626" />
                         </View>
                         <Text style={styles.statValue}>{dashboard.dueReviewCount}</Text>
                         <Text style={styles.statLabel}>Due Reviews</Text>
@@ -184,27 +174,32 @@ export default function Profile() {
                     </View>
                   </View>
                 ) : (
-                  <Link href={routes.tabs.review} asChild style={styles.statCardSlotInner}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Due reviews: ${dashboard.dueReviewCount}. Tap to start reviews.`}
-                      style={({ pressed }) => [styles.statCardTouchable, pressed && styles.statCardPressed]}
-                    >
-                      <View style={[styles.statCard, styles.statCardWhite, styles.statCardActionable]}>
-                        <View style={styles.statCardContent}>
-                          <View style={styles.statCardMain}>
-                            <View style={[styles.statIconContainer, styles.statIconRedAction]}>
-                              <Ionicons name="time-outline" size={22} color="#DC2626" />
-                            </View>
-                            <Text style={styles.statValue}>{dashboard.dueReviewCount}</Text>
-                            <Text style={styles.statLabel}>Due Reviews</Text>
-                            <Text style={styles.statActionSublabel}>Tap to start</Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Due reviews: ${dashboard.dueReviewCount}. Tap to start reviews.`}
+                    style={({ pressed }) => [styles.statCardTouchable, styles.statCardSlotInner, pressed && styles.statCardPressed]}
+                    onPress={() => {
+                      const sessionId = makeSessionId('review');
+                      router.push({
+                        pathname: routeBuilders.sessionDetail(sessionId),
+                        params: { kind: 'review', returnTo: routes.tabs.profile.root },
+                      });
+                    }}
+                  >
+                    <View style={[styles.statCard, styles.statCardWhite, styles.statCardActionable]}>
+                      <View style={styles.statCardContent}>
+                        <View style={styles.statCardMain}>
+                          <View style={[styles.statIconContainer, styles.statIconRedAction]}>
+                            <Ionicons name="refresh" size={22} color="#DC2626" />
                           </View>
-                          <Ionicons name="chevron-forward" size={20} color={theme.colors.mutedText} />
+                          <Text style={styles.statValue}>{dashboard.dueReviewCount}</Text>
+                          <Text style={styles.statLabel}>Due Reviews</Text>
+                          <Text style={styles.statActionSublabel}>Tap to start</Text>
                         </View>
+                        <Ionicons name="chevron-forward" size={20} color={theme.colors.mutedText} />
                       </View>
-                    </Pressable>
-                  </Link>
+                    </View>
+                  </Pressable>
                 )}
               </View>
 
@@ -220,8 +215,8 @@ export default function Profile() {
 
               <View style={styles.statCardSlot}>
                 <View style={[styles.statCard, styles.statCardWhite]}>
-                  <View style={[styles.statIconContainer, styles.statIconOrange]}>
-                    <Ionicons name="flame" size={22} color={theme.colors.error} />
+                  <View style={[styles.statIconContainer, styles.statIconStreak]}>
+                    <Ionicons name="flame" size={22} color={isDark ? '#06b6d4' : '#0891b2'} />
                   </View>
                   <Text style={styles.statValue}>{dashboard.streak || 0}</Text>
                   <Text style={styles.statLabel}>Day Streak</Text>
@@ -309,16 +304,12 @@ export default function Profile() {
                 <Text style={[styles.skillBadgeText, { color: theme.colors.primary }]}>{(mastery || []).length}</Text>
               </View>
             </View>
-            <View style={styles.viewAllButtonWrap}>
-              <Link href="/profile/skills" asChild>
-                <Pressable accessibilityRole="button" hitSlop={8} style={({ pressed }) => [styles.viewAllButton, pressed && styles.viewAllButtonPressed]}>
-                  <Text style={[styles.viewAllText, { color: theme.colors.primary }]}>View all</Text>
-                  <View style={styles.viewAllChevronWrap}>
-                    <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
-                  </View>
-                </Pressable>
-              </Link>
-            </View>
+            <Link href="/profile/skills" asChild>
+              <Pressable accessibilityRole="button" hitSlop={8} style={({ pressed }) => [styles.viewAllButton, pressed && styles.viewAllButtonPressed]}>
+                <Text numberOfLines={1} style={[styles.viewAllText, { color: theme.colors.primary }]}>View all</Text>
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
+              </Pressable>
+            </Link>
           </View>
 
           <View style={styles.skillsList}>
@@ -377,111 +368,6 @@ export default function Profile() {
             )}
           </View>
         </View>
-
-        <View style={styles.activitySection}>
-          <View style={styles.activityHeader}>
-            <View style={styles.activityHeaderLeft}>
-              <Text style={styles.sectionTitle}>Recent Activity</Text>
-              {activityItems.length > 0 && (
-                <View style={styles.activityBadge}>
-                  <Text style={styles.activityBadgeText}>{activityItems.length}</Text>
-                </View>
-              )}
-            </View>
-            <View style={styles.viewAllButtonWrap}>
-              <Link href={routes.tabs.profile.reviews} asChild>
-                <Pressable accessibilityRole="button" hitSlop={8} style={({ pressed }) => [styles.viewAllButton, pressed && styles.viewAllButtonPressed]}>
-                  <Text style={[styles.viewAllText, { color: theme.colors.primary }]}>View all</Text>
-                  <View style={styles.viewAllChevronWrap}>
-                    <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
-                  </View>
-                </Pressable>
-              </Link>
-            </View>
-          </View>
-
-          {activityItems.length === 0 ? (
-            <View style={styles.emptyStateContainer}>
-              <View style={styles.emptyStateIcon}>
-                <Ionicons name="time-outline" size={40} color={theme.colors.mutedText} />
-              </View>
-              <Text style={styles.emptyStateText}>
-                Complete lessons and reviews to see your activity here
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.activityList}>
-              {activityItems.slice(0, 4).map((item, index) => {
-                const iconColors = [
-                  { bg: theme.colors.primary + '25', color: theme.colors.primary },
-                  { bg: '#D97706' + '25', color: '#D97706' },
-                  { bg: '#EA580C' + '25', color: '#EA580C' },
-                  { bg: '#16A34A' + '25', color: '#16A34A' },
-                ];
-                const colors = iconColors[index % iconColors.length];
-
-                return (
-                  <Pressable
-                    key={index}
-                    style={({ pressed }) => [styles.activityItem, pressed && styles.activityItemPressed]}
-                    accessibilityRole="button"
-                  >
-                    <View style={[styles.activityIcon, { backgroundColor: colors.bg }]}>
-                      <Ionicons name={item.icon} size={20} color={colors.color} />
-                    </View>
-
-                    <View style={styles.activityContent}>
-                      <View style={styles.activityTitleRow}>
-                        <Text style={styles.activityTitle} numberOfLines={1}>
-                          {item.title}
-                        </Text>
-                      </View>
-                      <Text style={styles.activitySubtitle} numberOfLines={1}>
-                        {item.subtitle}
-                      </Text>
-                      <View style={styles.activityTime}>
-                        <Ionicons name="time-outline" size={10} color={theme.colors.mutedText} />
-                        <Text style={styles.activityTimeText}>
-                          {new Date(item.time).toLocaleDateString()}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.activityXpBadge}>
-                      <Text style={[styles.activityXpText, { color: theme.colors.primary }]}>+15 XP</Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
-        </View>
-
-        <StaticCard title="Preferences & account" titleVariant="subtle" style={[styles.settingsSection, { borderColor: theme.colors.primary + '30' }]}>
-          <Link href={routes.tabs.settings.root} asChild>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Open settings"
-              style={({ pressed }) => [styles.settingsRow, pressed && styles.settingsRowPressed]}
-            >
-              <LinearGradient
-                colors={[theme.colors.primary, theme.colors.primary]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.settingsRowIconGradient}
-              >
-                <Ionicons name="settings-outline" size={26} color="#FFFFFF" />
-              </LinearGradient>
-              <View style={styles.settingsRowContent}>
-                <Text style={[styles.settingsRowLabel, { color: theme.colors.text }]}>Settings</Text>
-                <Text style={[styles.settingsRowSubtitle, { color: theme.colors.mutedText }]}>Speech, session defaults, sign out</Text>
-              </View>
-              <View style={styles.settingsRowChevron}>
-                <Ionicons name="chevron-forward" size={22} color={theme.colors.primary} />
-              </View>
-            </Pressable>
-          </Link>
-        </StaticCard>
 
     </ScrollView>
   );

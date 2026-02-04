@@ -8,13 +8,11 @@ export const routes = {
     root: '/(tabs)' as const,
     home: '/(tabs)/home' as const,
     learn: '/(tabs)/learn' as const,
-    review: '/(tabs)/learn/review' as const,
     profile: {
       root: '/(tabs)/profile' as const,
       index: '/(tabs)/profile' as const,
       edit: '/(tabs)/profile/edit' as const,
       skills: '/(tabs)/profile/skills' as const,
-      reviews: '/(tabs)/profile/reviews' as const,
     },
     settings: {
       root: '/(tabs)/settings' as const,
@@ -54,7 +52,6 @@ export const routes = {
 export const routeBuilders = {
   courseDetail: (slug: string) => `/course/${slug}` as const,
   courseRun: (slug: string) => `/course/${slug}/run` as const,
-  lessonStart: (lessonId: string) => `/(tabs)/learn/${lessonId}/start` as const,
   sessionDetail: (sessionId: string) => `/session/${sessionId}` as const,
   sessionCompletion: (sessionId: string) => `/session/${sessionId}/completion` as const,
   sessionSummary: (sessionId: string) => `/session/${sessionId}/summary` as const,
@@ -64,7 +61,6 @@ export type StaticRoutePath = LeafPaths<typeof routes>;
 export type DynamicRoutePath =
   | ReturnType<typeof routeBuilders.courseDetail>
   | ReturnType<typeof routeBuilders.courseRun>
-  | ReturnType<typeof routeBuilders.lessonStart>
   | ReturnType<typeof routeBuilders.sessionDetail>
   | ReturnType<typeof routeBuilders.sessionCompletion>
   | ReturnType<typeof routeBuilders.sessionSummary>;

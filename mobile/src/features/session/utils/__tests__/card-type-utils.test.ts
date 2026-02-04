@@ -15,21 +15,21 @@ describe('Card Type Utils', () => {
     });
 
     it('should return false for non-teaching cards', () => {
-      const card = { kind: CardKind.MCQ } as any;
+      const card = { kind: CardKind.MultipleChoice } as any;
       expect(isTeachCard(card)).toBe(false);
     });
   });
 
   describe('isMCQCard', () => {
     it('should identify MCQ cards', () => {
-      const card = { kind: CardKind.MCQ } as any;
+      const card = { kind: CardKind.MultipleChoice } as any;
       expect(isMCQCard(card)).toBe(true);
     });
   });
 
   describe('cardRequiresSelection', () => {
     it('should return true for MCQ cards', () => {
-      const card = { kind: CardKind.MCQ } as any;
+      const card = { kind: CardKind.MultipleChoice } as any;
       expect(cardRequiresSelection(card)).toBe(true);
     });
 
@@ -54,7 +54,7 @@ describe('Card Type Utils', () => {
     });
 
     it('should return false for MCQ', () => {
-      const card = { kind: CardKind.MCQ } as any;
+      const card = { kind: CardKind.MultipleChoice } as any;
       expect(cardRequiresTextInput(card)).toBe(false);
     });
   });
@@ -67,7 +67,7 @@ describe('Card Type Utils', () => {
     });
 
     it('should require option selection for MCQ', () => {
-      const card = { kind: CardKind.MCQ } as any;
+      const card = { kind: CardKind.MultipleChoice } as any;
       const stateWithoutSelection = {};
       expect(canSubmitCard(card, stateWithoutSelection)).toBe(false);
 
@@ -85,7 +85,7 @@ describe('Card Type Utils', () => {
     });
 
     it('should require rating for flashcard', () => {
-      const card = { kind: CardKind.Flashcard } as any;
+      const card = { kind: CardKind.TranslateToEn, isFlashcard: true } as any;
       const stateWithoutRating = {};
       expect(canSubmitCard(card, stateWithoutRating)).toBe(false);
 

@@ -75,7 +75,7 @@ type PrimaryAction =
     };
 
 export default function CourseDetail() {
-  const { slug } = useLocalSearchParams<{ slug: string }>();
+  const { slug, returnTo } = useLocalSearchParams<{ slug: string; returnTo?: string }>();
   const { theme, isDark } = useAppTheme();
   const cover = useMemo(
     () => ({
@@ -90,8 +90,6 @@ export default function CourseDetail() {
   const [lessonsLoadError, setLessonsLoadError] = useState<string | null>(null);
   const outcomeRequestsRef = useRef(new Set<string>());
   const scrollViewRef = useRef<ScrollView>(null);
-  const lessonsSectionRef = useRef<View>(null);
-  const [lessonsSectionY, setLessonsSectionY] = useState(0);
 
   const { data, loading, error, reload } = useAsyncData<{
     module: Module;
@@ -298,9 +296,12 @@ export default function CourseDetail() {
   const handlePrimaryActionPress = () => {
     if (!primaryAction || !slug) return;
     const sessionId = makeSessionId('learn');
+    const courseDetailRoute = returnTo 
+      ? `${routeBuilders.courseDetail(slug)}?returnTo=${encodeURIComponent(returnTo)}`
+      : routeBuilders.courseDetail(slug);
     router.push({
       pathname: routeBuilders.sessionDetail(sessionId),
-      params: { lessonId: primaryAction.lessonId, kind: 'learn', returnTo: routeBuilders.courseDetail(slug) },
+      params: { lessonId: primaryAction.lessonId, kind: 'learn', returnTo: courseDetailRoute },
     });
   };
 
@@ -313,12 +314,6 @@ export default function CourseDetail() {
 
   const handleRetry = () => {
     reload();
-  };
-
-  const handleViewAllLessons = () => {
-    if (lessonsSectionY > 0) {
-      scrollViewRef.current?.scrollTo({ y: lessonsSectionY - 24, animated: true });
-    }
   };
 
   // IMPORTANT: Hooks must run before any early returns.
@@ -359,7 +354,15 @@ export default function CourseDetail() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Go back"
-          onPress={() => router.back()}
+          onPress={() => {
+            if (returnTo) {
+              router.replace(returnTo);
+            } else if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace('/(tabs)/learn');
+            }
+          }}
           style={({ pressed }) => [styles.navButton, pressed && styles.navButtonPressed]}
         >
           <Ionicons name="chevron-back" size={28} color={theme.colors.text} />
@@ -468,15 +471,6 @@ export default function CourseDetail() {
           </Pressable>
         ) : null}
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="View all lessons"
-          onPress={handleViewAllLessons}
-          style={({ pressed }) => [styles.secondaryCta, { backgroundColor: theme.colors.card, borderColor: cover.secondaryBorder }, pressed && { opacity: 0.9 }]}
-        >
-          <Text style={[styles.secondaryCtaText, { color: cover.title }]}>View all lessons</Text>
-        </Pressable>
-
         <LinearGradient
           colors={[cover.tipGradientStart, cover.tipGradientEnd]}
           start={{ x: 0, y: 0 }}
@@ -499,8 +493,6 @@ export default function CourseDetail() {
 
         {lessons.length > 0 ? (
           <View
-            ref={lessonsSectionRef}
-            onLayout={(e) => setLessonsSectionY(e.nativeEvent.layout.y)}
             collapsable={false}
             style={styles.lessonsSection}
           >
@@ -524,9 +516,12 @@ export default function CourseDetail() {
 
               const handleLessonPress = () => {
                 const sessionId = makeSessionId('learn');
+                const courseDetailRoute = returnTo 
+                  ? `${routeBuilders.courseDetail(slug)}?returnTo=${encodeURIComponent(returnTo)}`
+                  : routeBuilders.courseDetail(slug);
                 router.push({
                   pathname: routeBuilders.sessionDetail(sessionId),
-                  params: { lessonId: lesson.id, kind: 'learn', returnTo: routeBuilders.courseDetail(slug) },
+                  params: { lessonId: lesson.id, kind: 'learn', returnTo: courseDetailRoute },
                 });
               };
 

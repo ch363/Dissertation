@@ -4,11 +4,12 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { Button, LoadingScreen, ScrollView, StaticCard } from '@/components/ui';
+import { ContentContinueButton, LoadingScreen, ScrollView, StaticCard } from '@/components/ui';
+import { makeSessionId } from '@/features/session/sessionBuilder';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 import { getLesson, getLessonTeachings, type Lesson, type Teaching } from '@/services/api/modules';
-import { routes } from '@/services/navigation/routes';
+import { routeBuilders, routes } from '@/services/navigation/routes';
 import { useAsyncData } from '@/hooks/useAsyncData';
 
 export default function LessonOverviewScreen() {
@@ -42,7 +43,11 @@ export default function LessonOverviewScreen() {
 
   const handleStart = () => {
     if (!lessonId) return;
-    router.push(`/(tabs)/learn/${lessonId}/start`);
+    const sessionId = makeSessionId('learn');
+    router.push({
+      pathname: routeBuilders.sessionDetail(sessionId),
+      params: { lessonId, kind: 'learn', returnTo: routes.tabs.learn },
+    });
   };
 
   const handleHomePress = () => {
@@ -124,7 +129,7 @@ export default function LessonOverviewScreen() {
           </StaticCard>
         ) : null}
 
-        <Button
+        <ContentContinueButton
           title={locked ? 'Locked' : 'Start Lesson'}
           onPress={handleStart}
           disabled={locked}

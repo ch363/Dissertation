@@ -70,12 +70,4 @@ describe('Learn (e2e)', () => {
         .expect(401);
     });
   });
-
-  describe('GET /learn/review-summary', () => {
-    it('should return 401 without authentication', () => {
-      return request(app.getHttpServer())
-        .get('/learn/review-summary')
-        .expect(401);
-    });
-  });
 });

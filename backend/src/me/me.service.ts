@@ -10,6 +10,8 @@ import { isMissingColumnOrSchemaMismatchError } from '../common/utils/prisma-err
 import {
   getStartOfWeekLocalUtc,
   getEndOfWeekLocalUtc,
+  getStartOfLocalDayUtc,
+  getEndOfLocalDayUtc,
 } from '../common/utils/date.util';
 import { LoggerService } from '../common/logger';
 
@@ -408,15 +410,18 @@ export class MeService {
     };
   }
 
-  async getStats(userId: string) {
+  async getStats(userId: string, tzOffsetMinutes?: number) {
     const now = new Date();
-    const startOfToday = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-    );
-    const endOfToday = new Date(startOfToday);
-    endOfToday.setDate(endOfToday.getDate() + 1);
+    const startOfToday = Number.isFinite(tzOffsetMinutes)
+      ? getStartOfLocalDayUtc(now, tzOffsetMinutes)
+      : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const endOfToday = Number.isFinite(tzOffsetMinutes)
+      ? new Date(getEndOfLocalDayUtc(now, tzOffsetMinutes).getTime() + 1)
+      : (() => {
+          const end = new Date(startOfToday);
+          end.setDate(end.getDate() + 1);
+          return end;
+        })();
 
     let todayPerformances: Array<{
       timeToComplete: number | null;

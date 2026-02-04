@@ -111,6 +111,11 @@ function buildVariants(teaching) {
         feedbackWhy: 'Note: one o\'clock uses "l\'una" in Italian.',
       };
     }
+    if (it === "Bene, grazie") {
+      return {
+        answer: "I'm fine, thanks/Good, thanks/Good thanks",
+      };
+    }
     return null;
   })();
 

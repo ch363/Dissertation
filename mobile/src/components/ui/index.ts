@@ -1,4 +1,5 @@
 export { Button } from './button/Button';
+export { ContentContinueButton } from './content-continue-button/ContentContinueButton';
 export { IconButton } from './icon-button/IconButton';
 export { ListDivider } from './list-divider/ListDivider';
 export { ListRow } from './list-row/ListRow';

@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HelpButton } from '@/components/navigation';
+import { LoadingScreen } from '@/components/ui';
 import {
   HomePrimaryCtaCard,
   type HomePrimaryAction,
@@ -34,6 +35,8 @@ const logger = createLogger('HomeScreen');
 export default function HomeScreen() {
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isFirstTimeUser, setIsFirstTimeUser] = useState<boolean>(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [streakDays, setStreakDays] = useState<number>(0);
   const [minutesToday, setMinutesToday] = useState<number>(0);
@@ -73,6 +76,7 @@ export default function HomeScreen() {
   );
 
   const loadData = useCallback(async () => {
+    setIsLoading(true);
     try {
       const [profile, dashboardData, statsData, recentActivity, suggestions, masteryData] = await Promise.all([
         getMyProfile().catch(() => null),
@@ -107,7 +111,16 @@ export default function HomeScreen() {
           : null,
       );
       setDueReviewCount(dashboardData.dueReviewCount || 0);
-      setXpTotal(dashboardData.xpTotal ?? 0);
+      const totalXP = dashboardData.xpTotal ?? 0;
+      setXpTotal(totalXP);
+      
+      // Determine if this is a first-time user (no XP, no streak, no activity)
+      setIsFirstTimeUser(
+        totalXP === 0 &&
+        (dashboardData.streak || 0) === 0 &&
+        (statsData.minutesToday || 0) === 0 &&
+        (statsData.completedItemsToday ?? 0) === 0
+      );
       setMastery(
         Array.isArray(masteryData)
           ? masteryData.map((m) => ({ skillTag: m.skillTag, masteryProbability: m.masteryProbability }))
@@ -169,6 +182,8 @@ export default function HomeScreen() {
         kind: 'startNext',
         statusMessage: 'You’re all caught up. Want to start something new?',
       });
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -414,6 +429,11 @@ export default function HomeScreen() {
     router.navigate(routes.tabs.learn);
   };
 
+  // Show loading screen while data is being fetched
+  if (isLoading) {
+    return <LoadingScreen title="Loading your dashboard" />;
+  }
+
   return (
     <ScrollView
       style={[styles.scrollView, { backgroundColor: theme.colors.background }]}
@@ -507,7 +527,7 @@ export default function HomeScreen() {
           />
         </View>
 
-        {streakDays === 0 && minutesToday === 0 && completedItemsToday === 0 ? (
+        {isFirstTimeUser ? (
           <View style={styles.emptyStateHint}>
             <Text
               style={[styles.emptyStateText, { color: theme.colors.mutedText }]}

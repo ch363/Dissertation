@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { Button, StaticCard } from '@/components/ui';
+import { ContentContinueButton, StaticCard } from '@/components/ui';
 import { routeBuilders } from '@/services/navigation/routes';
 import { theme } from '@/services/theme/tokens';
 
@@ -88,7 +88,7 @@ export default function CompletionScreen() {
           </View>
 
           <View style={styles.actions}>
-            <Button title="Continue" onPress={handleContinue} accessibilityHint="Goes to session summary" />
+            <ContentContinueButton title="Continue" onPress={handleContinue} accessibilityHint="Goes to session summary" />
           </View>
         </StaticCard>
       </ScrollView>
@@ -198,16 +198,5 @@ const styles = StyleSheet.create({
   },
   actions: {
     marginTop: theme.spacing.sm,
-  },
-  primaryButton: {
-    backgroundColor: theme.colors.primary,
-    padding: theme.spacing.md,
-    borderRadius: theme.radius.md,
-    alignItems: 'center',
-  },
-  primaryButtonLabel: {
-    color: '#fff',
-    fontFamily: theme.typography.semiBold,
-    fontSize: 16,
   },
 });

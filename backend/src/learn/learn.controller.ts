@@ -19,7 +19,6 @@ import {
 import { Transform } from 'class-transformer';
 import { SessionPlanDto } from '../engine/content-delivery/session-types';
 import { LearningPathCardDto } from './learning-path.dto';
-import { ReviewSummaryDto } from './review-summary.dto';
 
 export class LearnSuggestionsQueryDto {
   @IsOptional()
@@ -75,11 +74,6 @@ export class LearnController {
     @User() userId: string,
   ): Promise<LearningPathCardDto[]> {
     return this.learnService.getLearningPath(userId);
-  }
-
-  @Get('review-summary')
-  async getReviewSummary(@User() userId: string): Promise<ReviewSummaryDto> {
-    return this.learnService.getReviewSummary(userId);
   }
 
   @Get('suggestions')

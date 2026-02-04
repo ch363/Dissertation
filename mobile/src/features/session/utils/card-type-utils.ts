@@ -1,19 +1,31 @@
-import { CardKind, Card, CardTeach, CardMCQ, CardFillBlank, CardFlashcard, CardListening } from '@/types/session';
+import {
+  CardKind,
+  Card,
+  CardTeach,
+  MultipleChoiceCard,
+  CardFillBlank,
+  TranslateCard,
+  CardListening,
+} from '@/types/session';
 
 export function isTeachCard(card: Card): card is CardTeach {
   return card.kind === CardKind.Teach;
 }
 
-export function isMCQCard(card: Card): card is CardMCQ {
-  return card.kind === CardKind.MCQ;
+export function isMCQCard(card: Card): card is MultipleChoiceCard {
+  return card.kind === CardKind.MultipleChoice;
 }
 
 export function isFillBlankCard(card: Card): card is CardFillBlank {
   return card.kind === CardKind.FillBlank;
 }
 
-export function isFlashcard(card: Card): card is CardFlashcard {
-  return card.kind === CardKind.Flashcard;
+export function isFlashcard(card: Card): card is TranslateCard {
+  return (
+    (card.kind === CardKind.TranslateToEn || card.kind === CardKind.TranslateFromEn) &&
+    'isFlashcard' in card &&
+    (card as TranslateCard).isFlashcard === true
+  );
 }
 
 export function isListeningCard(card: Card): card is CardListening {

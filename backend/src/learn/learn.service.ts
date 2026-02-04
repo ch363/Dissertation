@@ -4,7 +4,6 @@ import { ContentDeliveryService } from '../engine/content-delivery/content-deliv
 import { SessionPlanDto, SessionContext } from '../engine/content-delivery/session-types';
 import { ProgressService } from '../progress/progress.service';
 import { LearningPathCardDto } from './learning-path.dto';
-import { ReviewSummaryDto } from './review-summary.dto';
 
 @Injectable()
 export class LearnService {
@@ -96,22 +95,6 @@ export class LearnService {
         cta,
       };
     });
-  }
-
-  /**
-   * Review summary uses the same "latest per question" due count as the
-   * dashboard and review session plan, so counts stay consistent after
-   * completing reviews.
-   */
-  async getReviewSummary(userId: string): Promise<ReviewSummaryDto> {
-    const dueCount = await this.progressService.getDueReviewCount(userId);
-    const progress = Math.max(0, Math.min(1, 1 - dueCount / 10));
-
-    return {
-      dueCount,
-      progress,
-      subtitle: `${dueCount} ${dueCount === 1 ? 'item needs' : 'items need'} review today`,
-    };
   }
 
   async getSuggestions(

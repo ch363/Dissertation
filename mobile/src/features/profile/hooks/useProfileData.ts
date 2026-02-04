@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
-import { getMyProfile, upsertMyProfile, getDashboard, getRecentActivity, type DashboardData, type RecentActivity, refreshSignedAvatarUrlFromUrl as refreshAvatarUrl, uploadAvatar } from '@/services/api/profile';
+import { getMyProfile, upsertMyProfile, getDashboard, type DashboardData, refreshSignedAvatarUrlFromUrl as refreshAvatarUrl, uploadAvatar } from '@/services/api/profile';
 import { getCachedProfileScreenData, preloadProfileScreenData } from '@/services/api/profile-screen-cache';
 import { getProgressSummary, type ProgressSummary } from '@/services/api/progress';
 import { getAllMastery, type SkillMastery } from '@/services/api/mastery';
@@ -13,50 +13,11 @@ const logger = createLogger('useProfileData');
 
 const XP_PER_LEVEL = 500;
 
-export type ProfileActivityItem = {
-  title: string;
-  subtitle: string;
-  time: string;
-  icon: 'book-outline' | 'checkmark-circle-outline' | 'refresh-outline';
-  route?: string;
-};
-
-function buildActivityItems(recentActivity: RecentActivity | null): ProfileActivityItem[] {
-  const items: ProfileActivityItem[] = [];
-  if (recentActivity?.recentLesson) {
-    items.push({
-      title: recentActivity.recentLesson.lesson.title,
-      subtitle: `${recentActivity.recentLesson.lesson.module.title} • ${recentActivity.recentLesson.completedTeachings} teachings completed`,
-      time: recentActivity.recentLesson.lastAccessedAt,
-      icon: 'book-outline',
-      route: `/(tabs)/learn/${recentActivity.recentLesson.lesson.id}/start`,
-    });
-  }
-  if (recentActivity?.recentTeaching) {
-    items.push({
-      title: 'Completed teaching',
-      subtitle: `${recentActivity.recentTeaching.teaching.learningLanguageString} • ${recentActivity.recentTeaching.lesson.title}`,
-      time: recentActivity.recentTeaching.completedAt,
-      icon: 'checkmark-circle-outline',
-    });
-  }
-  if (recentActivity?.recentQuestion) {
-    items.push({
-      title: 'Reviewed question',
-      subtitle: `${recentActivity.recentQuestion.teaching.learningLanguageString} • ${recentActivity.recentQuestion.lesson.title}`,
-      time: recentActivity.recentQuestion.lastRevisedAt,
-      icon: 'refresh-outline',
-    });
-  }
-  return items;
-}
-
 export function useProfileData() {
   const [displayName, setDisplayName] = useState<string>('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [progress, setProgress] = useState<ProgressSummary | null>(null);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-  const [recentActivity, setRecentActivity] = useState<RecentActivity | null>(null);
   const [mastery, setMastery] = useState<SkillMastery[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -68,20 +29,18 @@ export function useProfileData() {
 
   const loadData = useCallback(async () => {
     const cached = getCachedProfileScreenData();
-    let profile, dashboardData, recentData, masteryData, progressData;
+    let profile, dashboardData, masteryData, progressData;
 
     if (cached) {
       profile = cached.profile;
       dashboardData = cached.dashboard;
-      recentData = cached.recentActivity;
       masteryData = cached.mastery;
       progressData = cached.progress;
     } else {
       setLoading(true);
-      [profile, dashboardData, recentData, masteryData] = await Promise.all([
+      [profile, dashboardData, masteryData] = await Promise.all([
         getMyProfile(),
         getDashboard(),
-        getRecentActivity(),
         getAllMastery().catch((error) => {
           logger.error('Error loading mastery data', error as Error);
           return [];
@@ -99,7 +58,6 @@ export function useProfileData() {
       }
       setProgress(progressData);
       setDashboard(dashboardData);
-      setRecentActivity(recentData);
       setMastery(masteryData);
       setLoading(false);
       setRefreshing(false);
@@ -223,14 +181,12 @@ export function useProfileData() {
   const currentLevel = Math.max(1, Math.floor(currentXP / XP_PER_LEVEL) + 1);
   const xpInLevel = currentXP % XP_PER_LEVEL;
   const progressToNext = xpInLevel / XP_PER_LEVEL;
-  const activityItems = buildActivityItems(recentActivity);
 
   return {
     displayName,
     avatarUrl,
     progress,
     dashboard,
-    recentActivity,
     mastery,
     loading,
     refreshing,
@@ -253,6 +209,5 @@ export function useProfileData() {
     currentLevel,
     xpInLevel,
     progressToNext,
-    activityItems,
   };
 }
