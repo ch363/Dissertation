@@ -38,11 +38,11 @@ export default function LandingScreen() {
   }
 
   return (
-    <SafeAreaView
-      style={[styles.safe, { backgroundColor: theme.colors.background }]}
-      testID="landing-screen"
-    >
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+      <View
+        testID="landing-screen"
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+      >
         <Image
           source={require('@/assets/logo.png')}
           style={styles.logo}

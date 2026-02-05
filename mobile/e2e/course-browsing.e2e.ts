@@ -1,4 +1,4 @@
-import { device, element, by, waitFor, expect } from 'detox';
+import { element, by, waitFor, expect } from 'detox';
 
 import { loginWithEmailPassword, signOutUser, goBack } from './helpers/auth';
 import { launchAppSafe } from './setup';
@@ -11,7 +11,9 @@ describe('Course Browsing', () => {
   beforeAll(async () => {
     await launchAppSafe();
     await loginWithEmailPassword();
-    await new Promise((r) => setTimeout(r, 2000));
+    await waitFor(element(by.id('tab-home')))
+      .toBeVisible()
+      .withTimeout(10000);
   });
 
   afterAll(async () => {
@@ -22,7 +24,10 @@ describe('Course Browsing', () => {
     // Ensure we're on Home tab
     const homeTab = element(by.id('tab-home'));
     await waitFor(homeTab).toBeVisible().withTimeout(5000);
-    await new Promise((r) => setTimeout(r, 2000));
+    await homeTab.tap();
+    await waitFor(element(by.id('home-screen-scroll')))
+      .toBeVisible()
+      .withTimeout(5000);
   });
 
   describe('Learn Screen Navigation', () => {
@@ -30,24 +35,20 @@ describe('Course Browsing', () => {
       // Navigate to Learn tab
       const learnTab = element(by.id('tab-learn'));
       await learnTab.tap();
-      await new Promise((r) => setTimeout(r, 3000));
 
-      // Wait for Learn screen content
-      await waitFor(element(by.text('Explore lessons and track your progress')))
+      // Wait for Learn screen scroll view
+      await waitFor(element(by.id('learn-screen-scroll')))
         .toBeVisible()
         .withTimeout(15000);
 
-      // Verify Learn screen scroll view
-      const scrollView = element(by.id('learn-screen-scroll'));
-      await expect(scrollView).toBeVisible();
+      await expect(element(by.id('learn-screen-scroll'))).toBeVisible();
     });
 
     it('should scroll through Learn screen content', async () => {
       const learnTab = element(by.id('tab-learn'));
       await learnTab.tap();
-      await new Promise((r) => setTimeout(r, 3000));
 
-      await waitFor(element(by.text('Explore lessons and track your progress')))
+      await waitFor(element(by.id('learn-screen-scroll')))
         .toBeVisible()
         .withTimeout(15000);
 
@@ -56,7 +57,6 @@ describe('Course Browsing', () => {
       // Scroll down
       try {
         await scrollView.scroll(500, 'down');
-        await new Promise((r) => setTimeout(r, 1500));
       } catch {
         // Content might not need scrolling
       }
@@ -64,7 +64,6 @@ describe('Course Browsing', () => {
       // Scroll back up
       try {
         await scrollView.scroll(300, 'up');
-        await new Promise((r) => setTimeout(r, 1000));
       } catch {
         // Already at top
       }
@@ -73,23 +72,18 @@ describe('Course Browsing', () => {
     it('should find Browse full catalog button', async () => {
       const learnTab = element(by.id('tab-learn'));
       await learnTab.tap();
-      await new Promise((r) => setTimeout(r, 3000));
 
-      await waitFor(element(by.text('Explore lessons and track your progress')))
+      await waitFor(element(by.id('learn-screen-scroll')))
         .toBeVisible()
         .withTimeout(15000);
 
-      // Scroll to find catalog button
-      try {
-        await waitFor(element(by.text('Browse full catalog')))
-          .toBeVisible()
-          .whileElement(by.id('learn-screen-scroll'))
-          .scroll(400, 'down');
+      // Scroll to find catalog button using testID
+      await waitFor(element(by.id('browse-catalog-button')))
+        .toBeVisible()
+        .whileElement(by.id('learn-screen-scroll'))
+        .scroll(400, 'down');
 
-        await expect(element(by.text('Browse full catalog'))).toBeVisible();
-      } catch {
-        // Catalog button might not be visible
-      }
+      await expect(element(by.id('browse-catalog-button'))).toBeVisible();
     });
   });
 
@@ -97,67 +91,89 @@ describe('Course Browsing', () => {
     it('should navigate to course catalog', async () => {
       const learnTab = element(by.id('tab-learn'));
       await learnTab.tap();
-      await new Promise((r) => setTimeout(r, 3000));
 
-      await waitFor(element(by.text('Explore lessons and track your progress')))
+      await waitFor(element(by.id('learn-screen-scroll')))
         .toBeVisible()
         .withTimeout(15000);
 
-      // Navigate to catalog
-      try {
-        await waitFor(element(by.text('Browse full catalog')))
-          .toBeVisible()
-          .whileElement(by.id('learn-screen-scroll'))
-          .scroll(400, 'down');
+      // Navigate to catalog using testID
+      await waitFor(element(by.id('browse-catalog-button')))
+        .toBeVisible()
+        .whileElement(by.id('learn-screen-scroll'))
+        .scroll(400, 'down');
 
-        await element(by.text('Browse full catalog')).tap();
-        await new Promise((r) => setTimeout(r, 3000));
+      await element(by.id('browse-catalog-button')).tap();
 
-        // Verify courses screen
-        await waitFor(element(by.text('Courses')))
-          .toBeVisible()
-          .withTimeout(10000);
-      } catch {
-        // Catalog navigation might fail
-      }
+      // Verify course index screen loads
+      await waitFor(element(by.id('course-index-scroll')))
+        .toBeVisible()
+        .withTimeout(10000);
+
+      // Go back
+      await goBack();
     });
 
     it('should scroll through available courses', async () => {
       const learnTab = element(by.id('tab-learn'));
       await learnTab.tap();
-      await new Promise((r) => setTimeout(r, 3000));
+
+      await waitFor(element(by.id('learn-screen-scroll')))
+        .toBeVisible()
+        .withTimeout(15000);
 
       // Navigate to catalog
+      await waitFor(element(by.id('browse-catalog-button')))
+        .toBeVisible()
+        .whileElement(by.id('learn-screen-scroll'))
+        .scroll(400, 'down');
+
+      await element(by.id('browse-catalog-button')).tap();
+
+      await waitFor(element(by.id('course-index-scroll')))
+        .toBeVisible()
+        .withTimeout(10000);
+
+      // Scroll through courses using the proper testID
       try {
-        await waitFor(element(by.text('Browse full catalog')))
-          .toBeVisible()
-          .whileElement(by.id('learn-screen-scroll'))
-          .scroll(400, 'down');
-
-        await element(by.text('Browse full catalog')).tap();
-        await new Promise((r) => setTimeout(r, 3000));
-
-        await waitFor(element(by.text('Courses')))
-          .toBeVisible()
-          .withTimeout(10000);
-
-        // Scroll through courses
-        try {
-          await element(by.type('RCTCustomScrollView')).atIndex(0).scroll(500, 'down');
-          await new Promise((r) => setTimeout(r, 2000));
-
-          await element(by.type('RCTCustomScrollView')).atIndex(0).scroll(300, 'up');
-          await new Promise((r) => setTimeout(r, 1000));
-        } catch {
-          // Scrolling might not be needed
-        }
-
-        // Go back
-        await goBack();
-        await new Promise((r) => setTimeout(r, 2000));
+        await element(by.id('course-index-scroll')).scroll(500, 'down');
+        await element(by.id('course-index-scroll')).scroll(300, 'up');
       } catch {
-        // Catalog not accessible
+        // Scrolling might not be needed
       }
+
+      // Go back
+      await goBack();
+    });
+
+    it('should display module cards in catalog', async () => {
+      const learnTab = element(by.id('tab-learn'));
+      await learnTab.tap();
+
+      await waitFor(element(by.id('learn-screen-scroll')))
+        .toBeVisible()
+        .withTimeout(15000);
+
+      // Navigate to catalog
+      await waitFor(element(by.id('browse-catalog-button')))
+        .toBeVisible()
+        .whileElement(by.id('learn-screen-scroll'))
+        .scroll(400, 'down');
+
+      await element(by.id('browse-catalog-button')).tap();
+
+      await waitFor(element(by.id('course-index-scroll')))
+        .toBeVisible()
+        .withTimeout(10000);
+
+      // Check for module cards using testID
+      await waitFor(element(by.id('module-card-0')))
+        .toBeVisible()
+        .withTimeout(5000);
+
+      await expect(element(by.id('module-card-0'))).toBeVisible();
+
+      // Go back
+      await goBack();
     });
   });
 
@@ -165,60 +181,80 @@ describe('Course Browsing', () => {
     it('should navigate to a course and view details', async () => {
       const learnTab = element(by.id('tab-learn'));
       await learnTab.tap();
-      await new Promise((r) => setTimeout(r, 3000));
+
+      await waitFor(element(by.id('learn-screen-scroll')))
+        .toBeVisible()
+        .withTimeout(15000);
 
       // Navigate to catalog
+      await waitFor(element(by.id('browse-catalog-button')))
+        .toBeVisible()
+        .whileElement(by.id('learn-screen-scroll'))
+        .scroll(400, 'down');
+
+      await element(by.id('browse-catalog-button')).tap();
+
+      await waitFor(element(by.id('course-index-scroll')))
+        .toBeVisible()
+        .withTimeout(10000);
+
+      // Tap first module card
+      await waitFor(element(by.id('module-card-0')))
+        .toBeVisible()
+        .withTimeout(5000);
+
+      await element(by.id('module-card-0')).tap();
+
+      // Verify course detail screen loads
+      await waitFor(element(by.id('course-detail-scroll')))
+        .toBeVisible()
+        .withTimeout(10000);
+
+      // Go back twice (to catalog, then to learn)
+      await goBack();
+      await goBack();
+    });
+
+    it('should display course start button on detail screen', async () => {
+      const learnTab = element(by.id('tab-learn'));
+      await learnTab.tap();
+
+      await waitFor(element(by.id('learn-screen-scroll')))
+        .toBeVisible()
+        .withTimeout(15000);
+
+      // Navigate to catalog
+      await waitFor(element(by.id('browse-catalog-button')))
+        .toBeVisible()
+        .whileElement(by.id('learn-screen-scroll'))
+        .scroll(400, 'down');
+
+      await element(by.id('browse-catalog-button')).tap();
+
+      await waitFor(element(by.id('module-card-0')))
+        .toBeVisible()
+        .withTimeout(10000);
+
+      await element(by.id('module-card-0')).tap();
+
+      await waitFor(element(by.id('course-detail-scroll')))
+        .toBeVisible()
+        .withTimeout(10000);
+
+      // Check for start button
       try {
-        await waitFor(element(by.text('Browse full catalog')))
+        await waitFor(element(by.id('course-start-button')))
           .toBeVisible()
-          .whileElement(by.id('learn-screen-scroll'))
-          .scroll(400, 'down');
+          .withTimeout(5000);
 
-        await element(by.text('Browse full catalog')).tap();
-        await new Promise((r) => setTimeout(r, 3000));
-
-        await waitFor(element(by.text('Courses')))
-          .toBeVisible()
-          .withTimeout(10000);
-
-        // Try to tap a course card
-        // Course cards might have various titles, so we scroll and tap
-        try {
-          await element(by.type('RCTCustomScrollView')).atIndex(0).scroll(100, 'down');
-          await new Promise((r) => setTimeout(r, 1000));
-
-          // Look for common course-related text
-          const courseCard = element(by.type('RCTView')).atIndex(3);
-          try {
-            await courseCard.tap();
-            await new Promise((r) => setTimeout(r, 3000));
-
-            // Verify we're on a course detail screen
-            // Look for common elements like "Lessons" or lesson list
-            try {
-              await waitFor(element(by.text('Lessons')))
-                .toBeVisible()
-                .withTimeout(5000);
-            } catch {
-              // Different course detail layout
-            }
-
-            // Go back
-            await goBack();
-            await new Promise((r) => setTimeout(r, 2000));
-          } catch {
-            // Could not tap course card
-          }
-        } catch {
-          // Scrolling or tapping failed
-        }
-
-        // Go back to Learn
-        await goBack();
-        await new Promise((r) => setTimeout(r, 2000));
+        await expect(element(by.id('course-start-button'))).toBeVisible();
       } catch {
-        // Catalog not accessible
+        // Start button might not be visible if no lessons
       }
+
+      // Go back
+      await goBack();
+      await goBack();
     });
   });
 
@@ -226,37 +262,28 @@ describe('Course Browsing', () => {
     it('should display learning path carousel on Learn screen', async () => {
       const learnTab = element(by.id('tab-learn'));
       await learnTab.tap();
-      await new Promise((r) => setTimeout(r, 3000));
 
-      await waitFor(element(by.text('Explore lessons and track your progress')))
+      await waitFor(element(by.id('learn-screen-scroll')))
         .toBeVisible()
         .withTimeout(15000);
 
-      // Look for learning path section
+      // Look for learning path carousel
       try {
-        // The learning path carousel should be visible at the top
-        await waitFor(element(by.text('Your Learning Path')))
+        await waitFor(element(by.id('learning-path-carousel')))
           .toBeVisible()
           .withTimeout(5000);
+
+        await expect(element(by.id('learning-path-carousel'))).toBeVisible();
       } catch {
-        // Learning path might not be visible or labeled differently
-        // Try scrolling to find it
-        try {
-          const scrollView = element(by.id('learn-screen-scroll'));
-          await scrollView.scroll(200, 'down');
-          await new Promise((r) => setTimeout(r, 1000));
-        } catch {
-          // Scroll failed
-        }
+        // Learning path might not be visible
       }
     });
 
     it('should interact with learning path carousel', async () => {
       const learnTab = element(by.id('tab-learn'));
       await learnTab.tap();
-      await new Promise((r) => setTimeout(r, 3000));
 
-      await waitFor(element(by.text('Explore lessons and track your progress')))
+      await waitFor(element(by.id('learn-screen-scroll')))
         .toBeVisible()
         .withTimeout(15000);
 
@@ -267,11 +294,9 @@ describe('Course Browsing', () => {
 
         // Swipe left to see more items
         await carousel.swipe('left');
-        await new Promise((r) => setTimeout(r, 1000));
 
         // Swipe right to go back
         await carousel.swipe('right');
-        await new Promise((r) => setTimeout(r, 1000));
       } catch {
         // Carousel not available or swipeable
       }
@@ -279,38 +304,64 @@ describe('Course Browsing', () => {
   });
 
   describe('Start Lesson Flow', () => {
-    it('should find and identify lesson start options', async () => {
+    it('should be able to start a lesson from catalog', async () => {
       const learnTab = element(by.id('tab-learn'));
       await learnTab.tap();
-      await new Promise((r) => setTimeout(r, 3000));
 
-      await waitFor(element(by.text('Explore lessons and track your progress')))
+      await waitFor(element(by.id('learn-screen-scroll')))
         .toBeVisible()
         .withTimeout(15000);
 
-      const scrollView = element(by.id('learn-screen-scroll'));
+      // Navigate to catalog
+      await waitFor(element(by.id('browse-catalog-button')))
+        .toBeVisible()
+        .whileElement(by.id('learn-screen-scroll'))
+        .scroll(400, 'down');
 
-      // Look for various CTA buttons
-      const ctaTexts = ['Start Lesson', 'Continue Lesson', 'Start', 'Continue'];
+      await element(by.id('browse-catalog-button')).tap();
 
-      for (const text of ctaTexts) {
+      await waitFor(element(by.id('module-card-0')))
+        .toBeVisible()
+        .withTimeout(10000);
+
+      await element(by.id('module-card-0')).tap();
+
+      await waitFor(element(by.id('course-detail-scroll')))
+        .toBeVisible()
+        .withTimeout(10000);
+
+      // Try to start a lesson
+      try {
+        await waitFor(element(by.id('course-start-button')))
+          .toBeVisible()
+          .withTimeout(5000);
+
+        await element(by.id('course-start-button')).tap();
+
+        // Wait for session to start
+        await waitFor(element(by.id('session-runner-container')))
+          .toBeVisible()
+          .withTimeout(15000);
+
+        // Exit session
+        await goBack();
+
+        // Handle leave confirmation
         try {
-          await waitFor(element(by.text(text)))
+          await waitFor(element(by.text('Leave')))
             .toBeVisible()
-            .whileElement(by.id('learn-screen-scroll'))
-            .scroll(200, 'down');
-
-          // Found a CTA - verify it's tappable
-          const button = element(by.text(text)).atIndex(0);
-          // Don't actually tap to avoid starting a session
-          // Just verify visibility
-          break;
+            .withTimeout(2000);
+          await element(by.text('Leave')).tap();
         } catch {
-          // Try next CTA text
+          // No confirmation
         }
+      } catch {
+        // No lessons available
+        await goBack();
       }
 
-      // Test passes regardless - we're just documenting available CTAs
+      // Return home
+      await element(by.id('tab-home')).tap();
     });
   });
 });

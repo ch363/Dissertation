@@ -22,10 +22,7 @@ if (Platform.OS !== 'web') {
     SecureStore = require('expo-secure-store');
     isSecureStoreAvailable = true;
   } catch {
-    console.warn(
-      'expo-secure-store native module not available. ' +
-        'Using memory storage. For production, use a development build (expo run:ios/android).'
-    );
+    // SecureStore not available (e.g., Expo Go) - silently fall back to memory storage
   }
 }
 

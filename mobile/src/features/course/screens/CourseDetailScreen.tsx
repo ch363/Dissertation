@@ -399,6 +399,7 @@ export default function CourseDetail() {
 
       <ScrollView
         ref={scrollViewRef}
+        testID="course-detail-scroll"
         style={styles.scrollContainer}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -504,6 +505,7 @@ export default function CourseDetail() {
 
         {primaryAction ? (
           <Pressable
+            testID="course-start-button"
             accessibilityRole="button"
             accessibilityLabel={primaryAction.label}
             onPress={handlePrimaryActionPress}

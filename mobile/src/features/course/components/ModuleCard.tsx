@@ -18,6 +18,7 @@ export interface ModuleCardProps {
   onPress: () => void;
   style?: ViewStyle;
   accessibilityLabel: string;
+  testID?: string;
 }
 
 const PLACEHOLDER_IMAGE =
@@ -34,12 +35,14 @@ export function ModuleCard({
   onPress,
   style,
   accessibilityLabel,
+  testID,
 }: ModuleCardProps) {
   const { theme } = useAppTheme();
   const hasMeta = level ?? duration ?? lessons ?? status === 'In progress';
 
   return (
     <Pressable
+      testID={testID}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}

@@ -1,12 +1,29 @@
-/**
- * Card Components Index
- *
- * Central export for all card components.
- * Each card type has its own component file for better organization.
- */
+// Card components - each in its own subfolder for modularity
+export { TeachCard } from './teach';
+export { MultipleChoiceCard } from './multiple-choice';
+export { FillBlankCard } from './fill-blank';
+export { TranslateCard } from './translate';
+export { ListeningCard } from './listening';
 
-export { TeachCard } from './TeachCard';
-export { MultipleChoiceCard } from './MultipleChoiceCard';
-export { FillBlankCard } from './FillBlankCard';
-export { TranslateCard } from './TranslateCard';
-export { ListeningCard } from './ListeningCard';
+// Re-export styles and constants for components that need them
+export { teachStyles, CARD_GRADIENT, USAGE_CARD_BG, USAGE_ICON_SLATE } from './teach';
+export { multipleChoiceStyles, FIGMA } from './multiple-choice';
+export { fillBlankStyles } from './fill-blank';
+export {
+  translateStyles,
+  FLASHCARD_GRADIENT,
+  FLASHCARD_BORDER,
+  FLASHCARD_USAGE_BG,
+  FLASHCARD_USAGE_ICON_SLATE,
+  FLASHCARD_RADIUS,
+  FLASHCARD_USAGE_RADIUS,
+} from './translate';
+export {
+  listeningStyles,
+  pronunciationStyles,
+  ListeningSpeakMode,
+  ListeningTypeMode,
+  PronunciationLoading,
+  PronunciationResult,
+  RecordButton,
+} from './listening';

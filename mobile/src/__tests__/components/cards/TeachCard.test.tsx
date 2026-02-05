@@ -1,7 +1,7 @@
 import React from 'react';
 import renderer from 'react-test-renderer';
 
-import { TeachCard } from '@/features/session/components/cards/TeachCard';
+import { TeachCard } from '@/features/session/components/cards';
 import { CardKind } from '@/types/session';
 
 // Mock dependencies

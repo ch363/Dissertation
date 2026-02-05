@@ -2,18 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 
-import { listeningStyles } from './listeningStyles';
+import { listeningStyles, CardColors } from '../shared';
 
 import { SpeakerButton } from '@/components/ui';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
-type CardColors = {
-  border: string;
-  instruction: string;
-};
-
 type Props = {
   expected: string;
+  translation?: string;
   cardColors: CardColors;
   userAnswer: string;
   onAnswerChange?: (answer: string) => void;
@@ -25,11 +21,14 @@ type Props = {
 };
 
 /**
- * Type mode screen for ListeningCard.
- * Allows users to type what they hear.
+ * Speech-to-text delivery mode for ListeningCard.
+ * User hears audio (TTS) and types what they heard.
+ * 
+ * Delivery method: audio → text input
  */
 export function ListeningTypeMode({
   expected,
+  translation,
   cardColors,
   userAnswer,
   onAnswerChange,
@@ -155,16 +154,10 @@ export function ListeningTypeMode({
             )}
           </View>
 
-          {isCorrect && (
+          {isCorrect && translation && (
             <View style={listeningStyles.infoCard}>
               <Text style={listeningStyles.infoLabel}>MEANING</Text>
-              <Text style={listeningStyles.infoText}>Good morning</Text>
-              <View style={listeningStyles.alsoCorrectSection}>
-                <Text style={listeningStyles.infoLabel}>ALSO CORRECT</Text>
-                <View style={listeningStyles.alsoCorrectTag}>
-                  <Text style={listeningStyles.alsoCorrectText}>Buon giorno</Text>
-                </View>
-              </View>
+              <Text style={listeningStyles.infoText}>{translation}</Text>
             </View>
           )}
         </>

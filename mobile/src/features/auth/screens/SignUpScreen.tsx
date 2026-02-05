@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, ScrollView, StaticCard } from '@/components/ui';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { resolvePostAuthDestination, signUpWithEmail } from '@/services/api/auth';
 import { createLogger } from '@/services/logging';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
@@ -26,7 +27,7 @@ export default function SignUp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const { error, handleError, clearError } = useErrorHandler('SignUp');
   const [loading, setLoading] = useState(false);
 
   const emailRef = useRef<TextInput>(null);
@@ -46,7 +47,7 @@ export default function SignUp() {
     if (!canSubmit) return;
     try {
       setLoading(true);
-      setError(null);
+      clearError();
       const { session, user } = await signUpWithEmail(trimmedName || null, trimmedEmail, password);
 
       // If email confirmation is required, Supabase will not return a session.
@@ -61,7 +62,7 @@ export default function SignUp() {
         } else {
           // No user and no session - this shouldn't happen, but handle it
           logger.warn('No session and no user returned');
-          setError('Account creation may require email confirmation. Please check your email.');
+          handleError(new Error('Account creation may require email confirmation. Please check your email.'));
           return;
         }
       }
@@ -76,14 +77,14 @@ export default function SignUp() {
         logger.warn('Session exists but no user ID found');
         router.replace('/sign-in');
       }
-    } catch (error: unknown) {
-      const err = error instanceof Error ? error : new Error(String(error));
+    } catch (err: unknown) {
       logger.error('Error during sign-up', err);
-      const errorMessage = err.message || 'Unable to create your account.';
-      setError(errorMessage);
+      const errorMessage = err instanceof Error ? err.message : 'Unable to create your account.';
       // If it's an email-related error, provide more context
       if (errorMessage.includes('email') || errorMessage.includes('Email')) {
-        setError(`${errorMessage} Please check your email address and try again.`);
+        handleError(err, `${errorMessage} Please check your email address and try again.`);
+      } else {
+        handleError(err, errorMessage);
       }
     } finally {
       setLoading(false);
@@ -95,14 +96,11 @@ export default function SignUp() {
   }, [error]);
 
   return (
-    <SafeAreaView
-      style={[styles.safe, { backgroundColor: theme.colors.background }]}
-      testID="signup-screen"
-    >
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
       <ScrollView
+        testID="signup-screen"
         contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}
         keyboardShouldPersistTaps="handled"
-        testID="signup-scroll"
       >
         <StaticCard style={styles.card}>
           <View style={styles.stepRow}>

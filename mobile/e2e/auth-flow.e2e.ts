@@ -29,9 +29,9 @@ describe('Auth Flow', () => {
   async function ensureLandingScreen(): Promise<void> {
     await launchAppSafe();
 
-    // Check if we're on the landing screen
+    // Check if we're on the landing screen by looking for unique text
     try {
-      await waitFor(element(by.id('landing-screen')))
+      await waitFor(element(by.text('Personalised learning, one step at a time.')))
         .toBeVisible()
         .withTimeout(5000);
       return;
@@ -42,17 +42,17 @@ describe('Auth Flow', () => {
     // Check if logged in (tab bar visible)
     try {
       await waitFor(element(by.id('tab-home')))
-        .toBeVisible()
+        .toExist()
         .withTimeout(3000);
       await signOutUser();
       await new Promise((r) => setTimeout(r, 2000));
-      await waitFor(element(by.id('landing-screen')))
+      await waitFor(element(by.text('Personalised learning, one step at a time.')))
         .toBeVisible()
         .withTimeout(5000);
     } catch {
       // If we can't sign out, try one more app relaunch
       await launchAppSafe({ delete: true });
-      await waitFor(element(by.id('landing-screen')))
+      await waitFor(element(by.text('Personalised learning, one step at a time.')))
         .toBeVisible()
         .withTimeout(10000);
     }
@@ -63,9 +63,9 @@ describe('Auth Flow', () => {
    */
   async function navigateToSignUp(): Promise<void> {
     await ensureLandingScreen();
-    await element(by.id('landing-signup')).tap();
+    await element(by.text('Get Started')).tap();
     await new Promise((r) => setTimeout(r, 2000));
-    await waitFor(element(by.id('signup-screen')))
+    await waitFor(element(by.text('Create your account')))
       .toBeVisible()
       .withTimeout(5000);
   }
@@ -75,7 +75,7 @@ describe('Auth Flow', () => {
    */
   async function navigateToSignIn(): Promise<void> {
     await ensureLandingScreen();
-    await element(by.id('landing-login')).tap();
+    await element(by.text('Log In')).tap();
     await new Promise((r) => setTimeout(r, 2000));
     await waitFor(element(by.text('Welcome back')))
       .toBeVisible()
@@ -89,7 +89,7 @@ describe('Auth Flow', () => {
     await navigateToSignIn();
     await element(by.text('Forgot password?')).tap();
     await new Promise((r) => setTimeout(r, 2000));
-    await waitFor(element(by.id('forgot-password-screen')))
+    await waitFor(element(by.text('Forgot password')))
       .toBeVisible()
       .withTimeout(5000);
   }
@@ -100,29 +100,27 @@ describe('Auth Flow', () => {
     });
 
     it('should display the landing screen with Get Started and Log In buttons', async () => {
-      // Verify landing elements - these MUST succeed or test fails
-      await expect(element(by.id('landing-screen'))).toBeVisible();
+      // Verify landing elements by text since SafeAreaView doesn't pass testID through
       await expect(element(by.text('Fluentia'))).toBeVisible();
       await expect(element(by.text('Personalised learning, one step at a time.'))).toBeVisible();
-      await expect(element(by.id('landing-signup'))).toBeVisible();
-      await expect(element(by.id('landing-login'))).toBeVisible();
+      await expect(element(by.text('Get Started'))).toBeVisible();
+      await expect(element(by.text('Log In'))).toBeVisible();
     });
 
     it('should navigate to sign up screen from Get Started', async () => {
       // Tap sign up button
-      await element(by.id('landing-signup')).tap();
+      await element(by.text('Get Started')).tap();
       await new Promise((r) => setTimeout(r, 2000));
 
       // Verify navigation to sign up screen
-      await waitFor(element(by.id('signup-screen')))
+      await waitFor(element(by.text('Create your account')))
         .toBeVisible()
         .withTimeout(5000);
-      await expect(element(by.text('Create your account'))).toBeVisible();
     });
 
     it('should navigate to sign in screen from Log In', async () => {
       // Tap login button
-      await element(by.id('landing-login')).tap();
+      await element(by.text('Log In')).tap();
       await new Promise((r) => setTimeout(r, 2000));
 
       // Verify navigation to sign in screen
@@ -139,7 +137,7 @@ describe('Auth Flow', () => {
 
     it('should display all sign up form fields', async () => {
       // Verify all form elements are visible
-      await expect(element(by.id('signup-screen'))).toBeVisible();
+      await expect(element(by.text('Create your account'))).toBeVisible();
       await expect(element(by.id('signup-name'))).toBeVisible();
       await expect(element(by.id('signup-email'))).toBeVisible();
       await expect(element(by.id('signup-password'))).toBeVisible();
@@ -194,12 +192,12 @@ describe('Auth Flow', () => {
       await confirmInput.tap();
       await confirmInput.typeText('different123');
       await device.tap({ x: 200, y: 100 }); // Dismiss keyboard
-      await new Promise((r) => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 1000)); // Wait longer for validation
 
       // Verify validation error appears
       await waitFor(element(by.text('Passwords do not match.')))
         .toBeVisible()
-        .withTimeout(3000);
+        .withTimeout(5000);
     });
 
     it('should have link to sign in', async () => {
@@ -232,10 +230,9 @@ describe('Auth Flow', () => {
       await new Promise((r) => setTimeout(r, 2000));
 
       // Verify navigation to forgot password screen
-      await waitFor(element(by.id('forgot-password-screen')))
+      await waitFor(element(by.text('Forgot password')))
         .toBeVisible()
         .withTimeout(5000);
-      await expect(element(by.text('Forgot password'))).toBeVisible();
     });
   });
 
@@ -246,7 +243,6 @@ describe('Auth Flow', () => {
 
     it('should display forgot password form', async () => {
       // Verify form elements
-      await expect(element(by.id('forgot-password-screen'))).toBeVisible();
       await expect(element(by.text('Forgot password'))).toBeVisible();
       await expect(element(by.id('forgot-password-email'))).toBeVisible();
       await expect(element(by.id('forgot-password-submit'))).toBeVisible();

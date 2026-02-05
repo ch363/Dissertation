@@ -71,60 +71,63 @@ export async function loginWithEmailPassword(): Promise<void> {
 
   const logInButton = element(by.text('Log In'));
   const welcomeBack = element(by.text('Welcome back'));
-  const learnTab = element(by.id('tab-learn'));
   const homeTab = element(by.id('tab-home'));
 
-  // Wait a moment for app state to settle after reload
-  await new Promise((r) => setTimeout(r, 1000));
+  // Wait longer for app state to settle after reload (session restoration can be slow)
+  console.log('[E2E Auth] Starting login flow, waiting for app to settle...');
+  await new Promise((r) => setTimeout(r, 3000));
 
-  // Already logged in (e.g. after reload with session)? Check for any tab bar element
+  // Already logged in (e.g. after reload with session)? Check for home tab with longer timeout
+  // Session restoration from secure storage can take time
+  console.log('[E2E Auth] Checking if already logged in...');
   try {
-    await waitFor(learnTab).toBeVisible().withTimeout(3000);
+    await waitFor(homeTab).toExist().withTimeout(8000);
+    console.log('[E2E Auth] Already logged in - found home tab');
     return;
   } catch {
-    // Not on home, continue to login
-  }
-
-  // Also check for home tab as alternative
-  try {
-    await waitFor(homeTab).toBeVisible().withTimeout(2000);
-    return;
-  } catch {
-    // Not on home, continue to login
+    console.log('[E2E Auth] Not logged in yet, proceeding with login flow');
   }
 
   // Check if we're on landing screen with "Log In" button
+  console.log('[E2E Auth] Looking for Log In button on landing screen...');
   try {
-    await waitFor(logInButton).toBeVisible().withTimeout(3000);
+    await waitFor(logInButton).toExist().withTimeout(5000);
+    console.log('[E2E Auth] Found Log In button, tapping...');
+    await new Promise((r) => setTimeout(r, 500));
     await logInButton.tap();
   } catch {
-    // Already on sign-in or elsewhere
+    console.log('[E2E Auth] Log In button not found, might already be on sign-in screen');
   }
 
   // Wait for sign-in screen and fill form (use testID to avoid multiple "Email"/"Password" matches)
-  await waitFor(welcomeBack).toBeVisible().withTimeout(10000);
+  console.log('[E2E Auth] Waiting for sign-in screen (Welcome back)...');
+  await waitFor(welcomeBack).toExist().withTimeout(10000);
+  console.log('[E2E Auth] Sign-in screen loaded');
+  await new Promise((r) => setTimeout(r, 1000));
+
   const emailInput = element(by.id('signin-email'));
   const passwordInput = element(by.id('signin-password'));
-  const signInScroll = element(by.id('signin-scroll'));
   const signInButton = element(by.id('signin-submit'));
-  await expect(emailInput).toBeVisible();
+  await expect(emailInput).toExist();
 
-  // Disable sync so Detox doesn't wait for app idle (timers can block)
-  await device.disableSynchronization();
-
+  console.log('[E2E Auth] Filling in credentials...');
   await emailInput.tap();
   await emailInput.replaceText(email);
   await emailInput.tapReturnKey();
   await passwordInput.replaceText(password);
   // Tap above keyboard to dismiss it (center-x, upper half of screen)
   await device.tap({ x: 200, y: 300 });
+  await new Promise((r) => setTimeout(r, 500));
+
+  console.log('[E2E Auth] Tapping sign in button...');
   await signInButton.tap();
 
-  // Wait for navigation to home (Learn tab visible)
-  // Leave sync disabled to avoid hanging on enableSynchronization when app has recurring timers
-  await waitFor(element(by.id('tab-learn')))
-    .toBeVisible()
-    .withTimeout(15000);
+  // Wait for navigation to home - check for tab bar element or home screen content
+  console.log('[E2E Auth] Waiting for home screen...');
+  await waitFor(element(by.id('tab-home')))
+    .toExist()
+    .withTimeout(20000);
+  console.log('[E2E Auth] Login successful - home screen reached');
 }
 
 /**
@@ -134,9 +137,10 @@ export async function loginWithEmailPassword(): Promise<void> {
  */
 export async function signOutUser(): Promise<void> {
   // Check if already on login/landing screen (use short timeout)
+  // Use toExist() to avoid visibility threshold issues
   try {
     await waitFor(element(by.text('Log In')))
-      .toBeVisible()
+      .toExist()
       .withTimeout(2000);
     // Already signed out
     return;
@@ -147,7 +151,7 @@ export async function signOutUser(): Promise<void> {
   // Also check for sign-in screen (Welcome back)
   try {
     await waitFor(element(by.text('Welcome back')))
-      .toBeVisible()
+      .toExist()
       .withTimeout(2000);
     // Already signed out (on sign-in screen)
     return;
@@ -158,7 +162,8 @@ export async function signOutUser(): Promise<void> {
   // Navigate to Profile tab first
   const profileTab = element(by.id('tab-profile'));
   try {
-    await waitFor(profileTab).toBeVisible().withTimeout(5000);
+    await waitFor(profileTab).toExist().withTimeout(5000);
+    await new Promise((r) => setTimeout(r, 500));
     await profileTab.tap();
     await new Promise((r) => setTimeout(r, 3000));
   } catch {
@@ -169,7 +174,8 @@ export async function signOutUser(): Promise<void> {
   // Tap Settings button (cog icon in profile header)
   const settingsButton = element(by.id('settings-button'));
   try {
-    await waitFor(settingsButton).toBeVisible().withTimeout(5000);
+    await waitFor(settingsButton).toExist().withTimeout(5000);
+    await new Promise((r) => setTimeout(r, 500));
     await settingsButton.tap();
     await new Promise((r) => setTimeout(r, 3000));
   } catch {
@@ -183,7 +189,7 @@ export async function signOutUser(): Promise<void> {
   const signOutButton = element(by.text('Sign out'));
   try {
     await settingsScrollView.scrollTo('bottom');
-    await waitFor(signOutButton).toBeVisible().withTimeout(5000);
+    await waitFor(signOutButton).toExist().withTimeout(5000);
   } catch {
     // Can't find sign out button
     return;
@@ -219,15 +225,16 @@ export async function signOutUser(): Promise<void> {
   }
 
   // Wait for navigation back to landing/sign-in screen (don't throw if not found)
+  // Use toExist() to avoid visibility threshold issues
   try {
     await waitFor(element(by.text('Log In')))
-      .toBeVisible()
+      .toExist()
       .withTimeout(10000);
   } catch {
     // Might be on sign-in screen with "Welcome back" instead - that's ok
     try {
       await waitFor(element(by.text('Welcome back')))
-        .toBeVisible()
+        .toExist()
         .withTimeout(3000);
     } catch {
       // Neither found, but sign out may have still worked

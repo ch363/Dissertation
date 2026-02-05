@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LoadingScreen } from '@/components/ui';
 import { SessionRunner } from '@/features/session/components/SessionRunner';
 import { makeSessionId } from '@/features/session/sessionBuilder';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { getSessionPlan } from '@/services/api/learn';
 import { startLesson, endLesson } from '@/services/api/progress';
 import { getCachedSessionPlan } from '@/services/api/session-plan-cache';
@@ -50,7 +51,7 @@ export default function SessionRunnerScreen(props?: Props) {
   const { theme } = useAppTheme();
   const [plan, setPlan] = useState<SessionPlan | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const { error, handleError, clearError } = useErrorHandler('SessionRunnerScreen');
   const [resolvedKind, setResolvedKind] = useState<SessionKind>(requestedKind);
   const [resolvedLessonId, setResolvedLessonId] = useState<string | undefined>(requestedLessonId);
   const [resolvedMode, setResolvedMode] = useState<'learn' | 'review' | 'mixed'>('mixed');
@@ -107,7 +108,7 @@ export default function SessionRunnerScreen(props?: Props) {
       if (effectiveMode === 'learn' && !effectiveLessonId) {
         setPlan(null);
         setLoading(false);
-        setError('Learn mode requires a lesson filter. Set one in Settings → Session defaults.');
+        handleError(new Error('Learn mode requires a lesson filter. Set one in Settings → Session defaults.'));
         return;
       }
 
@@ -126,7 +127,7 @@ export default function SessionRunnerScreen(props?: Props) {
       }
 
       setLoading(true);
-      setError(null);
+      clearError();
 
       try {
         if (effectiveKind === 'learn' && effectiveLessonId) {
@@ -193,14 +194,13 @@ export default function SessionRunnerScreen(props?: Props) {
             planDataKeys: planData ? Object.keys(planData) : [],
           });
           if (!cancelled) {
-            setError(`Unable to load session plan - no steps found`);
+            handleError(new Error('Unable to load session plan - no steps found'));
           }
         }
       } catch (err: unknown) {
-        const error = err instanceof Error ? err : new Error(String(err));
-        logger.error('Failed to load session plan', error);
+        logger.error('Failed to load session plan', err);
         if (!cancelled) {
-          const msg = error.message;
+          const msg = err instanceof Error ? err.message : String(err);
           const needsOnboarding =
             msg.includes('does not have onboarding data') ||
             msg.includes('must complete onboarding');
@@ -208,7 +208,7 @@ export default function SessionRunnerScreen(props?: Props) {
             router.replace('/(onboarding)/welcome');
             return;
           }
-          setError(msg || 'Failed to load session');
+          handleError(err, 'Failed to load session');
         }
       } finally {
         if (!cancelled) {

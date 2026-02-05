@@ -1,17 +1,16 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { View } from 'react-native';
 
-import { getListeningCardColors } from '../../constants/cardTypeColors';
-import { useAudioRecording } from '../../hooks/useAudioRecording';
-
+import { listeningStyles } from './shared';
+import { ListeningTypeMode } from './speech-to-text';
 import {
   ListeningSpeakMode,
-  ListeningTypeMode,
   PronunciationLoading,
   PronunciationResult,
-  listeningStyles,
-} from './listening';
+} from './text-to-speech';
 
+import { getListeningCardColors } from '@/features/session/constants/cardTypeColors';
+import { useAudioRecording } from '@/features/session/hooks/useAudioRecording';
 import { useTtsAudio } from '@/hooks/useTtsAudio';
 import { createLogger } from '@/services/logging';
 import { announce } from '@/utils/a11y';
@@ -34,13 +33,12 @@ type Props = {
 };
 
 /**
- * ListeningCard component for "Type What You Hear" and "Speak This Phrase" modes.
- *
- * This component orchestrates between different sub-components:
- * - ListeningTypeMode: Type what you hear
- * - ListeningSpeakMode: Record pronunciation
- * - PronunciationLoading: Processing state
- * - PronunciationResult: Pronunciation feedback
+ * ListeningCard component supporting multiple delivery methods:
+ * 
+ * - speech-to-text: "Type What You Hear" (audio → text input)
+ * - text-to-speech: "Speak This Phrase" (text → speech recording)
+ * 
+ * This component orchestrates between the delivery method sub-components.
  */
 export function ListeningCard({
   card,
@@ -55,12 +53,11 @@ export function ListeningCard({
   isPronunciationProcessing = false,
   onPracticeAgain,
 }: Props) {
-  const [isPlaying, setIsPlaying] = useState(false);
   const mode = card.mode || 'type';
   const cardColors = getListeningCardColors(mode);
 
   // Use TTS audio hook for playback
-  const tts = useTtsAudio();
+  const { speak, stop, isSpeaking } = useTtsAudio();
 
   // Handle recording completion - process pronunciation immediately
   const handleRecordingComplete = useCallback(
@@ -90,46 +87,33 @@ export function ListeningCard({
 
   // Play audio using TTS
   const handlePlayAudio = useCallback(async () => {
-    if (isPlaying) return;
+    const textToSpeak = card.expected || card.audioUrl || '';
+
+    if (!textToSpeak) {
+      return;
+    }
 
     try {
-      setIsPlaying(true);
-      const textToSpeak = card.expected || card.audioUrl || '';
-
-      if (!textToSpeak) {
-        setIsPlaying(false);
-        return;
-      }
-
-      // Small delay to ensure any previous speech stops
-      await tts.stop();
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      await tts.speak(textToSpeak, 'it-IT');
-
-      // Reset playing state after estimated duration
-      const estimatedDuration = Math.max(2000, textToSpeak.length * 150);
-      setTimeout(() => setIsPlaying(false), estimatedDuration);
+      await speak(textToSpeak, 'it-IT');
     } catch (error) {
       logger.error('Failed to play audio', error as Error);
       announce('Failed to play audio.');
-      setIsPlaying(false);
     }
-  }, [isPlaying, card.expected, card.audioUrl, tts]);
+  }, [card.expected, card.audioUrl, speak]);
 
   // Play individual word audio
   const handlePlayWordAudio = useCallback(
     async (word: string) => {
       try {
-        await tts.stop();
+        await stop();
         await new Promise((resolve) => setTimeout(resolve, 100));
-        await tts.speak(word, 'it-IT');
+        await speak(word, 'it-IT');
       } catch (error) {
         logger.error('Failed to play word audio', error as Error);
         announce('Failed to play word audio.');
       }
     },
-    [tts],
+    [stop, speak],
   );
 
   // Handle practice again
@@ -138,7 +122,9 @@ export function ListeningCard({
     onPracticeAgain?.();
   }, [recording, onPracticeAgain]);
 
-  // Speak mode rendering
+  // ─────────────────────────────────────────────────────────────────────────────
+  // TEXT-TO-SPEECH: "Speak This Phrase" mode
+  // ─────────────────────────────────────────────────────────────────────────────
   if (mode === 'speak') {
     // Loading state
     if (isPronunciationProcessing) {
@@ -170,7 +156,7 @@ export function ListeningCard({
         expected={card.expected ?? ''}
         translation={card.translation}
         cardColors={cardColors}
-        isPlaying={isPlaying}
+        isPlaying={isSpeaking}
         isRecording={recording.isRecording}
         hasRecorded={recording.hasRecorded}
         recordedAudioUri={recording.recordedAudioUri}
@@ -185,16 +171,19 @@ export function ListeningCard({
     );
   }
 
-  // Type mode rendering
+  // ─────────────────────────────────────────────────────────────────────────────
+  // SPEECH-TO-TEXT: "Type What You Hear" mode
+  // ─────────────────────────────────────────────────────────────────────────────
   return (
     <ListeningTypeMode
       expected={card.expected ?? ''}
+      translation={card.translation}
       cardColors={cardColors}
       userAnswer={userAnswer}
       onAnswerChange={onAnswerChange}
       showResult={showResult}
       isCorrect={isCorrect}
-      isPlaying={isPlaying}
+      isPlaying={isSpeaking}
       onPlayAudio={handlePlayAudio}
       onCheckAnswer={onCheckAnswer}
     />

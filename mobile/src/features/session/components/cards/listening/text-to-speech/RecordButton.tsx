@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Animated, Pressable, Text, View } from 'react-native';
 
-import { pronunciationStyles } from './listeningStyles';
+import { pronunciationStyles } from '../shared';
 
 import { useRecordingPulse } from '@/features/session/hooks/useRecordingPulse';
 

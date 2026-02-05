@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Text, View } from 'react-native';
 
-import { CARD_TYPE_COLORS } from '../../constants/cardTypeColors';
+import { teachStyles as styles, CARD_GRADIENT, USAGE_ICON_SLATE } from './teachStyles';
 
+import { CARD_TYPE_COLORS } from '@/features/session/constants/cardTypeColors';
 import { SpeakerButton } from '@/components/ui';
 import { useTtsAudio } from '@/hooks/useTtsAudio';
 import { createLogger } from '@/services/logging';
@@ -13,12 +14,6 @@ import { theme as baseTheme } from '@/services/theme/tokens';
 import { TeachCard as TeachCardType } from '@/types/session';
 
 const logger = createLogger('TeachCard');
-
-// Professional App Redesign / Figma (LessonScreen) colours
-const CARD_GRADIENT = ['#eff6ff', '#e0e7ff', '#eff6ff'] as const;
-const CARD_BORDER = CARD_TYPE_COLORS.teach.border; // Use card type color for recognition
-const USAGE_CARD_BG = 'rgba(248, 250, 252, 0.8)';
-const USAGE_ICON_SLATE = '#94a3b8';
 
 type Props = {
   card: TeachCardType;
@@ -45,7 +40,6 @@ export function TeachCard({ card }: Props) {
 
   return (
     <View style={styles.container} testID="teach-card">
-      {/* Main Teach Card – gradient, 32px radius (Figma: rounded-[32px], from-blue-50 via-indigo-50 to-blue-50) */}
       <LinearGradient
         colors={CARD_GRADIENT}
         style={[
@@ -55,10 +49,8 @@ export function TeachCard({ card }: Props) {
         ]}
       >
         <View style={styles.teachCardInner}>
-          {/* Emoji at top */}
           {card.content.emoji ? <Text style={styles.teachEmoji}>{card.content.emoji}</Text> : null}
 
-          {/* Phrase + translation (Figma: text-7xl bold, then text-lg medium) */}
           <View style={styles.phraseBlock}>
             <Text style={[styles.teachPhrase, { color: theme.colors.text }]}>
               {card.content.phrase}
@@ -70,7 +62,6 @@ export function TeachCard({ card }: Props) {
             ) : null}
           </View>
 
-          {/* Audio button – 80px blue gradient circle (reusable SpeakerButton) */}
           <SpeakerButton
             size={80}
             isPlaying={isSpeaking}
@@ -82,7 +73,6 @@ export function TeachCard({ card }: Props) {
         </View>
       </LinearGradient>
 
-      {/* Usage Note – slate-50 style, rounded-3xl, book icon + text only (no "Usage Note" title) */}
       {card.content.usageNote ? (
         <View style={styles.usageNoteCard}>
           <Ionicons
@@ -99,75 +89,3 @@ export function TeachCard({ card }: Props) {
     </View>
   );
 }
-
-const CARD_RADIUS = 32;
-const USAGE_RADIUS = 24;
-
-const styles = StyleSheet.create({
-  container: {
-    gap: baseTheme.spacing.lg,
-  },
-  teachCard: {
-    borderRadius: CARD_RADIUS,
-    borderWidth: 1,
-    borderColor: CARD_BORDER,
-    paddingHorizontal: baseTheme.spacing.xl,
-    paddingVertical: baseTheme.spacing.xl + 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    overflow: 'hidden',
-  },
-  teachCardSpeaking: {
-    borderColor: 'rgba(59, 130, 246, 0.4)',
-    shadowOpacity: 0.1,
-  },
-  teachCardInner: {
-    alignItems: 'center',
-    gap: baseTheme.spacing.md,
-  },
-  teachEmoji: {
-    fontSize: 48,
-    marginBottom: baseTheme.spacing.xs,
-  },
-  phraseBlock: {
-    alignItems: 'center',
-    gap: baseTheme.spacing.xs,
-    marginBottom: baseTheme.spacing.sm,
-    paddingTop: 4,
-  },
-  teachPhrase: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 56,
-    textAlign: 'center',
-    letterSpacing: -0.5,
-    lineHeight: 68,
-  },
-  teachTranslation: {
-    fontFamily: baseTheme.typography.medium,
-    fontSize: 18,
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  usageNoteCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 14,
-    paddingHorizontal: baseTheme.spacing.md + 4,
-    paddingVertical: baseTheme.spacing.md,
-    borderRadius: USAGE_RADIUS,
-    backgroundColor: USAGE_CARD_BG,
-    borderWidth: 1,
-    borderColor: 'rgba(226, 232, 240, 0.6)',
-  },
-  usageNoteIcon: {
-    marginTop: 2,
-  },
-  usageNoteText: {
-    flex: 1,
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-});

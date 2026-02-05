@@ -152,6 +152,7 @@ export default function CourseIndex() {
         />
       ) : (
         <ScrollView
+          testID="course-index-scroll"
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
@@ -160,9 +161,10 @@ export default function CourseIndex() {
             <View key={category} style={styles.section}>
               <SectionHeader title={category} />
               <View style={styles.cardList}>
-                {categoryModules.map((module) => (
+                {categoryModules.map((module, index) => (
                   <ModuleCard
                     key={module.id}
+                    testID={`module-card-${index}`}
                     title={module.title}
                     description={module.description ?? ''}
                     imageUrl={module.imageUrl ?? ''}

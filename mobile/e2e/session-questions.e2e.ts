@@ -12,7 +12,10 @@ describe('Session Questions Flow', () => {
   beforeAll(async () => {
     await launchAppSafe();
     await loginWithEmailPassword();
-    await new Promise((r) => setTimeout(r, 2000));
+    // Wait for home screen to be ready
+    await waitFor(element(by.id('tab-home')))
+      .toBeVisible()
+      .withTimeout(10000);
   });
 
   afterAll(async () => {
@@ -23,103 +26,151 @@ describe('Session Questions Flow', () => {
     // Ensure we're on Home tab
     const homeTab = element(by.id('tab-home'));
     await waitFor(homeTab).toBeVisible().withTimeout(5000);
-    await new Promise((r) => setTimeout(r, 2000));
+    await homeTab.tap();
+    await waitFor(element(by.id('home-screen-scroll')))
+      .toBeVisible()
+      .withTimeout(5000);
   });
 
-  it('should start a lesson and interact with session cards', async () => {
+  it('should navigate to Learn and find the catalog button', async () => {
     // Navigate to Learn tab
     const learnTab = element(by.id('tab-learn'));
     await learnTab.tap();
-    await new Promise((r) => setTimeout(r, 3000));
 
     // Wait for Learn screen
-    await waitFor(element(by.text('Explore lessons and track your progress')))
+    await waitFor(element(by.id('learn-screen-scroll')))
       .toBeVisible()
       .withTimeout(15000);
 
-    const scrollView = element(by.id('learn-screen-scroll'));
-    await waitFor(scrollView).toBeVisible().withTimeout(5000);
+    // Scroll to find the catalog button
+    await waitFor(element(by.id('browse-catalog-button')))
+      .toBeVisible()
+      .whileElement(by.id('learn-screen-scroll'))
+      .scroll(400, 'down');
 
-    // Navigate to catalog to find a lesson
-    try {
-      await waitFor(element(by.text('Browse full catalog')))
-        .toBeVisible()
-        .whileElement(by.id('learn-screen-scroll'))
-        .scroll(400, 'down');
-
-      await element(by.text('Browse full catalog')).tap();
-      await new Promise((r) => setTimeout(r, 3000));
-
-      // Wait for courses screen
-      await waitFor(element(by.text('Courses')))
-        .toBeVisible()
-        .withTimeout(10000);
-
-      // Try to tap the first module card
-      try {
-        await element(by.type('RCTCustomScrollView')).atIndex(0).scroll(200, 'down');
-        await new Promise((r) => setTimeout(r, 1500));
-
-        // Look for a start lesson button or lesson card
-        const startButton = element(by.text('Start Lesson'));
-        await waitFor(startButton).toBeVisible().withTimeout(5000);
-        await startButton.tap();
-        await new Promise((r) => setTimeout(r, 3000));
-
-        // Now we should be in a session - verify session elements
-        await verifySessionUI();
-      } catch {
-        // May not find a lesson to start - that's OK for this test
-        await goBack();
-      }
-    } catch {
-      // Catalog might not be accessible - test passes
-    }
+    await expect(element(by.id('browse-catalog-button'))).toBeVisible();
   });
 
-  it('should handle multiple choice questions', async () => {
-    // This test runs if we can get into a session with MC questions
-    // Since we can't guarantee the question type, we check for the elements
-    await navigateToSession();
+  it('should navigate to catalog and see module cards', async () => {
+    // Navigate to Learn tab
+    const learnTab = element(by.id('tab-learn'));
+    await learnTab.tap();
 
-    // Check if we have a multiple choice card
+    await waitFor(element(by.id('learn-screen-scroll')))
+      .toBeVisible()
+      .withTimeout(15000);
+
+    // Scroll to and tap the catalog button
+    await waitFor(element(by.id('browse-catalog-button')))
+      .toBeVisible()
+      .whileElement(by.id('learn-screen-scroll'))
+      .scroll(400, 'down');
+
+    await element(by.id('browse-catalog-button')).tap();
+
+    // Wait for course index screen
+    await waitFor(element(by.id('course-index-scroll')))
+      .toBeVisible()
+      .withTimeout(10000);
+
+    // Check for the first module card
+    await waitFor(element(by.id('module-card-0')))
+      .toBeVisible()
+      .withTimeout(5000);
+
+    // Go back to Learn
+    await goBack();
+  });
+
+  it('should start a lesson from catalog and verify session UI', async () => {
+    // Navigate to Learn tab
+    const learnTab = element(by.id('tab-learn'));
+    await learnTab.tap();
+
+    await waitFor(element(by.id('learn-screen-scroll')))
+      .toBeVisible()
+      .withTimeout(15000);
+
+    // Navigate to catalog
+    await waitFor(element(by.id('browse-catalog-button')))
+      .toBeVisible()
+      .whileElement(by.id('learn-screen-scroll'))
+      .scroll(400, 'down');
+
+    await element(by.id('browse-catalog-button')).tap();
+
+    // Wait for and tap the first module
+    await waitFor(element(by.id('module-card-0')))
+      .toBeVisible()
+      .withTimeout(10000);
+
+    await element(by.id('module-card-0')).tap();
+
+    // Wait for course detail screen
+    await waitFor(element(by.id('course-detail-scroll')))
+      .toBeVisible()
+      .withTimeout(10000);
+
+    // Tap the start lesson button
     try {
-      await waitFor(element(by.id('session-runner-container')))
+      await waitFor(element(by.id('course-start-button')))
         .toBeVisible()
         .withTimeout(5000);
 
-      // Look for MC options (they have testID mc-option-*)
-      const firstOption = element(by.id('mc-option-0')).atIndex(0);
-      const secondOption = element(by.id('mc-option-1')).atIndex(0);
+      await element(by.id('course-start-button')).tap();
 
+      // Wait for session to load
+      await waitFor(element(by.id('session-runner-container')))
+        .toBeVisible()
+        .withTimeout(15000);
+
+      // Verify session UI elements
+      await expect(element(by.id('session-card-scroll'))).toBeVisible();
+
+      // Exit session
+      await goBack();
+      
+      // Handle leave confirmation if it appears
       try {
-        await waitFor(firstOption).toBeVisible().withTimeout(3000);
-
-        // Tap an option
-        await firstOption.tap();
-        await new Promise((r) => setTimeout(r, 1000));
-
-        // Tap continue button
-        const continueBtn = element(by.id('session-continue-button'));
-        await waitFor(continueBtn).toBeVisible().withTimeout(3000);
-        await continueBtn.tap();
-        await new Promise((r) => setTimeout(r, 2000));
-
-        // Check for feedback
-        try {
-          const correctFeedback = element(by.id('feedback-correct'));
-          await waitFor(correctFeedback).toBeVisible().withTimeout(2000);
-        } catch {
-          // Might be incorrect feedback or move to next card
-          try {
-            const incorrectFeedback = element(by.id('feedback-incorrect'));
-            await waitFor(incorrectFeedback).toBeVisible().withTimeout(2000);
-          } catch {
-            // No feedback visible - might have moved to next card
-          }
-        }
+        await waitFor(element(by.text('Leave')))
+          .toBeVisible()
+          .withTimeout(2000);
+        await element(by.text('Leave')).tap();
       } catch {
-        // MC options not visible - different card type showing
+        // No confirmation needed
+      }
+    } catch {
+      // No lessons available - go back
+      await goBack();
+    }
+
+    // Return to home
+    await element(by.id('tab-home')).tap();
+  });
+
+  it('should interact with multiple choice cards if present', async () => {
+    await navigateToSession();
+
+    try {
+      await waitFor(element(by.id('session-runner-container')))
+        .toBeVisible()
+        .withTimeout(10000);
+
+      // Check for MC options
+      try {
+        await waitFor(element(by.id('mc-option-0')).atIndex(0))
+          .toBeVisible()
+          .withTimeout(3000);
+
+        // Tap the first option
+        await element(by.id('mc-option-0')).atIndex(0).tap();
+
+        // Wait for feedback
+        await waitFor(element(by.id('feedback-correct')).or(element(by.id('feedback-incorrect'))))
+          .toBeVisible()
+          .withTimeout(5000);
+      } catch {
+        // MC options not visible - different card type
       }
     } catch {
       // Session not available
@@ -128,34 +179,29 @@ describe('Session Questions Flow', () => {
     await exitSession();
   });
 
-  it('should handle fill in the blank questions', async () => {
+  it('should interact with fill blank cards if present', async () => {
     await navigateToSession();
 
     try {
       await waitFor(element(by.id('session-runner-container')))
         .toBeVisible()
-        .withTimeout(5000);
+        .withTimeout(10000);
 
       // Check for fill blank card
-      const fillBlankCard = element(by.id('fill-blank-card'));
       try {
-        await waitFor(fillBlankCard).toBeVisible().withTimeout(3000);
+        await waitFor(element(by.id('fill-blank-card')))
+          .toBeVisible()
+          .withTimeout(3000);
 
-        // Look for fill blank options
+        // Look for options
         const option = element(by.id('fb-option-0')).atIndex(0);
-        try {
-          await waitFor(option).toBeVisible().withTimeout(3000);
-          await option.tap();
-          await new Promise((r) => setTimeout(r, 1000));
+        await waitFor(option).toBeVisible().withTimeout(3000);
+        await option.tap();
 
-          // Tap continue
-          const continueBtn = element(by.id('session-continue-button'));
-          await waitFor(continueBtn).toBeVisible().withTimeout(3000);
-          await continueBtn.tap();
-          await new Promise((r) => setTimeout(r, 2000));
-        } catch {
-          // Options not found
-        }
+        // Wait for feedback
+        await waitFor(element(by.id('session-continue-button')))
+          .toBeVisible()
+          .withTimeout(3000);
       } catch {
         // Fill blank card not visible
       }
@@ -166,36 +212,43 @@ describe('Session Questions Flow', () => {
     await exitSession();
   });
 
-  it('should handle translate questions with text input', async () => {
+  it('should interact with translate cards if present', async () => {
     await navigateToSession();
 
     try {
       await waitFor(element(by.id('session-runner-container')))
         .toBeVisible()
-        .withTimeout(5000);
+        .withTimeout(10000);
 
       // Check for translate card
-      const translateCard = element(by.id('translate-card'));
       try {
-        await waitFor(translateCard).toBeVisible().withTimeout(3000);
+        await waitFor(element(by.id('translate-card')))
+          .toBeVisible()
+          .withTimeout(3000);
 
-        // Find the text input
+        // Find and interact with the text input
         const input = element(by.id('translate-input'));
         await waitFor(input).toBeVisible().withTimeout(3000);
 
-        // Type an answer
         await input.tap();
         await input.typeText('test answer');
-        await device.tap({ x: 200, y: 300 }); // Dismiss keyboard
 
-        // Check answer button
-        const checkButton = element(by.id('translate-check-button'));
+        // Dismiss keyboard by tapping outside
+        await element(by.id('session-card-scroll')).tap();
+
+        // Tap check button
         try {
-          await waitFor(checkButton).toBeVisible().withTimeout(3000);
-          await checkButton.tap();
-          await new Promise((r) => setTimeout(r, 2000));
+          await waitFor(element(by.id('translate-check-button')))
+            .toBeVisible()
+            .withTimeout(3000);
+          await element(by.id('translate-check-button')).tap();
+
+          // Wait for result
+          await waitFor(element(by.id('feedback-correct')).or(element(by.id('feedback-incorrect'))))
+            .toBeVisible()
+            .withTimeout(5000);
         } catch {
-          // Check button might not be visible
+          // Check button not visible yet
         }
       } catch {
         // Translate card not visible
@@ -207,36 +260,43 @@ describe('Session Questions Flow', () => {
     await exitSession();
   });
 
-  it('should handle listening/dictation questions', async () => {
+  it('should interact with listening cards if present', async () => {
     await navigateToSession();
 
     try {
       await waitFor(element(by.id('session-runner-container')))
         .toBeVisible()
-        .withTimeout(5000);
+        .withTimeout(10000);
 
-      // Check for listening card
-      const listeningCard = element(by.id('listening-card'));
+      // Check for listening card (type mode)
       try {
-        await waitFor(listeningCard).toBeVisible().withTimeout(3000);
+        await waitFor(element(by.id('listening-card')))
+          .toBeVisible()
+          .withTimeout(3000);
 
-        // Find the text input
+        // Find and interact with the text input
         const input = element(by.id('listening-input'));
         await waitFor(input).toBeVisible().withTimeout(3000);
 
-        // Type an answer
         await input.tap();
         await input.typeText('test');
-        await device.tap({ x: 200, y: 300 }); // Dismiss keyboard
 
-        // Check answer button
-        const checkButton = element(by.id('listening-check-button'));
+        // Dismiss keyboard
+        await element(by.id('session-card-scroll')).tap();
+
+        // Tap check button
         try {
-          await waitFor(checkButton).toBeVisible().withTimeout(3000);
-          await checkButton.tap();
-          await new Promise((r) => setTimeout(r, 2000));
+          await waitFor(element(by.id('listening-check-button')))
+            .toBeVisible()
+            .withTimeout(3000);
+          await element(by.id('listening-check-button')).tap();
+
+          // Wait for result
+          await waitFor(element(by.id('feedback-correct')).or(element(by.id('feedback-incorrect'))))
+            .toBeVisible()
+            .withTimeout(5000);
         } catch {
-          // Check button might not be visible
+          // Check button not visible
         }
       } catch {
         // Listening card not visible
@@ -254,18 +314,18 @@ describe('Session Questions Flow', () => {
     try {
       await waitFor(element(by.id('session-runner-container')))
         .toBeVisible()
-        .withTimeout(5000);
+        .withTimeout(10000);
 
       // Check for teach card
-      const teachCard = element(by.id('teach-card'));
       try {
-        await waitFor(teachCard).toBeVisible().withTimeout(3000);
+        await waitFor(element(by.id('teach-card')))
+          .toBeVisible()
+          .withTimeout(3000);
 
         // For teach cards, just need to tap continue
         const continueBtn = element(by.id('session-continue-button'));
         await waitFor(continueBtn).toBeVisible().withTimeout(3000);
         await continueBtn.tap();
-        await new Promise((r) => setTimeout(r, 2000));
       } catch {
         // Teach card not visible
       }
@@ -276,50 +336,42 @@ describe('Session Questions Flow', () => {
     await exitSession();
   });
 
-  it('should complete a full session and show completion screen', async () => {
+  it('should verify session completion flow', async () => {
     await navigateToSession();
 
     try {
       await waitFor(element(by.id('session-runner-container')))
         .toBeVisible()
-        .withTimeout(5000);
+        .withTimeout(10000);
 
-      // Try to progress through cards until we reach completion
-      // This is a best-effort test since card types vary
-      let maxIterations = 10;
-      while (maxIterations > 0) {
-        maxIterations--;
+      // Try to progress through cards (max 5 iterations for test efficiency)
+      let iterations = 5;
+      while (iterations > 0) {
+        iterations--;
 
-        // Check if we've reached completion
+        // Check if we've reached summary
         try {
-          const completionScreen = element(by.id('completion-screen'));
-          await waitFor(completionScreen).toBeVisible().withTimeout(2000);
+          await waitFor(element(by.id('session-summary-screen')))
+            .toBeVisible()
+            .withTimeout(2000);
 
-          // Found completion screen - verify its elements
-          const continueBtn = element(by.id('completion-continue-button'));
-          await waitFor(continueBtn).toBeVisible().withTimeout(3000);
-          await continueBtn.tap();
-          await new Promise((r) => setTimeout(r, 2000));
+          // Verify summary screen elements
+          await expect(element(by.id('summary-back-home-button'))).toBeVisible();
+          
+          // Tap back to home
+          await element(by.id('summary-back-home-button')).tap();
+          
+          await waitFor(element(by.id('home-screen-scroll')))
+            .toBeVisible()
+            .withTimeout(5000);
 
-          // Should now be on summary screen
-          const summaryScreen = element(by.id('session-summary-screen'));
-          await waitFor(summaryScreen).toBeVisible().withTimeout(5000);
-
-          // Verify back to home button
-          const backHomeBtn = element(by.id('summary-back-home-button'));
-          await waitFor(backHomeBtn).toBeVisible().withTimeout(3000);
-          await backHomeBtn.tap();
-          await new Promise((r) => setTimeout(r, 2000));
-
-          // Test complete
-          return;
+          return; // Test passed
         } catch {
-          // Not on completion screen yet
+          // Not on summary screen yet
         }
 
-        // Try to answer current card and continue
+        // Try to answer and continue
         await answerCurrentCard();
-        await new Promise((r) => setTimeout(r, 1500));
       }
     } catch {
       // Session not available
@@ -330,63 +382,50 @@ describe('Session Questions Flow', () => {
 });
 
 /**
- * Helper to navigate to a session
+ * Helper to navigate to a session via catalog
  */
 async function navigateToSession() {
   try {
     // Navigate to Learn tab
     const learnTab = element(by.id('tab-learn'));
     await learnTab.tap();
-    await new Promise((r) => setTimeout(r, 2000));
 
-    // Try to find and tap a lesson start button on learn screen
-    const scrollView = element(by.id('learn-screen-scroll'));
-    try {
-      await waitFor(scrollView).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.id('learn-screen-scroll')))
+      .toBeVisible()
+      .withTimeout(10000);
 
-      // Look for "Start Lesson" or "Continue Lesson" button
-      try {
-        const startBtn = element(by.text('Start Lesson')).atIndex(0);
-        await waitFor(startBtn)
-          .toBeVisible()
-          .whileElement(by.id('learn-screen-scroll'))
-          .scroll(200, 'down');
-        await startBtn.tap();
-        await new Promise((r) => setTimeout(r, 3000));
-      } catch {
-        try {
-          const continueBtn = element(by.text('Continue Lesson')).atIndex(0);
-          await waitFor(continueBtn)
-            .toBeVisible()
-            .whileElement(by.id('learn-screen-scroll'))
-            .scroll(200, 'down');
-          await continueBtn.tap();
-          await new Promise((r) => setTimeout(r, 3000));
-        } catch {
-          // Could not find a lesson to start
-        }
-      }
-    } catch {
-      // Scroll view not available
-    }
-  } catch {
-    // Navigation failed
-  }
-}
+    // Navigate to catalog
+    await waitFor(element(by.id('browse-catalog-button')))
+      .toBeVisible()
+      .whileElement(by.id('learn-screen-scroll'))
+      .scroll(300, 'down');
 
-/**
- * Helper to verify basic session UI elements
- */
-async function verifySessionUI() {
-  try {
-    await waitFor(element(by.id('session-runner-container')))
+    await element(by.id('browse-catalog-button')).tap();
+
+    // Wait for and tap first module
+    await waitFor(element(by.id('module-card-0')))
+      .toBeVisible()
+      .withTimeout(10000);
+
+    await element(by.id('module-card-0')).tap();
+
+    // Wait for course detail and tap start
+    await waitFor(element(by.id('course-detail-scroll')))
+      .toBeVisible()
+      .withTimeout(10000);
+
+    await waitFor(element(by.id('course-start-button')))
       .toBeVisible()
       .withTimeout(5000);
-    await waitFor(element(by.id('session-card-scroll')))
+
+    await element(by.id('course-start-button')).tap();
+
+    // Wait for session
+    await waitFor(element(by.id('session-runner-container')))
       .toBeVisible()
-      .withTimeout(3000);
+      .withTimeout(15000);
   } catch {
-    // Session UI not fully visible
+    // Navigation failed - may not have content
   }
 }
 
@@ -397,9 +436,8 @@ async function answerCurrentCard() {
   // Try MC option
   try {
     const mcOption = element(by.id('mc-option-0')).atIndex(0);
-    await waitFor(mcOption).toBeVisible().withTimeout(1000);
+    await waitFor(mcOption).toBeVisible().withTimeout(1500);
     await mcOption.tap();
-    await new Promise((r) => setTimeout(r, 500));
   } catch {
     // Not MC
   }
@@ -407,9 +445,8 @@ async function answerCurrentCard() {
   // Try Fill Blank option
   try {
     const fbOption = element(by.id('fb-option-0')).atIndex(0);
-    await waitFor(fbOption).toBeVisible().withTimeout(1000);
+    await waitFor(fbOption).toBeVisible().withTimeout(1500);
     await fbOption.tap();
-    await new Promise((r) => setTimeout(r, 500));
   } catch {
     // Not Fill Blank
   }
@@ -419,7 +456,6 @@ async function answerCurrentCard() {
     const continueBtn = element(by.id('session-continue-button'));
     await waitFor(continueBtn).toBeVisible().withTimeout(2000);
     await continueBtn.tap();
-    await new Promise((r) => setTimeout(r, 1000));
   } catch {
     // Continue button not available
   }
@@ -432,14 +468,13 @@ async function exitSession() {
   try {
     // Try to go back
     await goBack();
-    await new Promise((r) => setTimeout(r, 1500));
 
-    // Try to confirm exit if dialog appears
+    // Handle leave confirmation if it appears
     try {
-      const confirmBtn = element(by.text('Leave'));
-      await waitFor(confirmBtn).toBeVisible().withTimeout(2000);
-      await confirmBtn.tap();
-      await new Promise((r) => setTimeout(r, 1500));
+      await waitFor(element(by.text('Leave')))
+        .toBeVisible()
+        .withTimeout(2000);
+      await element(by.text('Leave')).tap();
     } catch {
       // No confirmation needed
     }
@@ -450,8 +485,11 @@ async function exitSession() {
   // Navigate back to home
   try {
     const homeTab = element(by.id('tab-home'));
+    await waitFor(homeTab).toBeVisible().withTimeout(3000);
     await homeTab.tap();
-    await new Promise((r) => setTimeout(r, 2000));
+    await waitFor(element(by.id('home-screen-scroll')))
+      .toBeVisible()
+      .withTimeout(5000);
   } catch {
     // Already on home or tab not visible
   }

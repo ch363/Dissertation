@@ -1,10 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState, useEffect, useCallback } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 
-import { CARD_TYPE_COLORS } from '../../constants/cardTypeColors';
+import {
+  translateStyles as styles,
+  FLASHCARD_GRADIENT,
+  FLASHCARD_USAGE_ICON_SLATE,
+} from './translateStyles';
 
+import { CARD_TYPE_COLORS } from '@/features/session/constants/cardTypeColors';
 import { SpeakerButton } from '@/components/ui';
 import { useTtsAudio } from '@/hooks/useTtsAudio';
 import { createLogger } from '@/services/logging';
@@ -13,14 +18,6 @@ import { theme as baseTheme } from '@/services/theme/tokens';
 import { TranslateCard as TranslateCardType } from '@/types/session';
 
 const Logger = createLogger('TranslateCard');
-
-// Match TeachCard styling (Figma: blue-50 / indigo-50 gradient, 32px radius)
-const FLASHCARD_GRADIENT = ['#eff6ff', '#e0e7ff', '#eff6ff'] as const;
-const FLASHCARD_BORDER = 'rgba(191, 219, 254, 0.5)';
-const FLASHCARD_USAGE_BG = 'rgba(248, 250, 252, 0.8)';
-const FLASHCARD_USAGE_ICON_SLATE = '#94a3b8';
-const FLASHCARD_RADIUS = 32;
-const FLASHCARD_USAGE_RADIUS = 24;
 
 type Props = {
   card: TranslateCardType;
@@ -67,7 +64,7 @@ export function TranslateCard({
 }: Props) {
   const ctx = useAppTheme();
   const theme = ctx?.theme ?? baseTheme;
-  const [isPlaying, setIsPlaying] = useState(false);
+  const { speak, isSpeaking } = useTtsAudio();
   // For flashcards, start with front showing (not flipped) - user flips to see answer
   const [isFlipped, setIsFlipped] = useState(false);
   // Once user has flipped to see the answer, show rating on unflipped side too when they flip back
@@ -83,36 +80,18 @@ export function TranslateCard({
     setShowWhy(false);
   }, [card.id]);
 
-  // Use TTS audio hook for playback
-  const tts = useTtsAudio();
-
   const handleFlip = () => {
     if (!isFlipped) setHasRevealedAnswer(true);
     setIsFlipped(!isFlipped);
   };
 
   const handlePlaySourceAudio = useCallback(async () => {
-    if (isPlaying) return;
-
     const textToSpeak = card.source || '';
     if (!textToSpeak) return;
 
-    try {
-      setIsPlaying(true);
-      await tts.stop();
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      const language = card.kind === 'translate_to_en' ? 'it-IT' : 'en-US';
-      await tts.speak(textToSpeak, language);
-
-      // Reset playing state after estimated duration
-      const estimatedDuration = Math.max(2000, textToSpeak.length * 150);
-      setTimeout(() => setIsPlaying(false), estimatedDuration);
-    } catch (error) {
-      Logger.error('Failed to play audio', error);
-      setIsPlaying(false);
-    }
-  }, [isPlaying, card.source, card.kind, tts]);
+    const language = card.kind === 'translate_to_en' ? 'it-IT' : 'en-US';
+    await speak(textToSpeak, language);
+  }, [card.source, card.kind, speak]);
 
   // Flashcard Mode (P24) – same card styling and emojis as TeachCard
   if (card.isFlashcard) {
@@ -137,11 +116,11 @@ export function TranslateCard({
                 </View>
                 <SpeakerButton
                   size={80}
-                  isPlaying={isPlaying}
+                  isPlaying={isSpeaking}
                   onPress={handlePlaySourceAudio}
                   showTapHint
                   tapHintText="Tap to listen"
-                  accessibilityLabel={isPlaying ? 'Playing audio' : 'Play pronunciation'}
+                  accessibilityLabel={isSpeaking ? 'Playing audio' : 'Play pronunciation'}
                   accessibilityHint="Plays the word audio"
                 />
               </View>
@@ -267,11 +246,11 @@ export function TranslateCard({
                   </View>
                   <SpeakerButton
                     size={64}
-                    isPlaying={isPlaying}
+                    isPlaying={isSpeaking}
                     onPress={handlePlaySourceAudio}
                     showTapHint
                     tapHintText="Tap to listen"
-                    accessibilityLabel={isPlaying ? 'Playing audio' : 'Play pronunciation'}
+                    accessibilityLabel={isSpeaking ? 'Playing audio' : 'Play pronunciation'}
                     accessibilityHint="Plays the word audio"
                   />
                 </View>
@@ -419,9 +398,9 @@ export function TranslateCard({
           <Text style={styles.sourceText}>{card.source}</Text>
           <SpeakerButton
             size={40}
-            isPlaying={isPlaying}
+            isPlaying={isSpeaking}
             onPress={handlePlaySourceAudio}
-            accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
+            accessibilityLabel={isSpeaking ? 'Pause audio' : 'Play audio'}
             accessibilityHint="Plays the phrase audio"
           />
         </View>
@@ -618,537 +597,3 @@ export function TranslateCard({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    minHeight: 0,
-    gap: baseTheme.spacing.sm,
-  },
-  instruction: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  flashcardContainerCompact: {
-    gap: baseTheme.spacing.xs,
-  },
-  // Flashcard – same styling as TeachCard (gradient, 32px radius, phrase/translation typography)
-  flashcardTeachCard: {
-    width: '100%',
-    borderRadius: FLASHCARD_RADIUS,
-    borderWidth: 1,
-    borderColor: FLASHCARD_BORDER,
-    paddingHorizontal: baseTheme.spacing.xl,
-    paddingVertical: baseTheme.spacing.xl + 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    overflow: 'hidden',
-  },
-  flashcardTeachCardInner: {
-    alignItems: 'center',
-    gap: baseTheme.spacing.md,
-  },
-  flashcardTeachEmoji: {
-    fontSize: 42,
-    marginBottom: baseTheme.spacing.xs,
-  },
-  flashcardPhraseBlock: {
-    alignItems: 'center',
-    gap: baseTheme.spacing.xs,
-    marginBottom: baseTheme.spacing.sm,
-    paddingTop: 4,
-  },
-  flashcardTeachPhrase: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 44,
-    textAlign: 'center',
-    letterSpacing: -0.5,
-    lineHeight: 54,
-  },
-  flashcardTeachTranslation: {
-    fontFamily: baseTheme.typography.medium,
-    fontSize: 16,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  // Back of card: answer much bigger, translation smaller, compact to fit one page
-  flashcardBackWrap: {
-    gap: baseTheme.spacing.xs,
-  },
-  flashcardTeachCardBack: {
-    paddingVertical: baseTheme.spacing.md + 2,
-  },
-  flashcardBackInner: {
-    alignItems: 'center',
-    gap: baseTheme.spacing.sm,
-  },
-  flashcardBackEmoji: {
-    fontSize: 36,
-    marginBottom: 0,
-  },
-  flashcardBackPhraseBlock: {
-    alignItems: 'center',
-    gap: 2,
-    marginBottom: 0,
-    paddingTop: 0,
-  },
-  flashcardBackPhrase: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 56,
-    textAlign: 'center',
-    letterSpacing: -0.5,
-    lineHeight: 64,
-  },
-  flashcardBackTranslation: {
-    fontFamily: baseTheme.typography.medium,
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  flashcardUsageNoteCardCompact: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    paddingHorizontal: baseTheme.spacing.sm + 2,
-    paddingVertical: baseTheme.spacing.sm,
-    borderRadius: FLASHCARD_USAGE_RADIUS,
-    backgroundColor: FLASHCARD_USAGE_BG,
-    borderWidth: 1,
-    borderColor: 'rgba(226, 232, 240, 0.6)',
-  },
-  flashcardUsageNoteTextCompact: {
-    flex: 1,
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  flashcardUsageNoteCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 14,
-    paddingHorizontal: baseTheme.spacing.md + 4,
-    paddingVertical: baseTheme.spacing.md,
-    borderRadius: FLASHCARD_USAGE_RADIUS,
-    backgroundColor: FLASHCARD_USAGE_BG,
-    borderWidth: 1,
-    borderColor: 'rgba(226, 232, 240, 0.6)',
-  },
-  flashcardUsageNoteIcon: {
-    marginTop: 2,
-  },
-  flashcardUsageNoteText: {
-    flex: 1,
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  ratingCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: baseTheme.spacing.md,
-    marginTop: baseTheme.spacing.sm,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  ratingCardCompact: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: baseTheme.spacing.sm,
-    marginTop: baseTheme.spacing.xs,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  ratingTitle: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 14,
-    color: baseTheme.colors.text,
-    marginBottom: baseTheme.spacing.sm,
-    textAlign: 'center',
-  },
-  ratingTitleCompact: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 13,
-    color: baseTheme.colors.text,
-    marginBottom: baseTheme.spacing.xs,
-    textAlign: 'center',
-  },
-  ratingButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    gap: baseTheme.spacing.xs,
-  },
-  ratingButton: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: baseTheme.spacing.md,
-    paddingHorizontal: baseTheme.spacing.xs,
-    borderRadius: 12,
-    borderWidth: 2,
-    minHeight: 80,
-    maxHeight: 90,
-    justifyContent: 'center',
-    gap: baseTheme.spacing.xs,
-  },
-  ratingButtonCompact: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: baseTheme.spacing.sm,
-    paddingHorizontal: baseTheme.spacing.xs,
-    borderRadius: 10,
-    borderWidth: 2,
-    minHeight: 56,
-    maxHeight: 64,
-    justifyContent: 'center',
-    gap: 2,
-  },
-  ratingButtonHard: {
-    borderColor: '#dc3545',
-    backgroundColor: '#fff5f5',
-  },
-  ratingButtonGood: {
-    borderColor: '#ffc107',
-    backgroundColor: '#fffbf0',
-  },
-  ratingButtonEasy: {
-    borderColor: '#28a745',
-    backgroundColor: '#f0fff4',
-  },
-  ratingButtonSelected: {
-    borderWidth: 3,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  ratingButtonText: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 12,
-  },
-  ratingButtonTextHard: {
-    color: '#dc3545',
-  },
-  ratingButtonTextGood: {
-    color: '#ffc107',
-  },
-  ratingButtonTextEasy: {
-    color: '#28a745',
-  },
-  flipHint: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: baseTheme.spacing.xs,
-    alignSelf: 'center',
-  },
-  flipHintText: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 14,
-    color: baseTheme.colors.mutedText,
-  },
-  flipButton: {
-    backgroundColor: baseTheme.colors.primary,
-    padding: baseTheme.spacing.md,
-    borderRadius: 12,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: baseTheme.spacing.xs,
-    marginTop: baseTheme.spacing.sm,
-  },
-  flipButtonCompact: {
-    backgroundColor: baseTheme.colors.primary,
-    padding: baseTheme.spacing.sm,
-    borderRadius: 12,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: baseTheme.spacing.xs,
-    marginTop: baseTheme.spacing.xs,
-  },
-  flipButtonText: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 16,
-    color: '#fff',
-  },
-  sourceCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: baseTheme.spacing.lg,
-  },
-  sourceTextContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: baseTheme.spacing.md,
-  },
-  sourceText: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 32,
-    color: baseTheme.colors.text,
-    flex: 1,
-  },
-  hintButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: baseTheme.spacing.xs,
-    alignSelf: 'flex-start',
-  },
-  hintButtonText: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 14,
-    color: baseTheme.colors.primary,
-  },
-  hintCard: {
-    backgroundColor: '#FFF9E6',
-    borderRadius: 12,
-    padding: baseTheme.spacing.md,
-    borderLeftWidth: 4,
-    borderLeftColor: '#FFC107',
-  },
-  hintText: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 14,
-    color: baseTheme.colors.text,
-  },
-  inputCard: {
-    gap: baseTheme.spacing.sm,
-  },
-  inputLabel: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 14,
-    color: baseTheme.colors.text,
-  },
-  textInput: {
-    borderWidth: 2,
-    borderColor: baseTheme.colors.primary,
-    borderRadius: 12,
-    padding: baseTheme.spacing.md,
-    fontSize: 18,
-    fontFamily: baseTheme.typography.regular,
-    color: baseTheme.colors.text,
-    minHeight: 60,
-    textAlignVertical: 'top',
-  },
-  keyboardHint: {
-    padding: baseTheme.spacing.sm,
-  },
-  keyboardHintText: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 12,
-    color: baseTheme.colors.mutedText,
-    fontStyle: 'italic',
-  },
-  checkButton: {
-    backgroundColor: baseTheme.colors.primary,
-    padding: baseTheme.spacing.md,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: baseTheme.spacing.md,
-  },
-  checkButtonText: {
-    color: '#fff',
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 16,
-  },
-  resultCard: {
-    marginTop: baseTheme.spacing.md,
-    padding: baseTheme.spacing.xl,
-    borderRadius: 16,
-    alignItems: 'center',
-    gap: baseTheme.spacing.sm,
-    width: '100%',
-  },
-  resultCardCompact: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginTop: baseTheme.spacing.md,
-    padding: baseTheme.spacing.md,
-    borderRadius: 12,
-    gap: baseTheme.spacing.sm,
-    width: '100%',
-    borderWidth: 2,
-  },
-  resultCardCorrect: {
-    backgroundColor: '#d4edda',
-    borderColor: '#28a745',
-  },
-  resultCardMeaningCorrect: {
-    backgroundColor: '#fffbeb',
-    borderColor: '#f59e0b',
-    paddingVertical: baseTheme.spacing.lg,
-    paddingHorizontal: baseTheme.spacing.lg,
-  },
-  resultCardWrong: {
-    backgroundColor: '#fef2f2',
-    borderColor: '#dc3545',
-    paddingVertical: baseTheme.spacing.lg,
-    paddingHorizontal: baseTheme.spacing.lg,
-  },
-  resultContentCompact: {
-    flex: 1,
-    gap: baseTheme.spacing.sm,
-    minWidth: 0,
-  },
-  resultTitleCompact: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 18,
-    color: baseTheme.colors.text,
-  },
-  resultMessageCompact: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 16,
-    color: baseTheme.colors.text,
-    lineHeight: 24,
-  },
-  suggestedAnswerLabel: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 15,
-    color: baseTheme.colors.text,
-    marginTop: baseTheme.spacing.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  suggestedAnswerBlock: {
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    borderRadius: baseTheme.radius.sm,
-    paddingVertical: baseTheme.spacing.md,
-    paddingHorizontal: baseTheme.spacing.md,
-    marginTop: baseTheme.spacing.xs,
-    width: '100%',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
-  },
-  suggestedAnswerText: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 20,
-    color: baseTheme.colors.text,
-    lineHeight: 28,
-  },
-  acceptedVariantsText: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 14,
-    color: baseTheme.colors.mutedText,
-    marginTop: baseTheme.spacing.xs,
-    lineHeight: 20,
-  },
-  whyButton: {
-    alignSelf: 'flex-start',
-    marginTop: baseTheme.spacing.xs,
-    paddingVertical: baseTheme.spacing.xs,
-    paddingHorizontal: 0,
-  },
-  whyButtonText: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 14,
-    color: baseTheme.colors.primary,
-  },
-  whyText: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 13,
-    color: baseTheme.colors.mutedText,
-    marginTop: baseTheme.spacing.xs,
-    fontStyle: 'italic',
-  },
-  tryAgainButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: baseTheme.spacing.xs,
-    paddingVertical: baseTheme.spacing.sm,
-    paddingHorizontal: baseTheme.spacing.md,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: baseTheme.colors.primary,
-    backgroundColor: '#fff',
-    marginTop: baseTheme.spacing.xs,
-  },
-  tryAgainButtonText: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 14,
-    color: baseTheme.colors.primary,
-  },
-  resultTitle: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 18,
-    color: baseTheme.colors.text,
-    textTransform: 'uppercase',
-  },
-  answerComparison: {
-    width: '100%',
-    gap: baseTheme.spacing.md,
-  },
-  answerRow: {
-    gap: baseTheme.spacing.xs,
-  },
-  answerLabel: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 12,
-    color: baseTheme.colors.mutedText,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  answerValue: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 18,
-    color: baseTheme.colors.text,
-  },
-  answerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: baseTheme.spacing.sm,
-  },
-  answerText: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 24,
-    color: baseTheme.colors.text,
-  },
-  resultAudioButton: {
-    padding: baseTheme.spacing.xs,
-  },
-  infoCard: {
-    width: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: baseTheme.spacing.lg,
-    gap: baseTheme.spacing.xs,
-    marginTop: baseTheme.spacing.md,
-  },
-  infoLabel: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 12,
-    color: baseTheme.colors.mutedText,
-    textTransform: 'uppercase',
-    marginBottom: baseTheme.spacing.xs,
-  },
-  infoText: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 16,
-    color: baseTheme.colors.text,
-  },
-  xpBar: {
-    width: '100%',
-    backgroundColor: '#28a745',
-    borderRadius: 12,
-    padding: baseTheme.spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: baseTheme.spacing.sm,
-    justifyContent: 'center',
-    marginTop: baseTheme.spacing.md,
-  },
-  xpText: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 16,
-    color: '#fff',
-  },
-});

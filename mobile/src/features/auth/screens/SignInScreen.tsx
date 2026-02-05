@@ -5,6 +5,7 @@ import { View, Text, StyleSheet, TextInput, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, LoadingScreen, ScrollView, StaticCard } from '@/components/ui';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 import {
   resolvePostAuthDestination,
   resolvePostLoginDestination,
@@ -41,7 +42,7 @@ export default function SignIn() {
   const { theme } = useAppTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const { error, handleError, clearError } = useErrorHandler('SignIn');
   const [loading, setLoading] = useState(false);
   const [processingEmailCallback, setProcessingEmailCallback] = useState(false);
 
@@ -57,7 +58,7 @@ export default function SignIn() {
   const handleEmailConfirmation = useCallback(async (incomingUrl?: string | null) => {
     if (!incomingUrl) return;
     setProcessingEmailCallback(true);
-    setError(null);
+    clearError();
     const { accessToken, refreshToken } = parseTokens(incomingUrl);
     if (!accessToken || !refreshToken) {
       setProcessingEmailCallback(false);
@@ -99,14 +100,11 @@ export default function SignIn() {
         }
       }
     } catch (sessionError: unknown) {
-      const error = sessionError instanceof Error ? sessionError : new Error(String(sessionError));
-      logger.error('Error processing email confirmation', error, {
-        message: error.message,
-      });
+      logger.error('Error processing email confirmation', sessionError);
       setProcessingEmailCallback(false);
-      setError('Email confirmation failed. Please try signing in with your email and password.');
+      handleError(sessionError, 'Email confirmation failed. Please try signing in with your email and password.');
     }
-  }, []);
+  }, [clearError, handleError]);
 
   useEffect(() => {
     Linking.getInitialURL().then((initial) => {
@@ -130,16 +128,14 @@ export default function SignIn() {
     if (!canSubmit) return;
     try {
       setLoading(true);
-      setError(null);
+      clearError();
       const { session } = await signInWithEmailPassword(trimmedEmail, password);
       const userId = session?.user?.id;
       if (!userId) throw new Error('No session returned. Please try again.');
       const destination = await resolvePostLoginDestination(userId);
       router.replace(destination);
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : 'Unable to sign in. Please try again.';
-      setError(message);
+    } catch (err: unknown) {
+      handleError(err, 'Unable to sign in. Please try again.');
     } finally {
       setLoading(false);
     }

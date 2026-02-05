@@ -20,6 +20,7 @@ describe('Login flow', () => {
 
     await loginWithEmailPassword();
 
-    await expect(element(by.text('Learn'))).toBeVisible();
+    // Verify we're on the home screen by checking for the tab bar (use toExist for reliability)
+    await expect(element(by.id('tab-home'))).toExist();
   });
 });

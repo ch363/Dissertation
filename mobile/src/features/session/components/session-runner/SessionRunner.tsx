@@ -7,6 +7,9 @@ import { StyleSheet, View, ScrollView } from 'react-native';
 import { getDeliveryMethodForCardKind } from '../../delivery-methods';
 import { CardRenderer } from '../card-renderer/CardRenderer';
 import { LessonProgressHeader } from '../lesson-progress-header/LessonProgressHeader';
+// Import new hooks (SOLID refactoring)
+import { useCardNavigation } from '../../hooks/useCardNavigation';
+import { useAttemptTracking } from '../../hooks/useAttemptTracking';
 
 import { ContentContinueButton } from '@/components/ui';
 import { makeSessionId } from '@/features/session/sessionBuilder';

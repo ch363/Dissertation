@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, ActivityIndicator } from 'react-native';
 
 import { Button } from '@/components/ui';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 import {
   getCurrentUser,
   resolvePostAuthDestination,
@@ -35,7 +36,7 @@ const parseTokens = (raw?: string | null): TokenResult => {
 export default function UpdatePassword() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const { error, handleError, clearError } = useErrorHandler('UpdatePassword');
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
   const [processing, setProcessing] = useState(true);
@@ -48,10 +49,10 @@ export default function UpdatePassword() {
     async (incomingUrl?: string | null) => {
       if (!incomingUrl) return;
       setProcessing(true);
-      setError(null);
+      clearError();
       const { accessToken, refreshToken } = parseTokens(incomingUrl);
       if (!accessToken || !refreshToken) {
-        setError('Missing access token. Open the reset link from your email.');
+        handleError(new Error('Missing access token. Open the reset link from your email.'));
         setProcessing(false);
         return;
       }
@@ -59,17 +60,13 @@ export default function UpdatePassword() {
         await setSessionFromEmailLink(accessToken, refreshToken);
         setSessionReady(true);
       } catch (sessionError: unknown) {
-        const message =
-          sessionError instanceof Error
-            ? sessionError.message
-            : 'Unable to restore your session from the reset link.';
-        setError(message);
+        handleError(sessionError, 'Unable to restore your session from the reset link.');
         setProcessing(false);
         return;
       }
       setProcessing(false);
     },
-    [setProcessing],
+    [setProcessing, clearError, handleError],
   );
 
   useEffect(() => {
@@ -78,10 +75,10 @@ export default function UpdatePassword() {
         ensureSessionFromUrl(initial);
       } else {
         setProcessing(false);
-        setError('Open the password reset link from your email to continue.');
+        handleError(new Error('Open the password reset link from your email to continue.'));
       }
     });
-  }, [ensureSessionFromUrl]);
+  }, [ensureSessionFromUrl, handleError]);
 
   useEffect(() => {
     if (url) ensureSessionFromUrl(url);
@@ -96,7 +93,7 @@ export default function UpdatePassword() {
     if (!canSubmit) return;
     try {
       setLoading(true);
-      setError(null);
+      clearError();
       const { user } = await updatePassword(newPassword);
       const userId = user?.id || (await getCurrentUser())?.id;
       if (userId) {
@@ -105,9 +102,8 @@ export default function UpdatePassword() {
       } else {
         router.replace('/sign-in');
       }
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unable to update password.';
-      setError(message);
+    } catch (err: unknown) {
+      handleError(err, 'Unable to update password.');
     } finally {
       setLoading(false);
     }

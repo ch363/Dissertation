@@ -152,22 +152,6 @@ export const listeningStyles = StyleSheet.create({
     fontSize: 16,
     color: baseTheme.colors.text,
   },
-  alsoCorrectSection: {
-    marginTop: baseTheme.spacing.sm,
-    gap: baseTheme.spacing.xs,
-  },
-  alsoCorrectTag: {
-    backgroundColor: '#E0E0E0',
-    borderRadius: 8,
-    paddingHorizontal: baseTheme.spacing.md,
-    paddingVertical: baseTheme.spacing.xs,
-    alignSelf: 'flex-start',
-  },
-  alsoCorrectText: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 14,
-    color: baseTheme.colors.text,
-  },
 
   // Error & warning styles
   errorText: {
@@ -485,3 +469,11 @@ export const pronunciationStyles = StyleSheet.create({
     color: '#fff',
   },
 });
+
+/**
+ * Shared card color type used across listening components.
+ */
+export type CardColors = {
+  border: string;
+  instruction: string;
+};

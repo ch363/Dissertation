@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Pressable, Text, View } from 'react-native';
 
-import { CARD_TYPE_COLORS } from '../../constants/cardTypeColors';
+import { fillBlankStyles as styles } from './fillBlankStyles';
 
+import { CARD_TYPE_COLORS } from '@/features/session/constants/cardTypeColors';
 import { SpeakerButton } from '@/components/ui';
 import { useTtsAudio } from '@/hooks/useTtsAudio';
 import { createLogger } from '@/services/logging';
@@ -39,16 +40,10 @@ export function FillBlankCard({
   // Speak the word when it's placed in the blank
   useEffect(() => {
     const speakSelectedWord = async () => {
-      // Speak if:
-      // 1. There's a selected answer
-      // 2. It's different from the previous answer (new word was placed)
-      // Allow speaking even after results are shown, so users can hear each wrong answer they try
       if (selectedAnswer && selectedAnswer !== previousAnswerRef.current) {
         logger.info('Speaking selected word', { selectedAnswer });
         await speak(selectedAnswer, 'it-IT');
       }
-
-      // Update the ref to track the current answer
       previousAnswerRef.current = selectedAnswer;
     };
 
@@ -67,7 +62,6 @@ export function FillBlankCard({
       return;
     }
 
-    // Remove the blank marker and speak the sentence naturally
     const textToSpeak = card.text.replace(/___/g, ' ').trim() || '';
     if (!textToSpeak) {
       logger.warn('No text to speak after processing');
@@ -77,7 +71,6 @@ export function FillBlankCard({
     await speak(textToSpeak, 'it-IT');
   };
 
-  // Parse sentence to find blank position
   const sentenceParts = card.text.split('___');
 
   return (
@@ -98,7 +91,6 @@ export function FillBlankCard({
           },
         ]}
       >
-        {/* Audio button - always show if text is available */}
         {(card.audioUrl || card.text) && (
           <View style={styles.audioButton}>
             <SpeakerButton
@@ -114,7 +106,6 @@ export function FillBlankCard({
           </View>
         )}
 
-        {/* Sentence with blank */}
         <View style={styles.sentenceContainer}>
           {sentenceParts[0] && (
             <Text style={[styles.sentenceText, { color: theme.colors.text }]}>
@@ -163,7 +154,6 @@ export function FillBlankCard({
             >
               {selectedAnswer || ''}
             </Text>
-            {/* Show checkmark/X icon for correct/incorrect */}
             {selectedAnswer && showResult && (
               <Ionicons
                 name={isCorrect ? 'checkmark-circle' : 'close-circle'}
@@ -192,7 +182,6 @@ export function FillBlankCard({
               const isSelected = selectedAnswer === opt.label;
               const isCorrectOption = showResult && isCorrect && isSelected;
               const isIncorrectOption = showResult && !isCorrect && isSelected;
-              // Disable all options once correct answer is selected
               const isDisabled = showResult && isCorrect;
 
               return (
@@ -218,7 +207,6 @@ export function FillBlankCard({
                     isDisabled && !isCorrectOption && { opacity: 0.7 },
                   ]}
                   onPress={() => {
-                    // Only allow selection if correct answer hasn't been selected yet
                     if (!isDisabled) {
                       onSelectAnswer?.(opt.label);
                     }
@@ -243,7 +231,6 @@ export function FillBlankCard({
                   >
                     {opt.label}
                   </Text>
-                  {/* Show checkmark/X icon for correct/incorrect */}
                   {isCorrectOption && (
                     <Ionicons
                       name="checkmark-circle"
@@ -273,124 +260,3 @@ export function FillBlankCard({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    gap: baseTheme.spacing.md,
-  },
-  instruction: {
-    fontFamily: baseTheme.typography.bold,
-    fontSize: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  questionCard: {
-    borderRadius: 16,
-    padding: baseTheme.spacing.lg,
-    gap: baseTheme.spacing.md,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  audioButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: baseTheme.spacing.xs,
-    marginBottom: baseTheme.spacing.sm,
-  },
-  audioLabel: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 14,
-  },
-  sentenceContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: baseTheme.spacing.xs,
-  },
-  sentenceText: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 18,
-    lineHeight: 28,
-  },
-  blankField: {
-    minWidth: 100,
-    minHeight: 44,
-    borderRadius: 12,
-    borderWidth: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: baseTheme.spacing.md,
-    paddingVertical: baseTheme.spacing.xs,
-    flexDirection: 'row',
-    gap: baseTheme.spacing.xs,
-  },
-  blankIcon: {
-    marginLeft: baseTheme.spacing.xs,
-  },
-  blankFieldFilled: {},
-  blankFieldCorrect: {},
-  blankFieldIncorrect: {},
-  blankText: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 18,
-    minHeight: 20,
-  },
-  blankTextFilled: {},
-  blankTextCorrect: {},
-  blankTextIncorrect: {},
-  optionsCard: {
-    borderRadius: 16,
-    padding: baseTheme.spacing.lg,
-    gap: baseTheme.spacing.md,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  optionsLabel: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 12,
-    color: baseTheme.colors.mutedText,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: baseTheme.spacing.xs,
-  },
-  optionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: baseTheme.spacing.md,
-  },
-  optionButton: {
-    flex: 1,
-    minWidth: '45%',
-    paddingVertical: baseTheme.spacing.md,
-    paddingHorizontal: baseTheme.spacing.sm,
-    borderRadius: 12,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 56,
-    flexDirection: 'row',
-    gap: baseTheme.spacing.xs,
-  },
-  optionIcon: {
-    marginLeft: baseTheme.spacing.xs,
-  },
-  optionButtonSelected: {},
-  optionButtonCorrect: {},
-  optionButtonIncorrect: {},
-  optionText: {
-    fontFamily: baseTheme.typography.semiBold,
-    fontSize: 16,
-  },
-  optionTextSelected: {},
-  optionTextCorrect: {},
-  optionTextIncorrect: {},
-  optionButtonDisabled: {},
-  optionTextDisabled: {},
-});

@@ -1,7 +1,7 @@
 import React from 'react';
 import renderer from 'react-test-renderer';
 
-import { MultipleChoiceCard } from '@/features/session/components/cards/MultipleChoiceCard';
+import { MultipleChoiceCard } from '@/features/session/components/cards';
 import { CardKind } from '@/types/session';
 
 // Mock dependencies

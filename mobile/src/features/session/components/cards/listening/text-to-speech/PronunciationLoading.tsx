@@ -1,14 +1,9 @@
 import React from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 
-import { pronunciationStyles } from './listeningStyles';
+import { pronunciationStyles, CardColors } from '../shared';
 
 import { theme as baseTheme } from '@/services/theme/tokens';
-
-type CardColors = {
-  border: string;
-  instruction: string;
-};
 
 type Props = {
   cardColors: CardColors;

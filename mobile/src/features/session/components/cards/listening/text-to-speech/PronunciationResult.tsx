@@ -2,16 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import { listeningStyles, pronunciationStyles } from './listeningStyles';
+import { listeningStyles, pronunciationStyles, CardColors } from '../shared';
 
 import { ContentContinueButton, SpeakerButton } from '@/components/ui';
 import { theme as baseTheme } from '@/services/theme/tokens';
 import { PronunciationResult as PronunciationResultType } from '@/types/session';
-
-type CardColors = {
-  border: string;
-  instruction: string;
-};
 
 type Props = {
   expected: string;

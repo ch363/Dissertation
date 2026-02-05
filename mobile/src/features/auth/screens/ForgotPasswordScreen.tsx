@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { sendPasswordReset } from '@/services/api/auth';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme } from '@/services/theme/tokens';
@@ -17,7 +18,7 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { error, handleError, clearError } = useErrorHandler('ForgotPassword');
 
   const trimmedEmail = email.trim();
   const emailError = validateEmail(trimmedEmail);
@@ -27,13 +28,12 @@ export default function ForgotPassword() {
     if (!canSubmit) return;
     try {
       setLoading(true);
-      setError(null);
+      clearError();
       setMessage(null);
       await sendPasswordReset(email.trim(), RESET_REDIRECT);
       setMessage('Check your email for a reset link.');
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unable to send reset email.';
-      setError(message);
+    } catch (err: unknown) {
+      handleError(err, 'Unable to send reset email.');
     } finally {
       setLoading(false);
     }
@@ -45,11 +45,11 @@ export default function ForgotPassword() {
   }, [error, message]);
 
   return (
-    <SafeAreaView
-      style={[styles.safe, { backgroundColor: theme.colors.background }]}
-      testID="forgot-password-screen"
-    >
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+      <View
+        testID="forgot-password-screen"
+        style={[styles.container, { backgroundColor: theme.colors.background }]}
+      >
         <Text style={[styles.title, { color: theme.colors.text }]} accessibilityRole="header">
           Forgot password
         </Text>

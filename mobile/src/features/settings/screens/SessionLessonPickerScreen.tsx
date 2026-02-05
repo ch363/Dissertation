@@ -5,6 +5,7 @@ import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-na
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LoadingRow } from '@/components/ui';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { getLessons, type Lesson } from '@/services/api/modules';
 import { routes } from '@/services/navigation/routes';
 import { setSessionDefaultLessonId } from '@/services/preferences/settings-facade';
@@ -18,20 +19,19 @@ export default function SessionLessonPickerScreen() {
 
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { error, handleError, clearError } = useErrorHandler('SessionLessonPickerScreen');
   const [query, setQuery] = useState('');
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
-      setError(null);
+      clearError();
       try {
         const data = await getLessons();
         if (!cancelled) setLessons(data);
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Failed to load lessons';
-        if (!cancelled) setError(message);
+      } catch (err: unknown) {
+        if (!cancelled) handleError(err, 'Failed to load lessons');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -39,7 +39,7 @@ export default function SessionLessonPickerScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [clearError, handleError]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

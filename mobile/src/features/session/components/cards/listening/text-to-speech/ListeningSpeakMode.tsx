@@ -2,16 +2,12 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Text, View } from 'react-native';
 
-import { listeningStyles, pronunciationStyles } from './listeningStyles';
 import { RecordButton } from './RecordButton';
+
+import { listeningStyles, pronunciationStyles, CardColors } from '../shared';
 
 import { ContentContinueButton, SpeakerButton } from '@/components/ui';
 import { theme as baseTheme } from '@/services/theme/tokens';
-
-type CardColors = {
-  border: string;
-  instruction: string;
-};
 
 type Props = {
   expected: string;
@@ -31,8 +27,10 @@ type Props = {
 };
 
 /**
- * Speak mode input screen for ListeningCard.
- * Displays the phrase to speak and recording controls.
+ * Text-to-speech delivery mode for ListeningCard.
+ * User sees text and records their pronunciation.
+ * 
+ * Delivery method: text → speech recording
  */
 export function ListeningSpeakMode({
   expected,

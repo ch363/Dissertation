@@ -2,7 +2,10 @@
  * Card Renderer
  *
  * Central registry for rendering cards based on CardKind.
- * This is the single place where CardKind maps to React components.
+ * Uses a registry pattern for Open/Closed Principle compliance.
+ * 
+ * Props follow Interface Segregation Principle - each card type receives
+ * only the props it needs via focused interfaces defined in types.ts
  */
 
 import React from 'react';
@@ -15,143 +18,93 @@ import {
   TranslateCard,
   ListeningCard,
 } from '../cards';
+import { LegacyCardRendererProps } from './types';
 
 import { theme } from '@/services/theme/tokens';
-import { Card, CardKind, PronunciationResult } from '@/types/session';
+import { CardKind } from '@/types/session';
 
-type Props = {
-  card: Card;
-  selectedOptionId?: string;
-  onSelectOption?: (optionId: string) => void;
-  selectedAnswer?: string;
-  onSelectAnswer?: (answer: string) => void;
-  userAnswer?: string;
-  onAnswerChange?: (answer: string) => void;
-  showResult?: boolean;
-  isCorrect?: boolean;
-  grammaticalCorrectness?: number | null;
-  meaningCorrect?: boolean;
-  naturalPhrasing?: string;
-  feedbackWhy?: string;
-  acceptedVariants?: string[];
-  validationFeedback?: string;
-  showHint?: boolean;
-  showSuggestedAnswer?: boolean;
-  showCorrectAnswer?: boolean;
-  onCheckAnswer?: (audioUri?: string) => void;
-  onContinue?: () => void;
-  onTryAgain?: () => void;
-  onRating?: (rating: number) => void;
-  selectedRating?: number;
-  pronunciationResult?: PronunciationResult | null;
-  isPronunciationProcessing?: boolean;
-  onPracticeAgain?: () => void;
-  incorrectAttemptCount?: number;
-};
+/** Registry of card components by kind */
+const CARD_REGISTRY = new Map<CardKind, React.ComponentType<any>>([
+  [CardKind.Teach, TeachCard],
+  [CardKind.MultipleChoice, MultipleChoiceCard],
+  [CardKind.FillBlank, FillBlankCard],
+  [CardKind.TranslateToEn, TranslateCard],
+  [CardKind.TranslateFromEn, TranslateCard],
+  [CardKind.Listening, ListeningCard],
+]);
 
-export function CardRenderer({
-  card,
-  selectedOptionId,
-  onSelectOption,
-  selectedAnswer,
-  onSelectAnswer,
-  userAnswer,
-  onAnswerChange,
-  showResult,
-  isCorrect,
-  grammaticalCorrectness,
-  meaningCorrect,
-  naturalPhrasing,
-  feedbackWhy,
-  acceptedVariants,
-  validationFeedback,
-  showHint,
-  showSuggestedAnswer,
-  showCorrectAnswer,
-  onCheckAnswer,
-  onContinue,
-  onTryAgain,
-  onRating,
-  selectedRating,
-  pronunciationResult,
-  isPronunciationProcessing,
-  onPracticeAgain,
-  incorrectAttemptCount,
-}: Props) {
+// Using LegacyCardRendererProps for backward compatibility
+// TODO: Migrate to focused interfaces once SessionRunner is refactored
+type Props = LegacyCardRendererProps;
+
+export function CardRenderer(props: Props) {
+  const { card } = props;
+  
+  // Get component from registry
+  const Component = CARD_REGISTRY.get(card.kind);
+  
+  if (!Component) {
+    console.warn(`No component registered for card kind: ${card.kind}`);
+    return null;
+  }
+
   // Teach cards render their own container (with usage note card)
   if (card.kind === CardKind.Teach) {
-    return <TeachCard card={card} />;
+    return <Component card={card} />;
   }
 
   // All other card types use the standard card container
   return (
     <View style={styles.card}>
-      {renderCardByKind(
-        card,
-        selectedOptionId,
-        onSelectOption,
-        selectedAnswer,
-        onSelectAnswer,
-        userAnswer,
-        onAnswerChange,
-        showResult,
-        isCorrect,
-        grammaticalCorrectness,
-        meaningCorrect,
-        naturalPhrasing,
-        feedbackWhy,
-        acceptedVariants,
-        validationFeedback,
-        showHint,
-        showSuggestedAnswer,
-        showCorrectAnswer,
-        onCheckAnswer,
-        onContinue,
-        onTryAgain,
-        onRating,
-        selectedRating,
-        pronunciationResult,
-        isPronunciationProcessing,
-        onPracticeAgain,
-        incorrectAttemptCount,
-      )}
+      {renderCardWithProps(card.kind, props, Component)}
     </View>
   );
 }
 
-function renderCardByKind(
-  card: Card,
-  selectedOptionId?: string,
-  onSelectOption?: (optionId: string) => void,
-  selectedAnswer?: string,
-  onSelectAnswer?: (answer: string) => void,
-  userAnswer?: string,
-  onAnswerChange?: (answer: string) => void,
-  showResult?: boolean,
-  isCorrect?: boolean,
-  grammaticalCorrectness?: number | null,
-  meaningCorrect?: boolean,
-  naturalPhrasing?: string,
-  feedbackWhy?: string,
-  acceptedVariants?: string[],
-  validationFeedback?: string,
-  showHint?: boolean,
-  showSuggestedAnswer?: boolean,
-  showCorrectAnswer?: boolean,
-  onCheckAnswer?: (audioUri?: string) => void,
-  onContinue?: () => void,
-  onTryAgain?: () => void,
-  onRating?: (rating: number) => void,
-  selectedRating?: number,
-  pronunciationResult?: PronunciationResult | null,
-  isPronunciationProcessing?: boolean,
-  onPracticeAgain?: () => void,
-  incorrectAttemptCount?: number,
+/**
+ * Map card kind to appropriate props and render component.
+ * This function extracts the relevant props for each card type.
+ */
+function renderCardWithProps(
+  cardKind: CardKind,
+  props: Props,
+  Component: React.ComponentType<any>,
 ) {
-  switch (card.kind) {
+  const {
+    card,
+    selectedOptionId,
+    onSelectOption,
+    selectedAnswer,
+    onSelectAnswer,
+    userAnswer,
+    onAnswerChange,
+    showResult,
+    isCorrect,
+    grammaticalCorrectness,
+    meaningCorrect,
+    naturalPhrasing,
+    feedbackWhy,
+    acceptedVariants,
+    validationFeedback,
+    showHint,
+    showSuggestedAnswer,
+    showCorrectAnswer,
+    onCheckAnswer,
+    onContinue,
+    onTryAgain,
+    onRating,
+    selectedRating,
+    pronunciationResult,
+    isPronunciationProcessing,
+    onPracticeAgain,
+    incorrectAttemptCount,
+  } = props;
+
+  // Extract props based on card kind
+  switch (cardKind) {
     case CardKind.MultipleChoice:
       return (
-        <MultipleChoiceCard
+        <Component
           card={card}
           selectedOptionId={selectedOptionId}
           onSelectOption={onSelectOption}
@@ -165,7 +118,7 @@ function renderCardByKind(
       );
     case CardKind.FillBlank:
       return (
-        <FillBlankCard
+        <Component
           card={card}
           selectedAnswer={selectedAnswer}
           onSelectAnswer={onSelectAnswer}
@@ -177,7 +130,7 @@ function renderCardByKind(
     case CardKind.TranslateToEn:
     case CardKind.TranslateFromEn:
       return (
-        <TranslateCard
+        <Component
           card={card}
           userAnswer={userAnswer}
           onAnswerChange={onAnswerChange}
@@ -200,7 +153,7 @@ function renderCardByKind(
       );
     case CardKind.Listening:
       return (
-        <ListeningCard
+        <Component
           card={card}
           userAnswer={userAnswer}
           onAnswerChange={onAnswerChange}
