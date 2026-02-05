@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { buildUrl } from './query-builder';
 
 export interface LessonSuggestion {
   lesson: {
@@ -27,18 +28,33 @@ export interface LearnSuggestionsResponse {
   modules: ModuleSuggestion[];
 }
 
+export interface SessionPlanResponse {
+  id: string;
+  kind: 'learn' | 'review' | 'mixed';
+  lessonId?: string;
+  title?: string;
+  steps: {
+    stepNumber: number;
+    type: 'teach' | 'practice' | 'recap';
+    item: Record<string, unknown>;
+    estimatedTimeSec?: number;
+    deliveryMethod?: string;
+  }[];
+  metadata?: Record<string, unknown>;
+  createdAt?: string;
+}
+
 export async function getSuggestions(options?: {
   currentLessonId?: string;
   moduleId?: string;
   limit?: number;
 }): Promise<LearnSuggestionsResponse> {
-  const params = new URLSearchParams();
-  if (options?.currentLessonId) params.append('currentLessonId', options.currentLessonId);
-  if (options?.moduleId) params.append('moduleId', options.moduleId);
-  if (options?.limit) params.append('limit', options.limit.toString());
-
-  const query = params.toString();
-  return apiClient.get<LearnSuggestionsResponse>(`/learn/suggestions${query ? `?${query}` : ''}`);
+  const url = buildUrl('/learn/suggestions', {
+    currentLessonId: options?.currentLessonId,
+    moduleId: options?.moduleId,
+    limit: options?.limit,
+  });
+  return apiClient.get<LearnSuggestionsResponse>(url);
 }
 
 export async function getSessionPlan(options?: {
@@ -47,14 +63,13 @@ export async function getSessionPlan(options?: {
   lessonId?: string;
   moduleId?: string;
   theme?: string;
-}): Promise<any> {
-  const params = new URLSearchParams();
-  if (options?.mode) params.append('mode', options.mode);
-  if (options?.timeBudgetSec) params.append('timeBudgetSec', options.timeBudgetSec.toString());
-  if (options?.lessonId) params.append('lessonId', options.lessonId);
-  if (options?.moduleId) params.append('moduleId', options.moduleId);
-  if (options?.theme) params.append('theme', options.theme);
-
-  const query = params.toString();
-  return apiClient.get(`/learn/session-plan${query ? `?${query}` : ''}`);
+}): Promise<SessionPlanResponse> {
+  const url = buildUrl('/learn/session-plan', {
+    mode: options?.mode,
+    timeBudgetSec: options?.timeBudgetSec,
+    lessonId: options?.lessonId,
+    moduleId: options?.moduleId,
+    theme: options?.theme,
+  });
+  return apiClient.get(url);
 }

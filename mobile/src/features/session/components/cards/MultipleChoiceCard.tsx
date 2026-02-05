@@ -11,13 +11,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CARD_TYPE_COLORS } from '../../constants/cardTypeColors';
 
 import { SpeakerButton } from '@/components/ui';
+import { useTtsAudio } from '@/hooks/useTtsAudio';
 import { createLogger } from '@/services/logging';
-import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
-import * as SafeSpeech from '@/services/tts';
 import { MultipleChoiceCard as MultipleChoiceCardType } from '@/types/session';
 import { announce } from '@/utils/a11y';
+import { isTargetLanguageText, detectLanguageForTts } from '@/utils/languageDetection';
 
 const logger = createLogger('MultipleChoiceCard');
 
@@ -65,11 +65,11 @@ export function MultipleChoiceCard({
   showCorrectAnswer = false,
   onCheckAnswer,
   onTryAgain,
-  incorrectAttemptCount = 0,
+  incorrectAttemptCount: _incorrectAttemptCount = 0,
 }: Props) {
   const ctx = useAppTheme();
   const theme = ctx?.theme ?? baseTheme;
-  const [isPlaying, setIsPlaying] = useState(false);
+  const { speak, isSpeaking } = useTtsAudio();
 
   useEffect(() => {
     if (!showResult) return;
@@ -83,24 +83,21 @@ export function MultipleChoiceCard({
     const correctOpt = card.options.find((o) => o.id === card.correctOptionId);
     const label = correctOpt?.label?.trim();
     if (!label || !isTargetLanguageText(label)) return;
+    
     (async () => {
       try {
-        const enabled = await getTtsEnabled();
-        if (!enabled) return;
-        const rate = await getTtsRate();
-        await SafeSpeech.stop();
         await new Promise((r) => setTimeout(r, 150));
         const hasItalian =
           /[àèéìíîòóùú]/.test(label) ||
           /^(ciao|grazie|acqua|vino|formaggio|scusa|bene|sì|no|buongiorno|buonasera|arrivederci|per favore|prego)$/i.test(
             label,
           );
-        await SafeSpeech.speak(label, { language: hasItalian ? 'it-IT' : 'es-ES', rate });
+        await speak(label, hasItalian ? 'it-IT' : 'es-ES');
       } catch (e) {
         logger.debug('Failed to speak correct answer (non-critical)', e);
       }
     })();
-  }, [showResult, isCorrect, card.options, card.correctOptionId]);
+  }, [showResult, isCorrect, card.options, card.correctOptionId, speak]);
 
   /** True if text looks like target language (Italian/Spanish), not English. */
   function isTargetLanguageText(text: string) {
@@ -118,46 +115,26 @@ export function MultipleChoiceCard({
 
   const handlePlayAudio = async () => {
     if (!card.sourceText) return;
-    if (isPlaying) return;
     if (!isTargetLanguageText(card.sourceText)) return;
-    try {
-      const enabled = await getTtsEnabled();
-      if (!enabled) return;
-      setIsPlaying(true);
-      const rate = await getTtsRate();
-      await SafeSpeech.stop();
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      const hasItalian =
-        /[àèéìíîòóùú]/.test(card.sourceText) ||
-        /^(ciao|grazie|prego|scusa|bene|sì|no|buongiorno|buonasera|per favore|acqua|vino|formaggio)$/i.test(
-          card.sourceText.trim(),
-        );
-      await SafeSpeech.speak(card.sourceText, { language: hasItalian ? 'it-IT' : 'es-ES', rate });
-      const estimatedDuration = Math.max(2000, card.sourceText.length * 150);
-      setTimeout(() => setIsPlaying(false), estimatedDuration);
-    } catch (error) {
-      logger.error('Failed to play audio', error);
-      setIsPlaying(false);
-    }
+    
+    const hasItalian =
+      /[àèéìíîòóùú]/.test(card.sourceText) ||
+      /^(ciao|grazie|prego|scusa|bene|sì|no|buongiorno|buonasera|per favore|acqua|vino|formaggio)$/i.test(
+        card.sourceText.trim(),
+      );
+    await speak(card.sourceText, hasItalian ? 'it-IT' : 'es-ES');
   };
 
   const handleSpeakOption = async (label: string) => {
     if (!isTargetLanguageText(label)) return;
-    try {
-      const enabled = await getTtsEnabled();
-      if (!enabled) return;
-      const rate = await getTtsRate();
-      await SafeSpeech.stop();
-      await new Promise((resolve) => setTimeout(resolve, 80));
-      const hasItalian =
-        /[àèéìíîòóùú]/.test(label) ||
-        /^(ciao|grazie|acqua|vino|formaggio|scusa|bene|sì|no|buongiorno|buonasera|arrivederci|per favore|prego)$/i.test(
-          label,
-        );
-      await SafeSpeech.speak(label, { language: hasItalian ? 'it-IT' : 'es-ES', rate });
-    } catch (error) {
-      logger.debug('Failed to speak option (non-critical)', error);
-    }
+    
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    const hasItalian =
+      /[àèéìíîòóùú]/.test(label) ||
+      /^(ciao|grazie|acqua|vino|formaggio|scusa|bene|sì|no|buongiorno|buonasera|arrivederci|per favore|prego)$/i.test(
+        label,
+      );
+    await speak(label, hasItalian ? 'it-IT' : 'es-ES');
   };
 
   const isTranslation = !!card.sourceText;
@@ -179,9 +156,9 @@ export function MultipleChoiceCard({
           {showPromptSpeaker ? (
             <SpeakerButton
               size={48}
-              isPlaying={isPlaying}
+              isPlaying={isSpeaking}
               onPress={handlePlayAudio}
-              accessibilityLabel={isPlaying ? 'Pause audio' : 'Play pronunciation'}
+              accessibilityLabel={isSpeaking ? 'Pause audio' : 'Play pronunciation'}
               accessibilityHint="Plays the phrase audio"
             />
           ) : null}

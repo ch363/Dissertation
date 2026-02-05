@@ -9,10 +9,15 @@ import { createLogger } from '@/services/logging';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme } from '@/services/theme/tokens';
 import { announce } from '@/utils/a11y';
+import {
+  EMAIL_REGEX,
+  validateEmail,
+  validatePassword,
+  validatePasswordMatch,
+} from '@/utils/validation';
 
 const logger = createLogger('SignUp');
 
-const emailRegex = /\S+@\S+\.\S+/;
 const MIN_PASSWORD = 8;
 
 export default function SignUp() {
@@ -31,18 +36,11 @@ export default function SignUp() {
   const trimmedEmail = email.trim();
   const trimmedName = name.trim();
   const passwordsMatch = password === confirmPassword;
-  const emailError =
-    trimmedEmail.length > 0 && !emailRegex.test(trimmedEmail)
-      ? 'Enter a valid email address.'
-      : null;
-  const passwordError =
-    password.length > 0 && password.length < MIN_PASSWORD
-      ? `Password must be at least ${MIN_PASSWORD} characters.`
-      : null;
-  const confirmError =
-    !passwordsMatch && confirmPassword.length > 0 ? 'Passwords do not match.' : null;
+  const emailError = validateEmail(trimmedEmail);
+  const passwordError = validatePassword(password, MIN_PASSWORD);
+  const confirmError = validatePasswordMatch(password, confirmPassword);
   const canSubmit =
-    emailRegex.test(trimmedEmail) && password.length >= MIN_PASSWORD && passwordsMatch && !loading;
+    EMAIL_REGEX.test(trimmedEmail) && password.length >= MIN_PASSWORD && passwordsMatch && !loading;
 
   const handleSignUp = async () => {
     if (!canSubmit) return;
@@ -78,9 +76,10 @@ export default function SignUp() {
         logger.warn('Session exists but no user ID found');
         router.replace('/sign-in');
       }
-    } catch (e: any) {
-      logger.error('Error during sign-up', e as Error);
-      const errorMessage = e?.message ?? 'Unable to create your account.';
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      logger.error('Error during sign-up', err);
+      const errorMessage = err.message || 'Unable to create your account.';
       setError(errorMessage);
       // If it's an email-related error, provide more context
       if (errorMessage.includes('email') || errorMessage.includes('Email')) {
@@ -96,7 +95,10 @@ export default function SignUp() {
   }, [error]);
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]} testID="signup-screen">
+    <SafeAreaView
+      style={[styles.safe, { backgroundColor: theme.colors.background }]}
+      testID="signup-screen"
+    >
       <ScrollView
         contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}
         keyboardShouldPersistTaps="handled"
@@ -161,7 +163,6 @@ export default function SignUp() {
             placeholderTextColor={theme.colors.mutedText}
             accessibilityLabel="Email"
             accessibilityHint="Enter your email address"
-            accessibilityState={{ invalid: !!emailError }}
             autoComplete="email"
             textContentType="username"
             returnKeyType="next"
@@ -223,7 +224,6 @@ export default function SignUp() {
             placeholderTextColor={theme.colors.mutedText}
             accessibilityLabel="Confirm password"
             accessibilityHint="Re-enter your password to confirm"
-            accessibilityState={{ invalid: !!confirmError }}
             autoComplete="new-password"
             textContentType="newPassword"
             returnKeyType="done"

@@ -1,26 +1,7 @@
-import { Platform } from 'react-native';
-
 import { createLogger } from '@/services/logging';
+import { getFileSystemModule } from '@/services/utils/file-system-loader';
 
 const Logger = createLogger('AvatarCache');
-
-let FileSystemModule: typeof import('expo-file-system') | null = null;
-
-async function getFileSystemModule(): Promise<typeof import('expo-file-system') | null> {
-  if (Platform.OS === 'web') return null;
-
-  if (!FileSystemModule) {
-    try {
-      FileSystemModule = await import('expo-file-system');
-    } catch (error) {
-      Logger.warn('expo-file-system native module not available; avatar caching disabled', {
-        error,
-      });
-      return null;
-    }
-  }
-  return FileSystemModule;
-}
 
 const AVATAR_CACHE_DIR = 'avatars';
 

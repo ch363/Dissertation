@@ -196,14 +196,14 @@ export default function SessionRunnerScreen(props?: Props) {
             setError(`Unable to load session plan - no steps found`);
           }
         }
-      } catch (err: any) {
-        logger.error('Failed to load session plan', err);
+      } catch (err: unknown) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        logger.error('Failed to load session plan', error);
         if (!cancelled) {
-          const msg = err?.message ?? '';
+          const msg = error.message;
           const needsOnboarding =
-            typeof msg === 'string' &&
-            (msg.includes('does not have onboarding data') ||
-              msg.includes('must complete onboarding'));
+            msg.includes('does not have onboarding data') ||
+            msg.includes('must complete onboarding');
           if (needsOnboarding) {
             router.replace('/(onboarding)/welcome');
             return;
@@ -227,7 +227,7 @@ export default function SessionRunnerScreen(props?: Props) {
         endLesson(lessonId).catch((err) => logger.error('Failed to end lesson', err));
       }
     };
-  }, [requestedLessonId, moduleId, sessionId, requestedKind]);
+  }, [requestedLessonId, moduleId, sessionId, requestedKind, returnTo]);
 
   const handleComplete = async (_attempts: AttemptLog[]) => {
     if (resolvedKind === 'learn' && resolvedLessonId) {

@@ -15,7 +15,7 @@ type Props = {
   accessibilityHint?: string;
 };
 
-const ELEVATED_SIZE = 40;
+const ELEVATED_SIZE = 44;
 
 export function HelpButton({
   iconColor,
@@ -84,8 +84,8 @@ export function HelpButton({
 
 const styles = StyleSheet.create({
   button: {
-    minWidth: 36,
-    minHeight: 36,
+    minWidth: 44,
+    minHeight: 44,
   },
   elevatedWrap: {
     borderWidth: 1,

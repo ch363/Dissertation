@@ -1,5 +1,7 @@
 import { device, element, by, waitFor, expect } from 'detox';
 
+import { launchAppSafe } from './setup';
+
 /**
  * Onboarding Flow E2E Tests
  * Tests the onboarding screens that new users go through.
@@ -8,7 +10,7 @@ import { device, element, by, waitFor, expect } from 'detox';
  */
 describe('Onboarding Flow', () => {
   beforeAll(async () => {
-    await device.launchApp({ newInstance: true });
+    await launchAppSafe();
   });
 
   // Note: We can't fully test onboarding without creating a new account
@@ -23,14 +25,18 @@ describe('Onboarding Flow', () => {
 
       // Start from landing
       try {
-        await waitFor(element(by.id('landing-screen'))).toBeVisible().withTimeout(10000);
+        await waitFor(element(by.id('landing-screen')))
+          .toBeVisible()
+          .withTimeout(10000);
 
         // Navigate to sign up
         await element(by.id('landing-signup')).tap();
         await new Promise((r) => setTimeout(r, 2000));
 
         // Verify sign up shows step indicator (Step 1 of 3)
-        await waitFor(element(by.id('signup-screen'))).toBeVisible().withTimeout(5000);
+        await waitFor(element(by.id('signup-screen')))
+          .toBeVisible()
+          .withTimeout(5000);
         await expect(element(by.text('Step 1 of 3'))).toBeVisible();
         await expect(element(by.text('Create your account'))).toBeVisible();
       } catch {

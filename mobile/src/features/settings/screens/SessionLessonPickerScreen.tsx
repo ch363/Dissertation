@@ -29,8 +29,9 @@ export default function SessionLessonPickerScreen() {
       try {
         const data = await getLessons();
         if (!cancelled) setLessons(data);
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || 'Failed to load lessons');
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Failed to load lessons';
+        if (!cancelled) setError(message);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -66,6 +67,43 @@ export default function SessionLessonPickerScreen() {
       router.replace(routes.tabs.settings.session);
     }
   }, []);
+
+  const keyExtractor = useCallback((item: Lesson) => item.id, []);
+
+  const renderItem = useCallback(
+    ({ item }: { item: Lesson }) => (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Select lesson ${item.title}`}
+        onPress={() => handleSelect(item)}
+        style={({ pressed }) => [
+          styles.lessonRow,
+          {
+            backgroundColor: theme.colors.card,
+            borderColor: theme.colors.border,
+            opacity: pressed ? 0.9 : 1,
+          },
+        ]}
+      >
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.lessonTitle, { color: theme.colors.text }]}>{item.title}</Text>
+          {item.description ? (
+            <Text style={[styles.lessonSub, { color: theme.colors.mutedText }]} numberOfLines={2}>
+              {item.description}
+            </Text>
+          ) : null}
+        </View>
+        <Ionicons
+          name="chevron-forward"
+          size={20}
+          color={theme.colors.mutedText}
+          accessible={false}
+          importantForAccessibility="no"
+        />
+      </Pressable>
+    ),
+    [handleSelect, theme.colors],
+  );
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.background }]}>
@@ -160,44 +198,14 @@ export default function SessionLessonPickerScreen() {
         ) : (
           <FlatList
             data={filtered}
-            keyExtractor={(item) => item.id}
+            keyExtractor={keyExtractor}
+            renderItem={renderItem}
             contentContainerStyle={{ paddingBottom: baseTheme.spacing.lg }}
-            renderItem={({ item }) => (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Select lesson ${item.title}`}
-                onPress={() => handleSelect(item)}
-                style={({ pressed }) => [
-                  styles.lessonRow,
-                  {
-                    backgroundColor: theme.colors.card,
-                    borderColor: theme.colors.border,
-                    opacity: pressed ? 0.9 : 1,
-                  },
-                ]}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.lessonTitle, { color: theme.colors.text }]}>
-                    {item.title}
-                  </Text>
-                  {item.description ? (
-                    <Text
-                      style={[styles.lessonSub, { color: theme.colors.mutedText }]}
-                      numberOfLines={2}
-                    >
-                      {item.description}
-                    </Text>
-                  ) : null}
-                </View>
-                <Ionicons
-                  name="chevron-forward"
-                  size={18}
-                  color={theme.colors.mutedText}
-                  accessible={false}
-                  importantForAccessibility="no"
-                />
-              </Pressable>
-            )}
+            removeClippedSubviews
+            maxToRenderPerBatch={10}
+            updateCellsBatchingPeriod={50}
+            initialNumToRender={10}
+            windowSize={10}
           />
         )}
       </View>

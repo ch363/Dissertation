@@ -1,3 +1,5 @@
+import { BadRequestException } from '@nestjs/common';
+
 export type DetectedAudioContainer =
   | 'wav'
   | 'caf'
@@ -51,12 +53,12 @@ function readU16LE(buf: Buffer, offset: number): number {
 
 export function parseWavPcm(bytes: Buffer): ParsedWavPcm {
   if (!bytes || bytes.length < 12) {
-    throw new Error('WAV too small');
+    throw new BadRequestException('WAV file too small');
   }
   const riff = ascii(bytes, 0, 4);
   const wave = ascii(bytes, 8, 12);
   if (riff !== 'RIFF' || wave !== 'WAVE') {
-    throw new Error('Not a RIFF/WAVE WAV');
+    throw new BadRequestException('Not a valid RIFF/WAVE WAV file');
   }
 
   let offset = 12;
@@ -75,12 +77,12 @@ export function parseWavPcm(bytes: Buffer): ParsedWavPcm {
     const chunkDataEnd = chunkDataStart + chunkSize;
 
     if (chunkDataEnd > bytes.length) {
-      throw new Error('Invalid WAV chunk size');
+      throw new BadRequestException('Invalid WAV chunk size');
     }
 
     if (chunkId === 'fmt ') {
       if (chunkSize < 16) {
-        throw new Error('Invalid fmt chunk');
+        throw new BadRequestException('Invalid WAV fmt chunk');
       }
       const audioFormat = readU16LE(bytes, chunkDataStart);
       const channels = readU16LE(bytes, chunkDataStart + 2);
@@ -98,27 +100,29 @@ export function parseWavPcm(bytes: Buffer): ParsedWavPcm {
   }
 
   if (!fmt) {
-    throw new Error('WAV fmt chunk not found');
+    throw new BadRequestException('WAV fmt chunk not found');
   }
   if (!data) {
-    throw new Error('WAV data chunk not found');
+    throw new BadRequestException('WAV data chunk not found');
   }
 
   if (fmt.audioFormat !== 1) {
-    throw new Error(
+    throw new BadRequestException(
       `Unsupported WAV audioFormat=${fmt.audioFormat} (expected PCM=1)`,
     );
   }
   if (fmt.bitsPerSample !== 16) {
-    throw new Error(
+    throw new BadRequestException(
       `Unsupported WAV bitsPerSample=${fmt.bitsPerSample} (expected 16)`,
     );
   }
   if (fmt.channels < 1 || fmt.channels > 2) {
-    throw new Error(`Unsupported WAV channels=${fmt.channels}`);
+    throw new BadRequestException(`Unsupported WAV channels=${fmt.channels}`);
   }
   if (fmt.sampleRateHz < 8000 || fmt.sampleRateHz > 48000) {
-    throw new Error(`Unsupported WAV sampleRateHz=${fmt.sampleRateHz}`);
+    throw new BadRequestException(
+      `Unsupported WAV sampleRateHz=${fmt.sampleRateHz}`,
+    );
   }
 
   return {

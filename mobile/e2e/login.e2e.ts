@@ -1,4 +1,5 @@
 import { element, by, expect } from 'detox';
+
 import { getE2ECredentials, loginWithEmailPassword } from './helpers/auth';
 
 const hasCredentials = () => {

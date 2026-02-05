@@ -12,6 +12,7 @@ import {
 } from '@/services/api/auth';
 import { theme } from '@/services/theme/tokens';
 import { announce } from '@/utils/a11y';
+import { validatePassword, validatePasswordMatch } from '@/utils/validation';
 
 type TokenResult = { accessToken: string; refreshToken: string };
 
@@ -57,8 +58,12 @@ export default function UpdatePassword() {
       try {
         await setSessionFromEmailLink(accessToken, refreshToken);
         setSessionReady(true);
-      } catch (sessionError: any) {
-        setError(sessionError?.message ?? 'Unable to restore your session from the reset link.');
+      } catch (sessionError: unknown) {
+        const message =
+          sessionError instanceof Error
+            ? sessionError.message
+            : 'Unable to restore your session from the reset link.';
+        setError(message);
         setProcessing(false);
         return;
       }
@@ -83,13 +88,9 @@ export default function UpdatePassword() {
   }, [url, ensureSessionFromUrl]);
 
   const passwordsMatch = newPassword === confirmPassword;
-  const passwordError =
-    newPassword.length > 0 && newPassword.length < 6
-      ? 'Password must be at least 6 characters.'
-      : null;
-  const confirmError =
-    !passwordsMatch && confirmPassword.length > 0 ? 'Passwords do not match.' : null;
-  const canSubmit = sessionReady && passwordsMatch && newPassword.length >= 6 && !loading;
+  const passwordError = validatePassword(newPassword);
+  const confirmError = validatePasswordMatch(newPassword, confirmPassword);
+  const canSubmit = sessionReady && passwordsMatch && newPassword.length >= 8 && !loading;
 
   const handleUpdate = async () => {
     if (!canSubmit) return;
@@ -104,8 +105,9 @@ export default function UpdatePassword() {
       } else {
         router.replace('/sign-in');
       }
-    } catch (e: any) {
-      setError(e?.message ?? 'Unable to update password.');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unable to update password.';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -142,7 +144,6 @@ export default function UpdatePassword() {
             placeholderTextColor={theme.colors.mutedText}
             accessibilityLabel="New password"
             accessibilityHint="Create a new password"
-            accessibilityState={{ invalid: !!passwordError }}
             autoComplete="new-password"
             textContentType="newPassword"
             returnKeyType="next"
@@ -164,7 +165,6 @@ export default function UpdatePassword() {
             placeholderTextColor={theme.colors.mutedText}
             accessibilityLabel="Confirm new password"
             accessibilityHint="Re-enter your new password to confirm"
-            accessibilityState={{ invalid: !!confirmError }}
             autoComplete="new-password"
             textContentType="newPassword"
             returnKeyType="done"

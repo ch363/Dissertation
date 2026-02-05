@@ -1,4 +1,5 @@
 import { device, element, by, expect, waitFor } from 'detox';
+
 import { loginWithEmailPassword } from './helpers/auth';
 
 /**

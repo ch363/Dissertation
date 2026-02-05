@@ -8,6 +8,7 @@ import { Stack } from 'expo-router';
 import { FlatList, LogBox, Platform, ScrollView, SectionList } from 'react-native';
 import Toast from 'react-native-toast-message';
 
+import { ErrorBoundary } from '@/components/error-boundary';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { AppProviders } from '@/services/app/AppProviders';
 import { createLogger } from '@/services/logging';
@@ -73,12 +74,14 @@ export default function RootLayout() {
   if (!loaded) return null;
 
   return (
-    <AppProviders>
-      <RouteGuard>
-        <ThemedStack />
-      </RouteGuard>
-      <Toast />
-    </AppProviders>
+    <ErrorBoundary>
+      <AppProviders>
+        <RouteGuard>
+          <ThemedStack />
+        </RouteGuard>
+        <Toast />
+      </AppProviders>
+    </ErrorBoundary>
   );
 }
 

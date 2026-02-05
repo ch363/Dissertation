@@ -1,5 +1,7 @@
 import { device, element, by, waitFor, expect } from 'detox';
+
 import { loginWithEmailPassword, signOutUser, goBack } from './helpers/auth';
+import { launchAppSafe } from './setup';
 
 /**
  * Home Screen E2E Tests
@@ -7,7 +9,7 @@ import { loginWithEmailPassword, signOutUser, goBack } from './helpers/auth';
  */
 describe('Home Screen', () => {
   beforeAll(async () => {
-    await device.launchApp({ newInstance: true });
+    await launchAppSafe();
     await loginWithEmailPassword();
     await new Promise((r) => setTimeout(r, 2000));
   });
@@ -41,7 +43,9 @@ describe('Home Screen', () => {
 
     // Scroll to find Today at a Glance
     await scrollView.scroll(300, 'down');
-    await waitFor(element(by.text('Today at a Glance'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('Today at a Glance')))
+      .toBeVisible()
+      .withTimeout(5000);
   });
 
   it('should display and scroll through stats cards', async () => {
@@ -66,7 +70,9 @@ describe('Home Screen', () => {
 
     // Scroll to find Why This Next recommendation card
     await scrollView.scroll(400, 'down');
-    await waitFor(element(by.text('Why This Next'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('Why This Next')))
+      .toBeVisible()
+      .withTimeout(5000);
   });
 
   it('should navigate to Learn tab from home', async () => {
@@ -128,7 +134,9 @@ describe('Home Screen', () => {
     await new Promise((r) => setTimeout(r, 3000));
 
     // Verify Settings screen loaded
-    await waitFor(element(by.text('HELP'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('HELP')))
+      .toBeVisible()
+      .withTimeout(5000);
 
     // Go back to profile
     await goBack();

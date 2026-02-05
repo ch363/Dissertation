@@ -1,3 +1,5 @@
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import type { NavigationRoute, ParamListBase } from '@react-navigation/native';
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
@@ -7,12 +9,14 @@ import { TabBarButton } from '@/components/navigation';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
-function CustomTabBar({ state, descriptors, navigation }: any) {
+type RouteInfo = NavigationRoute<ParamListBase, string>;
+
+function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
   const visibleRoutes = state.routes;
 
-  const iconNameForRoute = (route: any) => {
+  const iconNameForRoute = (route: RouteInfo) => {
     const rn: string = String(route.name ?? '');
     if (rn.includes('learn')) return 'book';
     if (rn.includes('profile')) return 'person';
@@ -35,7 +39,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
       ]}
     >
       <View style={styles.tabBar}>
-        {visibleRoutes.map((route: any, idx: number) => {
+        {visibleRoutes.map((route: RouteInfo, idx: number) => {
           const isFocused = state.index === idx;
           const onPress = () => {
             const event = navigation.emit({

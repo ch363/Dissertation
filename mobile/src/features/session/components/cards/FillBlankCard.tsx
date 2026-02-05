@@ -5,11 +5,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CARD_TYPE_COLORS } from '../../constants/cardTypeColors';
 
 import { SpeakerButton } from '@/components/ui';
+import { useTtsAudio } from '@/hooks/useTtsAudio';
 import { createLogger } from '@/services/logging';
-import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
-import * as SafeSpeech from '@/services/tts';
 import { FillBlankCard as FillBlankCardType } from '@/types/session';
 import { announce } from '@/utils/a11y';
 
@@ -34,7 +33,7 @@ export function FillBlankCard({
 }: Props) {
   const ctx = useAppTheme();
   const theme = ctx?.theme ?? baseTheme;
-  const [isPlaying, setIsPlaying] = useState(false);
+  const { speak, isSpeaking } = useTtsAudio();
   const previousAnswerRef = useRef<string | undefined>(undefined);
 
   // Speak the word when it's placed in the blank
@@ -45,23 +44,8 @@ export function FillBlankCard({
       // 2. It's different from the previous answer (new word was placed)
       // Allow speaking even after results are shown, so users can hear each wrong answer they try
       if (selectedAnswer && selectedAnswer !== previousAnswerRef.current) {
-        try {
-          const enabled = await getTtsEnabled();
-          if (!enabled) {
-            return;
-          }
-
-          const rate = await getTtsRate();
-          await SafeSpeech.stop();
-          // Small delay to ensure stop completes
-          await new Promise((resolve) => setTimeout(resolve, 100));
-
-          // Speak the selected word
-          logger.info('Speaking selected word', { selectedAnswer });
-          await SafeSpeech.speak(selectedAnswer, { language: 'it-IT', rate });
-        } catch (error) {
-          logger.error('Failed to speak selected word', error as Error);
-        }
+        logger.info('Speaking selected word', { selectedAnswer });
+        await speak(selectedAnswer, 'it-IT');
       }
 
       // Update the ref to track the current answer
@@ -69,7 +53,7 @@ export function FillBlankCard({
     };
 
     speakSelectedWord();
-  }, [selectedAnswer, showResult]);
+  }, [selectedAnswer, showResult, speak]);
 
   useEffect(() => {
     if (!showResult) return;
@@ -83,40 +67,14 @@ export function FillBlankCard({
       return;
     }
 
-    // Prevent multiple rapid calls
-    if (isPlaying) {
+    // Remove the blank marker and speak the sentence naturally
+    const textToSpeak = card.text.replace(/___/g, ' ').trim() || '';
+    if (!textToSpeak) {
+      logger.warn('No text to speak after processing');
       return;
     }
-
-    try {
-      const enabled = await getTtsEnabled();
-      if (!enabled) {
-        logger.warn('TTS is disabled');
-        return;
-      }
-      setIsPlaying(true);
-      const rate = await getTtsRate();
-      await SafeSpeech.stop();
-      // Small delay to ensure stop completes
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Speak the sentence with blank removed (replace ___ with a pause or just remove it)
-      // Remove the blank marker and speak the sentence naturally
-      const textToSpeak = card.text.replace(/___/g, ' ').trim() || '';
-      if (!textToSpeak) {
-        logger.warn('No text to speak after processing');
-        setIsPlaying(false);
-        return;
-      }
-      logger.info('Speaking text', { textToSpeak });
-      await SafeSpeech.speak(textToSpeak, { language: 'it-IT', rate });
-      // Estimate duration: ~150ms per character, minimum 2 seconds
-      const estimatedDuration = Math.max(textToSpeak.length * 150, 2000);
-      setTimeout(() => setIsPlaying(false), estimatedDuration);
-    } catch (error) {
-      logger.error('Failed to play audio', error as Error);
-      setIsPlaying(false);
-    }
+    logger.info('Speaking text', { textToSpeak });
+    await speak(textToSpeak, 'it-IT');
   };
 
   // Parse sentence to find blank position
@@ -145,9 +103,9 @@ export function FillBlankCard({
           <View style={styles.audioButton}>
             <SpeakerButton
               size={44}
-              isPlaying={isPlaying}
+              isPlaying={isSpeaking}
               onPress={handlePlayAudio}
-              accessibilityLabel={isPlaying ? 'Pause audio' : 'Play audio'}
+              accessibilityLabel={isSpeaking ? 'Pause audio' : 'Play audio'}
               accessibilityHint="Plays the sentence audio"
             />
             <Text style={[styles.audioLabel, { color: theme.colors.text }]}>

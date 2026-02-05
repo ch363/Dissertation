@@ -54,74 +54,40 @@ export function RouteGuard({ children }: { children: React.ReactNode }) {
       // For index route (app/index), resolve destination: home if onboarding done, else onboarding
       if (isIndexRoute) {
         redirectingRef.current = true;
-        requestAnimationFrame(() => {
-          requestAnimationFrame(async () => {
-            try {
-              const dest = await resolvePostAuthDestination(session.user.id);
-              if (dest) router.replace(dest);
-            } catch (err: any) {
-              if (err?.message?.includes('before mounting')) {
-                setTimeout(async () => {
-                  try {
-                    const dest = await resolvePostAuthDestination(session.user.id);
-                    if (dest) router.replace(dest);
-                  } catch (retryErr) {
-                    Logger.error('Retry navigation failed', retryErr);
-                    redirectingRef.current = false;
-                  }
-                }, 300);
-              } else {
-                Logger.error('Error redirecting from index', err);
-                redirectingRef.current = false;
-              }
-            } finally {
-              setTimeout(() => {
-                redirectingRef.current = false;
-              }, 200);
-            }
-          });
+        // Use InteractionManager to wait for navigation to be ready without blocking Detox sync
+        const { InteractionManager } = require('react-native');
+        InteractionManager.runAfterInteractions(async () => {
+          try {
+            const dest = await resolvePostAuthDestination(session.user.id);
+            if (dest) router.replace(dest);
+          } catch (err: unknown) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            Logger.error('Error redirecting from index', error);
+          } finally {
+            redirectingRef.current = false;
+          }
         });
         return;
       }
 
       // For other public routes, use resolvePostAuthDestination
       redirectingRef.current = true;
-      // Use requestAnimationFrame to ensure router is ready
-      requestAnimationFrame(() => {
-        requestAnimationFrame(async () => {
-          try {
-            const dest = await resolvePostAuthDestination(session.user.id);
-            // Only redirect if destination is different from current path
-            // Never redirect away from onboarding routes
-            if (dest && dest !== pathname && !dest.startsWith('/(onboarding)')) {
-              router.replace(dest);
-            }
-          } catch (err: any) {
-            // Log error but don't break navigation
-            // If there's an error, don't redirect - let user stay on current page
-            if (err?.message?.includes('before mounting')) {
-              // Retry after router is ready
-              setTimeout(() => {
-                try {
-                  resolvePostAuthDestination(session.user.id).then((dest) => {
-                    if (dest && dest !== pathname && !dest.startsWith('/(onboarding)')) {
-                      router.replace(dest);
-                    }
-                  });
-                } catch (retryErr) {
-                  Logger.error('Retry failed', retryErr);
-                }
-              }, 300);
-            } else {
-              Logger.error('Error resolving post-auth destination', err);
-            }
-          } finally {
-            // Reset redirect flag after a short delay to allow navigation to complete
-            setTimeout(() => {
-              redirectingRef.current = false;
-            }, 200);
+      // Use InteractionManager to wait for navigation to be ready without blocking Detox sync
+      const { InteractionManager } = require('react-native');
+      InteractionManager.runAfterInteractions(async () => {
+        try {
+          const dest = await resolvePostAuthDestination(session.user.id);
+          // Only redirect if destination is different from current path
+          // Never redirect away from onboarding routes
+          if (dest && dest !== pathname && !dest.startsWith('/(onboarding)')) {
+            router.replace(dest);
           }
-        });
+        } catch (err: unknown) {
+          const error = err instanceof Error ? err : new Error(String(err));
+          Logger.error('Error resolving post-auth destination', error);
+        } finally {
+          redirectingRef.current = false;
+        }
       });
     };
     redirectIfNeeded();

@@ -5,18 +5,17 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
+import { BaseExceptionFilter } from './base-exception.filter';
 
 @Catch(Prisma.PrismaClientKnownRequestError)
-export class PrismaExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(PrismaExceptionFilter.name);
+export class PrismaExceptionFilter
+  extends BaseExceptionFilter
+  implements ExceptionFilter
+{
+  protected readonly logger = new Logger(PrismaExceptionFilter.name);
 
   catch(exception: Prisma.PrismaClientKnownRequestError, host: ArgumentsHost) {
-    const ctx = host.switchToHttp();
-    const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
-
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = 'Database operation failed';
 
@@ -60,20 +59,13 @@ export class PrismaExceptionFilter implements ExceptionFilter {
         message = `Database error: ${exception.message}`;
     }
 
-    const errorResponse = {
-      statusCode: status,
-      timestamp: new Date().toISOString(),
-      path: request.url,
-      method: request.method,
+    this.handleException(
+      host,
+      status,
       message,
-      error: 'Database Error',
-      code: exception.code,
-    };
-
-    this.logger.error(
-      `${request.method} ${request.url} - ${status} - ${message} (Prisma ${exception.code})`,
+      'Database Error',
+      exception.stack,
+      exception.code,
     );
-
-    response.status(status).json(errorResponse);
   }
 }

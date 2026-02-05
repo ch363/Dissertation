@@ -9,7 +9,7 @@ export function isApiEnvelope(value: unknown): value is ApiEnvelope<unknown> {
   return false;
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
   message?: string;

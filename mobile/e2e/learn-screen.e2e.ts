@@ -1,5 +1,7 @@
 import { device, element, by, waitFor, expect } from 'detox';
+
 import { loginWithEmailPassword, signOutUser } from './helpers/auth';
+import { launchAppSafe } from './setup';
 
 /**
  * Learn Screen E2E Tests
@@ -7,7 +9,7 @@ import { loginWithEmailPassword, signOutUser } from './helpers/auth';
  */
 describe('Learn Screen', () => {
   beforeAll(async () => {
-    await device.launchApp({ newInstance: true });
+    await launchAppSafe();
     await loginWithEmailPassword();
     await new Promise((r) => setTimeout(r, 2000));
   });
@@ -46,7 +48,9 @@ describe('Learn Screen', () => {
     await new Promise((r) => setTimeout(r, 2000));
 
     // Verify Learning Path section is visible
-    await waitFor(element(by.text('Learning Path'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('Learning Path')))
+      .toBeVisible()
+      .withTimeout(5000);
   });
 
   it('should display learning path with carousel', async () => {
@@ -54,7 +58,9 @@ describe('Learn Screen', () => {
     await new Promise((r) => setTimeout(r, 2000));
 
     // Verify Learning Path section and carousel are visible
-    await waitFor(element(by.text('Learning Path'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('Learning Path')))
+      .toBeVisible()
+      .withTimeout(5000);
 
     const carousel = element(by.id('learning-path-carousel'));
     await expect(carousel).toBeVisible();
@@ -64,7 +70,9 @@ describe('Learn Screen', () => {
     await new Promise((r) => setTimeout(r, 2000));
 
     // Verify "Learning Path" header is visible
-    await waitFor(element(by.text('Learning Path'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('Learning Path')))
+      .toBeVisible()
+      .withTimeout(5000);
 
     // Swipe left on the carousel to scroll horizontally
     const carousel = element(by.id('learning-path-carousel'));
@@ -82,7 +90,9 @@ describe('Learn Screen', () => {
 
     // Scroll down to find All Modules
     await scrollView.scroll(400, 'down');
-    await waitFor(element(by.text('All Modules'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('All Modules')))
+      .toBeVisible()
+      .withTimeout(5000);
   });
 
   it('should have scroll view for content', async () => {

@@ -1,5 +1,7 @@
 import { device, element, by, waitFor } from 'detox';
+
 import { loginWithEmailPassword, signOutUser, goBack } from './helpers/auth';
+import { launchAppSafe } from './setup';
 
 /**
  * Complete User Journey E2E Test
@@ -7,7 +9,7 @@ import { loginWithEmailPassword, signOutUser, goBack } from './helpers/auth';
  */
 describe('Complete User Journey', () => {
   beforeAll(async () => {
-    await device.launchApp({ newInstance: true });
+    await launchAppSafe();
     await loginWithEmailPassword();
     await new Promise((r) => setTimeout(r, 2000));
   });
@@ -55,7 +57,7 @@ describe('Complete User Journey', () => {
     await new Promise((r) => setTimeout(r, 1000));
     await settingsButton.tap();
     await new Promise((r) => setTimeout(r, 3000));
-    
+
     await waitFor(element(by.text('HELP')))
       .toBeVisible()
       .withTimeout(5000);
@@ -64,7 +66,7 @@ describe('Complete User Journey', () => {
     // 5. Go back to Profile, then Home to complete the journey
     await goBack();
     await new Promise((r) => setTimeout(r, 3000));
-    
+
     await new Promise((r) => setTimeout(r, 1000));
     await homeTab.tap();
     await new Promise((r) => setTimeout(r, 3000));
@@ -82,11 +84,11 @@ describe('Complete User Journey', () => {
     await new Promise((r) => setTimeout(r, 1000));
     await learnTab.tap();
     await new Promise((r) => setTimeout(r, 3000));
-    
+
     await new Promise((r) => setTimeout(r, 1000));
     await profileTab.tap();
     await new Promise((r) => setTimeout(r, 3000));
-    
+
     await new Promise((r) => setTimeout(r, 1000));
     await homeTab.tap();
     await new Promise((r) => setTimeout(r, 3000));

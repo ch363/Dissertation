@@ -1,5 +1,6 @@
 import { getSessionPlan } from './learn';
 import { transformSessionPlan } from './session-plan-transformer';
+import { DEFAULT_CACHE_TTL_MS } from './defaults';
 
 import { makeSessionId } from '@/features/session/sessionBuilder';
 import { CacheManager } from '@/services/cache/cache-utils';
@@ -12,7 +13,7 @@ import { SessionPlan } from '@/types/session';
 
 const logger = createLogger('SessionPlanCache');
 
-const cache = new CacheManager<SessionPlan>(5 * 60 * 1000);
+const cache = new CacheManager<SessionPlan>(DEFAULT_CACHE_TTL_MS);
 
 export type SessionPlanCacheContext = {
   lessonId: string;
@@ -52,14 +53,15 @@ export async function preloadSessionPlan(lessonId: string): Promise<void> {
         cache.set(key, transformedPlan);
       }
     }
-  } catch (error: any) {
-    const msg = error?.message ?? String(error);
-    const isTimeout = typeof msg === 'string' && msg.toLowerCase().includes('timeout');
+  } catch (error: unknown) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    const msg = err.message;
+    const isTimeout = msg.toLowerCase().includes('timeout');
     logger.warn(
       isTimeout
         ? `Preload session plan timed out (best-effort, will load on demand).`
         : `Preload session plan failed (best-effort): ${msg}`,
-      error,
+      err,
     );
   }
 }

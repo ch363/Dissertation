@@ -320,10 +320,17 @@ export function SessionRunner({
   };
 
   const handleCheckAnswer = async (optionIdOverride?: string, audioUri?: string) => {
+    // Prevent concurrent validations
+    if (isValidatingRef.current) {
+      return;
+    }
+
     // Only validate practice cards (not teach cards)
     if (currentCard.kind === CardKind.Teach) {
       return;
     }
+
+    isValidatingRef.current = true;
 
     // Extract questionId from cardId (format: "question-${questionId}")
     if (!currentCard.id.startsWith('question-')) {
@@ -566,6 +573,7 @@ export function SessionRunner({
       triggerHaptic('medium');
     } finally {
       setIsPronunciationProcessing(false);
+      isValidatingRef.current = false;
     }
   };
 

@@ -37,8 +37,45 @@ jest.mock('@supabase/supabase-js', () => ({
   }),
 }));
 
+// Mock expo-av to avoid native module issues
+jest.mock('expo-av', () => ({
+  Audio: {
+    requestPermissionsAsync: jest.fn(() => Promise.resolve({ granted: true })),
+    setAudioModeAsync: jest.fn(() => Promise.resolve()),
+    Recording: {
+      createAsync: jest.fn(() => Promise.resolve({
+        recording: {
+          stopAndUnloadAsync: jest.fn(() => Promise.resolve()),
+          getURI: jest.fn(() => 'mock-recording-uri'),
+        },
+      })),
+    },
+    RecordingOptionsPresets: {
+      HIGH_QUALITY: {},
+    },
+    Sound: {
+      createAsync: jest.fn(() => Promise.resolve({
+        sound: {
+          playAsync: jest.fn(() => Promise.resolve()),
+          unloadAsync: jest.fn(() => Promise.resolve()),
+          setOnPlaybackStatusUpdate: jest.fn(),
+        },
+      })),
+    },
+  },
+}));
+
+// Mock expo-secure-store
+jest.mock('expo-secure-store', () => ({
+  getItemAsync: jest.fn(() => Promise.resolve(null)),
+  setItemAsync: jest.fn(() => Promise.resolve()),
+  deleteItemAsync: jest.fn(() => Promise.resolve()),
+}));
+
 // Silence React Native warn noise in tests
 jest.mock('react-native/Libraries/Utilities/Platform', () => ({
   OS: 'ios',
-  select: (objs) => objs.ios,
+  select: (objs: Record<string, unknown>) => objs.ios,
+  isPad: false,
+  isTV: false,
 }));

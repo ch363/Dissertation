@@ -1,8 +1,14 @@
+import {
+  DEFAULT_MAX_STRING_LENGTH,
+  DEFAULT_MAX_BASE64_LENGTH,
+  MAX_SANITIZATION_ITERATIONS,
+} from '../constants';
+
 // XSS prevention: strips HTML/JavaScript from user input
 // Defense in depth: sanitize at input, encode at output
 export function sanitizeString(
   input: string | null | undefined,
-  maxLength: number = 10000,
+  maxLength: number = DEFAULT_MAX_STRING_LENGTH,
 ): string {
   if (!input || typeof input !== 'string') {
     return '';
@@ -29,7 +35,7 @@ export function sanitizeString(
     );
 
   // Run multiple times to catch nested encoding
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < MAX_SANITIZATION_ITERATIONS; i++) {
     sanitized = sanitized.replace(/<[^>]*>/g, '');
   }
 
@@ -69,7 +75,7 @@ export function sanitizeUrl(url: string | null | undefined): string {
 // Default maxLength: 10MB = ~13.3M chars in base64
 export function sanitizeBase64(
   base64: string | null | undefined,
-  maxLength: number = 13333333,
+  maxLength: number = DEFAULT_MAX_BASE64_LENGTH,
 ): string {
   if (!base64 || typeof base64 !== 'string') {
     return '';

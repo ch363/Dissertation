@@ -22,7 +22,7 @@ type Props = {
   pillColor?: string;
 };
 
-const SEGMENT_HEIGHT = 36;
+const SEGMENT_HEIGHT = 44;
 const SEGMENT_RADIUS = 10;
 const CONTAINER_PADDING = 3;
 const ANIMATION_DURATION = 250;

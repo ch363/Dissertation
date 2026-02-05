@@ -1,21 +1,12 @@
 import { apiClient } from './client';
 import { ApiClientError } from './types';
+import { buildTzQueryString, appendQueryString } from './query-builder';
+import { isNetworkError } from '@/services/errors/error-handler';
 
 import type { DeliveryMethod } from '@/features/session/delivery-methods';
 import type { PronunciationWordResult } from '@/types/session';
 
 const VALIDATE_ANSWER_RETRY_DELAY_MS = 1000;
-
-function isNetworkError(e: unknown): boolean {
-  if (!(e instanceof ApiClientError)) return false;
-  const m = e.message.toLowerCase();
-  return (
-    m.includes('network') ||
-    m.includes('reachable') ||
-    m.includes('failed to fetch') ||
-    m.includes('timeout')
-  );
-}
 
 export interface QuestionAttemptDto {
   deliveryMethod?: DeliveryMethod | string;
@@ -85,13 +76,9 @@ export async function endLesson(lessonId: string) {
 }
 
 export async function getUserLessons(): Promise<UserLessonProgress[]> {
-  const tzOffsetMinutes = new Date().getTimezoneOffset();
-  const params = new URLSearchParams();
-  if (Number.isFinite(tzOffsetMinutes)) {
-    params.append('tzOffsetMinutes', String(tzOffsetMinutes));
-  }
-  const query = params.toString();
-  return apiClient.get<UserLessonProgress[]>(`/progress/lessons${query ? `?${query}` : ''}`);
+  const query = buildTzQueryString();
+  const url = appendQueryString('/progress/lessons', query);
+  return apiClient.get<UserLessonProgress[]>(url);
 }
 
 export async function completeTeaching(teachingId: string, timeSpentMs?: number) {
@@ -102,7 +89,7 @@ export async function completeTeaching(teachingId: string, timeSpentMs?: number)
 
 export interface QuestionAttemptResponse {
   awardedXp: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export async function recordQuestionAttempt(
@@ -142,13 +129,9 @@ export interface ProgressSummary {
 }
 
 export async function getProgressSummary(_userId: string | null): Promise<ProgressSummary> {
-  const tzOffsetMinutes = new Date().getTimezoneOffset();
-  const params = new URLSearchParams();
-  if (Number.isFinite(tzOffsetMinutes)) {
-    params.append('tzOffsetMinutes', String(tzOffsetMinutes));
-  }
-  const query = params.toString();
-  return apiClient.get<ProgressSummary>(`/progress/summary${query ? `?${query}` : ''}`);
+  const query = buildTzQueryString();
+  const url = appendQueryString('/progress/summary', query);
+  return apiClient.get<ProgressSummary>(url);
 }
 
 export async function markModuleCompleted(moduleIdOrSlug: string): Promise<void> {

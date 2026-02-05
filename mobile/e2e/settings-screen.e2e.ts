@@ -1,5 +1,7 @@
 import { device, element, by, waitFor, expect } from 'detox';
+
 import { loginWithEmailPassword, signOutUser, goBack } from './helpers/auth';
+import { launchAppSafe } from './setup';
 
 /**
  * Settings Screen E2E Tests
@@ -7,7 +9,7 @@ import { loginWithEmailPassword, signOutUser, goBack } from './helpers/auth';
  */
 describe('Settings Screen', () => {
   beforeAll(async () => {
-    await device.launchApp({ newInstance: true });
+    await launchAppSafe();
     await loginWithEmailPassword();
     await new Promise((r) => setTimeout(r, 2000));
   });
@@ -36,7 +38,9 @@ describe('Settings Screen', () => {
     await new Promise((r) => setTimeout(r, 3000));
 
     // Verify we're on settings screen
-    await waitFor(element(by.text('HELP'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('HELP')))
+      .toBeVisible()
+      .withTimeout(5000);
   }
 
   beforeEach(async () => {
@@ -57,11 +61,15 @@ describe('Settings Screen', () => {
 
     // Scroll to find APPEARANCE section
     await scrollView.scroll(300, 'down');
-    await waitFor(element(by.text('APPEARANCE'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('APPEARANCE')))
+      .toBeVisible()
+      .withTimeout(5000);
 
     // Scroll to find LEARNING section
     await scrollView.scroll(300, 'down');
-    await waitFor(element(by.text('LEARNING'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('LEARNING')))
+      .toBeVisible()
+      .withTimeout(5000);
   });
 
   it('should navigate to Help screen', async () => {
@@ -81,7 +89,9 @@ describe('Settings Screen', () => {
     await new Promise((r) => setTimeout(r, 2000));
 
     // Verify we're back on settings
-    await waitFor(element(by.text('HELP'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('HELP')))
+      .toBeVisible()
+      .withTimeout(5000);
   });
 
   it('should navigate to FAQ screen', async () => {
@@ -106,7 +116,9 @@ describe('Settings Screen', () => {
     await new Promise((r) => setTimeout(r, 2000));
 
     // Verify we're back on settings
-    await waitFor(element(by.text('HELP'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('HELP')))
+      .toBeVisible()
+      .withTimeout(5000);
   });
 
   it('should display Dark Mode toggle', async () => {
@@ -114,7 +126,9 @@ describe('Settings Screen', () => {
     const scrollView = element(by.id('settings-screen-scroll'));
 
     await scrollView.scroll(300, 'down');
-    await waitFor(element(by.text('Dark Mode'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('Dark Mode')))
+      .toBeVisible()
+      .withTimeout(5000);
   });
 
   it('should navigate to Speech Settings', async () => {
@@ -123,7 +137,9 @@ describe('Settings Screen', () => {
 
     // Scroll to find Speech settings
     await scrollView.scroll(400, 'down');
-    await waitFor(element(by.text('Speech'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('Speech')))
+      .toBeVisible()
+      .withTimeout(5000);
 
     await element(by.text('Speech')).tap();
     await new Promise((r) => setTimeout(r, 3000));
@@ -136,7 +152,9 @@ describe('Settings Screen', () => {
     await new Promise((r) => setTimeout(r, 2000));
 
     // Verify we're back on settings
-    await waitFor(element(by.text('HELP'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('HELP')))
+      .toBeVisible()
+      .withTimeout(5000);
   });
 
   it('should navigate to Session Defaults', async () => {
@@ -145,7 +163,9 @@ describe('Settings Screen', () => {
 
     // Scroll to find Session defaults
     await scrollView.scroll(400, 'down');
-    await waitFor(element(by.text('Session defaults'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('Session defaults')))
+      .toBeVisible()
+      .withTimeout(5000);
 
     await element(by.text('Session defaults')).tap();
     await new Promise((r) => setTimeout(r, 3000));
@@ -158,7 +178,9 @@ describe('Settings Screen', () => {
     await new Promise((r) => setTimeout(r, 2000));
 
     // Verify we're back on settings
-    await waitFor(element(by.text('HELP'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('HELP')))
+      .toBeVisible()
+      .withTimeout(5000);
   });
 
   it('should show Sign out button in Account section', async () => {
@@ -170,7 +192,9 @@ describe('Settings Screen', () => {
     await new Promise((r) => setTimeout(r, 1000));
 
     // Verify Sign out button is visible
-    await waitFor(element(by.text('Sign out'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('Sign out')))
+      .toBeVisible()
+      .withTimeout(5000);
   });
 
   it('should allow scrolling through settings', async () => {
@@ -186,7 +210,9 @@ describe('Settings Screen', () => {
     await new Promise((r) => setTimeout(r, 1000));
 
     // Verify we can still see HELP section (back at top)
-    await waitFor(element(by.text('HELP'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('HELP')))
+      .toBeVisible()
+      .withTimeout(5000);
   });
 
   it('should navigate back to Profile from Settings', async () => {
@@ -207,7 +233,9 @@ describe('Settings Screen', () => {
     await new Promise((r) => setTimeout(r, 3000));
 
     // Verify we're on Home
-    await waitFor(element(by.id('tab-home'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.id('tab-home')))
+      .toBeVisible()
+      .withTimeout(5000);
 
     // Back to Profile
     const profileTab = element(by.id('tab-profile'));

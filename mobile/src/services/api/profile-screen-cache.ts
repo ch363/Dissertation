@@ -1,6 +1,7 @@
 import { getAllMastery } from './mastery';
 import { getMyProfile, getDashboard } from './profile';
 import { getProgressSummary } from './progress';
+import { DEFAULT_CACHE_TTL_MS, DEFAULT_DASHBOARD_DATA } from './defaults';
 
 import { CacheManager } from '@/services/cache/cache-utils';
 import { createLogger } from '@/services/logging';
@@ -14,25 +15,13 @@ export interface ProfileScreenCacheData {
   mastery: Awaited<ReturnType<typeof getAllMastery>>;
 }
 
-const cache = new CacheManager<ProfileScreenCacheData>(5 * 60 * 1000);
+const cache = new CacheManager<ProfileScreenCacheData>(DEFAULT_CACHE_TTL_MS);
 
 export async function preloadProfileScreenData(profileId: string | null): Promise<void> {
   try {
     const [profile, dashboard, mastery] = await Promise.all([
       getMyProfile().catch(() => null),
-      getDashboard().catch(() => ({
-        streak: 0,
-        dueReviewCount: 0,
-        activeLessonCount: 0,
-        xpTotal: 0,
-        weeklyXP: 0,
-        weeklyXPChange: 0,
-        weeklyActivity: [0, 0, 0, 0, 0, 0, 0],
-        accuracyPercentage: 0,
-        accuracyByDeliveryMethod: {},
-        grammaticalAccuracyByDeliveryMethod: {},
-        studyTimeMinutes: 0,
-      })),
+      getDashboard().catch(() => DEFAULT_DASHBOARD_DATA),
       getAllMastery().catch(() => []),
     ]);
 

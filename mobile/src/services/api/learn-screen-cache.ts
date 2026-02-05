@@ -2,6 +2,7 @@ import { getSuggestions } from './learn';
 import { getLessons, getModules } from './modules';
 import { getDashboard } from './profile';
 import { getUserLessons } from './progress';
+import { DEFAULT_CACHE_TTL_MS, DEFAULT_DASHBOARD_DATA } from './defaults';
 
 import { CacheManager } from '@/services/cache/cache-utils';
 import { createLogger } from '@/services/logging';
@@ -16,7 +17,7 @@ export interface LearnScreenCacheData {
   suggestions: Awaited<ReturnType<typeof getSuggestions>>;
 }
 
-const cache = new CacheManager<LearnScreenCacheData>(5 * 60 * 1000);
+const cache = new CacheManager<LearnScreenCacheData>(DEFAULT_CACHE_TTL_MS);
 
 export async function preloadLearnScreenData(): Promise<void> {
   try {
@@ -24,12 +25,7 @@ export async function preloadLearnScreenData(): Promise<void> {
       getModules().catch(() => []),
       getLessons().catch(() => []),
       getUserLessons().catch(() => []),
-      getDashboard().catch(() => ({
-        streak: 0,
-        dueReviewCount: 0,
-        activeLessonCount: 0,
-        xpTotal: 0,
-      })),
+      getDashboard().catch(() => DEFAULT_DASHBOARD_DATA),
       getSuggestions({ limit: 8 }).catch(() => ({ lessons: [], modules: [] })),
     ]);
 

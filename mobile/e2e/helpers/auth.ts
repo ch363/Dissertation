@@ -12,7 +12,7 @@ export async function goBack(): Promise<void> {
   if (device.getPlatform() === 'ios') {
     // iOS: tap the back button in navigation header
     // All back buttons should have testID="back-button" for consistency
-    
+
     // Strategy 1: Try to find back button by testID (most reliable)
     try {
       const backButton = element(by.id('back-button'));
@@ -21,7 +21,7 @@ export async function goBack(): Promise<void> {
     } catch {
       // Not found, try fallback strategies
     }
-    
+
     // Strategy 2: Try common accessibility labels as fallback
     const backLabels = ['Go back', 'Back', 'back'];
     for (const label of backLabels) {
@@ -33,10 +33,10 @@ export async function goBack(): Promise<void> {
         // Try next label
       }
     }
-    
+
     throw new Error(
       'Could not find back button on iOS. ' +
-      'Add testID="back-button" to your navigation header or ensure back button has accessibilityLabel="Go back".'
+        'Add testID="back-button" to your navigation header or ensure back button has accessibilityLabel="Go back".',
     );
   } else {
     // Android: use hardware back button
@@ -73,10 +73,10 @@ export async function loginWithEmailPassword(): Promise<void> {
   const welcomeBack = element(by.text('Welcome back'));
   const learnTab = element(by.id('tab-learn'));
   const homeTab = element(by.id('tab-home'));
-  
+
   // Wait a moment for app state to settle after reload
   await new Promise((r) => setTimeout(r, 1000));
-  
+
   // Already logged in (e.g. after reload with session)? Check for any tab bar element
   try {
     await waitFor(learnTab).toBeVisible().withTimeout(3000);
@@ -84,7 +84,7 @@ export async function loginWithEmailPassword(): Promise<void> {
   } catch {
     // Not on home, continue to login
   }
-  
+
   // Also check for home tab as alternative
   try {
     await waitFor(homeTab).toBeVisible().withTimeout(2000);
@@ -92,7 +92,7 @@ export async function loginWithEmailPassword(): Promise<void> {
   } catch {
     // Not on home, continue to login
   }
-  
+
   // Check if we're on landing screen with "Log In" button
   try {
     await waitFor(logInButton).toBeVisible().withTimeout(3000);
@@ -122,7 +122,9 @@ export async function loginWithEmailPassword(): Promise<void> {
 
   // Wait for navigation to home (Learn tab visible)
   // Leave sync disabled to avoid hanging on enableSynchronization when app has recurring timers
-  await waitFor(element(by.id('tab-learn'))).toBeVisible().withTimeout(15000);
+  await waitFor(element(by.id('tab-learn')))
+    .toBeVisible()
+    .withTimeout(15000);
 }
 
 /**
@@ -133,7 +135,9 @@ export async function loginWithEmailPassword(): Promise<void> {
 export async function signOutUser(): Promise<void> {
   // Check if already on login/landing screen (use short timeout)
   try {
-    await waitFor(element(by.text('Log In'))).toBeVisible().withTimeout(2000);
+    await waitFor(element(by.text('Log In')))
+      .toBeVisible()
+      .withTimeout(2000);
     // Already signed out
     return;
   } catch {
@@ -142,7 +146,9 @@ export async function signOutUser(): Promise<void> {
 
   // Also check for sign-in screen (Welcome back)
   try {
-    await waitFor(element(by.text('Welcome back'))).toBeVisible().withTimeout(2000);
+    await waitFor(element(by.text('Welcome back')))
+      .toBeVisible()
+      .withTimeout(2000);
     // Already signed out (on sign-in screen)
     return;
   } catch {
@@ -198,7 +204,9 @@ export async function signOutUser(): Promise<void> {
   // The alert has "Cancel" and "Sign out" buttons
   try {
     // Try to find and tap the "Sign out" button in the alert
-    const alertSignOutButton = element(by.label('Sign out').and(by.type('_UIAlertControllerActionView')));
+    const alertSignOutButton = element(
+      by.label('Sign out').and(by.type('_UIAlertControllerActionView')),
+    );
     await alertSignOutButton.tap();
   } catch {
     // Fallback: try simpler selector

@@ -4,7 +4,7 @@ import type { OnboardingAnswers } from '@/types/onboarding';
 
 export interface OnboardingResponse {
   userId: string;
-  answers: Record<string, any>;
+  answers: Record<string, unknown>;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -5,39 +5,35 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { Request, Response } from 'express';
+import { BaseExceptionFilter } from './base-exception.filter';
+import { getErrorMessage, getErrorStack } from '../utils/error.util';
+
+interface ErrorWithStatus extends Error {
+  status?: number;
+}
 
 @Catch()
-export class AllExceptionsFilter implements ExceptionFilter {
-  private readonly logger = new Logger(AllExceptionsFilter.name);
+export class AllExceptionsFilter
+  extends BaseExceptionFilter
+  implements ExceptionFilter
+{
+  protected readonly logger = new Logger(AllExceptionsFilter.name);
 
   catch(exception: unknown, host: ArgumentsHost) {
-    const ctx = host.switchToHttp();
-    const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
-
     const status =
       exception instanceof Error && 'status' in exception
-        ? (exception as any).status
+        ? ((exception as ErrorWithStatus).status ??
+          HttpStatus.INTERNAL_SERVER_ERROR)
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message =
-      exception instanceof Error ? exception.message : 'Internal server error';
+    const message = getErrorMessage(exception) || 'Internal server error';
 
-    const errorResponse = {
-      statusCode: status,
-      timestamp: new Date().toISOString(),
-      path: request.url,
-      method: request.method,
+    this.handleException(
+      host,
+      status,
       message,
-      error: 'Internal Server Error',
-    };
-
-    this.logger.error(
-      `${request.method} ${request.url} - ${status} - ${message}`,
-      exception instanceof Error ? exception.stack : undefined,
+      'Internal Server Error',
+      getErrorStack(exception),
     );
-
-    response.status(status).json(errorResponse);
   }
 }

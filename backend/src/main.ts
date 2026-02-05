@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import { json, urlencoded } from 'express';
+import { json, urlencoded, Request, Response, NextFunction } from 'express';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
@@ -8,18 +8,19 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { setupSwagger } from './common/swagger/swagger.config';
+import { DEFAULT_BODY_LIMIT } from './common/constants';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  const bodyLimit = process.env.BODY_LIMIT ?? DEFAULT_BODY_LIMIT;
+
   // Increase body limits for audio uploads (base64-encoded WAV)
-  app.use(json({ limit: process.env.BODY_LIMIT ?? '15mb' }));
-  app.use(
-    urlencoded({ extended: true, limit: process.env.BODY_LIMIT ?? '15mb' }),
-  );
+  app.use(json({ limit: bodyLimit }));
+  app.use(urlencoded({ extended: true, limit: bodyLimit }));
 
   // Security: OWASP recommended headers
-  app.use((req: any, res: any, next: any) => {
+  app.use((req: Request, res: Response, next: NextFunction) => {
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-XSS-Protection', '1; mode=block');
@@ -83,6 +84,6 @@ async function bootstrap() {
 
   setupSwagger(app);
 
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
 }
 bootstrap();

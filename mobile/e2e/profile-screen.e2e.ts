@@ -1,5 +1,7 @@
 import { device, element, by, waitFor, expect } from 'detox';
+
 import { loginWithEmailPassword, signOutUser, goBack } from './helpers/auth';
+import { launchAppSafe } from './setup';
 
 /**
  * Profile Screen E2E Tests
@@ -7,7 +9,7 @@ import { loginWithEmailPassword, signOutUser, goBack } from './helpers/auth';
  */
 describe('Profile Screen', () => {
   beforeAll(async () => {
-    await device.launchApp({ newInstance: true });
+    await launchAppSafe();
     await loginWithEmailPassword();
     await new Promise((r) => setTimeout(r, 2000));
   });
@@ -28,7 +30,9 @@ describe('Profile Screen', () => {
     await new Promise((r) => setTimeout(r, 3000));
 
     // Verify we're on profile (settings button visible)
-    await waitFor(element(by.id('settings-button'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.id('settings-button')))
+      .toBeVisible()
+      .withTimeout(5000);
   }
 
   beforeEach(async () => {
@@ -50,7 +54,9 @@ describe('Profile Screen', () => {
 
     // Look for Level Progress section
     await scrollView.scroll(300, 'down');
-    await waitFor(element(by.text('Level Progress'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('Level Progress')))
+      .toBeVisible()
+      .withTimeout(5000);
   });
 
   it('should display stats cards area', async () => {
@@ -72,7 +78,9 @@ describe('Profile Screen', () => {
 
     // Scroll to find Skill Mastery section
     await scrollView.scroll(500, 'down');
-    await waitFor(element(by.text('Skill Mastery'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('Skill Mastery')))
+      .toBeVisible()
+      .withTimeout(5000);
   });
 
   it('should navigate to full skills view', async () => {
@@ -81,7 +89,9 @@ describe('Profile Screen', () => {
 
     // Look for "View all" button in Skill Mastery section
     await scrollView.scroll(500, 'down');
-    await waitFor(element(by.text('View all'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('View all')))
+      .toBeVisible()
+      .withTimeout(5000);
 
     await element(by.text('View all')).tap();
     await new Promise((r) => setTimeout(r, 3000));
@@ -94,7 +104,9 @@ describe('Profile Screen', () => {
     await new Promise((r) => setTimeout(r, 2000));
 
     // Verify we're back on profile
-    await waitFor(element(by.id('settings-button'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.id('settings-button')))
+      .toBeVisible()
+      .withTimeout(5000);
   });
 
   it('should allow scrolling through profile content', async () => {
@@ -123,7 +135,9 @@ describe('Profile Screen', () => {
     await new Promise((r) => setTimeout(r, 3000));
 
     // Verify Settings screen loaded
-    await waitFor(element(by.text('HELP'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('HELP')))
+      .toBeVisible()
+      .withTimeout(5000);
 
     // Go back to profile
     await goBack();
@@ -143,7 +157,9 @@ describe('Profile Screen', () => {
     await new Promise((r) => setTimeout(r, 3000));
 
     // Verify Edit Profile screen loaded
-    await waitFor(element(by.text('Edit Profile'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('Edit Profile')))
+      .toBeVisible()
+      .withTimeout(5000);
 
     // Verify Cancel button is present
     const cancelButton = element(by.text('Cancel'));
@@ -174,7 +190,9 @@ describe('Profile Screen', () => {
     await new Promise((r) => setTimeout(r, 3000));
 
     // Verify on Profile
-    await waitFor(element(by.id('settings-button'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.id('settings-button')))
+      .toBeVisible()
+      .withTimeout(5000);
 
     // Go to Learn
     const learnTab = element(by.id('tab-learn'));
@@ -193,6 +211,8 @@ describe('Profile Screen', () => {
     await new Promise((r) => setTimeout(r, 3000));
 
     // Verify on Profile
-    await waitFor(element(by.id('settings-button'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.id('settings-button')))
+      .toBeVisible()
+      .withTimeout(5000);
   });
 });

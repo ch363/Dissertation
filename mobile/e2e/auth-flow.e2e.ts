@@ -1,5 +1,7 @@
 import { device, element, by, waitFor, expect } from 'detox';
+
 import { signOutUser } from './helpers/auth';
+import { launchAppSafe } from './setup';
 
 /**
  * Auth Flow E2E Tests
@@ -8,7 +10,7 @@ import { signOutUser } from './helpers/auth';
  */
 describe('Auth Flow', () => {
   beforeAll(async () => {
-    await device.launchApp({ newInstance: true });
+    await launchAppSafe();
   });
 
   afterAll(async () => {
@@ -25,12 +27,13 @@ describe('Auth Flow', () => {
    * Signs out if currently logged in.
    */
   async function ensureLandingScreen(): Promise<void> {
-    await device.launchApp({ newInstance: true });
-    await new Promise((r) => setTimeout(r, 1500));
+    await launchAppSafe();
 
     // Check if we're on the landing screen
     try {
-      await waitFor(element(by.id('landing-screen'))).toBeVisible().withTimeout(5000);
+      await waitFor(element(by.id('landing-screen')))
+        .toBeVisible()
+        .withTimeout(5000);
       return;
     } catch {
       // Not on landing - might be logged in, try to sign out
@@ -38,15 +41,20 @@ describe('Auth Flow', () => {
 
     // Check if logged in (tab bar visible)
     try {
-      await waitFor(element(by.id('tab-home'))).toBeVisible().withTimeout(3000);
+      await waitFor(element(by.id('tab-home')))
+        .toBeVisible()
+        .withTimeout(3000);
       await signOutUser();
       await new Promise((r) => setTimeout(r, 2000));
-      await waitFor(element(by.id('landing-screen'))).toBeVisible().withTimeout(5000);
+      await waitFor(element(by.id('landing-screen')))
+        .toBeVisible()
+        .withTimeout(5000);
     } catch {
       // If we can't sign out, try one more app relaunch
-      await device.launchApp({ newInstance: true, delete: true });
-      await new Promise((r) => setTimeout(r, 2000));
-      await waitFor(element(by.id('landing-screen'))).toBeVisible().withTimeout(10000);
+      await launchAppSafe({ delete: true });
+      await waitFor(element(by.id('landing-screen')))
+        .toBeVisible()
+        .withTimeout(10000);
     }
   }
 
@@ -57,7 +65,9 @@ describe('Auth Flow', () => {
     await ensureLandingScreen();
     await element(by.id('landing-signup')).tap();
     await new Promise((r) => setTimeout(r, 2000));
-    await waitFor(element(by.id('signup-screen'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.id('signup-screen')))
+      .toBeVisible()
+      .withTimeout(5000);
   }
 
   /**
@@ -67,7 +77,9 @@ describe('Auth Flow', () => {
     await ensureLandingScreen();
     await element(by.id('landing-login')).tap();
     await new Promise((r) => setTimeout(r, 2000));
-    await waitFor(element(by.text('Welcome back'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.text('Welcome back')))
+      .toBeVisible()
+      .withTimeout(5000);
   }
 
   /**
@@ -77,7 +89,9 @@ describe('Auth Flow', () => {
     await navigateToSignIn();
     await element(by.text('Forgot password?')).tap();
     await new Promise((r) => setTimeout(r, 2000));
-    await waitFor(element(by.id('forgot-password-screen'))).toBeVisible().withTimeout(5000);
+    await waitFor(element(by.id('forgot-password-screen')))
+      .toBeVisible()
+      .withTimeout(5000);
   }
 
   describe('Landing Screen', () => {
@@ -100,7 +114,9 @@ describe('Auth Flow', () => {
       await new Promise((r) => setTimeout(r, 2000));
 
       // Verify navigation to sign up screen
-      await waitFor(element(by.id('signup-screen'))).toBeVisible().withTimeout(5000);
+      await waitFor(element(by.id('signup-screen')))
+        .toBeVisible()
+        .withTimeout(5000);
       await expect(element(by.text('Create your account'))).toBeVisible();
     });
 
@@ -110,7 +126,9 @@ describe('Auth Flow', () => {
       await new Promise((r) => setTimeout(r, 2000));
 
       // Verify navigation to sign in screen
-      await waitFor(element(by.text('Welcome back'))).toBeVisible().withTimeout(5000);
+      await waitFor(element(by.text('Welcome back')))
+        .toBeVisible()
+        .withTimeout(5000);
     });
   });
 
@@ -214,7 +232,9 @@ describe('Auth Flow', () => {
       await new Promise((r) => setTimeout(r, 2000));
 
       // Verify navigation to forgot password screen
-      await waitFor(element(by.id('forgot-password-screen'))).toBeVisible().withTimeout(5000);
+      await waitFor(element(by.id('forgot-password-screen')))
+        .toBeVisible()
+        .withTimeout(5000);
       await expect(element(by.text('Forgot password'))).toBeVisible();
     });
   });

@@ -7,13 +7,22 @@ import {
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { Request } from 'express';
 
-// Rate limiting: tracks by IP (public) and IP+user (authenticated)
-// Prevents bypassing limits via IP switching or multiple accounts
+/**
+ * Extended request type that includes authenticated user
+ */
+interface AuthenticatedRequest extends Request {
+  user?: { id: string };
+}
+
+/**
+ * Rate limiting: tracks by IP (public) and IP+user (authenticated)
+ * Prevents bypassing limits via IP switching or multiple accounts
+ */
 @Injectable()
 export class EnhancedThrottlerGuard extends ThrottlerGuard {
   protected async getTracker(req: Request): Promise<string> {
     const ip = this.getIpAddress(req);
-    const userId = (req as any).user?.id;
+    const userId = (req as AuthenticatedRequest).user?.id;
 
     // Authenticated: track by both IP and user to prevent abuse
     if (userId) {

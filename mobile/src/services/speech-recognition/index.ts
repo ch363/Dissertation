@@ -1,28 +1,7 @@
 import { createLogger } from '@/services/logging';
+import { getFileSystemModule } from '@/services/utils/file-system-loader';
 
 const Logger = createLogger('SpeechRecognition');
-
-let FileSystemModule: typeof import('expo-file-system') | null = null;
-let FileSystemAvailable: boolean | null = null;
-
-async function getFileSystemModule(): Promise<typeof import('expo-file-system') | null> {
-  if (FileSystemAvailable === false) {
-    return null;
-  }
-
-  if (!FileSystemModule) {
-    try {
-      FileSystemModule = await import('expo-file-system');
-      FileSystemAvailable = true;
-      return FileSystemModule;
-    } catch (error) {
-      Logger.warn('expo-file-system native module not available, using fetch fallback', { error });
-      FileSystemAvailable = false;
-      return null;
-    }
-  }
-  return FileSystemModule;
-}
 
 function encodeBase64(bytes: Uint8Array): string {
   const base64Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';

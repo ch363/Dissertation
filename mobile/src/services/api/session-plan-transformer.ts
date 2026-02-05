@@ -10,7 +10,7 @@ interface BackendSessionPlan {
   lessonId?: string;
   title?: string;
   steps: BackendSessionStep[];
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   createdAt?: string;
 }
 
@@ -59,7 +59,7 @@ interface BackendPracticeItem {
 
 interface BackendRecapItem {
   type: 'recap';
-  summary?: any;
+  summary?: Record<string, unknown>;
 }
 
 export function transformSessionPlan(

@@ -2,6 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Teaching } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { BaseCrudService } from '../common/services/base-crud.service';
+import {
+  lessonInclude,
+  teachingQuestionsInclude,
+} from '../common/prisma/selects';
 
 @Injectable()
 export class TeachingsService extends BaseCrudService<Teaching> {
@@ -13,50 +17,23 @@ export class TeachingsService extends BaseCrudService<Teaching> {
     const where = lessonId ? { lessonId } : {};
     return this.prisma.teaching.findMany({
       where,
-      include: {
-        lesson: {
-          select: {
-            id: true,
-            title: true,
-          },
-        },
-      },
+      include: lessonInclude,
       orderBy: { createdAt: 'asc' },
     });
   }
 
   async findOne(id: string) {
-    const teaching = await this.prisma.teaching.findUnique({
-      where: { id },
-      include: {
-        lesson: {
-          select: {
-            id: true,
-            title: true,
-          },
-        },
-      },
+    return super.findOne(id, {
+      include: lessonInclude,
     });
-
-    if (!teaching) {
-      throw new NotFoundException(`Teaching with ID ${id} not found`);
-    }
-
-    return teaching;
   }
 
   async findQuestions(teachingId: string) {
-    const teaching = await this.prisma.teaching.findUnique({
-      where: { id: teachingId },
-      include: {
-        questions: true,
-      },
-    });
+    const teaching = await this.findOrThrow(
+      teachingId,
+      teachingQuestionsInclude,
+    );
 
-    if (!teaching) {
-      throw new NotFoundException(`Teaching with ID ${teachingId} not found`);
-    }
-
-    return teaching.questions;
+    return (teaching as any).questions;
   }
 }

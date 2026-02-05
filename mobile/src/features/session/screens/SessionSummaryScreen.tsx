@@ -6,6 +6,7 @@ import {
   Animated,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -453,11 +454,12 @@ export default function SessionSummaryScreen() {
         </View>
 
         <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-          <View
-            style={[
+          <ScrollView
+            contentContainerStyle={[
               styles.scrollContent,
               { paddingBottom: Math.max(theme.spacing.xl, insets.bottom + theme.spacing.md) },
             ]}
+            showsVerticalScrollIndicator={false}
           >
             {/* Main card (Figma: rounded-[32px], blue-tinted gradient) */}
             <LinearGradient colors={CARD_GRADIENT} style={styles.card}>
@@ -719,7 +721,7 @@ export default function SessionSummaryScreen() {
                 </View>
               </View>
             </LinearGradient>
-          </View>
+          </ScrollView>
         </Animated.View>
       </SafeAreaView>
     </View>
@@ -775,7 +777,7 @@ const styles = StyleSheet.create({
     marginHorizontal: theme.spacing.xs,
   },
   scrollContent: {
-    flex: 1,
+    flexGrow: 1,
     padding: theme.spacing.md,
     paddingBottom: theme.spacing.xl,
   },

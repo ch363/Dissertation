@@ -42,11 +42,6 @@ export const routes = {
   course: {
     list: '/course' as const,
   },
-  practice: {
-    flashcards: '/practice/flashcards' as const,
-    typing: '/practice/typing' as const,
-    listening: '/practice/listening' as const,
-  },
 } as const;
 
 export const routeBuilders = {

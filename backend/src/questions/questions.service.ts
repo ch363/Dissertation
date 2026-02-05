@@ -1,7 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { Question, DELIVERY_METHOD } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { BaseCrudService } from '../common/services/base-crud.service';
+import {
+  teachingIncludeWithStrings,
+  teachingIncludeWithLesson,
+} from '../common/prisma/selects';
 
 @Injectable()
 export class QuestionsService extends BaseCrudService<Question> {
@@ -13,43 +21,14 @@ export class QuestionsService extends BaseCrudService<Question> {
     const where = teachingId ? { teachingId } : {};
     return this.prisma.question.findMany({
       where,
-      include: {
-        teaching: {
-          select: {
-            id: true,
-            userLanguageString: true,
-            learningLanguageString: true,
-          },
-        },
-      },
+      include: teachingIncludeWithStrings,
     });
   }
 
   async findOne(id: string) {
-    const question = await this.prisma.question.findUnique({
-      where: { id },
-      include: {
-        teaching: {
-          select: {
-            id: true,
-            userLanguageString: true,
-            learningLanguageString: true,
-            lesson: {
-              select: {
-                id: true,
-                title: true,
-              },
-            },
-          },
-        },
-      },
+    return super.findOne(id, {
+      include: teachingIncludeWithLesson,
     });
-
-    if (!question) {
-      throw new NotFoundException(`Question with ID ${id} not found`);
-    }
-
-    return question;
   }
 
   async updateDeliveryMethods(
@@ -57,16 +36,11 @@ export class QuestionsService extends BaseCrudService<Question> {
     deliveryMethods: DELIVERY_METHOD[],
   ) {
     if (deliveryMethods.length === 0) {
-      throw new NotFoundException('At least one delivery method is required');
+      throw new BadRequestException('At least one delivery method is required');
     }
 
-    const question = await this.prisma.question.findUnique({
-      where: { id: questionId },
-    });
-
-    if (!question) {
-      throw new NotFoundException(`Question with ID ${questionId} not found`);
-    }
+    // Verify question exists
+    await this.findOrThrow(questionId);
 
     await Promise.all(
       deliveryMethods.map((deliveryMethod) =>
@@ -91,13 +65,7 @@ export class QuestionsService extends BaseCrudService<Question> {
       where: { id: questionId },
       include: {
         variants: true,
-        teaching: {
-          select: {
-            id: true,
-            userLanguageString: true,
-            learningLanguageString: true,
-          },
-        },
+        ...teachingIncludeWithStrings,
       },
     });
   }

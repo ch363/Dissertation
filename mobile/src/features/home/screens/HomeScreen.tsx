@@ -36,7 +36,6 @@ export default function HomeScreen() {
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isFirstTimeUser, setIsFirstTimeUser] = useState<boolean>(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [streakDays, setStreakDays] = useState<number>(0);
   const [minutesToday, setMinutesToday] = useState<number>(0);
@@ -115,14 +114,6 @@ export default function HomeScreen() {
       setDueReviewCount(dashboardData.dueReviewCount || 0);
       const totalXP = dashboardData.xpTotal ?? 0;
       setXpTotal(totalXP);
-
-      // Determine if this is a first-time user (no XP, no streak, no activity)
-      setIsFirstTimeUser(
-        totalXP === 0 &&
-          (dashboardData.streak || 0) === 0 &&
-          (statsData.minutesToday || 0) === 0 &&
-          (statsData.completedItemsToday ?? 0) === 0,
-      );
       setMastery(
         Array.isArray(masteryData)
           ? masteryData.map((m) => ({
@@ -522,11 +513,9 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {streakDays > 0 ? (
-          <View style={styles.sectionTight}>
-            <HomeStreakCard streakDays={streakDays} />
-          </View>
-        ) : null}
+        <View style={styles.sectionTight}>
+          <HomeStreakCard streakDays={streakDays} />
+        </View>
 
         <View style={styles.sectionMainCta}>
           <HomePrimaryCtaCard
@@ -561,17 +550,6 @@ export default function HomeScreen() {
           />
         </View>
 
-        {isFirstTimeUser ? (
-          <View style={styles.emptyStateHint}>
-            <Text
-              style={[styles.emptyStateText, { color: theme.colors.mutedText }]}
-              numberOfLines={2}
-              maxFontSizeMultiplier={1.2}
-            >
-              This page will fill up as you start making progress
-            </Text>
-          </View>
-        ) : null}
       </View>
     </ScrollView>
   );
@@ -644,19 +622,5 @@ const styles = StyleSheet.create({
   sectionMainCta: {
     marginTop: 0,
     marginBottom: 12,
-  },
-  emptyStateHint: {
-    marginTop: 24,
-    paddingTop: 16,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  emptyStateText: {
-    fontFamily: baseTheme.typography.regular,
-    fontSize: 13,
-    letterSpacing: 0.1,
-    lineHeight: 18,
-    textAlign: 'center',
-    opacity: 0.6,
   },
 });

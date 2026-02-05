@@ -7,6 +7,10 @@ import {
 } from '../engine/content-delivery/session-types';
 import { ProgressService } from '../progress/progress.service';
 import { LearningPathCardDto } from './learning-path.dto';
+import { DEFAULT_SUGGESTIONS_LIMIT } from '../common/constants';
+
+/** Default flag emoji for Italian language */
+const DEFAULT_FLAG_EMOJI = '🇮🇹';
 
 @Injectable()
 export class LearnService {
@@ -40,7 +44,7 @@ export class LearnService {
     ]);
 
     const level = String(user?.knowledgeLevel ?? 'A1');
-    const flag = '🇮🇹';
+    const flag = DEFAULT_FLAG_EMOJI;
 
     const allLessonIds = modules.flatMap((m) => m.lessons.map((l) => l.id));
     const userLessons = allLessonIds.length
@@ -104,7 +108,7 @@ export class LearnService {
     userId: string,
     currentLessonId?: string,
     moduleId?: string,
-    limit: number = 3,
+    limit: number = DEFAULT_SUGGESTIONS_LIMIT,
   ) {
     const completedTeachings = await this.prisma.userTeachingCompleted.findMany(
       {

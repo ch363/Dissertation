@@ -15,10 +15,9 @@ import { createLogger } from '@/services/logging';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 import { announce } from '@/utils/a11y';
+import { EMAIL_REGEX, validateEmail, validatePassword } from '@/utils/validation';
 
 const logger = createLogger('SignIn');
-
-const emailRegex = /\S+@\S+\.\S+/;
 
 type TokenResult = { accessToken: string; refreshToken: string };
 
@@ -51,13 +50,9 @@ export default function SignIn() {
   const url = Linking.useURL();
 
   const trimmedEmail = email.trim();
-  const emailError =
-    trimmedEmail.length > 0 && !emailRegex.test(trimmedEmail)
-      ? 'Enter a valid email address.'
-      : null;
-  const passwordError =
-    password.length > 0 && password.length < 6 ? 'Password must be at least 6 characters.' : null;
-  const canSubmit = emailRegex.test(trimmedEmail) && password.length >= 6 && !loading;
+  const emailError = validateEmail(trimmedEmail);
+  const passwordError = validatePassword(password);
+  const canSubmit = EMAIL_REGEX.test(trimmedEmail) && password.length >= 8 && !loading;
 
   const handleEmailConfirmation = useCallback(async (incomingUrl?: string | null) => {
     if (!incomingUrl) return;
@@ -103,10 +98,10 @@ export default function SignIn() {
           );
         }
       }
-    } catch (sessionError: any) {
-      logger.error('Error processing email confirmation', sessionError as Error, {
-        message: sessionError?.message,
-        code: sessionError?.code,
+    } catch (sessionError: unknown) {
+      const error = sessionError instanceof Error ? sessionError : new Error(String(sessionError));
+      logger.error('Error processing email confirmation', error, {
+        message: error.message,
       });
       setProcessingEmailCallback(false);
       setError('Email confirmation failed. Please try signing in with your email and password.');
@@ -141,8 +136,10 @@ export default function SignIn() {
       if (!userId) throw new Error('No session returned. Please try again.');
       const destination = await resolvePostLoginDestination(userId);
       router.replace(destination);
-    } catch (e: any) {
-      setError(e?.message ?? 'Unable to sign in. Please try again.');
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Unable to sign in. Please try again.';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -203,7 +200,6 @@ export default function SignIn() {
             placeholderTextColor={theme.colors.mutedText}
             accessibilityLabel="Email"
             accessibilityHint="Enter your email address"
-            accessibilityState={{ invalid: !!emailError }}
             autoComplete="email"
             textContentType="username"
             returnKeyType="next"
@@ -233,7 +229,6 @@ export default function SignIn() {
             placeholderTextColor={theme.colors.mutedText}
             accessibilityLabel="Password"
             accessibilityHint="Enter your password"
-            accessibilityState={{ invalid: !!passwordError }}
             autoComplete="password"
             textContentType="password"
             returnKeyType="done"

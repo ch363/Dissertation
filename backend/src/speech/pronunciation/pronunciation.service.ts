@@ -17,6 +17,14 @@ import {
   looksLikeRawPcm16le,
   parseWavPcm,
 } from './audio-format.util';
+import {
+  DEFAULT_SAMPLE_RATE_HZ,
+  DEFAULT_BITS_PER_SAMPLE,
+  DEFAULT_AUDIO_CHANNELS,
+  MAX_AUDIO_DURATION_SECONDS,
+  FULL_SCORE,
+  ZERO_SCORE,
+} from '../../common/constants';
 
 type AssessInput = {
   audioBase64: string;
@@ -25,8 +33,8 @@ type AssessInput = {
 };
 
 function clampHundred(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  return Math.max(0, Math.min(100, value));
+  if (!Number.isFinite(value)) return ZERO_SCORE;
+  return Math.max(ZERO_SCORE, Math.min(FULL_SCORE, value));
 }
 
 function toScore(value: unknown): number {
@@ -290,18 +298,18 @@ export class PronunciationService {
       );
     }
 
-    const sampleRateHz = 16000;
-    const bitsPerSample = 16;
-    const channels = 1;
+    const sampleRateHz = DEFAULT_SAMPLE_RATE_HZ;
+    const bitsPerSample = DEFAULT_BITS_PER_SAMPLE;
+    const channels = DEFAULT_AUDIO_CHANNELS;
 
     const bytesPerSecond = sampleRateHz * channels * (bitsPerSample / 8);
     const durationSec = audioBytes.length / bytesPerSecond;
     if (!Number.isFinite(durationSec) || durationSec <= 0) {
       throw new BadRequestException('Audio payload is empty or invalid');
     }
-    if (durationSec > 35) {
+    if (durationSec > MAX_AUDIO_DURATION_SECONDS) {
       throw new BadRequestException(
-        'Audio is too long for pronunciation assessment (please keep it under ~30s)',
+        `Audio is too long for pronunciation assessment (please keep it under ~${MAX_AUDIO_DURATION_SECONDS - 5}s)`,
       );
     }
 

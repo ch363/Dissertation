@@ -1,61 +1,17 @@
 import { correctToGrade, scoreToGrade } from './grade';
+import {
+  FsrsState,
+  FsrsResult,
+  FsrsParameters,
+  DEFAULT_FSRS_PARAMETERS,
+} from './types';
 
-export interface FsrsState {
-  stability: number;
-  difficulty: number;
-  lastReview: Date;
-  repetitions: number;
-}
+// Re-export types for backwards compatibility
+export type { FsrsState, FsrsResult, FsrsParameters };
+export { DEFAULT_FSRS_PARAMETERS };
 
-export interface FsrsResult {
-  stability: number;
-  difficulty: number;
-  repetitions: number;
-  nextDue: Date;
-  intervalDays: number;
-}
-
-export interface FsrsParameters {
-  w0: number;
-  w1: number;
-  w2: number;
-  w3: number;
-  w4: number;
-  w5: number;
-  w6: number;
-  w7: number;
-  w8: number;
-  w9: number;
-  w10: number;
-  w11: number;
-  w12: number;
-  w13: number;
-  w14: number;
-  w15: number;
-  w16: number;
-}
-
-export const DEFAULT_FSRS_PARAMETERS: FsrsParameters = {
-  w0: 0.4872,
-  w1: 1.4003,
-  w2: 3.7145,
-  w3: 13.8206,
-  w4: 5.1618,
-  w5: 1.2298,
-  w6: 0.8975,
-  w7: 0.031,
-  w8: 1.6474,
-  w9: 0.1367,
-  w10: 1.0461,
-  w11: 2.1072,
-  w12: 0.0793,
-  w13: 0.3246,
-  w14: 1.587,
-  w15: 0.2272,
-  w16: 2.8755,
-};
-
-export function calculateInitialStability(
+// Internal helper functions (not exported - only used within this module)
+function calculateInitialStability(
   grade: number,
   params: FsrsParameters = DEFAULT_FSRS_PARAMETERS,
 ): number {
@@ -67,7 +23,7 @@ export function calculateInitialStability(
   return Math.max(0.1, Math.min(365, stability));
 }
 
-export function calculateInitialDifficulty(
+function calculateInitialDifficulty(
   grade: number,
   params: FsrsParameters = DEFAULT_FSRS_PARAMETERS,
 ): number {
@@ -79,7 +35,7 @@ export function calculateInitialDifficulty(
   return Math.max(0.1, Math.min(10.0, difficulty));
 }
 
-export function calculateRetrievability(
+function calculateRetrievability(
   elapsedDays: number,
   stability: number,
 ): number {
@@ -88,7 +44,7 @@ export function calculateRetrievability(
   return Math.exp(-elapsedDays / stability);
 }
 
-export function updateDifficulty(
+function updateDifficulty(
   currentDifficulty: number,
   grade: number,
   params: FsrsParameters = DEFAULT_FSRS_PARAMETERS,
@@ -102,7 +58,7 @@ export function updateDifficulty(
   return Math.max(0.1, Math.min(10.0, newDifficulty));
 }
 
-export function updateStabilitySuccess(
+function updateStabilitySuccess(
   currentStability: number,
   updatedDifficulty: number,
   retrievability: number,
@@ -134,7 +90,7 @@ export function updateStabilitySuccess(
   return Math.min(365, Math.max(0.1, newStability));
 }
 
-export function updateStabilityFailure(
+function updateStabilityFailure(
   currentStability: number,
   updatedDifficulty: number,
   retrievability: number,
@@ -164,15 +120,14 @@ export function updateStabilityFailure(
   return Math.min(365, Math.max(0.1, newStability));
 }
 
-export function calculateNextInterval(
+function calculateNextInterval(
   stability: number,
   targetRetention: number = 0.9,
 ): number {
   if (stability <= 0) return 1;
-  if (targetRetention <= 0 || targetRetention >= 1) {
-    throw new Error('Target retention must be between 0 and 1');
-  }
-  const intervalDays = -stability * Math.log(targetRetention);
+  // Clamp target retention to valid range (0, 1) - defensive programming
+  const clampedRetention = Math.max(0.01, Math.min(0.99, targetRetention));
+  const intervalDays = -stability * Math.log(clampedRetention);
   const minIntervalDays = 5 / (24 * 60);
   if (!isFinite(intervalDays) || intervalDays <= 0) return 1;
   return Math.max(minIntervalDays, intervalDays);
@@ -302,13 +257,4 @@ export function attemptToGrade(result: {
     return scoreToGrade(result.score);
   }
   return correctToGrade(result.correct, result.timeMs);
-}
-
-export function getInitialFsrsState(): FsrsState {
-  return {
-    stability: 0,
-    difficulty: 0,
-    lastReview: new Date(),
-    repetitions: 0,
-  };
 }

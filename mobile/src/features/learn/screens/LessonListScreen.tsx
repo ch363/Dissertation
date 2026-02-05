@@ -140,44 +140,49 @@ export default function LessonListScreen() {
   const hasActiveSearch = searchQuery.trim().length > 0;
   const hasActiveFilter = filter !== 'all';
 
-  const renderItem = ({ item }: { item: Lesson }) => {
-    const progress = progressByLessonId.get(item.id);
-    const locked = false; // Remove locking logic for now - can be re-implemented if needed
-    const total = progress?.totalTeachings ?? item.numberOfItems ?? 0;
-    const completed = progress?.completedTeachings ?? 0;
-    const status = getStatus(completed, total);
-    const isCompleted = status === 'completed';
-    const preview = lessonOutcomes[item.id] ?? item.description ?? null;
-    const metaRow = (
-      <View style={styles.progressRow} accessibilityLabel="Lesson progress">
-        <LessonMicroProgress completed={completed} total={total} />
-        {isCompleted ? (
-          <Ionicons
-            name="checkmark-circle"
-            size={16}
-            color={theme.colors.secondary}
-            accessible={false}
-            importantForAccessibility="no"
-          />
-        ) : null}
-      </View>
-    );
-    return (
-      <TappableCard
-        title={item.title}
-        subtitle={preview ?? undefined}
-        leftIcon={locked ? 'lock-closed' : undefined}
-        metaRow={metaRow}
-        onPress={() => {
-          if (locked) return;
-          router.push(`/(tabs)/learn/${item.id}`);
-        }}
-        accessibilityLabel={`${item.title}${status === 'completed' ? ', completed' : status === 'in_progress' ? ', in progress' : ''}`}
-        accessibilityHint="Opens lesson details"
-        style={locked ? styles.cardDisabled : styles.cardSpacing}
-      />
-    );
-  };
+  const keyExtractor = useCallback((item: Lesson) => item.id, []);
+
+  const renderItem = useCallback(
+    ({ item }: { item: Lesson }) => {
+      const progress = progressByLessonId.get(item.id);
+      const locked = false; // Remove locking logic for now - can be re-implemented if needed
+      const total = progress?.totalTeachings ?? item.numberOfItems ?? 0;
+      const completed = progress?.completedTeachings ?? 0;
+      const status = getStatus(completed, total);
+      const isCompleted = status === 'completed';
+      const preview = lessonOutcomes[item.id] ?? item.description ?? null;
+      const metaRow = (
+        <View style={styles.progressRow} accessibilityLabel="Lesson progress">
+          <LessonMicroProgress completed={completed} total={total} />
+          {isCompleted ? (
+            <Ionicons
+              name="checkmark-circle"
+              size={16}
+              color={theme.colors.secondary}
+              accessible={false}
+              importantForAccessibility="no"
+            />
+          ) : null}
+        </View>
+      );
+      return (
+        <TappableCard
+          title={item.title}
+          subtitle={preview ?? undefined}
+          leftIcon={locked ? 'lock-closed' : undefined}
+          metaRow={metaRow}
+          onPress={() => {
+            if (locked) return;
+            router.push(`/(tabs)/learn/${item.id}`);
+          }}
+          accessibilityLabel={`${item.title}${status === 'completed' ? ', completed' : status === 'in_progress' ? ', in progress' : ''}`}
+          accessibilityHint="Opens lesson details"
+          style={locked ? styles.cardDisabled : styles.cardSpacing}
+        />
+      );
+    },
+    [lessonOutcomes, progressByLessonId, router, theme.colors],
+  );
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
@@ -305,9 +310,14 @@ export default function LessonListScreen() {
       ) : (
         <FlatList
           data={filteredLessons}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractor}
           renderItem={renderItem}
           keyboardShouldPersistTaps="handled"
+          removeClippedSubviews
+          maxToRenderPerBatch={10}
+          updateCellsBatchingPeriod={50}
+          initialNumToRender={10}
+          windowSize={10}
           contentContainerStyle={{
             paddingHorizontal: baseTheme.spacing.lg,
             paddingTop: baseTheme.spacing.sm,

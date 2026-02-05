@@ -17,30 +17,38 @@ export class ModulesService extends BaseCrudService<Module> {
     });
   }
 
-  async findOne(idOrSlug: string) {
+  /**
+   * Helper method to find a module by ID or slug
+   */
+  private async findModuleByIdOrSlug(
+    idOrSlug: string,
+    include?: any,
+  ): Promise<Module | null> {
     const uuidCheck = isValidUuid(idOrSlug);
 
-    let module;
     if (uuidCheck) {
-      module = await this.prisma.module.findUnique({
+      return this.prisma.module.findUnique({
         where: { id: idOrSlug },
+        ...(include && { include }),
       });
-    } else {
-      const normalizedTitle = normalizeTitle(idOrSlug);
-
-      const modules = await this.prisma.module.findMany({
-        where: {
-          title: {
-            equals: normalizedTitle,
-            mode: 'insensitive',
-          },
-        },
-      });
-
-      if (modules.length > 0) {
-        module = modules[0];
-      }
     }
+
+    const normalizedTitle = normalizeTitle(idOrSlug);
+    const modules = await this.prisma.module.findMany({
+      where: {
+        title: {
+          equals: normalizedTitle,
+          mode: 'insensitive',
+        },
+      },
+      ...(include && { include }),
+    });
+
+    return modules.length > 0 ? modules[0] : null;
+  }
+
+  async findOne(idOrSlug: string) {
+    const module = await this.findModuleByIdOrSlug(idOrSlug);
 
     if (!module) {
       throw new NotFoundException(
@@ -52,39 +60,11 @@ export class ModulesService extends BaseCrudService<Module> {
   }
 
   async findLessons(moduleIdOrSlug: string) {
-    const uuidCheck = isValidUuid(moduleIdOrSlug);
-
-    let module;
-    if (uuidCheck) {
-      module = await this.prisma.module.findUnique({
-        where: { id: moduleIdOrSlug },
-        include: {
-          lessons: {
-            orderBy: { createdAt: 'asc' },
-          },
-        },
-      });
-    } else {
-      const normalizedTitle = normalizeTitle(moduleIdOrSlug);
-
-      const modules = await this.prisma.module.findMany({
-        where: {
-          title: {
-            equals: normalizedTitle,
-            mode: 'insensitive',
-          },
-        },
-        include: {
-          lessons: {
-            orderBy: { createdAt: 'asc' },
-          },
-        },
-      });
-
-      if (modules.length > 0) {
-        module = modules[0];
-      }
-    }
+    const module = await this.findModuleByIdOrSlug(moduleIdOrSlug, {
+      lessons: {
+        orderBy: { createdAt: 'asc' },
+      },
+    });
 
     if (!module) {
       throw new NotFoundException(
@@ -92,7 +72,7 @@ export class ModulesService extends BaseCrudService<Module> {
       );
     }
 
-    return module.lessons;
+    return (module as any).lessons;
   }
 
   async findFeatured() {

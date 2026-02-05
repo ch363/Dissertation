@@ -1,5 +1,7 @@
 import { device, element, by, waitFor, expect } from 'detox';
+
 import { loginWithEmailPassword, getE2ECredentials } from './helpers/auth';
+import { launchAppSafe } from './setup';
 
 /**
  * Home Screen Inspection Test
@@ -7,8 +9,8 @@ import { loginWithEmailPassword, getE2ECredentials } from './helpers/auth';
  */
 describe('Home Screen Inspection', () => {
   beforeAll(async () => {
-    await device.launchApp({ newInstance: true });
-    
+    await launchAppSafe();
+
     try {
       getE2ECredentials();
       await loginWithEmailPassword();
@@ -17,7 +19,9 @@ describe('Home Screen Inspection', () => {
       console.log('Login skipped or failed:', error.message);
       // Check if already on home screen
       try {
-        await waitFor(element(by.text('Home'))).toBeVisible().withTimeout(3000);
+        await waitFor(element(by.text('Home')))
+          .toBeVisible()
+          .withTimeout(3000);
         console.log('Already on home screen');
       } catch {
         throw new Error('Could not reach home screen');
@@ -48,7 +52,9 @@ describe('Home Screen Inspection', () => {
     } catch {
       console.log('✗ RCTCustomScrollView not found, trying RCTScrollView...');
       try {
-        await waitFor(element(by.type('RCTScrollView'))).toBeVisible().withTimeout(3000);
+        await waitFor(element(by.type('RCTScrollView')))
+          .toBeVisible()
+          .withTimeout(3000);
         scrollViewFound = true;
         console.log('✓ Scroll view found (RCTScrollView)');
       } catch {
@@ -59,32 +65,32 @@ describe('Home Screen Inspection', () => {
     // Check for various possible text labels
     console.log('\n--- Checking for section headers and labels (initial view) ---');
     const textLabelsToCheck = [
-      "Today at a Glance",
+      'Today at a Glance',
       "TODAY'S PROGRESS",
-      "Why This Next",
-      "Why this next",
-      "Focus:",
-      "Start Review",
-      "Continue Lesson",
-      "Start Lesson",
-      "Learn something new today",
-      "5-minute lesson",
-      "Minutes",
-      "Items",
-      "Accuracy",
-      "Streak",
-      "Days",
-      "Completed",
-      "Lessons",
-      "Practice",
-      "Review",
-      "Today",
-      "Week",
-      "Total",
-      "Home",
-      "Learn",
-      "Progress",
-      "Settings",
+      'Why This Next',
+      'Why this next',
+      'Focus:',
+      'Start Review',
+      'Continue Lesson',
+      'Start Lesson',
+      'Learn something new today',
+      '5-minute lesson',
+      'Minutes',
+      'Items',
+      'Accuracy',
+      'Streak',
+      'Days',
+      'Completed',
+      'Lessons',
+      'Practice',
+      'Review',
+      'Today',
+      'Week',
+      'Total',
+      'Home',
+      'Learn',
+      'Progress',
+      'Settings',
     ];
 
     const foundLabels: string[] = [];
@@ -106,9 +112,10 @@ describe('Home Screen Inspection', () => {
     // Try scrolling to find more elements using whileElement
     if (scrollViewFound && notFoundLabels.length > 0) {
       console.log('\n--- Scrolling to discover more elements ---');
-      
+
       // Try scrolling while looking for missing labels
-      for (const targetLabel of notFoundLabels.slice(0, 5)) { // Try first 5 missing labels
+      for (const targetLabel of notFoundLabels.slice(0, 5)) {
+        // Try first 5 missing labels
         try {
           await waitFor(element(by.text(targetLabel)))
             .toBeVisible()
@@ -132,7 +139,7 @@ describe('Home Screen Inspection', () => {
         // Swipe up to scroll down
         await device.swipe({ x: 200, y: 400 }, { x: 200, y: 200 }, 'fast');
         await new Promise((r) => setTimeout(r, 1000));
-        
+
         // Check again for labels after swipe
         for (const label of notFoundLabels) {
           try {
@@ -147,11 +154,11 @@ describe('Home Screen Inspection', () => {
             // Still not found
           }
         }
-        
+
         // Swipe again
         await device.swipe({ x: 200, y: 400 }, { x: 200, y: 200 }, 'fast');
         await new Promise((r) => setTimeout(r, 1000));
-        
+
         // Check again
         for (const label of notFoundLabels) {
           try {
@@ -174,22 +181,22 @@ describe('Home Screen Inspection', () => {
     // Summary
     console.log('\n--- Summary of found elements ---');
     console.log(`Found ${foundLabels.length} text labels:`);
-    foundLabels.forEach(label => {
+    foundLabels.forEach((label) => {
       console.log(`  ✓ "${label}"`);
     });
-    
-    const stillNotFound = textLabelsToCheck.filter(l => !foundLabels.includes(l));
+
+    const stillNotFound = textLabelsToCheck.filter((l) => !foundLabels.includes(l));
     if (stillNotFound.length > 0) {
       console.log(`\nNot found (${stillNotFound.length} labels):`);
-      stillNotFound.forEach(label => {
+      stillNotFound.forEach((label) => {
         console.log(`  ✗ "${label}"`);
       });
     }
-    
+
     console.log('\n=== INSPECTION COMPLETE ===\n');
     console.log('ELEMENTS ACTUALLY VISIBLE ON HOME SCREEN:');
     console.log('==========================================');
-    foundLabels.forEach(label => {
+    foundLabels.forEach((label) => {
       console.log(`  - "${label}"`);
     });
   });

@@ -25,6 +25,27 @@ export class AppError extends Error {
   }
 }
 
+/**
+ * Check if an error is a network-related error
+ * Consolidates network error detection logic from multiple files
+ */
+export function isNetworkError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+
+  return (
+    message.includes('network') ||
+    message.includes('fetch') ||
+    message.includes('timeout') ||
+    message.includes('connection') ||
+    message.includes('reachable') ||
+    message.includes('failed to fetch')
+  );
+}
+
 export function classifyError(error: unknown): ErrorType {
   if (error instanceof AppError) {
     return error.type;
@@ -37,12 +58,12 @@ export function classifyError(error: unknown): ErrorType {
     if (code != null && code >= 500) return ErrorType.SERVER;
   }
 
+  if (isNetworkError(error)) {
+    return ErrorType.NETWORK;
+  }
+
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
-
-    if (message.includes('network') || message.includes('fetch')) {
-      return ErrorType.NETWORK;
-    }
 
     if (message.includes('unauthorized') || message.includes('forbidden')) {
       return ErrorType.AUTH;

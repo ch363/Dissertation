@@ -1,5 +1,7 @@
 import { device, element, by, waitFor } from 'detox';
+
 import { loginWithEmailPassword, signOutUser, goBack } from './helpers/auth';
+import { launchAppSafe } from './setup';
 
 /**
  * Session Questions E2E Tests
@@ -8,7 +10,7 @@ import { loginWithEmailPassword, signOutUser, goBack } from './helpers/auth';
  */
 describe('Session Questions Flow', () => {
   beforeAll(async () => {
-    await device.launchApp({ newInstance: true });
+    await launchAppSafe();
     await loginWithEmailPassword();
     await new Promise((r) => setTimeout(r, 2000));
   });
@@ -49,7 +51,9 @@ describe('Session Questions Flow', () => {
       await new Promise((r) => setTimeout(r, 3000));
 
       // Wait for courses screen
-      await waitFor(element(by.text('Courses'))).toBeVisible().withTimeout(10000);
+      await waitFor(element(by.text('Courses')))
+        .toBeVisible()
+        .withTimeout(10000);
 
       // Try to tap the first module card
       try {
@@ -80,7 +84,9 @@ describe('Session Questions Flow', () => {
 
     // Check if we have a multiple choice card
     try {
-      await waitFor(element(by.id('session-runner-container'))).toBeVisible().withTimeout(5000);
+      await waitFor(element(by.id('session-runner-container')))
+        .toBeVisible()
+        .withTimeout(5000);
 
       // Look for MC options (they have testID mc-option-*)
       const firstOption = element(by.id('mc-option-0')).atIndex(0);
@@ -126,7 +132,9 @@ describe('Session Questions Flow', () => {
     await navigateToSession();
 
     try {
-      await waitFor(element(by.id('session-runner-container'))).toBeVisible().withTimeout(5000);
+      await waitFor(element(by.id('session-runner-container')))
+        .toBeVisible()
+        .withTimeout(5000);
 
       // Check for fill blank card
       const fillBlankCard = element(by.id('fill-blank-card'));
@@ -162,7 +170,9 @@ describe('Session Questions Flow', () => {
     await navigateToSession();
 
     try {
-      await waitFor(element(by.id('session-runner-container'))).toBeVisible().withTimeout(5000);
+      await waitFor(element(by.id('session-runner-container')))
+        .toBeVisible()
+        .withTimeout(5000);
 
       // Check for translate card
       const translateCard = element(by.id('translate-card'));
@@ -201,7 +211,9 @@ describe('Session Questions Flow', () => {
     await navigateToSession();
 
     try {
-      await waitFor(element(by.id('session-runner-container'))).toBeVisible().withTimeout(5000);
+      await waitFor(element(by.id('session-runner-container')))
+        .toBeVisible()
+        .withTimeout(5000);
 
       // Check for listening card
       const listeningCard = element(by.id('listening-card'));
@@ -240,7 +252,9 @@ describe('Session Questions Flow', () => {
     await navigateToSession();
 
     try {
-      await waitFor(element(by.id('session-runner-container'))).toBeVisible().withTimeout(5000);
+      await waitFor(element(by.id('session-runner-container')))
+        .toBeVisible()
+        .withTimeout(5000);
 
       // Check for teach card
       const teachCard = element(by.id('teach-card'));
@@ -266,7 +280,9 @@ describe('Session Questions Flow', () => {
     await navigateToSession();
 
     try {
-      await waitFor(element(by.id('session-runner-container'))).toBeVisible().withTimeout(5000);
+      await waitFor(element(by.id('session-runner-container')))
+        .toBeVisible()
+        .withTimeout(5000);
 
       // Try to progress through cards until we reach completion
       // This is a best-effort test since card types vary
@@ -363,8 +379,12 @@ async function navigateToSession() {
  */
 async function verifySessionUI() {
   try {
-    await waitFor(element(by.id('session-runner-container'))).toBeVisible().withTimeout(5000);
-    await waitFor(element(by.id('session-card-scroll'))).toBeVisible().withTimeout(3000);
+    await waitFor(element(by.id('session-runner-container')))
+      .toBeVisible()
+      .withTimeout(5000);
+    await waitFor(element(by.id('session-card-scroll')))
+      .toBeVisible()
+      .withTimeout(3000);
   } catch {
     // Session UI not fully visible
   }

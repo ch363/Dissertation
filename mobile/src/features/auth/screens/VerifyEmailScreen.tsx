@@ -28,9 +28,10 @@ export default function VerifyEmail() {
       setResendMessage(null);
       await resendConfirmationEmail(email);
       setResendMessage('Confirmation email sent! Please check your inbox.');
-    } catch (e: any) {
-      logger.error('Error resending email', e);
-      setResendError(e?.message ?? 'Unable to resend email. Please try again.');
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      logger.error('Error resending email', err);
+      setResendError(err.message || 'Unable to resend email. Please try again.');
     } finally {
       setResending(false);
     }

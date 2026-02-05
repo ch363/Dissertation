@@ -6,11 +6,10 @@ import { StyleSheet, Text, View } from 'react-native';
 import { CARD_TYPE_COLORS } from '../../constants/cardTypeColors';
 
 import { SpeakerButton } from '@/components/ui';
+import { useTtsAudio } from '@/hooks/useTtsAudio';
 import { createLogger } from '@/services/logging';
-import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
-import * as SafeSpeech from '@/services/tts';
 import { TeachCard as TeachCardType } from '@/types/session';
 
 const logger = createLogger('TeachCard');
@@ -28,61 +27,20 @@ type Props = {
 export function TeachCard({ card }: Props) {
   const ctx = useAppTheme();
   const theme = ctx?.theme ?? baseTheme;
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  const { speak, isSpeaking } = useTtsAudio();
   const [showTapHint, setShowTapHint] = useState(true);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
 
   const handleSpeak = async () => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
     setShowTapHint(false);
-    setIsSpeaking(true);
 
-    try {
-      const enabled = await getTtsEnabled();
-      if (!enabled) {
-        logger.warn('TTS is disabled in settings');
-        setIsSpeaking(false);
-        return;
-      }
-
-      const phrase = card.content.phrase || '';
-      if (!phrase) {
-        logger.warn('No phrase to speak');
-        setIsSpeaking(false);
-        return;
-      }
-
-      const rate = await getTtsRate();
-      logger.info('Speaking phrase', { phrase, language: 'it-IT' });
-      SafeSpeech.speak(phrase, { language: 'it-IT', rate }).catch((error) => {
-        logger.error('TTS speak error in component', error as Error);
-        setIsSpeaking(false);
-      });
-
-      const estimatedDuration = Math.max(2000, Math.min(phrase.length * 150, 8000));
-      timeoutRef.current = setTimeout(() => {
-        setIsSpeaking(false);
-        timeoutRef.current = null;
-      }, estimatedDuration);
-    } catch (error) {
-      logger.error('Failed to speak phrase', error as Error);
-      setIsSpeaking(false);
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
+    const phrase = card.content.phrase || '';
+    if (!phrase) {
+      logger.warn('No phrase to speak');
+      return;
     }
+
+    logger.info('Speaking phrase', { phrase, language: 'it-IT' });
+    await speak(phrase, 'it-IT');
   };
 
   return (

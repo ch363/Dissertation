@@ -11,7 +11,10 @@ type Props = {
 };
 
 /** Actionable subtitle that reinforces the goal and reduces uncertainty. */
-function getStreakSubtitle(): string {
+function getStreakSubtitle(streakDays: number): string {
+  if (streakDays === 0) {
+    return 'Study 5 min today to start your streak';
+  }
   return 'Study 5 min today to keep your streak';
 }
 
@@ -74,7 +77,7 @@ export function HomeStreakCard({ streakDays }: Props) {
                 numberOfLines={2}
                 ellipsizeMode="tail"
               >
-                {getStreakSubtitle()}
+                {getStreakSubtitle(streakDays)}
               </Text>
             </View>
           </View>

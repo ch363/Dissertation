@@ -6,46 +6,42 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { Request, Response } from 'express';
+import { BaseExceptionFilter } from './base-exception.filter';
+
+interface ExceptionResponseObject {
+  message?: string;
+  error?: string;
+}
 
 @Catch(HttpException)
-export class HttpExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(HttpExceptionFilter.name);
+export class HttpExceptionFilter
+  extends BaseExceptionFilter
+  implements ExceptionFilter
+{
+  protected readonly logger = new Logger(HttpExceptionFilter.name);
 
   catch(exception: HttpException, host: ArgumentsHost) {
-    const ctx = host.switchToHttp();
-    const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
     const status = exception.getStatus();
     const exceptionResponse = exception.getResponse();
 
-    const errorResponse = {
-      statusCode: status,
-      timestamp: new Date().toISOString(),
-      path: request.url,
-      method: request.method,
-      message:
-        typeof exceptionResponse === 'string'
-          ? exceptionResponse
-          : (exceptionResponse as any).message || exception.message,
-      error:
-        typeof exceptionResponse === 'object' &&
-        (exceptionResponse as any).error
-          ? (exceptionResponse as any).error
-          : HttpStatus[status] || 'Error',
-    };
+    const message =
+      typeof exceptionResponse === 'string'
+        ? exceptionResponse
+        : (exceptionResponse as ExceptionResponseObject).message ||
+          exception.message;
 
-    if (status >= 500) {
-      this.logger.error(
-        `${request.method} ${request.url} - ${status} - ${errorResponse.message}`,
-        exception.stack,
-      );
-    } else {
-      this.logger.warn(
-        `${request.method} ${request.url} - ${status} - ${errorResponse.message}`,
-      );
-    }
+    const error =
+      typeof exceptionResponse === 'object' &&
+      (exceptionResponse as ExceptionResponseObject).error
+        ? (exceptionResponse as ExceptionResponseObject).error
+        : HttpStatus[status] || 'Error';
 
-    response.status(status).json(errorResponse);
+    this.handleException(
+      host,
+      status,
+      message,
+      error || 'Error',
+      exception.stack,
+    );
   }
 }

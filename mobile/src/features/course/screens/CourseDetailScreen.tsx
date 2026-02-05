@@ -23,8 +23,8 @@ import { getUserLessons, type UserLessonProgress } from '@/services/api/progress
 import { preloadSessionPlan } from '@/services/api/session-plan-cache';
 import { createLogger } from '@/services/logging';
 import { routeBuilders } from '@/services/navigation/routes';
-import { theme } from '@/services/theme/tokens';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
+import { theme } from '@/services/theme/tokens';
 
 const Logger = createLogger('CourseDetailScreen');
 

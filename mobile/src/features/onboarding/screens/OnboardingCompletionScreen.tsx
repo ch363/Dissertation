@@ -36,9 +36,10 @@ export default function OnboardingCompletion() {
       try {
         await saveOnboarding(userId, answers);
         return;
-      } catch (e: any) {
-        lastError = e;
-        logger.warn(`Save attempt ${attempt}/${maxAttempts} failed`, { error: e?.message });
+      } catch (error: unknown) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        lastError = err;
+        logger.warn(`Save attempt ${attempt}/${maxAttempts} failed`, { error: err.message });
         if (attempt < maxAttempts) {
           await new Promise((r) => setTimeout(r, 1000 * attempt));
         }
@@ -66,14 +67,16 @@ export default function OnboardingCompletion() {
       try {
         logger.info('Navigating to home');
         router.replace(routes.tabs.home);
-      } catch (navError: any) {
-        logger.error('Navigation error', navError as Error);
+      } catch (navError: unknown) {
+        const err = navError instanceof Error ? navError : new Error(String(navError));
+        logger.error('Navigation error', err);
         router.replace('/');
       }
-    } catch (e: any) {
-      logger.error('Error saving onboarding', e as Error);
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      logger.error('Error saving onboarding', err);
       const message =
-        e?.message || 'Could not save. Check your connection and that the backend is running.';
+        err.message || 'Could not save. Check your connection and that the backend is running.';
       const buttons = [
         { text: 'Try Again', onPress: () => onContinue() },
         {

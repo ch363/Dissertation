@@ -1,16 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { CARD_TYPE_COLORS } from '../../constants/cardTypeColors';
 
 import { SpeakerButton } from '@/components/ui';
+import { useTtsAudio } from '@/hooks/useTtsAudio';
 import { createLogger } from '@/services/logging';
-import { getTtsEnabled, getTtsRate } from '@/services/preferences';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
-import * as SafeSpeech from '@/services/tts';
 import { TranslateCard as TranslateCardType } from '@/types/session';
 
 const Logger = createLogger('TranslateCard');
@@ -64,7 +63,7 @@ export function TranslateCard({
   onTryAgain,
   onRating,
   selectedRating,
-  incorrectAttemptCount = 0,
+  incorrectAttemptCount: _incorrectAttemptCount = 0,
 }: Props) {
   const ctx = useAppTheme();
   const theme = ctx?.theme ?? baseTheme;
@@ -84,35 +83,27 @@ export function TranslateCard({
     setShowWhy(false);
   }, [card.id]);
 
+  // Use TTS audio hook for playback
+  const tts = useTtsAudio();
+
   const handleFlip = () => {
     if (!isFlipped) setHasRevealedAnswer(true);
     setIsFlipped(!isFlipped);
   };
 
-  const handlePlaySourceAudio = async () => {
-    // Prevent multiple rapid calls
-    if (isPlaying) {
-      return;
-    }
+  const handlePlaySourceAudio = useCallback(async () => {
+    if (isPlaying) return;
+
+    const textToSpeak = card.source || '';
+    if (!textToSpeak) return;
 
     try {
-      const enabled = await getTtsEnabled();
-      if (!enabled) return;
       setIsPlaying(true);
-      const rate = await getTtsRate();
-      await SafeSpeech.stop();
-      // Small delay to ensure stop completes
+      await tts.stop();
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Speak the source text (language string like "Ciao")
-      const textToSpeak = card.source || '';
-      if (!textToSpeak) {
-        setIsPlaying(false);
-        return;
-      }
-
       const language = card.kind === 'translate_to_en' ? 'it-IT' : 'en-US';
-      await SafeSpeech.speak(textToSpeak, { language, rate });
+      await tts.speak(textToSpeak, language);
 
       // Reset playing state after estimated duration
       const estimatedDuration = Math.max(2000, textToSpeak.length * 150);
@@ -121,7 +112,7 @@ export function TranslateCard({
       Logger.error('Failed to play audio', error);
       setIsPlaying(false);
     }
-  };
+  }, [isPlaying, card.source, card.kind, tts]);
 
   // Flashcard Mode (P24) – same card styling and emojis as TeachCard
   if (card.isFlashcard) {

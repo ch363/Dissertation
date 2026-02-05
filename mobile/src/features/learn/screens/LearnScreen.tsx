@@ -5,11 +5,7 @@ import React, { useCallback, useRef } from 'react';
 import { Dimensions, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import {
-  LearnHeader,
-  LearningPathCarousel,
-  ReviewSection,
-} from '@/components/learn';
+import { LearnHeader, LearningPathCarousel, ReviewSection } from '@/components/learn';
 import { LoadingScreen } from '@/components/ui';
 import {
   buildLearningPathItems,

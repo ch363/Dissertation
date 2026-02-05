@@ -272,8 +272,8 @@ export function PrimaryButton({
   title: string;
   onPress: () => void;
   disabled?: boolean;
-  style?: any;
-  textStyle?: any;
+  style?: import('react-native').ViewStyle;
+  textStyle?: import('react-native').TextStyle;
 }) {
   const { theme } = useAppTheme();
   const isDark = theme.colors.background === '#0E141B';

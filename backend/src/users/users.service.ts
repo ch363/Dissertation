@@ -1,14 +1,25 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import { User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { isPrismaError, getErrorMessage } from '../common';
+import { BaseCrudService } from '../common/services/base-crud.service';
 
 @Injectable()
-export class UsersService {
-  constructor(private prisma: PrismaService) {}
+export class UsersService extends BaseCrudService<User> {
+  constructor(prisma: PrismaService) {
+    super(prisma, 'user', 'User');
+  }
 
   async upsertUser(authUid: string) {
     if (!authUid || typeof authUid !== 'string' || authUid.trim() === '') {
-      throw new Error('Invalid authUid: must be a non-empty string');
+      throw new BadRequestException(
+        'Invalid authUid: must be a non-empty string',
+      );
     }
 
     const existingUser = await this.prisma.user.findUnique({
@@ -27,11 +38,12 @@ export class UsersService {
           knowledgeLevel: 'A1',
         },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Race condition: another request created the user
+      const errorMessage = getErrorMessage(error);
       if (
-        error.code === 'P2002' ||
-        error.message?.includes('Unique constraint')
+        (isPrismaError(error) && error.code === 'P2002') ||
+        errorMessage.includes('Unique constraint')
       ) {
         const user = await this.prisma.user.findUnique({
           where: { id: authUid },
@@ -45,21 +57,10 @@ export class UsersService {
   }
 
   async updateUser(userId: string, updateDto: UpdateUserDto) {
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: updateDto,
-    });
+    return this.update(userId, updateDto);
   }
 
   async getUser(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    return user;
+    return this.findOne(userId);
   }
 }

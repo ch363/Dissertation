@@ -7,6 +7,21 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { Observable } from 'rxjs';
 
+/**
+ * User type returned from Passport strategy
+ */
+interface AuthUser {
+  id: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Info object returned from Passport when authentication fails
+ */
+interface AuthInfo {
+  message?: string;
+}
+
 @Injectable()
 export class SupabaseJwtGuard extends AuthGuard('supabase') {
   private readonly logger = new Logger(SupabaseJwtGuard.name);
@@ -17,7 +32,12 @@ export class SupabaseJwtGuard extends AuthGuard('supabase') {
     return super.canActivate(context);
   }
 
-  handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
+  handleRequest<TUser = AuthUser>(
+    err: Error | null,
+    user: TUser | false,
+    info: AuthInfo | undefined,
+    context: ExecutionContext,
+  ): TUser {
     if (err) {
       this.logger.error('Auth error:', err.message || err);
       throw err;
@@ -29,7 +49,7 @@ export class SupabaseJwtGuard extends AuthGuard('supabase') {
 
     if (!user) {
       const request = context.switchToHttp().getRequest();
-      const authHeader = request.headers?.authorization;
+      const authHeader = request.headers?.authorization as string | undefined;
 
       if (!authHeader) {
         this.logger.warn('Missing Authorization header');
@@ -75,6 +95,6 @@ export class SupabaseJwtGuard extends AuthGuard('supabase') {
       );
     }
 
-    return user;
+    return user as TUser;
   }
 }

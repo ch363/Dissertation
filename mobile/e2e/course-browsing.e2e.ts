@@ -1,5 +1,7 @@
 import { device, element, by, waitFor, expect } from 'detox';
+
 import { loginWithEmailPassword, signOutUser, goBack } from './helpers/auth';
+import { launchAppSafe } from './setup';
 
 /**
  * Course Browsing E2E Tests
@@ -7,7 +9,7 @@ import { loginWithEmailPassword, signOutUser, goBack } from './helpers/auth';
  */
 describe('Course Browsing', () => {
   beforeAll(async () => {
-    await device.launchApp({ newInstance: true });
+    await launchAppSafe();
     await loginWithEmailPassword();
     await new Promise((r) => setTimeout(r, 2000));
   });
@@ -112,7 +114,9 @@ describe('Course Browsing', () => {
         await new Promise((r) => setTimeout(r, 3000));
 
         // Verify courses screen
-        await waitFor(element(by.text('Courses'))).toBeVisible().withTimeout(10000);
+        await waitFor(element(by.text('Courses')))
+          .toBeVisible()
+          .withTimeout(10000);
       } catch {
         // Catalog navigation might fail
       }
@@ -133,7 +137,9 @@ describe('Course Browsing', () => {
         await element(by.text('Browse full catalog')).tap();
         await new Promise((r) => setTimeout(r, 3000));
 
-        await waitFor(element(by.text('Courses'))).toBeVisible().withTimeout(10000);
+        await waitFor(element(by.text('Courses')))
+          .toBeVisible()
+          .withTimeout(10000);
 
         // Scroll through courses
         try {
@@ -171,7 +177,9 @@ describe('Course Browsing', () => {
         await element(by.text('Browse full catalog')).tap();
         await new Promise((r) => setTimeout(r, 3000));
 
-        await waitFor(element(by.text('Courses'))).toBeVisible().withTimeout(10000);
+        await waitFor(element(by.text('Courses')))
+          .toBeVisible()
+          .withTimeout(10000);
 
         // Try to tap a course card
         // Course cards might have various titles, so we scroll and tap
@@ -180,8 +188,7 @@ describe('Course Browsing', () => {
           await new Promise((r) => setTimeout(r, 1000));
 
           // Look for common course-related text
-          const courseCard = element(by.type('RCTView'))
-            .atIndex(3);
+          const courseCard = element(by.type('RCTView')).atIndex(3);
           try {
             await courseCard.tap();
             await new Promise((r) => setTimeout(r, 3000));
@@ -189,7 +196,9 @@ describe('Course Browsing', () => {
             // Verify we're on a course detail screen
             // Look for common elements like "Lessons" or lesson list
             try {
-              await waitFor(element(by.text('Lessons'))).toBeVisible().withTimeout(5000);
+              await waitFor(element(by.text('Lessons')))
+                .toBeVisible()
+                .withTimeout(5000);
             } catch {
               // Different course detail layout
             }

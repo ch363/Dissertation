@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ContentLookupService } from '../../content/content-lookup.service';
 import { DELIVERY_METHOD } from '@prisma/client';
@@ -505,7 +505,7 @@ export class SessionPlanService {
     lessonId: string,
   ): Promise<PracticeStepItem> {
     if (!question) {
-      throw new Error('Question data is required');
+      throw new BadRequestException('Question data is required');
     }
 
     const baseItem: PracticeStepItem = {

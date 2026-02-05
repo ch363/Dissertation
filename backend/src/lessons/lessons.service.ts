@@ -2,6 +2,10 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Lesson } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { BaseCrudService } from '../common/services/base-crud.service';
+import {
+  moduleInclude,
+  lessonTeachingsInclude,
+} from '../common/prisma/selects';
 
 @Injectable()
 export class LessonsService extends BaseCrudService<Lesson> {
@@ -13,64 +17,27 @@ export class LessonsService extends BaseCrudService<Lesson> {
     const where = moduleId ? { moduleId } : {};
     return this.prisma.lesson.findMany({
       where,
-      include: {
-        module: {
-          select: {
-            id: true,
-            title: true,
-          },
-        },
-      },
+      include: moduleInclude,
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async findOne(id: string) {
-    const lesson = await this.prisma.lesson.findUnique({
-      where: { id },
-      include: {
-        module: {
-          select: {
-            id: true,
-            title: true,
-          },
-        },
-      },
+    return super.findOne(id, {
+      include: moduleInclude,
     });
-
-    if (!lesson) {
-      throw new NotFoundException(`Lesson with ID ${id} not found`);
-    }
-
-    return lesson;
   }
 
   async findTeachings(lessonId: string) {
-    const lesson = await this.prisma.lesson.findUnique({
-      where: { id: lessonId },
-      include: {
-        teachings: {
-          orderBy: { createdAt: 'asc' },
-        },
-      },
-    });
+    const lesson = await this.findOrThrow(lessonId, lessonTeachingsInclude);
 
-    if (!lesson) {
-      throw new NotFoundException(`Lesson with ID ${lessonId} not found`);
-    }
-
-    return lesson.teachings;
+    return (lesson as any).teachings;
   }
 
   async findRecommended(userId?: string) {
     const lessons = await this.prisma.lesson.findMany({
       include: {
-        module: {
-          select: {
-            id: true,
-            title: true,
-          },
-        },
+        ...moduleInclude,
         teachings: {
           select: {
             id: true,

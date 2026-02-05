@@ -1,5 +1,7 @@
 import { device, element, by, waitFor, expect } from 'detox';
+
 import { loginWithEmailPassword, signOutUser, goBack } from './helpers/auth';
+import { launchAppSafe } from './setup';
 
 /**
  * Profile & Settings E2E Tests
@@ -7,7 +9,7 @@ import { loginWithEmailPassword, signOutUser, goBack } from './helpers/auth';
  */
 describe('Profile & Settings', () => {
   beforeAll(async () => {
-    await device.launchApp({ newInstance: true });
+    await launchAppSafe();
     await loginWithEmailPassword();
     await new Promise((r) => setTimeout(r, 2000));
   });
@@ -102,7 +104,9 @@ describe('Profile & Settings', () => {
 
     it('should display settings screen with sections', async () => {
       // Verify settings sections
-      await waitFor(element(by.text('HELP'))).toBeVisible().withTimeout(5000);
+      await waitFor(element(by.text('HELP')))
+        .toBeVisible()
+        .withTimeout(5000);
     });
 
     it('should have settings scroll view', async () => {
@@ -129,12 +133,16 @@ describe('Profile & Settings', () => {
     it('should navigate to FAQ', async () => {
       try {
         // Look for FAQ option
-        await waitFor(element(by.text('FAQ'))).toBeVisible().withTimeout(5000);
+        await waitFor(element(by.text('FAQ')))
+          .toBeVisible()
+          .withTimeout(5000);
         await element(by.text('FAQ')).tap();
         await new Promise((r) => setTimeout(r, 2000));
 
         // Verify FAQ screen
-        await waitFor(element(by.text('Frequently Asked Questions'))).toBeVisible().withTimeout(5000);
+        await waitFor(element(by.text('Frequently Asked Questions')))
+          .toBeVisible()
+          .withTimeout(5000);
 
         // Go back
         await goBack();
@@ -147,12 +155,16 @@ describe('Profile & Settings', () => {
     it('should navigate to Help', async () => {
       try {
         // Look for Help option
-        await waitFor(element(by.text('Help'))).toBeVisible().withTimeout(5000);
+        await waitFor(element(by.text('Help')))
+          .toBeVisible()
+          .withTimeout(5000);
         await element(by.text('Help')).tap();
         await new Promise((r) => setTimeout(r, 2000));
 
         // Verify Help screen (might show Contact Support or similar)
-        await waitFor(element(by.text('Help & Support'))).toBeVisible().withTimeout(5000);
+        await waitFor(element(by.text('Help & Support')))
+          .toBeVisible()
+          .withTimeout(5000);
 
         // Go back
         await goBack();
@@ -216,7 +228,9 @@ describe('Profile & Settings', () => {
         // Verify edit profile screen
         // Look for common edit profile elements
         try {
-          await waitFor(element(by.text('Save'))).toBeVisible().withTimeout(5000);
+          await waitFor(element(by.text('Save')))
+            .toBeVisible()
+            .withTimeout(5000);
         } catch {
           // Different save button text
         }

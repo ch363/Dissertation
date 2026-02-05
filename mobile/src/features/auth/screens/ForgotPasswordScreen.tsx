@@ -8,8 +8,8 @@ import { sendPasswordReset } from '@/services/api/auth';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme } from '@/services/theme/tokens';
 import { announce } from '@/utils/a11y';
+import { EMAIL_REGEX, validateEmail } from '@/utils/validation';
 
-const emailRegex = /\S+@\S+\.\S+/;
 const RESET_REDIRECT = 'fluentia://update-password';
 
 export default function ForgotPassword() {
@@ -20,11 +20,8 @@ export default function ForgotPassword() {
   const [error, setError] = useState<string | null>(null);
 
   const trimmedEmail = email.trim();
-  const emailError =
-    trimmedEmail.length > 0 && !emailRegex.test(trimmedEmail)
-      ? 'Enter a valid email address.'
-      : null;
-  const canSubmit = emailRegex.test(email.trim()) && !loading;
+  const emailError = validateEmail(trimmedEmail);
+  const canSubmit = EMAIL_REGEX.test(email.trim()) && !loading;
 
   const handleReset = async () => {
     if (!canSubmit) return;
@@ -34,8 +31,9 @@ export default function ForgotPassword() {
       setMessage(null);
       await sendPasswordReset(email.trim(), RESET_REDIRECT);
       setMessage('Check your email for a reset link.');
-    } catch (e: any) {
-      setError(e?.message ?? 'Unable to send reset email.');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unable to send reset email.';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -47,7 +45,10 @@ export default function ForgotPassword() {
   }, [error, message]);
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]} testID="forgot-password-screen">
+    <SafeAreaView
+      style={[styles.safe, { backgroundColor: theme.colors.background }]}
+      testID="forgot-password-screen"
+    >
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <Text style={[styles.title, { color: theme.colors.text }]} accessibilityRole="header">
           Forgot password
@@ -74,7 +75,6 @@ export default function ForgotPassword() {
           placeholderTextColor={theme.colors.mutedText}
           accessibilityLabel="Email"
           accessibilityHint="Enter the email address for your account"
-          accessibilityState={{ invalid: !!emailError }}
           autoComplete="email"
           textContentType="username"
           returnKeyType="done"

@@ -350,6 +350,10 @@ export function calculateItemCount(
   return Math.max(1, Math.min(count, 50));
 }
 
+/**
+ * Generic interleaving utility for mixing items from different groups.
+ * @internal Currently only used in unit tests - consider promoting to production if needed.
+ */
 export function interleaveItems<T>(
   items: T[],
   getGroupKey: (item: T) => string,
@@ -427,6 +431,10 @@ export function selectModality(
   }
 }
 
+/**
+ * Groups delivery candidates by topic (teaching or lesson).
+ * @internal Currently only used in unit tests - consider promoting to production if needed.
+ */
 export function groupByTopic(
   items: DeliveryCandidate[],
 ): Map<string, DeliveryCandidate[]> {
@@ -509,6 +517,10 @@ export function getDefaultTimeAverages(): UserTimeAverages {
   };
 }
 
+/**
+ * Mixes items by delivery method for variety.
+ * @internal Currently only used in unit tests - consider promoting to production if needed.
+ */
 export function mixByDeliveryMethod(
   items: DeliveryCandidate[],
 ): DeliveryCandidate[] {

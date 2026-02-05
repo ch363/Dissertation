@@ -5,7 +5,7 @@ import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 
 import { cardGapBetweenRows, iconContainerRadius, iconContainerSize } from '../styles/homeStyles';
 
-import { StaticCard, TappableCard } from '@/components/ui';
+import { StaticCard } from '@/components/ui';
 import { useAppTheme } from '@/services/theme/ThemeProvider';
 import { theme as baseTheme } from '@/services/theme/tokens';
 
@@ -39,23 +39,6 @@ export const HomeTodayAtAGlance = React.memo(function HomeTodayAtAGlance({
   const { theme, isDark } = useAppTheme();
   const [timeGradStart, timeGradEnd] = getTimeIconGradient(isDark);
   const [itemsGradStart, itemsGradEnd] = getItemsIconGradient(theme.colors.primary, isDark);
-  const isAllZero = minutesToday === 0 && completedItemsToday === 0;
-
-  if (isAllZero) {
-    return (
-      <TappableCard
-        overline="TODAY'S PROGRESS"
-        title="Learn something new today"
-        subtitle="5-minute lesson"
-        leftIcon="time-outline"
-        onPress={onSuggestLearn ?? (() => {})}
-        accessibilityLabel="Today's progress. Learn something new today, 5-minute lesson."
-        accessibilityHint="Opens the Learn tab"
-        variant="default"
-        style={style}
-      />
-    );
-  }
 
   const content = (
     <View style={styles.rows}>

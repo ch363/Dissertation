@@ -1,8 +1,9 @@
 // Polyfills for React Native environment (URL, crypto.getRandomValues)
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, processLock, type SupabaseClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 import 'react-native-url-polyfill/auto';
+
+import { secureStorage } from './secure-storage';
 
 import {
   readSupabaseEnv,
@@ -36,7 +37,7 @@ export function initSupabaseClient(overrides?: Partial<SupabaseEnvConfig>): Supa
 
   clientSingleton = createClient(config.url, config.anonKey, {
     auth: {
-      ...(Platform.OS !== 'web' ? { storage: AsyncStorage } : {}),
+      storage: secureStorage,
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,

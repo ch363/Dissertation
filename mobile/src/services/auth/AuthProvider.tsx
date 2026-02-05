@@ -1,5 +1,13 @@
 import type { Session, User } from '@supabase/supabase-js';
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { getMyProfile, type Profile } from '@/services/api/profile';
 import { createLogger } from '@/services/logging';
@@ -40,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const loadingProfileRef = useRef(false);
 
   const supabase = getSupabaseClient();
 
@@ -57,8 +66,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setProfile(null);
       }
-    } catch (e: any) {
-      setError(e?.message ?? 'Unable to load session');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unable to load session';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -73,9 +83,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted) return;
       setSession(newSession);
       if (newSession?.user) {
-        loadProfile().then((prof) => {
-          if (mounted) setProfile(prof);
-        });
+        // Prevent concurrent profile loads
+        if (!loadingProfileRef.current) {
+          loadingProfileRef.current = true;
+          loadProfile()
+            .then((prof) => {
+              if (mounted) setProfile(prof);
+              loadingProfileRef.current = false;
+            })
+            .catch(() => {
+              loadingProfileRef.current = false;
+            });
+        }
       } else {
         setProfile(null);
       }

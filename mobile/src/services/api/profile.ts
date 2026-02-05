@@ -1,27 +1,12 @@
-import { Platform } from 'react-native';
-
 import { apiClient } from './client';
+import { buildTzQueryString, appendQueryString } from './query-builder';
 
 import { cacheAvatarFile, clearCachedAvatar } from '@/services/cache/avatar-cache';
 import { createLogger } from '@/services/logging';
 import { getSupabaseClient } from '@/services/supabase/client';
+import { getFileSystemModule } from '@/services/utils/file-system-loader';
 
 const Logger = createLogger('ProfileAPI');
-
-let FileSystemModule: typeof import('expo-file-system') | null = null;
-
-async function getFileSystemModule(): Promise<typeof import('expo-file-system') | null> {
-  if (!FileSystemModule) {
-    if (Platform.OS === 'web') return null;
-    try {
-      FileSystemModule = await import('expo-file-system');
-    } catch (error) {
-      Logger.warn('expo-file-system native module not available', { error });
-      return null;
-    }
-  }
-  return FileSystemModule;
-}
 
 export interface Profile {
   id: string;
@@ -168,23 +153,15 @@ export async function ensureProfileSeed(name?: string): Promise<Profile> {
 }
 
 export async function getDashboard(options?: { tzOffsetMinutes?: number }): Promise<DashboardData> {
-  const tzOffsetMinutes = options?.tzOffsetMinutes ?? new Date().getTimezoneOffset();
-  const params = new URLSearchParams();
-  if (Number.isFinite(tzOffsetMinutes)) {
-    params.append('tzOffsetMinutes', String(tzOffsetMinutes));
-  }
-  const query = params.toString();
-  return apiClient.get<DashboardData>(`/me/dashboard${query ? `?${query}` : ''}`);
+  const query = buildTzQueryString(options);
+  const url = appendQueryString('/me/dashboard', query);
+  return apiClient.get<DashboardData>(url);
 }
 
 export async function getStats(options?: { tzOffsetMinutes?: number }): Promise<StatsData> {
-  const tzOffsetMinutes = options?.tzOffsetMinutes ?? new Date().getTimezoneOffset();
-  const params = new URLSearchParams();
-  if (Number.isFinite(tzOffsetMinutes)) {
-    params.append('tzOffsetMinutes', String(tzOffsetMinutes));
-  }
-  const query = params.toString();
-  return apiClient.get<StatsData>(`/me/stats${query ? `?${query}` : ''}`);
+  const query = buildTzQueryString(options);
+  const url = appendQueryString('/me/stats', query);
+  return apiClient.get<StatsData>(url);
 }
 
 export async function getRecentActivity(): Promise<RecentActivity> {

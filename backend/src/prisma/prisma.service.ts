@@ -34,11 +34,11 @@ export class PrismaService
     }
 
     const poolCfg =
-      (configService.get<{
-        max: number;
-        idleTimeoutMillis: number;
-        connectionTimeoutMillis: number;
-      }>('database.pool') as any) || {};
+      configService.get<{
+        max?: number;
+        idleTimeoutMillis?: number;
+        connectionTimeoutMillis?: number;
+      }>('database.pool') ?? {};
 
     const sslRejectUnauthorized =
       configService.get<boolean>('database.sslRejectUnauthorized') ??
@@ -74,17 +74,18 @@ export class PrismaService
     try {
       await this.$connect();
       await this.$queryRaw`SELECT 1`;
-    } catch (error) {
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+
       // Allow test environment to start without DB
       if (process.env.NODE_ENV === 'test') {
         this.logger.warn(
-          `Database connection failed in test environment: ${error.message}`,
+          `Database connection failed in test environment: ${errorMessage}`,
         );
       } else {
         this.logger.error(
-          `Database connection failed during startup: ${
-            error instanceof Error ? error.message : 'Unknown error'
-          }`,
+          `Database connection failed during startup: ${errorMessage}`,
         );
         throw error;
       }
