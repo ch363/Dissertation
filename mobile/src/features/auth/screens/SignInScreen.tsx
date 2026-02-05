@@ -160,6 +160,7 @@ export default function SignIn() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
       <ScrollView
+        testID="signin-scroll"
         contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}
         keyboardShouldPersistTaps="handled"
       >
@@ -185,6 +186,7 @@ export default function SignIn() {
 
           <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Email</Text>
           <TextInput
+            testID="signin-email"
             value={email}
             onChangeText={setEmail}
             placeholder="you@example.com"
@@ -214,6 +216,7 @@ export default function SignIn() {
           ) : null}
           <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Password</Text>
           <TextInput
+            testID="signin-password"
             ref={passwordRef}
             value={password}
             onChangeText={setPassword}
@@ -249,6 +252,7 @@ export default function SignIn() {
           ) : null}
 
           <Button
+            testID="signin-submit"
             title={loading ? 'Signing in…' : 'Sign in with Email'}
             onPress={handleSignIn}
             disabled={!canSubmit}

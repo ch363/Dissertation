@@ -22,8 +22,9 @@ export default function HelpScreen() {
           onPress={handleBack}
           style={styles.backBtn}
           activeOpacity={0.7}
-          accessibilityLabel="Back to Settings"
+          accessibilityLabel="Go back"
           accessibilityRole="button"
+          testID="back-button"
         >
           <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>

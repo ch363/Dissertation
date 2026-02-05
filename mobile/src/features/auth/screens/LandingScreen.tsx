@@ -38,7 +38,7 @@ export default function LandingScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]} testID="landing-screen">
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <Image
           source={require('@/assets/logo.png')}
@@ -58,12 +58,14 @@ export default function LandingScreen() {
             title="Get Started"
             onPress={goSignUp}
             accessibilityHint="Creates a new account"
+            testID="landing-signup"
           />
           <Button
             title="Log In"
             onPress={goSignIn}
             variant="secondary"
             accessibilityHint="Signs in to your account"
+            testID="landing-login"
           />
         </View>
         <StatusBar style="auto" />

@@ -62,13 +62,14 @@ export function ScreenHeader({
           {/* Back Button */}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Back to ${backLabel}`}
+            accessibilityLabel="Go back"
             hitSlop={12}
             onPress={handleBack}
             style={({ pressed }) => [
               styles.iconButton,
               pressed && { backgroundColor: theme.colors.border },
             ]}
+            testID="back-button"
           >
             <Ionicons name="chevron-back" size={22} color={theme.colors.text} />
           </Pressable>

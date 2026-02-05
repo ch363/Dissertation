@@ -152,6 +152,7 @@ export function Option({
   icon,
   multiple,
   dynamicSizing,
+  testID,
 }: {
   label: string;
   description?: string;
@@ -160,6 +161,7 @@ export function Option({
   icon?: keyof typeof Ionicons.glyphMap | string;
   multiple?: boolean;
   dynamicSizing?: ReturnType<typeof calculateDynamicSizing>;
+  testID?: string;
 }) {
   const { theme } = useAppTheme();
   const isDark = theme.colors.background === '#0E141B';
@@ -192,6 +194,7 @@ export function Option({
       accessibilityState={{ checked: !!selected }}
       accessibilityLabel={label}
       hitSlop={8}
+      testID={testID}
     >
       <View style={styles.optionInner}>
         {icon ? (
@@ -471,6 +474,7 @@ export function OptionQuestion({
           icon={o.icon}
           multiple={multiple}
           dynamicSizing={dynamicSizing}
+          testID={`onboarding-option-${o.key}`}
         />
       ))}
     </QuestionScreen>

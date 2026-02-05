@@ -171,6 +171,7 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView
+      testID="settings-screen-scroll"
       style={[styles.scrollView, { backgroundColor: theme.colors.background }]}
       contentContainerStyle={[
         styles.content,
@@ -187,11 +188,12 @@ export default function SettingsScreen() {
     >
       <View style={styles.header}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => router.navigate(routes.tabs.profile.root)}
           style={({ pressed }) => [styles.backButton, { opacity: pressed ? 0.5 : 1 }]}
           accessibilityRole="button"
           accessibilityLabel="Go back"
           accessibilityHint="Returns to the previous screen"
+          testID="back-button"
         >
           <Ionicons name="chevron-back" size={28} color={theme.colors.primary} />
         </Pressable>

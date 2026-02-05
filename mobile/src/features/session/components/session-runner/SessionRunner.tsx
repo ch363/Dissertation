@@ -878,7 +878,7 @@ export function SessionRunner({
     incorrectAttemptCount >= INCORRECT_ATTEMPTS_BEFORE_SHOWING_ANSWER;
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID="session-runner-container">
       <LinearGradient colors={sessionBgGradient} style={StyleSheet.absoluteFill} />
       <View style={styles.header}>
         <LessonProgressHeader
@@ -894,6 +894,7 @@ export function SessionRunner({
         style={styles.cardArea}
         contentContainerStyle={styles.cardAreaContent}
         showsVerticalScrollIndicator={false}
+        testID="session-card-scroll"
       >
         <CardRenderer
           card={currentCard}
@@ -944,6 +945,7 @@ export function SessionRunner({
             disabled={!canProceed}
             accessibilityLabel={footerLabel}
             accessibilityHint={isLast ? 'Ends the session' : 'Goes to next question'}
+            testID="session-continue-button"
           />
         </View>
       ) : null}

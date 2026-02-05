@@ -152,6 +152,7 @@ export default function LearnScreen() {
 
   return (
     <ScrollView
+      testID="learn-screen-scroll"
       style={[styles.scrollView, { backgroundColor: theme.colors.background }]}
       contentContainerStyle={[
         styles.scrollContent,
@@ -251,6 +252,7 @@ export default function LearnScreen() {
           Explore every course and find your next lesson
         </Text>
         <Pressable
+          testID="browse-catalog-button"
           accessibilityRole="button"
           accessibilityLabel="Browse all modules"
           onPress={() =>

@@ -22,6 +22,7 @@ export function TabBarButton({ label, iconName, isFocused, onPress, onLongPress 
 
   return (
     <Pressable
+      testID={`tab-${label.toLowerCase()}`}
       accessibilityRole="tab"
       accessibilityState={{ selected: isFocused }}
       accessibilityLabel={label}

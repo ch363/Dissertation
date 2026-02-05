@@ -412,7 +412,7 @@ export function TranslateCard({
         : 'TRANSLATE TO ITALIAN';
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID="translate-card">
       <Text style={[styles.instruction, { color: CARD_TYPE_COLORS.translate.instruction }]}>
         {instruction}
       </Text>
@@ -477,6 +477,7 @@ export function TranslateCard({
           multiline
           editable={!showResult}
           accessibilityLabel="Your translation"
+          testID="translate-input"
         />
       </View>
 
@@ -494,6 +495,7 @@ export function TranslateCard({
           accessibilityLabel="Check answer"
           style={styles.checkButton}
           onPress={onCheckAnswer}
+          testID="translate-check-button"
         >
           <Text style={styles.checkButtonText}>Check Answer</Text>
         </Pressable>
@@ -519,6 +521,7 @@ export function TranslateCard({
                   ? `Meaning correct. More natural phrasing: ${naturalPhrasing ?? card.expected}`
                   : 'Not quite'
             }
+            testID={isCorrect ? 'feedback-correct' : 'feedback-incorrect'}
           >
             <Ionicons
               name={

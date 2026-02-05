@@ -56,6 +56,7 @@ export default function Profile() {
 
   return (
     <ScrollView
+      testID="profile-screen-scroll"
       style={[styles.scrollView, { backgroundColor: theme.colors.background }]}
       contentContainerStyle={[
         styles.content,
@@ -119,6 +120,7 @@ export default function Profile() {
 
           <View style={styles.headerRight}>
             <Pressable
+              testID="settings-button"
               onPress={() => router.push(routes.tabs.settings.root)}
               style={({ pressed }) => [
                 styles.headerMenuButton,
@@ -131,6 +133,7 @@ export default function Profile() {
               <Ionicons name="settings-outline" size={20} color="#FFFFFF" />
             </Pressable>
             <Pressable
+              testID="edit-profile-button"
               onPress={() => router.push(routes.tabs.profile.edit)}
               style={({ pressed }) => [
                 styles.headerMenuButton,

@@ -123,7 +123,7 @@ export function FillBlankCard({
   const sentenceParts = card.text.split('___');
 
   return (
-    <View style={[styles.container, { gap: theme.spacing.md }]}>
+    <View style={[styles.container, { gap: theme.spacing.md }]} testID="fill-blank-card">
       <Text style={[styles.instruction, { color: CARD_TYPE_COLORS.fillBlank.instruction }]}>
         FILL IN THE BLANK
       </Text>
@@ -240,6 +240,7 @@ export function FillBlankCard({
               return (
                 <Pressable
                   key={opt.id}
+                  testID={`fb-option-${opt.id}`}
                   style={[
                     styles.optionButton,
                     { backgroundColor: theme.colors.card, borderColor: theme.colors.border },

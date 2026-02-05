@@ -98,6 +98,7 @@ export function LearningPathCarousel({ items, suggestedModuleId, onPressItem }: 
         </Text>
       </View>
       <ScrollView
+        testID="learning-path-carousel"
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{

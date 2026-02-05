@@ -86,7 +86,7 @@ export function TeachCard({ card }: Props) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID="teach-card">
       {/* Main Teach Card – gradient, 32px radius (Figma: rounded-[32px], from-blue-50 via-indigo-50 to-blue-50) */}
       <LinearGradient
         colors={CARD_GRADIENT}

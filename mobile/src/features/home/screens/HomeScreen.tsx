@@ -469,6 +469,7 @@ export default function HomeScreen() {
 
   return (
     <ScrollView
+      testID="home-screen-scroll"
       style={[styles.scrollView, { backgroundColor: theme.colors.background }]}
       contentContainerStyle={[
         styles.scrollContent,

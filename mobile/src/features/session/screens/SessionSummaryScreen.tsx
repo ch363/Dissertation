@@ -432,7 +432,7 @@ export default function SessionSummaryScreen() {
   }
 
   return (
-    <View style={styles.safe}>
+    <View style={styles.safe} testID="session-summary-screen">
       <LinearGradient colors={GRADIENT_BG} style={StyleSheet.absoluteFill} />
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <Stack.Screen options={{ title: headerTitle, headerShown: false }} />
@@ -681,6 +681,7 @@ export default function SessionSummaryScreen() {
                       onPress={handleBackToHome}
                       variant="primary"
                       accessibilityHint="Returns to home"
+                      testID="summary-back-home-button"
                       style={[
                         styles.secondaryButton,
                         {

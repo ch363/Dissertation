@@ -79,31 +79,20 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=...
 - Run with: `npm test` (Jest with Expo mocks)
 - Key coverage: auth-flow, onboarding mapper/provider, progress repo, Home screen
 
-#### E2E Tests (Maestro)
-- Location: `.maestro/` directory
-- **Run all tests:** `npm run test:e2e`
-- **Run specific journey:**
-  - Lesson flow: `npm run test:e2e:lesson`
-  - Review flow: `npm run test:e2e:review`
-  - Navigation: `npm run test:e2e:navigation`
-  - Full journey: `npm run test:e2e:full-journey`
-- See `.maestro/README.md` and `.maestro/TEST_SUITE.md` for complete documentation
+#### E2E Tests (Detox)
+- Location: `e2e/` directory (Jest + Detox)
+- **Prerequisites:** iOS Simulator, Xcode, and native project: `npx expo prebuild --platform ios` (generates `ios/`, which is gitignored)
+- **Build app for testing:** `npm run test:e2e:build`
+- **Run all E2E tests:** `npm run test:e2e`
+- **Smoke test (app launch only):** `npm run test:e2e:smoke`
 
-**Test Coverage:**
-- 11 comprehensive user journey tests covering:
-  - Home → Lesson/Review flows
-  - Tab navigation (Home, Learn, Profile, Settings)
-  - Lesson discovery and exploration
-  - Session completion flows
-  - Progress and mastery views
-  - First-time user experience
-  - Complete end-to-end user journey
+**Config:** `.detoxrc.js` — adjust `binaryPath` / scheme if your Expo prebuild output differs (e.g. different scheme or `.app` name).
 
-**Prerequisites:**
-- Maestro CLI (install: `curl -Ls "https://get.maestro.mobile.dev" | bash`)
-- Java 17+ (install: `brew install openjdk@17`)
-- iOS Simulator or Android Emulator running with app installed
-- **User must be logged in** (tests start from Home screen)
+**Login flow:** Tests that need an authenticated user (e.g. home-to-lesson, login) use `DETOX_E2E_EMAIL` and `DETOX_E2E_PASSWORD`. Add them to `.env` (do not commit real passwords), or run:
+
+`DETOX_E2E_EMAIL=... DETOX_E2E_PASSWORD=... npm run test:e2e`
+
+**Coverage:** App launch (landing), login flow, Home → Learn and catalog. Add more flows in `e2e/*.e2e.ts` as needed.
 
 ---
 

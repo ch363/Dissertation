@@ -237,6 +237,7 @@ export function MultipleChoiceCard({
             return (
               <Pressable
                 key={opt.id}
+                testID={`mc-option-${opt.id}`}
                 accessibilityRole="button"
                 accessibilityLabel={`Answer option: ${opt.label}`}
                 accessibilityState={{ selected: isSelected, disabled: showResult }}
@@ -306,6 +307,7 @@ export function MultipleChoiceCard({
         <View
           style={[styles.feedbackBanner, { backgroundColor: FIGMA.feedbackSuccess }]}
           accessibilityRole="alert"
+          testID="feedback-correct"
         >
           <Ionicons name="checkmark-circle" size={20} color={FIGMA.ctaText} />
           <Text style={[styles.feedbackText, { color: FIGMA.ctaText }]}>
@@ -318,6 +320,7 @@ export function MultipleChoiceCard({
           <View
             style={[styles.feedbackBanner, { backgroundColor: FIGMA.optionIncorrectBorder }]}
             accessibilityRole="alert"
+            testID="feedback-incorrect"
           >
             <Ionicons name="close-circle" size={20} color={FIGMA.ctaText} />
             <Text style={[styles.feedbackText, { color: FIGMA.ctaText }]}>That's incorrect.</Text>

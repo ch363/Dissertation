@@ -49,7 +49,7 @@ export default function CompletionScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} testID="completion-screen">
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <StaticCard style={styles.card}>
           <Text style={styles.screenLabel}>Completion</Text>
@@ -90,6 +90,7 @@ export default function CompletionScreen() {
               title="Continue"
               onPress={handleContinue}
               accessibilityHint="Goes to session summary"
+              testID="completion-continue-button"
             />
           </View>
         </StaticCard>

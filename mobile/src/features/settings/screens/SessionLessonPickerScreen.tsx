@@ -73,10 +73,11 @@ export default function SessionLessonPickerScreen() {
         {showBack && (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Back to Session defaults"
+            accessibilityLabel="Go back"
             onPress={handleBack}
             style={styles.backBtn}
             hitSlop={12}
+            testID="back-button"
           >
             <Ionicons
               name="chevron-back"

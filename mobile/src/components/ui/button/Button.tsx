@@ -15,6 +15,7 @@ type Props = {
   style?: ViewStyle;
   accessibilityLabel?: string;
   accessibilityHint?: string;
+  testID?: string;
 };
 
 export function Button({
@@ -26,6 +27,7 @@ export function Button({
   style,
   accessibilityLabel,
   accessibilityHint,
+  testID,
 }: Props) {
   const { theme } = useAppTheme();
   const isDisabled = disabled || loading;
@@ -48,6 +50,7 @@ export function Button({
 
   return (
     <Pressable
+      testID={testID}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? title}
       accessibilityHint={accessibilityHint}

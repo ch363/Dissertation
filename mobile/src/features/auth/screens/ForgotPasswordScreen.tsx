@@ -47,7 +47,7 @@ export default function ForgotPassword() {
   }, [error, message]);
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]} testID="forgot-password-screen">
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <Text style={[styles.title, { color: theme.colors.text }]} accessibilityRole="header">
           Forgot password
@@ -79,6 +79,7 @@ export default function ForgotPassword() {
           textContentType="username"
           returnKeyType="done"
           onSubmitEditing={handleReset}
+          testID="forgot-password-email"
         />
 
         {emailError ? (
@@ -103,6 +104,7 @@ export default function ForgotPassword() {
           disabled={!canSubmit}
           loading={loading}
           accessibilityHint="Sends a password reset link to your email"
+          testID="forgot-password-submit"
         />
 
         <Link href="/sign-in" style={[styles.link, { color: theme.colors.link }]}>

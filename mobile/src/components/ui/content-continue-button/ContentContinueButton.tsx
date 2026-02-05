@@ -14,6 +14,7 @@ type Props = {
   style?: ViewStyle;
   accessibilityLabel?: string;
   accessibilityHint?: string;
+  testID?: string;
 };
 
 /**
@@ -29,6 +30,7 @@ export function ContentContinueButton({
   style,
   accessibilityLabel,
   accessibilityHint,
+  testID,
 }: Props) {
   return (
     <Button
@@ -40,6 +42,7 @@ export function ContentContinueButton({
       style={[styles.button, style]}
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
+      testID={testID}
     />
   );
 }

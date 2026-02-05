@@ -96,10 +96,11 @@ export default function SignUp() {
   }, [error]);
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.colors.background }]} testID="signup-screen">
       <ScrollView
         contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}
         keyboardShouldPersistTaps="handled"
+        testID="signup-scroll"
       >
         <StaticCard style={styles.card}>
           <View style={styles.stepRow}>
@@ -138,6 +139,7 @@ export default function SignUp() {
             textContentType="name"
             returnKeyType="next"
             onSubmitEditing={() => emailRef.current?.focus()}
+            testID="signup-name"
           />
 
           <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Email</Text>
@@ -164,6 +166,7 @@ export default function SignUp() {
             textContentType="username"
             returnKeyType="next"
             onSubmitEditing={() => passwordRef.current?.focus()}
+            testID="signup-email"
           />
           {emailError ? (
             <Text style={[styles.error, { color: theme.colors.error }]} accessibilityRole="alert">
@@ -194,6 +197,7 @@ export default function SignUp() {
             textContentType="newPassword"
             returnKeyType="next"
             onSubmitEditing={() => confirmRef.current?.focus()}
+            testID="signup-password"
           />
           {passwordError ? (
             <Text style={styles.error} accessibilityRole="alert">
@@ -224,6 +228,7 @@ export default function SignUp() {
             textContentType="newPassword"
             returnKeyType="done"
             onSubmitEditing={handleSignUp}
+            testID="signup-confirm-password"
           />
 
           {confirmError ? (
@@ -243,6 +248,7 @@ export default function SignUp() {
             disabled={!canSubmit}
             loading={loading}
             accessibilityHint="Creates your account"
+            testID="signup-submit"
           />
 
           <Link href="/sign-in" style={[styles.link, { color: theme.colors.link }]}>

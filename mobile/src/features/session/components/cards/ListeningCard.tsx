@@ -769,7 +769,7 @@ export function ListeningCard({
 
   // Type What You Hear Mode (P28/P29)
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID="listening-card">
       <Text style={[styles.instruction, { color: cardColors.instruction }]}>
         TYPE WHAT YOU HEAR
       </Text>
@@ -806,6 +806,7 @@ export function ListeningCard({
               autoFocus
               editable={!showResult}
               accessibilityLabel="Your answer"
+              testID="listening-input"
             />
           </View>
           {!showResult && userAnswer.trim().length > 0 && (
@@ -814,6 +815,7 @@ export function ListeningCard({
               accessibilityLabel="Check answer"
               onPress={() => onCheckAnswer?.()}
               style={styles.checkButton}
+              testID="listening-check-button"
             >
               <Text style={styles.checkButtonText}>Check Answer</Text>
             </Pressable>
@@ -846,6 +848,7 @@ export function ListeningCard({
               isCorrect ? styles.resultCardCorrect : styles.resultCardWrong,
               { borderLeftWidth: 3, borderLeftColor: cardColors.border },
             ]}
+            testID={isCorrect ? 'feedback-correct' : 'feedback-incorrect'}
           >
             <Ionicons
               name={isCorrect ? 'checkmark-circle' : 'close-circle'}
