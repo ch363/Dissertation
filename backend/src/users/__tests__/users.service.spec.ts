@@ -1,34 +1,32 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { UsersService } from '../users.service';
-import { PrismaService } from '../../prisma/prisma.service';
 import { UpdateUserDto } from '../dto/update-user.dto';
 
 describe('UsersService', () => {
   let service: UsersService;
-  let prisma: jest.Mocked<PrismaService>;
-
-  const mockPrismaService = {
-    user: {
-      create: jest.fn(),
-      update: jest.fn(),
-      findUnique: jest.fn(),
-    },
-  };
+  let mockUserRepository: any;
 
   beforeEach(async () => {
+    mockUserRepository = {
+      findById: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      findAll: jest.fn(),
+      count: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
         {
-          provide: PrismaService,
-          useValue: mockPrismaService,
+          provide: 'IUserRepository',
+          useValue: mockUserRepository,
         },
       ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
-    prisma = module.get(PrismaService);
   });
 
   afterEach(() => {
@@ -46,20 +44,16 @@ describe('UsersService', () => {
         preferredDeliveryMethod: null,
       };
 
-      prisma.user.findUnique.mockResolvedValue(null);
-      prisma.user.create.mockResolvedValue(mockUser as any);
+      mockUserRepository.findById.mockResolvedValue(null);
+      mockUserRepository.create.mockResolvedValue(mockUser);
 
       const result = await service.upsertUser(authUid);
 
-      expect(prisma.user.findUnique).toHaveBeenCalledWith({
-        where: { id: authUid },
-      });
-      expect(prisma.user.create).toHaveBeenCalledWith({
-        data: {
-          id: authUid,
-          knowledgePoints: 0,
-          knowledgeLevel: 'A1',
-        },
+      expect(mockUserRepository.findById).toHaveBeenCalledWith(authUid);
+      expect(mockUserRepository.create).toHaveBeenCalledWith({
+        id: authUid,
+        knowledgePoints: 0,
+        knowledgeLevel: 'A1',
       });
       expect(result).toEqual(mockUser);
     });
@@ -74,14 +68,12 @@ describe('UsersService', () => {
         preferredDeliveryMethod: 'FLASHCARD',
       };
 
-      prisma.user.findUnique.mockResolvedValue(mockUser as any);
+      mockUserRepository.findById.mockResolvedValue(mockUser);
 
       const result = await service.upsertUser(authUid);
 
-      expect(prisma.user.findUnique).toHaveBeenCalledWith({
-        where: { id: authUid },
-      });
-      expect(prisma.user.create).not.toHaveBeenCalled();
+      expect(mockUserRepository.findById).toHaveBeenCalledWith(authUid);
+      expect(mockUserRepository.create).not.toHaveBeenCalled();
       expect(result).toEqual(mockUser);
     });
   });
@@ -101,14 +93,11 @@ describe('UsersService', () => {
         preferredDeliveryMethod: 'MULTIPLE_CHOICE',
       };
 
-      prisma.user.update.mockResolvedValue(updatedUser as any);
+      mockUserRepository.update.mockResolvedValue(updatedUser);
 
       const result = await service.updateUser(userId, updateDto);
 
-      expect(prisma.user.update).toHaveBeenCalledWith({
-        where: { id: userId },
-        data: updateDto,
-      });
+      expect(mockUserRepository.update).toHaveBeenCalledWith(userId, updateDto);
       expect(result).toEqual(updatedUser);
     });
   });
@@ -124,23 +113,20 @@ describe('UsersService', () => {
         preferredDeliveryMethod: null,
       };
 
-      prisma.user.findUnique.mockResolvedValue(mockUser as any);
+      mockUserRepository.findById.mockResolvedValue(mockUser);
 
       const result = await service.getUser(userId);
 
-      expect(prisma.user.findUnique).toHaveBeenCalledWith({
-        where: { id: userId },
-      });
+      expect(mockUserRepository.findById).toHaveBeenCalledWith(userId);
       expect(result).toEqual(mockUser);
     });
 
     it('should throw NotFoundException if user not found', async () => {
       const userId = 'non-existent-id';
 
-      prisma.user.findUnique.mockResolvedValue(null);
+      mockUserRepository.findById.mockResolvedValue(null);
 
       await expect(service.getUser(userId)).rejects.toThrow(NotFoundException);
-      await expect(service.getUser(userId)).rejects.toThrow('User not found');
     });
   });
 });

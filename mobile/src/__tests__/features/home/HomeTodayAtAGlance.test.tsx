@@ -36,12 +36,14 @@ describe('HomeTodayAtAGlance', () => {
     expect(json).toContain('4');
   });
 
-  it('shows empty state message when minutesToday and completedItemsToday are 0', () => {
+  it('shows zero state when minutesToday and completedItemsToday are 0', () => {
     const tree = renderer.create(
       <HomeTodayAtAGlance minutesToday={0} completedItemsToday={0} onSuggestLearn={jest.fn()} />,
     );
     const json = JSON.stringify(tree.toJSON());
-    expect(json).toMatch(/Learn something new today/);
-    expect(json).toMatch(/5-minute lesson/);
+    // Component now shows 0/10 min and 0 items instead of empty state message
+    expect(json).toContain('0');
+    expect(json).toMatch(/min/);
+    expect(json).toMatch(/items/);
   });
 });

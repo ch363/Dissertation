@@ -2,41 +2,51 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
 import { User } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { isPrismaError, getErrorMessage } from '../common';
-import { BaseCrudService } from '../common/services/base-crud.service';
+import { UserRepository } from './users.repository';
+import { LoggerService } from '../common/logger';
 
+/**
+ * UsersService
+ *
+ * Business logic layer for User operations.
+ * Uses repository pattern for data access (Dependency Inversion Principle).
+ */
 @Injectable()
-export class UsersService extends BaseCrudService<User> {
-  constructor(prisma: PrismaService) {
-    super(prisma, 'user', 'User');
-  }
+export class UsersService {
+  private readonly logger = new LoggerService(UsersService.name);
 
-  async upsertUser(authUid: string) {
+  constructor(
+    @Inject('IUserRepository')
+    private readonly userRepository: UserRepository,
+  ) {}
+
+  /**
+   * Upsert a user by auth UID.
+   * Creates user if not exists, returns existing user if found.
+   */
+  async upsertUser(authUid: string): Promise<User> {
     if (!authUid || typeof authUid !== 'string' || authUid.trim() === '') {
       throw new BadRequestException(
         'Invalid authUid: must be a non-empty string',
       );
     }
 
-    const existingUser = await this.prisma.user.findUnique({
-      where: { id: authUid },
-    });
+    const existingUser = await this.userRepository.findById(authUid);
 
     if (existingUser) {
       return existingUser;
     }
 
     try {
-      return await this.prisma.user.create({
-        data: {
-          id: authUid,
-          knowledgePoints: 0,
-          knowledgeLevel: 'A1',
-        },
+      return await this.userRepository.create({
+        id: authUid,
+        knowledgePoints: 0,
+        knowledgeLevel: 'A1',
       });
     } catch (error: unknown) {
       // Race condition: another request created the user
@@ -45,9 +55,7 @@ export class UsersService extends BaseCrudService<User> {
         (isPrismaError(error) && error.code === 'P2002') ||
         errorMessage.includes('Unique constraint')
       ) {
-        const user = await this.prisma.user.findUnique({
-          where: { id: authUid },
-        });
+        const user = await this.userRepository.findById(authUid);
         if (user) {
           return user;
         }
@@ -56,11 +64,42 @@ export class UsersService extends BaseCrudService<User> {
     }
   }
 
-  async updateUser(userId: string, updateDto: UpdateUserDto) {
-    return this.update(userId, updateDto);
+  /**
+   * Update a user's profile.
+   */
+  async updateUser(userId: string, updateDto: UpdateUserDto): Promise<User> {
+    return this.userRepository.update(userId, updateDto);
   }
 
-  async getUser(userId: string) {
-    return this.findOne(userId);
+  /**
+   * Get a user by ID.
+   */
+  async getUser(userId: string): Promise<User> {
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+    return user;
+  }
+
+  /**
+   * Find all users.
+   */
+  async findAll(): Promise<User[]> {
+    return this.userRepository.findAll();
+  }
+
+  /**
+   * Find a user by ID (returns null if not found).
+   */
+  async findOne(id: string): Promise<User | null> {
+    return this.userRepository.findById(id);
+  }
+
+  /**
+   * Count total users.
+   */
+  async count(): Promise<number> {
+    return this.userRepository.count();
   }
 }

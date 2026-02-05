@@ -2,7 +2,7 @@
 module.exports = {
   preset: 'jest-expo',
   testEnvironment: 'node',
-  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/e2e/'],
+  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/e2e/', '<rootDir>/src/__tests__/helpers/'],
   moduleNameMapper: {
     '^@/api/(.*)$': '<rootDir>/src/services/api/$1',
     '^@/app/(.*)$': '<rootDir>/src/app/$1',

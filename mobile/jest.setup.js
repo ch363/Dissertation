@@ -62,6 +62,38 @@ jest.mock('expo-av', () => ({
         },
       })),
     },
+    AndroidOutputFormat: {
+      DEFAULT: 0,
+      THREE_GPP: 1,
+      MPEG_4: 2,
+      AMR_NB: 3,
+      AMR_WB: 4,
+      AAC_ADTS: 6,
+      WEBM: 9,
+    },
+    AndroidAudioEncoder: {
+      DEFAULT: 0,
+      AMR_NB: 1,
+      AMR_WB: 2,
+      AAC: 3,
+      HE_AAC: 4,
+      AAC_ELD: 5,
+    },
+    IOSOutputFormat: {
+      LINEARPCM: 'lpcm',
+      AC3: 'ac-3',
+      MPEGLAYER1: '.mp1',
+      MPEGLAYER2: '.mp2',
+      MPEGLAYER3: '.mp3',
+      MPEG4AAC: 'aac ',
+    },
+    IOSAudioQuality: {
+      MIN: 0,
+      LOW: 32,
+      MEDIUM: 64,
+      HIGH: 96,
+      MAX: 127,
+    },
   },
 }));
 

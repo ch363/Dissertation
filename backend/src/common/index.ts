@@ -7,6 +7,7 @@ export * from './decorators/admin-endpoint.decorator';
 // ============================================================================
 // Guards
 // ============================================================================
+export * from './guards/base.guard';
 export * from './guards/supabase-jwt.guard';
 export * from './guards/admin.guard';
 export * from './guards/enhanced-throttler.guard';
@@ -61,3 +62,8 @@ export * from './prisma/selects';
 // Repositories (SOLID - Dependency Inversion)
 // ============================================================================
 export * from './repositories';
+
+// ============================================================================
+// Interfaces (SOLID - Dependency Inversion)
+// ============================================================================
+export * from './interfaces';

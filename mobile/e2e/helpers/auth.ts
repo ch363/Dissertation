@@ -160,6 +160,7 @@ export async function signOutUser(): Promise<void> {
   }
 
   // Navigate to Profile tab first
+  // Note: Tab testID is based on title "Profile" so testID is "tab-profile"
   const profileTab = element(by.id('tab-profile'));
   try {
     await waitFor(profileTab).toExist().withTimeout(5000);

@@ -1,54 +1,35 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { Module } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { BaseCrudService } from '../common/services/base-crud.service';
-import { isValidUuid } from '../common/utils/sanitize.util';
-import { normalizeTitle } from '../common/utils/string.util';
+import { ModuleRepository } from './modules.repository';
+import { LoggerService } from '../common/logger';
 
+/**
+ * ModulesService
+ *
+ * Business logic layer for Module operations.
+ * Uses repository pattern for data access (Dependency Inversion Principle).
+ */
 @Injectable()
-export class ModulesService extends BaseCrudService<Module> {
-  constructor(prisma: PrismaService) {
-    super(prisma, 'module', 'Module');
-  }
+export class ModulesService {
+  private readonly logger = new LoggerService(ModulesService.name);
 
-  async findAll() {
-    return this.prisma.module.findMany({
-      orderBy: { createdAt: 'desc' },
-    });
+  constructor(
+    @Inject('IModuleRepository')
+    private readonly moduleRepository: ModuleRepository,
+  ) {}
+
+  /**
+   * Find all modules.
+   */
+  async findAll(): Promise<Module[]> {
+    return this.moduleRepository.findAllOrdered();
   }
 
   /**
-   * Helper method to find a module by ID or slug
+   * Find a module by ID or slug.
    */
-  private async findModuleByIdOrSlug(
-    idOrSlug: string,
-    include?: any,
-  ): Promise<Module | null> {
-    const uuidCheck = isValidUuid(idOrSlug);
-
-    if (uuidCheck) {
-      return this.prisma.module.findUnique({
-        where: { id: idOrSlug },
-        ...(include && { include }),
-      });
-    }
-
-    const normalizedTitle = normalizeTitle(idOrSlug);
-    const modules = await this.prisma.module.findMany({
-      where: {
-        title: {
-          equals: normalizedTitle,
-          mode: 'insensitive',
-        },
-      },
-      ...(include && { include }),
-    });
-
-    return modules.length > 0 ? modules[0] : null;
-  }
-
-  async findOne(idOrSlug: string) {
-    const module = await this.findModuleByIdOrSlug(idOrSlug);
+  async findOne(idOrSlug: string): Promise<Module> {
+    const module = await this.moduleRepository.findByIdOrSlug(idOrSlug);
 
     if (!module) {
       throw new NotFoundException(
@@ -59,12 +40,12 @@ export class ModulesService extends BaseCrudService<Module> {
     return module;
   }
 
-  async findLessons(moduleIdOrSlug: string) {
-    const module = await this.findModuleByIdOrSlug(moduleIdOrSlug, {
-      lessons: {
-        orderBy: { createdAt: 'asc' },
-      },
-    });
+  /**
+   * Find lessons for a module.
+   */
+  async findLessons(moduleIdOrSlug: string): Promise<any[]> {
+    const module =
+      await this.moduleRepository.findByIdOrSlugWithLessons(moduleIdOrSlug);
 
     if (!module) {
       throw new NotFoundException(
@@ -72,13 +53,41 @@ export class ModulesService extends BaseCrudService<Module> {
       );
     }
 
-    return (module as any).lessons;
+    return (module as any).lessons ?? [];
   }
 
-  async findFeatured() {
-    return this.prisma.module.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 5,
-    });
+  /**
+   * Find featured modules.
+   */
+  async findFeatured(): Promise<Module[]> {
+    return this.moduleRepository.findFeatured(5);
+  }
+
+  /**
+   * Create a new module.
+   */
+  async create(data: any): Promise<Module> {
+    return this.moduleRepository.create(data);
+  }
+
+  /**
+   * Update a module.
+   */
+  async update(id: string, data: any): Promise<Module> {
+    return this.moduleRepository.update(id, data);
+  }
+
+  /**
+   * Delete a module.
+   */
+  async remove(id: string): Promise<void> {
+    await this.moduleRepository.delete(id);
+  }
+
+  /**
+   * Count modules.
+   */
+  async count(where?: any): Promise<number> {
+    return this.moduleRepository.count(where);
   }
 }

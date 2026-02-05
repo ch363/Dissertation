@@ -1,20 +1,20 @@
-import { device, element, by, waitFor } from 'detox';
+import { device, element, by, waitFor, expect } from 'detox';
 
 import { loginWithEmailPassword } from './helpers/auth';
 import { launchAppSafe } from './setup';
 
 /**
  * Comprehensive User Journey E2E Test
- * 
- * Tests the complete flow:
+ *
+ * Tests the complete user flow:
  * 1. Login
  * 2. Navigate to Learn tab
- * 3. Scroll around on Learn screen
- * 4. Scroll the Learning Path carousel
- * 5. Go into All Modules (Course Index)
- * 6. Go back to Learn
- * 7. Go to Profile
- * 8. Go to Settings
+ * 3. Scroll the Learn screen vertically
+ * 4. Scroll the Learning Path carousel horizontally
+ * 5. Navigate into All Modules (Course Index)
+ * 6. Navigate back to Learn
+ * 7. Navigate to Profile tab
+ * 8. Navigate to Settings from Profile
  * 9. Log out
  */
 describe('User Journey', () => {
@@ -22,183 +22,194 @@ describe('User Journey', () => {
     await launchAppSafe();
   });
 
-  it('should complete full user journey through the app', async () => {
+  it('should complete full user journey', async () => {
     // ===== STEP 1: Login =====
     console.log('[Journey] Step 1: Logging in...');
     await loginWithEmailPassword();
     console.log('[Journey] Login complete');
-    await new Promise((r) => setTimeout(r, 2000));
+    await new Promise((r) => setTimeout(r, 3000));
+
+    // Verify we're on Home
+    await waitFor(element(by.id('tab-home'))).toExist().withTimeout(10000);
+    console.log('[Journey] On Home screen');
 
     // ===== STEP 2: Navigate to Learn tab =====
     console.log('[Journey] Step 2: Navigating to Learn tab...');
     const learnTab = element(by.id('tab-learn'));
-    await waitFor(learnTab).toExist().withTimeout(10000);
+    await waitFor(learnTab).toExist().withTimeout(5000);
     await learnTab.tap();
-    await new Promise((r) => setTimeout(r, 3000));
-    console.log('[Journey] On Learn tab');
+    await new Promise((r) => setTimeout(r, 2000));
 
-    // ===== STEP 3: Scroll around on Learn screen =====
-    console.log('[Journey] Step 3: Scrolling Learn screen...');
+    // Verify we're on Learn screen
     const learnScroll = element(by.id('learn-screen-scroll'));
     await waitFor(learnScroll).toExist().withTimeout(10000);
-    
-    // Scroll down
-    await learnScroll.swipe('up', 'slow', 0.5);
+    console.log('[Journey] On Learn screen');
+
+    // ===== STEP 3: Scroll Learn screen =====
+    console.log('[Journey] Step 3: Scrolling Learn screen...');
+    await learnScroll.swipe('up', 'slow', 0.3);
     await new Promise((r) => setTimeout(r, 1000));
-    
-    // Scroll back up
-    await learnScroll.swipe('down', 'slow', 0.5);
+    await learnScroll.swipe('down', 'slow', 0.3);
     await new Promise((r) => setTimeout(r, 1000));
     console.log('[Journey] Learn screen scrolled');
 
-    // ===== STEP 4: Scroll the Learning Path carousel =====
-    console.log('[Journey] Step 4: Scrolling carousel...');
+    // ===== STEP 4: Scroll Learning Path carousel =====
+    console.log('[Journey] Step 4: Scrolling Learning Path carousel...');
     const carousel = element(by.id('learning-path-carousel'));
     try {
       await waitFor(carousel).toExist().withTimeout(5000);
-      // Use gentler swipe to avoid accidental taps
       await carousel.swipe('left', 'slow', 0.3);
       await new Promise((r) => setTimeout(r, 500));
       await carousel.swipe('right', 'slow', 0.3);
       await new Promise((r) => setTimeout(r, 500));
       console.log('[Journey] Carousel scrolled');
     } catch {
-      console.log('[Journey] Carousel not found, continuing...');
+      console.log('[Journey] Carousel not found, skipping...');
     }
 
-    // ===== STEP 5: Go into All Modules =====
-    console.log('[Journey] Step 5: Opening All Modules...');
-    const browseCatalogBtn = element(by.id('browse-catalog-button'));
+    // ===== STEP 5: Navigate to All Modules =====
+    console.log('[Journey] Step 5: Navigating to All Modules...');
     
-    // Make sure we're still on Learn screen
-    await waitFor(learnScroll).toExist().withTimeout(5000);
-    
-    // Scroll down to reach the All Modules button at the bottom
-    console.log('[Journey] Scrolling to find All Modules button...');
-    
-    // Keep scrolling until we find the button AND it's fully visible
+    // Scroll to find the browse catalog button
+    const browseButton = element(by.id('browse-catalog-button'));
     for (let i = 0; i < 5; i++) {
       try {
-        await waitFor(browseCatalogBtn).toBeVisible().withTimeout(2000);
-        console.log('[Journey] Found All Modules button (visible)');
+        await waitFor(browseButton).toBeVisible().withTimeout(2000);
+        console.log('[Journey] Found browse catalog button');
         break;
       } catch {
-        console.log(`[Journey] Scroll attempt ${i + 1}...`);
-        await learnScroll.swipe('up', 'slow', 0.3);
+        console.log(`[Journey] Scrolling to find button (attempt ${i + 1})...`);
+        await learnScroll.swipe('up', 'fast', 0.5);
         await new Promise((r) => setTimeout(r, 500));
       }
     }
-    
-    // Extra small scroll to make sure button is fully in view
-    await learnScroll.swipe('up', 'slow', 0.15);
-    await new Promise((r) => setTimeout(r, 300));
-    
-    await waitFor(browseCatalogBtn).toBeVisible().withTimeout(5000);
-    await browseCatalogBtn.tap();
+
+    await browseButton.tap();
     await new Promise((r) => setTimeout(r, 2000));
-    
+
     // Verify we're on Course Index
     const courseIndexScroll = element(by.id('course-index-scroll'));
     await waitFor(courseIndexScroll).toExist().withTimeout(10000);
-    console.log('[Journey] In All Modules screen');
-    
-    // Scroll around in modules
-    await courseIndexScroll.swipe('up', 'slow', 0.3);
-    await new Promise((r) => setTimeout(r, 500));
+    console.log('[Journey] On All Modules (Course Index) screen');
 
-    // ===== STEP 6: Go back to Learn =====
-    console.log('[Journey] Step 6: Going back to Learn...');
-    // Tap the back arrow at top left
+    // ===== STEP 6: Navigate back to Learn =====
+    console.log('[Journey] Step 6: Navigating back to Learn...');
+    
+    // Try back button by accessibility label
     const backButton = element(by.label('Back'));
-    await waitFor(backButton).toExist().withTimeout(5000);
-    await backButton.tap();
-    await new Promise((r) => setTimeout(r, 2000));
-    
-    // Check if we ended up in a Review Session (can happen if due reviews exist)
-    const reviewSessionTitle = element(by.text('Review Session'));
     try {
-      await waitFor(reviewSessionTitle).toExist().withTimeout(3000);
-      console.log('[Journey] Detected Review Session, closing it...');
-      
-      // Tap the X button (Exit session) in top right
-      const exitButton = element(by.label('Exit session'));
-      await waitFor(exitButton).toExist().withTimeout(3000);
-      await exitButton.tap();
-      await new Promise((r) => setTimeout(r, 1000));
-      
-      // Confirm exit in the alert dialog - button text is "Exit"
-      const confirmExit = element(by.text('Exit'));
-      await waitFor(confirmExit).toExist().withTimeout(3000);
-      await confirmExit.tap();
-      await new Promise((r) => setTimeout(r, 2000));
-      console.log('[Journey] Closed Review Session');
+      await waitFor(backButton).toExist().withTimeout(3000);
+      await backButton.tap();
     } catch {
-      console.log('[Journey] No Review Session detected');
-    }
-    
-    await waitFor(learnScroll).toExist().withTimeout(10000);
-    console.log('[Journey] Back on Learn screen');
-
-    // ===== STEP 7: Go to Profile via Home tab first =====
-    console.log('[Journey] Step 7: Going to Profile...');
-    
-    // First go to Home to reset state
-    const homeTab = element(by.id('tab-home'));
-    await waitFor(homeTab).toExist().withTimeout(5000);
-    await homeTab.tap();
-    await new Promise((r) => setTimeout(r, 2000));
-    console.log('[Journey] On Home screen');
-    
-    // Now tap on Settings tab directly (4th tab)
-    const settingsTab = element(by.id('tab-settings'));
-    await waitFor(settingsTab).toExist().withTimeout(5000);
-    await settingsTab.tap();
-    await new Promise((r) => setTimeout(r, 3000));
-    
-    const settingsScroll = element(by.id('settings-screen-scroll'));
-    await waitFor(settingsScroll).toExist().withTimeout(15000);
-    console.log('[Journey] On Settings screen');
-    
-    // Scroll settings
-    await settingsScroll.swipe('up', 'slow', 0.3);
-    await new Promise((r) => setTimeout(r, 500));
-
-    // ===== STEP 8: Log out =====
-    console.log('[Journey] Step 8: Logging out...');
-    // Find and tap sign out
-    const signOutText = element(by.text('Sign out'));
-    await waitFor(signOutText).toExist().withTimeout(5000);
-    await signOutText.tap();
-    await new Promise((r) => setTimeout(r, 1000));
-    
-    // Confirm sign out in alert
-    const confirmSignOut = element(by.text('Sign out').withAncestor(by.type('_UIAlertControllerActionView')));
-    try {
-      await waitFor(confirmSignOut).toExist().withTimeout(3000);
-      await confirmSignOut.tap();
-    } catch {
-      // Try alternative selector for iOS alert button
-      const alertButton = element(by.label('Sign out'));
-      await alertButton.tap();
-    }
-    await new Promise((r) => setTimeout(r, 3000));
-
-    // Verify we're logged out (back to landing or sign in screen)
-    const logInButton = element(by.text('Log In'));
-    const welcomeBack = element(by.text('Welcome back'));
-    
-    try {
-      await waitFor(logInButton).toExist().withTimeout(5000);
-      console.log('[Journey] Successfully logged out - on landing screen');
-    } catch {
+      // Try by testID
       try {
-        await waitFor(welcomeBack).toExist().withTimeout(3000);
-        console.log('[Journey] Successfully logged out - on sign in screen');
+        await element(by.id('back-button')).tap();
       } catch {
-        console.log('[Journey] Logout complete');
+        // Use coordinate tap for back arrow (top left)
+        console.log('[Journey] Tapping back by coordinates...');
+        await device.tap({ x: 30, y: 60 });
+      }
+    }
+    await new Promise((r) => setTimeout(r, 2000));
+
+    // Check if we returned to Learn or got stuck in a session
+    try {
+      await waitFor(learnScroll).toExist().withTimeout(5000);
+      console.log('[Journey] Back on Learn screen');
+    } catch {
+      // Might be in an unexpected session - try to exit
+      console.log('[Journey] Not on Learn screen, checking for session...');
+      try {
+        const exitSession = element(by.label('Exit session'));
+        await waitFor(exitSession).toExist().withTimeout(3000);
+        console.log('[Journey] Found session, exiting...');
+        await exitSession.tap();
+        await new Promise((r) => setTimeout(r, 1000));
+        
+        // Confirm exit
+        const exitConfirm = element(by.text('Exit'));
+        await exitConfirm.tap();
+        await new Promise((r) => setTimeout(r, 2000));
+        
+        // Now tap Learn tab to get back
+        await learnTab.tap();
+        await new Promise((r) => setTimeout(r, 2000));
+      } catch {
+        console.log('[Journey] No session found, trying Learn tab...');
+        await learnTab.tap();
+        await new Promise((r) => setTimeout(r, 2000));
       }
     }
 
-    console.log('[Journey] ✓ Full user journey completed successfully!');
+    // ===== STEP 7: Navigate to Profile tab =====
+    console.log('[Journey] Step 7: Navigating to Profile tab...');
+    const profileTab = element(by.id('tab-profile'));
+    await waitFor(profileTab).toExist().withTimeout(5000);
+    await profileTab.tap();
+    await new Promise((r) => setTimeout(r, 2000));
+
+    // Verify we're on Profile screen
+    const profileScroll = element(by.id('profile-screen-scroll'));
+    await waitFor(profileScroll).toExist().withTimeout(10000);
+    console.log('[Journey] On Profile screen');
+
+    // ===== STEP 8: Navigate to Settings =====
+    console.log('[Journey] Step 8: Navigating to Settings...');
+    const settingsButton = element(by.id('settings-button'));
+    await waitFor(settingsButton).toExist().withTimeout(5000);
+    await settingsButton.tap();
+    await new Promise((r) => setTimeout(r, 2000));
+
+    // Verify we're on Settings screen
+    const settingsScroll = element(by.id('settings-screen-scroll'));
+    await waitFor(settingsScroll).toExist().withTimeout(10000);
+    console.log('[Journey] On Settings screen');
+
+    // Scroll settings a bit
+    await settingsScroll.swipe('up', 'slow', 0.3);
+    await new Promise((r) => setTimeout(r, 500));
+
+    // ===== STEP 9: Log out =====
+    console.log('[Journey] Step 9: Logging out...');
+    
+    // Scroll to find Sign out button
+    const signOutButton = element(by.text('Sign out'));
+    try {
+      await waitFor(signOutButton).toBeVisible().withTimeout(3000);
+    } catch {
+      await settingsScroll.scrollTo('bottom');
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    
+    await signOutButton.tap();
+    await new Promise((r) => setTimeout(r, 1000));
+
+    // Confirm sign out in alert dialog
+    try {
+      // Try the alert button
+      const alertSignOut = element(by.label('Sign out').and(by.type('_UIAlertControllerActionView')));
+      await alertSignOut.tap();
+    } catch {
+      // Fallback: tap second "Sign out" text (first is button, second is alert)
+      try {
+        await element(by.text('Sign out')).atIndex(1).tap();
+      } catch {
+        // Try generic confirm
+        const confirmButton = element(by.text('Confirm'));
+        await confirmButton.tap();
+      }
+    }
+    await new Promise((r) => setTimeout(r, 3000));
+
+    // Verify we're logged out (back on landing/sign-in screen)
+    try {
+      await waitFor(element(by.text('Log In'))).toExist().withTimeout(10000);
+      console.log('[Journey] Logged out - on landing screen');
+    } catch {
+      await waitFor(element(by.text('Welcome back'))).toExist().withTimeout(5000);
+      console.log('[Journey] Logged out - on sign-in screen');
+    }
+
+    console.log('[Journey] ✓ User journey completed successfully!');
   });
 });

@@ -1,53 +1,59 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { Lesson } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { BaseCrudService } from '../common/services/base-crud.service';
-import {
-  moduleInclude,
-  lessonTeachingsInclude,
-} from '../common/prisma/selects';
+import { LessonRepository } from './lessons.repository';
+import { LoggerService } from '../common/logger';
 
+/**
+ * LessonsService
+ *
+ * Business logic layer for Lesson operations.
+ * Uses repository pattern for data access (Dependency Inversion Principle).
+ */
 @Injectable()
-export class LessonsService extends BaseCrudService<Lesson> {
-  constructor(prisma: PrismaService) {
-    super(prisma, 'lesson', 'Lesson');
+export class LessonsService {
+  private readonly logger = new LoggerService(LessonsService.name);
+
+  constructor(
+    @Inject('ILessonRepository')
+    private readonly lessonRepository: LessonRepository,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  /**
+   * Find all lessons, optionally filtered by module.
+   */
+  async findAll(moduleId?: string): Promise<Lesson[]> {
+    return this.lessonRepository.findAllWithModule(moduleId);
   }
 
-  async findAll(moduleId?: string) {
-    const where = moduleId ? { moduleId } : {};
-    return this.prisma.lesson.findMany({
-      where,
-      include: moduleInclude,
-      orderBy: { createdAt: 'desc' },
-    });
+  /**
+   * Find a lesson by ID.
+   */
+  async findOne(id: string): Promise<Lesson> {
+    const lesson = await this.lessonRepository.findByIdWithModule(id);
+    if (!lesson) {
+      throw new NotFoundException(`Lesson with ID ${id} not found`);
+    }
+    return lesson;
   }
 
-  async findOne(id: string) {
-    return super.findOne(id, {
-      include: moduleInclude,
-    });
+  /**
+   * Find teachings for a lesson.
+   */
+  async findTeachings(lessonId: string): Promise<any[]> {
+    const lesson = await this.lessonRepository.findById(lessonId);
+    if (!lesson) {
+      throw new NotFoundException(`Lesson with ID ${lessonId} not found`);
+    }
+    return this.lessonRepository.findTeachings(lessonId);
   }
 
-  async findTeachings(lessonId: string) {
-    const lesson = await this.findOrThrow(lessonId, lessonTeachingsInclude);
-
-    return (lesson as any).teachings;
-  }
-
-  async findRecommended(userId?: string) {
-    const lessons = await this.prisma.lesson.findMany({
-      include: {
-        ...moduleInclude,
-        teachings: {
-          select: {
-            id: true,
-            knowledgeLevel: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 10,
-    });
+  /**
+   * Find recommended lessons for a user.
+   */
+  async findRecommended(userId?: string): Promise<any[]> {
+    const lessons = await this.lessonRepository.findRecommended(10);
 
     if (userId) {
       const user = await this.prisma.user.findUnique({
@@ -56,26 +62,54 @@ export class LessonsService extends BaseCrudService<Lesson> {
       });
 
       if (user?.knowledgeLevel) {
-        lessons.sort((a, b) => {
-          const aMatches = a.teachings.filter(
-            (t) => t.knowledgeLevel === user.knowledgeLevel,
-          ).length;
-          const bMatches = b.teachings.filter(
-            (t) => t.knowledgeLevel === user.knowledgeLevel,
-          ).length;
+        lessons.sort((a: any, b: any) => {
+          const aMatches = a.teachings?.filter(
+            (t: any) => t.knowledgeLevel === user.knowledgeLevel,
+          ).length ?? 0;
+          const bMatches = b.teachings?.filter(
+            (t: any) => t.knowledgeLevel === user.knowledgeLevel,
+          ).length ?? 0;
           return bMatches - aMatches;
         });
       }
     }
 
-    return lessons.map((lesson) => ({
+    return lessons.map((lesson: any) => ({
       id: lesson.id,
       title: lesson.title,
       description: lesson.description,
       imageUrl: lesson.imageUrl,
       module: lesson.module,
       numberOfItems: lesson.numberOfItems,
-      teachingCount: lesson.teachings.length,
+      teachingCount: lesson.teachings?.length ?? 0,
     }));
+  }
+
+  /**
+   * Create a new lesson.
+   */
+  async create(data: any): Promise<Lesson> {
+    return this.lessonRepository.create(data);
+  }
+
+  /**
+   * Update a lesson.
+   */
+  async update(id: string, data: any): Promise<Lesson> {
+    return this.lessonRepository.update(id, data);
+  }
+
+  /**
+   * Delete a lesson.
+   */
+  async remove(id: string): Promise<void> {
+    await this.lessonRepository.delete(id);
+  }
+
+  /**
+   * Count lessons.
+   */
+  async count(where?: any): Promise<number> {
+    return this.lessonRepository.count(where);
   }
 }

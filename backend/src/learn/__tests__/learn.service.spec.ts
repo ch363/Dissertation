@@ -1,46 +1,26 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { LearnService } from '../learn.service';
-import { PrismaService } from '../../prisma/prisma.service';
 import { ContentDeliveryService } from '../../engine/content-delivery/content-delivery.service';
-import { ProgressService } from '../../progress/progress.service';
+import { LearningPathService } from '../learning-path.service';
+import { SuggestionService } from '../suggestion.service';
 
 describe('LearnService', () => {
   let service: LearnService;
-  let prisma: jest.Mocked<PrismaService>;
-
-  const mockProgressService = {
-    getDueReviewCount: jest.fn(),
-  };
-
-  const mockPrismaService = {
-    userLesson: {
-      upsert: jest.fn(),
-      findMany: jest.fn(),
-    },
-    lesson: {
-      findUnique: jest.fn(),
-      findMany: jest.fn(),
-    },
-    userQuestionPerformance: {
-      findMany: jest.fn(),
-      findFirst: jest.fn(),
-    },
-    userDeliveryMethodScore: {
-      findMany: jest.fn(),
-    },
-    userTeachingCompleted: {
-      findMany: jest.fn(),
-    },
-    user: {
-      findUnique: jest.fn(),
-    },
-    module: {
-      findMany: jest.fn(),
-    },
-  };
+  let learningPathService: jest.Mocked<LearningPathService>;
+  let suggestionService: jest.Mocked<SuggestionService>;
 
   const mockContentDeliveryService = {
     getSessionPlan: jest.fn(),
+  };
+
+  const mockLearningPathService = {
+    getLearningPath: jest.fn(),
+    getUserKnowledgeLevel: jest.fn(),
+    getModuleProgress: jest.fn(),
+  };
+
+  const mockSuggestionService = {
+    getSuggestions: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -48,22 +28,23 @@ describe('LearnService', () => {
       providers: [
         LearnService,
         {
-          provide: PrismaService,
-          useValue: mockPrismaService,
-        },
-        {
           provide: ContentDeliveryService,
           useValue: mockContentDeliveryService,
         },
         {
-          provide: ProgressService,
-          useValue: mockProgressService,
+          provide: LearningPathService,
+          useValue: mockLearningPathService,
+        },
+        {
+          provide: SuggestionService,
+          useValue: mockSuggestionService,
         },
       ],
     }).compile();
 
     service = module.get<LearnService>(LearnService);
-    prisma = module.get(PrismaService);
+    learningPathService = module.get(LearningPathService);
+    suggestionService = module.get(SuggestionService);
   });
 
   afterEach(() => {
@@ -75,36 +56,23 @@ describe('LearnService', () => {
       const userId = 'user-1';
       const limit = 3;
 
-      prisma.userTeachingCompleted.findMany.mockResolvedValue([
-        { teachingId: 'teaching-1' },
-      ] as any);
-
-      prisma.userLesson.findMany.mockResolvedValue([
-        { lessonId: 'lesson-1' },
-      ] as any);
-
-      prisma.user.findUnique.mockResolvedValue({
-        id: userId,
-        knowledgeLevel: 'A1',
+      mockSuggestionService.getSuggestions.mockResolvedValue({
+        lessons: [
+          {
+            id: 'lesson-2',
+            title: 'Lesson 2',
+            imageUrl: null,
+            module: { id: 'module-1', title: 'Module 1' },
+          },
+        ],
+        modules: [
+          {
+            id: 'module-1',
+            title: 'Module 1',
+            imageUrl: null,
+          },
+        ],
       } as any);
-
-      prisma.lesson.findMany.mockResolvedValue([
-        {
-          id: 'lesson-2',
-          title: 'Lesson 2',
-          imageUrl: null,
-          module: { id: 'module-1', title: 'Module 1' },
-        },
-      ] as any);
-
-      prisma.module.findMany.mockResolvedValue([
-        {
-          id: 'module-1',
-          title: 'Module 1',
-          imageUrl: null,
-          lessons: [{ id: 'lesson-2' }],
-        },
-      ] as any);
 
       const result = await service.getSuggestions(
         userId,
@@ -113,6 +81,12 @@ describe('LearnService', () => {
         limit,
       );
 
+      expect(suggestionService.getSuggestions).toHaveBeenCalledWith(
+        userId,
+        undefined,
+        undefined,
+        limit,
+      );
       expect(result.lessons).toBeDefined();
       expect(result.modules).toBeDefined();
       expect(Array.isArray(result.lessons)).toBe(true);
@@ -124,23 +98,17 @@ describe('LearnService', () => {
       const moduleId = 'module-99';
       const limit = 1;
 
-      prisma.userTeachingCompleted.findMany.mockResolvedValue([] as any);
-      prisma.userLesson.findMany.mockResolvedValue([] as any);
-      prisma.user.findUnique.mockResolvedValue({
-        id: userId,
-        knowledgeLevel: 'A1',
+      mockSuggestionService.getSuggestions.mockResolvedValue({
+        lessons: [
+          {
+            id: 'lesson-99',
+            title: 'Lesson 99',
+            imageUrl: null,
+            module: { id: moduleId, title: 'Module 99' },
+          },
+        ],
+        modules: [],
       } as any);
-
-      prisma.lesson.findMany.mockResolvedValue([
-        {
-          id: 'lesson-99',
-          title: 'Lesson 99',
-          imageUrl: null,
-          module: { id: moduleId, title: 'Module 99' },
-        },
-      ] as any);
-
-      prisma.module.findMany.mockResolvedValue([] as any);
 
       const result = await service.getSuggestions(
         userId,
@@ -149,10 +117,11 @@ describe('LearnService', () => {
         limit,
       );
 
-      expect(prisma.lesson.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ moduleId }),
-        }),
+      expect(suggestionService.getSuggestions).toHaveBeenCalledWith(
+        userId,
+        undefined,
+        moduleId,
+        limit,
       );
       expect(result.lessons[0]?.module?.id).toBe(moduleId);
     });
@@ -162,30 +131,20 @@ describe('LearnService', () => {
     it('should return module cards with completed/total lesson counts', async () => {
       const userId = 'user-1';
 
-      prisma.user.findUnique.mockResolvedValue({
-        id: userId,
-        knowledgeLevel: 'A1',
-      } as any);
-
-      prisma.module.findMany.mockResolvedValue([
+      mockLearningPathService.getLearningPath.mockResolvedValue([
         {
           id: 'module-1',
           title: 'Basics',
-          description: null,
-          lessons: [
-            { id: 'lesson-1', _count: { teachings: 3 } },
-            { id: 'lesson-2', _count: { teachings: 2 } },
-          ],
+          level: 'A1',
+          status: 'active',
+          completed: 1,
+          total: 2,
         },
-      ] as any);
-
-      prisma.userLesson.findMany.mockResolvedValue([
-        { lessonId: 'lesson-1', completedTeachings: 3 },
-        { lessonId: 'lesson-2', completedTeachings: 1 },
-      ] as any);
+      ]);
 
       const cards = await service.getLearningPath(userId);
 
+      expect(learningPathService.getLearningPath).toHaveBeenCalledWith(userId);
       expect(cards).toHaveLength(1);
       expect(cards[0]).toEqual(
         expect.objectContaining({

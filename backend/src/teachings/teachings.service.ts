@@ -1,39 +1,77 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { Teaching } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { BaseCrudService } from '../common/services/base-crud.service';
-import {
-  lessonInclude,
-  teachingQuestionsInclude,
-} from '../common/prisma/selects';
+import { TeachingRepository } from './teachings.repository';
+import { LoggerService } from '../common/logger';
 
+/**
+ * TeachingsService
+ *
+ * Business logic layer for Teaching operations.
+ * Uses repository pattern for data access (Dependency Inversion Principle).
+ */
 @Injectable()
-export class TeachingsService extends BaseCrudService<Teaching> {
-  constructor(prisma: PrismaService) {
-    super(prisma, 'teaching', 'Teaching');
+export class TeachingsService {
+  private readonly logger = new LoggerService(TeachingsService.name);
+
+  constructor(
+    @Inject('ITeachingRepository')
+    private readonly teachingRepository: TeachingRepository,
+  ) {}
+
+  /**
+   * Find all teachings, optionally filtered by lesson.
+   */
+  async findAll(lessonId?: string): Promise<Teaching[]> {
+    return this.teachingRepository.findAllWithLesson(lessonId);
   }
 
-  async findAll(lessonId?: string) {
-    const where = lessonId ? { lessonId } : {};
-    return this.prisma.teaching.findMany({
-      where,
-      include: lessonInclude,
-      orderBy: { createdAt: 'asc' },
-    });
+  /**
+   * Find a teaching by ID.
+   */
+  async findOne(id: string): Promise<Teaching> {
+    const teaching = await this.teachingRepository.findByIdWithLesson(id);
+    if (!teaching) {
+      throw new NotFoundException(`Teaching with ID ${id} not found`);
+    }
+    return teaching;
   }
 
-  async findOne(id: string) {
-    return super.findOne(id, {
-      include: lessonInclude,
-    });
+  /**
+   * Find questions for a teaching.
+   */
+  async findQuestions(teachingId: string): Promise<any[]> {
+    const teaching = await this.teachingRepository.findById(teachingId);
+    if (!teaching) {
+      throw new NotFoundException(`Teaching with ID ${teachingId} not found`);
+    }
+    return this.teachingRepository.findQuestions(teachingId);
   }
 
-  async findQuestions(teachingId: string) {
-    const teaching = await this.findOrThrow(
-      teachingId,
-      teachingQuestionsInclude,
-    );
+  /**
+   * Create a new teaching.
+   */
+  async create(data: any): Promise<Teaching> {
+    return this.teachingRepository.create(data);
+  }
 
-    return (teaching as any).questions;
+  /**
+   * Update a teaching.
+   */
+  async update(id: string, data: any): Promise<Teaching> {
+    return this.teachingRepository.update(id, data);
+  }
+
+  /**
+   * Delete a teaching.
+   */
+  async remove(id: string): Promise<void> {
+    await this.teachingRepository.delete(id);
+  }
+
+  /**
+   * Count teachings.
+   */
+  async count(where?: any): Promise<number> {
+    return this.teachingRepository.count(where);
   }
 }

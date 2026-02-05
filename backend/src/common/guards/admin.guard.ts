@@ -1,20 +1,29 @@
 import {
   Injectable,
-  CanActivate,
   ExecutionContext,
   ForbiddenException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient } from '@supabase/supabase-js';
-import { LoggerService } from '../logger';
+import { BaseGuard } from './base.guard';
 
-// Use after SupabaseJwtGuard: @UseGuards(SupabaseJwtGuard, AdminGuard)
+/**
+ * AdminGuard
+ *
+ * Extends BaseGuard to check for admin permissions.
+ * Use after SupabaseJwtGuard: @UseGuards(SupabaseJwtGuard, AdminGuard)
+ *
+ * Demonstrates:
+ * - Template Method Pattern: Extends BaseGuard for common functionality
+ * - Single Responsibility: Focused on admin permission checking
+ */
 @Injectable()
-export class AdminGuard implements CanActivate {
-  private readonly logger = new LoggerService(AdminGuard.name);
+export class AdminGuard extends BaseGuard {
   private supabaseAdmin: ReturnType<typeof createClient> | null = null;
 
   constructor(private configService: ConfigService) {
+    super(AdminGuard.name);
+
     const supabaseUrl = this.configService.get<string>('supabase.url');
     const serviceRoleKey = this.configService.get<string>(
       'supabase.serviceRoleKey',
@@ -31,24 +40,30 @@ export class AdminGuard implements CanActivate {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    const userId = request.user?.id;
+    const userId = this.getUserId(context);
 
     if (!userId) {
+      this.logAccessDenied('User not authenticated', context);
       throw new ForbiddenException('User not authenticated');
     }
 
     const isAdmin = await this.isUserAdmin(userId);
 
     if (!isAdmin) {
+      this.logAccessDenied('Admin access required', context);
       throw new ForbiddenException(
         'Insufficient permissions. Admin access required.',
       );
     }
 
+    this.logAccessGranted(context);
     return true;
   }
 
+  /**
+   * Check if a user has admin privileges.
+   * Checks environment-based admin list and Supabase user metadata.
+   */
   private async isUserAdmin(userId: string): Promise<boolean> {
     // Environment-based admin list for dev/testing
     const adminUsers = this.configService.get<string>('ADMIN_USERS', '');
@@ -57,6 +72,7 @@ export class AdminGuard implements CanActivate {
       return true;
     }
 
+    // Check Supabase user metadata
     if (this.supabaseAdmin) {
       try {
         const { data: authUser } =

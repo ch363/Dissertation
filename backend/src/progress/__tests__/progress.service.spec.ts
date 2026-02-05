@@ -2,96 +2,69 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { ProgressService } from '../progress.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { LessonProgressService } from '../lesson-progress.service';
+import { QuestionAttemptService } from '../question-attempt.service';
+import { AnswerValidationService } from '../answer-validation.service';
+import { ProgressSummaryService } from '../progress-summary.service';
+import { DeliveryMethodScoreService } from '../delivery-method-score.service';
+import { ProgressResetService } from '../progress-reset.service';
 import { QuestionAttemptDto } from '../dto/question-attempt.dto';
 import { DeliveryMethodScoreDto } from '../dto/delivery-method-score.dto';
 import { KnowledgeLevelProgressDto } from '../dto/knowledge-level-progress.dto';
 import { DELIVERY_METHOD } from '@prisma/client';
-import { SrsService } from '../../engine/srs/srs.service';
-import { XpService } from '../../engine/scoring/xp.service';
-import { ContentLookupService } from '../../content/content-lookup.service';
-import { MasteryService } from '../../engine/mastery/mastery.service';
-import { SessionPlanCacheService } from '../../engine/content-delivery/session-plan-cache.service';
-import { PronunciationService } from '../../speech/pronunciation/pronunciation.service';
-import { OnboardingPreferencesService } from '../../onboarding/onboarding-preferences.service';
-import { GrammarService } from '../../grammar/grammar.service';
 
 describe('ProgressService', () => {
   let service: ProgressService;
   let prisma: jest.Mocked<PrismaService>;
-  let srsService: jest.Mocked<SrsService>;
-  let xpService: jest.Mocked<XpService>;
-  let contentLookup: jest.Mocked<ContentLookupService>;
-  let masteryService: jest.Mocked<MasteryService>;
-  let sessionPlanCache: jest.Mocked<SessionPlanCacheService>;
-  let pronunciationService: jest.Mocked<PronunciationService>;
+  let lessonProgressService: jest.Mocked<LessonProgressService>;
+  let questionAttemptService: jest.Mocked<QuestionAttemptService>;
+  let deliveryMethodScoreService: jest.Mocked<DeliveryMethodScoreService>;
 
   const mockPrismaService = {
-    userLesson: {
-      upsert: jest.fn(),
-      findMany: jest.fn(),
-      updateMany: jest.fn(),
-      findUnique: jest.fn(),
-    },
-    teaching: {
-      findUnique: jest.fn(),
-    },
-    userTeachingCompleted: {
-      create: jest.fn(),
+    user: {
       findUnique: jest.fn(),
       update: jest.fn(),
-    },
-    question: {
-      findUnique: jest.fn(),
-    },
-    userQuestionPerformance: {
-      create: jest.fn(),
-      findMany: jest.fn(),
-    },
-    userDeliveryMethodScore: {
-      findUnique: jest.fn(),
-      upsert: jest.fn(),
     },
     userKnowledgeLevelProgress: {
       create: jest.fn(),
     },
-    user: {
-      update: jest.fn(),
-      findUnique: jest.fn(),
-    },
     $transaction: jest.fn(),
   };
 
-  const mockSrsService = {
-    calculateQuestionState: jest.fn(),
+  const mockLessonProgressService = {
+    startLesson: jest.fn(),
+    endLesson: jest.fn(),
+    getUserLessons: jest.fn(),
+    completeTeaching: jest.fn(),
+    markModuleCompleted: jest.fn(),
   };
 
-  const mockXpService = {
-    award: jest.fn(),
+  const mockQuestionAttemptService = {
+    recordQuestionAttempt: jest.fn(),
+    getDueReviews: jest.fn(),
+    getDueReviewCount: jest.fn(),
+    getDueReviewsLatest: jest.fn(),
+    getRecentAttempts: jest.fn(),
   };
 
-  const mockContentLookupService = {
-    getQuestionData: jest.fn(),
+  const mockAnswerValidationService = {
+    validateAnswer: jest.fn(),
+    validatePronunciation: jest.fn(),
   };
 
-  const mockMasteryService = {
-    updateMastery: jest.fn(),
+  const mockProgressSummaryService = {
+    getProgressSummary: jest.fn(),
+    calculateStreak: jest.fn(),
   };
 
-  const mockSessionPlanCacheService = {
-    invalidate: jest.fn(),
+  const mockDeliveryMethodScoreService = {
+    updateDeliveryMethodScore: jest.fn(),
   };
 
-  const mockPronunciationService = {
-    assess: jest.fn(),
-  };
-
-  const mockOnboardingPreferencesService = {
-    getOnboardingPreferences: jest.fn().mockResolvedValue({}),
-    getInitialDeliveryMethodScores: jest.fn().mockResolvedValue(new Map()),
-  };
-
-  const mockGrammarService = {
-    checkGrammar: jest.fn().mockResolvedValue(null),
+  const mockProgressResetService = {
+    resetAllProgress: jest.fn(),
+    resetLessonProgress: jest.fn(),
+    resetQuestionProgress: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -100,63 +73,45 @@ describe('ProgressService', () => {
       providers: [
         ProgressService,
         {
+          provide: LessonProgressService,
+          useValue: mockLessonProgressService,
+        },
+        {
+          provide: QuestionAttemptService,
+          useValue: mockQuestionAttemptService,
+        },
+        {
+          provide: AnswerValidationService,
+          useValue: mockAnswerValidationService,
+        },
+        {
+          provide: ProgressSummaryService,
+          useValue: mockProgressSummaryService,
+        },
+        {
+          provide: DeliveryMethodScoreService,
+          useValue: mockDeliveryMethodScoreService,
+        },
+        {
+          provide: ProgressResetService,
+          useValue: mockProgressResetService,
+        },
+        {
           provide: PrismaService,
           useValue: mockPrismaService,
-        },
-        {
-          provide: SrsService,
-          useValue: mockSrsService,
-        },
-        {
-          provide: XpService,
-          useValue: mockXpService,
-        },
-        {
-          provide: ContentLookupService,
-          useValue: mockContentLookupService,
-        },
-        {
-          provide: MasteryService,
-          useValue: mockMasteryService,
-        },
-        {
-          provide: SessionPlanCacheService,
-          useValue: mockSessionPlanCacheService,
-        },
-        {
-          provide: PronunciationService,
-          useValue: mockPronunciationService,
-        },
-        {
-          provide: OnboardingPreferencesService,
-          useValue: mockOnboardingPreferencesService,
-        },
-        {
-          provide: GrammarService,
-          useValue: mockGrammarService,
         },
       ],
     }).compile();
 
     service = module.get<ProgressService>(ProgressService);
     prisma = module.get(PrismaService);
-    srsService = module.get(SrsService);
-    xpService = module.get(XpService);
-    contentLookup = module.get(ContentLookupService);
-    masteryService = module.get(MasteryService);
-    sessionPlanCache = module.get(SessionPlanCacheService);
-    pronunciationService = module.get(PronunciationService);
+    lessonProgressService = module.get(LessonProgressService);
+    questionAttemptService = module.get(QuestionAttemptService);
+    deliveryMethodScoreService = module.get(DeliveryMethodScoreService);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
-    // Reset all service mocks
-    mockSrsService.calculateQuestionState.mockReset();
-    mockXpService.award.mockReset();
-    mockContentLookupService.getQuestionData.mockReset();
-    mockMasteryService.updateMastery.mockReset();
-    mockSessionPlanCacheService.invalidate.mockReset();
-    mockPronunciationService.assess.mockReset();
   });
 
   describe('startLesson', () => {
@@ -176,37 +131,11 @@ describe('ProgressService', () => {
         },
       };
 
-      prisma.userLesson.upsert.mockResolvedValue(mockUserLesson as any);
+      mockLessonProgressService.startLesson.mockResolvedValue(mockUserLesson as any);
 
       const result = await service.startLesson(userId, lessonId);
 
-      expect(prisma.userLesson.upsert).toHaveBeenCalledWith({
-        where: {
-          userId_lessonId: {
-            userId,
-            lessonId,
-          },
-        },
-        update: {
-          startedAt: expect.any(Date),
-          updatedAt: expect.any(Date),
-        },
-        create: {
-          userId,
-          lessonId,
-          completedTeachings: 0,
-          startedAt: expect.any(Date),
-        },
-        include: {
-          lesson: {
-            select: {
-              id: true,
-              title: true,
-              imageUrl: true,
-            },
-          },
-        },
-      });
+      expect(lessonProgressService.startLesson).toHaveBeenCalledWith(userId, lessonId);
       expect(result).toEqual(mockUserLesson);
     });
   });
@@ -217,29 +146,22 @@ describe('ProgressService', () => {
       const teachingId = 'teaching-1';
       const lessonId = 'lesson-1';
 
-      const mockTeaching = { lessonId };
-      const mockUserLesson = {
-        userId,
-        lessonId,
-        completedTeachings: 1,
-        lesson: { id: lessonId, title: 'Test Lesson' },
+      const mockResult = {
+        userLesson: {
+          userId,
+          lessonId,
+          completedTeachings: 1,
+          lesson: { id: lessonId, title: 'Test Lesson' },
+        },
+        wasNewlyCompleted: true,
       };
 
-      // Mock transaction
-      prisma.$transaction.mockImplementation(async (callback) => {
-        const tx = prisma as any;
-        tx.teaching.findUnique = jest.fn().mockResolvedValue(mockTeaching);
-        tx.userTeachingCompleted.findUnique = jest.fn().mockResolvedValue(null);
-        tx.userTeachingCompleted.create = jest.fn().mockResolvedValue({});
-        tx.userLesson.updateMany = jest.fn().mockResolvedValue({ count: 1 });
-        tx.userLesson.findUnique = jest.fn().mockResolvedValue(mockUserLesson);
-        return callback(tx);
-      });
+      mockLessonProgressService.completeTeaching.mockResolvedValue(mockResult as any);
 
       const result = await service.completeTeaching(userId, teachingId);
 
-      expect(prisma.$transaction).toHaveBeenCalled();
-      expect(result.userLesson).toEqual(mockUserLesson);
+      expect(lessonProgressService.completeTeaching).toHaveBeenCalledWith(userId, teachingId, undefined);
+      expect(result.userLesson).toEqual(mockResult.userLesson);
       expect(result.wasNewlyCompleted).toBe(true);
     });
 
@@ -248,25 +170,17 @@ describe('ProgressService', () => {
       const teachingId = 'teaching-1';
       const lessonId = 'lesson-1';
 
-      const mockTeaching = { lessonId };
-      const mockUserLesson = {
-        userId,
-        lessonId,
-        completedTeachings: 0,
-        lesson: { id: lessonId, title: 'Test Lesson' },
+      const mockResult = {
+        userLesson: {
+          userId,
+          lessonId,
+          completedTeachings: 0,
+          lesson: { id: lessonId, title: 'Test Lesson' },
+        },
+        wasNewlyCompleted: false,
       };
 
-      // Mock transaction where completion already exists
-      prisma.$transaction.mockImplementation(async (callback) => {
-        const tx = prisma as any;
-        tx.teaching.findUnique = jest.fn().mockResolvedValue(mockTeaching);
-        tx.userTeachingCompleted.findUnique = jest
-          .fn()
-          .mockResolvedValue({ userId, teachingId });
-        tx.userLesson.updateMany = jest.fn().mockResolvedValue({ count: 0 });
-        tx.userLesson.findUnique = jest.fn().mockResolvedValue(mockUserLesson);
-        return callback(tx);
-      });
+      mockLessonProgressService.completeTeaching.mockResolvedValue(mockResult as any);
 
       const result = await service.completeTeaching(userId, teachingId);
 
@@ -278,24 +192,6 @@ describe('ProgressService', () => {
     const userId = 'user-1';
     const questionId = 'question-1';
     const teachingId = 'teaching-1';
-    const lessonId = 'lesson-1';
-
-    const mockSrsState = {
-      nextReviewDue: new Date(Date.now() + 86400000), // 1 day from now
-      intervalDays: 1,
-      stability: 1.0,
-      difficulty: 0.3,
-      repetitions: 1,
-    };
-
-    beforeEach(() => {
-      mockSrsService.calculateQuestionState.mockResolvedValue(mockSrsState);
-      mockXpService.award.mockResolvedValue(10);
-      prisma.user.findUnique.mockResolvedValue({
-        id: userId,
-        knowledgePoints: 100,
-      } as any);
-    });
 
     it('should create append-only performance record with spaced repetition', async () => {
       const attemptDto: QuestionAttemptDto = {
@@ -305,30 +201,14 @@ describe('ProgressService', () => {
         attempts: 1,
       };
 
-      const mockQuestion = {
-        id: questionId,
-        teachingId,
-        type: DELIVERY_METHOD.FLASHCARD,
-        skillTags: [],
-        teaching: {
-          id: teachingId,
-          lessonId,
-          skillTags: [],
-          lesson: {
-            id: lessonId,
-            title: 'Test Lesson',
-          },
-        },
-      };
-
-      prisma.question.findUnique.mockResolvedValue(mockQuestion as any);
-      prisma.userQuestionPerformance.create.mockResolvedValue({
+      const mockResult = {
         id: 'perf-1',
         userId,
         questionId,
         ...attemptDto,
         lastRevisedAt: new Date(),
-        nextReviewDue: mockSrsState.nextReviewDue,
+        nextReviewDue: new Date(Date.now() + 86400000),
+        awardedXp: 10,
         question: {
           id: questionId,
           teaching: {
@@ -337,7 +217,9 @@ describe('ProgressService', () => {
             learningLanguageString: 'Ciao',
           },
         },
-      } as any);
+      };
+
+      mockQuestionAttemptService.recordQuestionAttempt.mockResolvedValue(mockResult as any);
 
       const result = await service.recordQuestionAttempt(
         userId,
@@ -345,32 +227,11 @@ describe('ProgressService', () => {
         attemptDto,
       );
 
-      expect(prisma.question.findUnique).toHaveBeenCalledWith({
-        where: { id: questionId },
-        include: {
-          teaching: {
-            include: {
-              lesson: {
-                select: {
-                  id: true,
-                  title: true,
-                },
-              },
-              skillTags: {
-                select: {
-                  name: true,
-                },
-              },
-            },
-          },
-          skillTags: {
-            select: {
-              name: true,
-            },
-          },
-        },
-      });
-      expect(prisma.userQuestionPerformance.create).toHaveBeenCalled();
+      expect(questionAttemptService.recordQuestionAttempt).toHaveBeenCalledWith(
+        userId,
+        questionId,
+        attemptDto,
+      );
       expect(result).toBeDefined();
       expect(result.awardedXp).toBe(10);
     });
@@ -378,7 +239,9 @@ describe('ProgressService', () => {
     it('should throw NotFoundException if question not found', async () => {
       const attemptDto: QuestionAttemptDto = { score: 50 };
 
-      prisma.question.findUnique.mockResolvedValue(null);
+      mockQuestionAttemptService.recordQuestionAttempt.mockRejectedValue(
+        new NotFoundException('Question not found'),
+      );
 
       await expect(
         service.recordQuestionAttempt(userId, questionId, attemptDto),
@@ -393,91 +256,27 @@ describe('ProgressService', () => {
         attempts: 1,
       };
 
-      const mockQuestion = {
-        id: questionId,
-        teachingId,
-        type: DELIVERY_METHOD.FLASHCARD,
-        skillTags: [{ name: 'greetings' }, { name: 'verbs' }],
-        teaching: {
-          id: teachingId,
-          lessonId,
-          skillTags: [{ name: 'greetings' }, { name: 'pronouns' }],
-          lesson: {
-            id: lessonId,
-            title: 'Test Lesson',
-          },
-        },
-      };
-
-      prisma.question.findUnique.mockResolvedValue(mockQuestion as any);
-      prisma.userQuestionPerformance.create.mockResolvedValue({
+      const mockResult = {
         id: 'perf-1',
         userId,
         questionId,
         ...attemptDto,
         lastRevisedAt: new Date(),
-        nextReviewDue: mockSrsState.nextReviewDue,
-        question: {
-          id: questionId,
-          teaching: {
-            id: teachingId,
-            userLanguageString: 'Hello',
-            learningLanguageString: 'Ciao',
-          },
-        },
-      } as any);
+        nextReviewDue: new Date(Date.now() + 86400000),
+        awardedXp: 10,
+        masteryUpdates: [
+          { skill: 'greetings', mastery: 0.6 },
+          { skill: 'verbs', mastery: 0.4 },
+          { skill: 'pronouns', mastery: 0.7 },
+        ],
+      };
 
-      // Mock mastery updates - return different mastery values
-      mockMasteryService.updateMastery
-        .mockResolvedValueOnce(0.6) // greetings - above threshold
-        .mockResolvedValueOnce(0.4) // verbs - below threshold
-        .mockResolvedValueOnce(0.7); // pronouns - above threshold
+      mockQuestionAttemptService.recordQuestionAttempt.mockResolvedValue(mockResult as any);
 
       const result = await service.recordQuestionAttempt(
         userId,
         questionId,
         attemptDto,
-      );
-
-      // Verify skillTags relation was loaded
-      expect(prisma.question.findUnique).toHaveBeenCalledWith(
-        expect.objectContaining({
-          include: expect.objectContaining({
-            skillTags: {
-              select: {
-                name: true,
-              },
-            },
-            teaching: expect.objectContaining({
-              include: expect.objectContaining({
-                skillTags: {
-                  select: {
-                    name: true,
-                  },
-                },
-              }),
-            }),
-          }),
-        }),
-      );
-
-      // Verify mastery was updated for all skill tags (greetings, verbs, pronouns)
-      // Note: extractSkillTags deduplicates, so 'greetings' appears once
-      expect(mockMasteryService.updateMastery).toHaveBeenCalledTimes(3);
-      expect(mockMasteryService.updateMastery).toHaveBeenCalledWith(
-        userId,
-        'greetings',
-        true,
-      );
-      expect(mockMasteryService.updateMastery).toHaveBeenCalledWith(
-        userId,
-        'verbs',
-        true,
-      );
-      expect(mockMasteryService.updateMastery).toHaveBeenCalledWith(
-        userId,
-        'pronouns',
-        true,
       );
 
       expect(result).toBeDefined();
@@ -491,61 +290,23 @@ describe('ProgressService', () => {
         attempts: 1,
       };
 
-      const mockQuestion = {
-        id: questionId,
-        teachingId,
-        type: DELIVERY_METHOD.FLASHCARD,
-        skillTags: [],
-        teaching: {
-          id: teachingId,
-          lessonId,
-          skillTags: [],
-          lesson: {
-            id: lessonId,
-            title: 'Test Lesson',
-          },
-        },
-      };
-
-      prisma.question.findUnique.mockResolvedValue(mockQuestion as any);
-      prisma.userQuestionPerformance.create.mockResolvedValue({
+      const mockResult = {
         id: 'perf-1',
         userId,
         questionId,
         ...attemptDto,
         lastRevisedAt: new Date(),
-        nextReviewDue: mockSrsState.nextReviewDue,
-        question: {
-          id: questionId,
-          teaching: {
-            id: teachingId,
-            userLanguageString: 'Hello',
-            learningLanguageString: 'Ciao',
-          },
-        },
-      } as any);
+        nextReviewDue: new Date(Date.now() + 86400000),
+        awardedXp: 10,
+      };
+
+      mockQuestionAttemptService.recordQuestionAttempt.mockResolvedValue(mockResult as any);
 
       const result = await service.recordQuestionAttempt(
         userId,
         questionId,
         attemptDto,
       );
-
-      // Verify skillTags relation was still loaded (even if empty)
-      expect(prisma.question.findUnique).toHaveBeenCalledWith(
-        expect.objectContaining({
-          include: expect.objectContaining({
-            skillTags: {
-              select: {
-                name: true,
-              },
-            },
-          }),
-        }),
-      );
-
-      // Verify mastery service was not called when no skill tags
-      expect(mockMasteryService.updateMastery).not.toHaveBeenCalled();
 
       expect(result).toBeDefined();
     });
@@ -558,54 +319,23 @@ describe('ProgressService', () => {
         attempts: 1,
       };
 
-      const mockQuestion = {
-        id: questionId,
-        teachingId,
-        type: DELIVERY_METHOD.FLASHCARD,
-        skillTags: [{ name: 'numbers' }],
-        teaching: {
-          id: teachingId,
-          lessonId,
-          skillTags: [],
-          lesson: {
-            id: lessonId,
-            title: 'Test Lesson',
-          },
-        },
-      };
-
-      prisma.question.findUnique.mockResolvedValue(mockQuestion as any);
-      prisma.userQuestionPerformance.create.mockResolvedValue({
+      const mockResult = {
         id: 'perf-1',
         userId,
         questionId,
         ...attemptDto,
         lastRevisedAt: new Date(),
-        nextReviewDue: mockSrsState.nextReviewDue,
-        question: {
-          id: questionId,
-          teaching: {
-            id: teachingId,
-            userLanguageString: 'Hello',
-            learningLanguageString: 'Ciao',
-          },
-        },
-      } as any);
+        nextReviewDue: new Date(Date.now() + 86400000),
+        awardedXp: 10,
+        masteryUpdates: [{ skill: 'numbers', mastery: 0.6 }],
+      };
 
-      mockMasteryService.updateMastery.mockResolvedValue(0.6);
+      mockQuestionAttemptService.recordQuestionAttempt.mockResolvedValue(mockResult as any);
 
       const result = await service.recordQuestionAttempt(
         userId,
         questionId,
         attemptDto,
-      );
-
-      // Verify mastery was updated for the question-level skill tag
-      expect(mockMasteryService.updateMastery).toHaveBeenCalledTimes(1);
-      expect(mockMasteryService.updateMastery).toHaveBeenCalledWith(
-        userId,
-        'numbers',
-        true,
       );
 
       expect(result).toBeDefined();
@@ -619,46 +349,19 @@ describe('ProgressService', () => {
         attempts: 1,
       };
 
-      const mockQuestion = {
-        id: questionId,
-        teachingId,
-        type: DELIVERY_METHOD.FLASHCARD,
-        skillTags: [{ name: 'greetings' }],
-        teaching: {
-          id: teachingId,
-          lessonId,
-          skillTags: [],
-          lesson: {
-            id: lessonId,
-            title: 'Test Lesson',
-          },
-        },
-      };
-
-      prisma.question.findUnique.mockResolvedValue(mockQuestion as any);
-      prisma.userQuestionPerformance.create.mockResolvedValue({
+      // The facade delegates to QuestionAttemptService which handles mastery errors internally
+      const mockResult = {
         id: 'perf-1',
         userId,
         questionId,
         ...attemptDto,
         lastRevisedAt: new Date(),
-        nextReviewDue: mockSrsState.nextReviewDue,
-        question: {
-          id: questionId,
-          teaching: {
-            id: teachingId,
-            userLanguageString: 'Hello',
-            learningLanguageString: 'Ciao',
-          },
-        },
-      } as any);
+        nextReviewDue: new Date(Date.now() + 86400000),
+        awardedXp: 10,
+      };
 
-      // Mock mastery service to throw an error
-      mockMasteryService.updateMastery.mockRejectedValue(
-        new Error('Mastery update failed'),
-      );
+      mockQuestionAttemptService.recordQuestionAttempt.mockResolvedValue(mockResult as any);
 
-      // Should not throw - mastery tracking is non-critical
       const result = await service.recordQuestionAttempt(
         userId,
         questionId,
@@ -676,13 +379,7 @@ describe('ProgressService', () => {
       const method = DELIVERY_METHOD.FLASHCARD;
       const scoreDto: DeliveryMethodScoreDto = { delta: 0.2 };
 
-      prisma.userDeliveryMethodScore.findUnique.mockResolvedValue({
-        userId,
-        deliveryMethod: method,
-        score: 0.5,
-      } as any);
-
-      prisma.userDeliveryMethodScore.upsert.mockResolvedValue({
+      mockDeliveryMethodScoreService.updateDeliveryMethodScore.mockResolvedValue({
         userId,
         deliveryMethod: method,
         score: 0.7,
@@ -694,7 +391,11 @@ describe('ProgressService', () => {
         scoreDto,
       );
 
-      expect(prisma.userDeliveryMethodScore.upsert).toHaveBeenCalled();
+      expect(deliveryMethodScoreService.updateDeliveryMethodScore).toHaveBeenCalledWith(
+        userId,
+        method,
+        scoreDto,
+      );
       expect(result.score).toBe(0.7);
     });
 
@@ -703,13 +404,7 @@ describe('ProgressService', () => {
       const method = DELIVERY_METHOD.FLASHCARD;
       const scoreDto: DeliveryMethodScoreDto = { delta: 0.5 };
 
-      prisma.userDeliveryMethodScore.findUnique.mockResolvedValue({
-        userId,
-        deliveryMethod: method,
-        score: 0.8,
-      } as any);
-
-      prisma.userDeliveryMethodScore.upsert.mockResolvedValue({
+      mockDeliveryMethodScoreService.updateDeliveryMethodScore.mockResolvedValue({
         userId,
         deliveryMethod: method,
         score: 1.0,
@@ -742,8 +437,13 @@ describe('ProgressService', () => {
         knowledgePoints: 150,
       };
 
-      prisma.$transaction.mockImplementation(async (callback) => {
-        const tx = prisma as any;
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: userId,
+        knowledgePoints: 100,
+      } as any);
+
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        const tx = mockPrismaService as any;
         tx.userKnowledgeLevelProgress.create = jest
           .fn()
           .mockResolvedValue(mockProgressRow);
