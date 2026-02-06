@@ -3,18 +3,12 @@ import { LessonsController } from './lessons.controller';
 import { LessonsService } from './lessons.service';
 import { LessonRepository } from './lessons.repository';
 import { PrismaModule } from '../prisma/prisma.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, UsersModule],
   controllers: [LessonsController],
-  providers: [
-    LessonRepository,
-    {
-      provide: 'ILessonRepository',
-      useExisting: LessonRepository,
-    },
-    LessonsService,
-  ],
+  providers: [LessonRepository, LessonsService],
   exports: [LessonsService],
 })
 export class LessonsModule {}

@@ -32,7 +32,7 @@ export class TeachingsController {
 
   @Get()
   findAll(@Query() query: TeachingsQueryDto) {
-    return this.teachingsService.findAll(query.lessonId);
+    return this.teachingsService.findAllByLesson(query.lessonId);
   }
 
   @Post()

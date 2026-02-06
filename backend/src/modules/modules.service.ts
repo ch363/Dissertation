@@ -1,32 +1,35 @@
-import { Injectable, NotFoundException, Inject } from '@nestjs/common';
-import { Module } from '@prisma/client';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { Module, Prisma } from '@prisma/client';
 import { ModuleRepository } from './modules.repository';
-import { LoggerService } from '../common/logger';
+import { BaseCrudService } from '../common/services';
 
 /**
  * ModulesService
  *
  * Business logic layer for Module operations.
+ * Extends BaseCrudService for standard CRUD operations (DRY principle).
  * Uses repository pattern for data access (Dependency Inversion Principle).
  */
 @Injectable()
-export class ModulesService {
-  private readonly logger = new LoggerService(ModulesService.name);
-
-  constructor(
-    @Inject('IModuleRepository')
-    private readonly moduleRepository: ModuleRepository,
-  ) {}
+export class ModulesService extends BaseCrudService<
+  Module,
+  Prisma.ModuleCreateInput,
+  Prisma.ModuleUpdateInput
+> {
+  constructor(private readonly moduleRepository: ModuleRepository) {
+    super(moduleRepository, 'Module');
+  }
 
   /**
-   * Find all modules.
+   * Find all modules (overrides base to use ordered query).
    */
   async findAll(): Promise<Module[]> {
     return this.moduleRepository.findAllOrdered();
   }
 
   /**
-   * Find a module by ID or slug.
+   * Find a module by ID or slug (overrides base findOne).
+   * Supports both UUID and slug lookup.
    */
   async findOne(idOrSlug: string): Promise<Module> {
     const module = await this.moduleRepository.findByIdOrSlug(idOrSlug);
@@ -41,7 +44,7 @@ export class ModulesService {
   }
 
   /**
-   * Find lessons for a module.
+   * Find lessons for a module (custom method).
    */
   async findLessons(moduleIdOrSlug: string): Promise<any[]> {
     const module =
@@ -57,37 +60,9 @@ export class ModulesService {
   }
 
   /**
-   * Find featured modules.
+   * Find featured modules (custom method).
    */
   async findFeatured(): Promise<Module[]> {
     return this.moduleRepository.findFeatured(5);
-  }
-
-  /**
-   * Create a new module.
-   */
-  async create(data: any): Promise<Module> {
-    return this.moduleRepository.create(data);
-  }
-
-  /**
-   * Update a module.
-   */
-  async update(id: string, data: any): Promise<Module> {
-    return this.moduleRepository.update(id, data);
-  }
-
-  /**
-   * Delete a module.
-   */
-  async remove(id: string): Promise<void> {
-    await this.moduleRepository.delete(id);
-  }
-
-  /**
-   * Count modules.
-   */
-  async count(where?: any): Promise<number> {
-    return this.moduleRepository.count(where);
   }
 }

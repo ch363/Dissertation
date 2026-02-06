@@ -1,0 +1,15 @@
+# Smoke Test: App Launch
+# Verifies app launches and shows landing screen
+
+appId: com.ch363.fluentia
+---
+
+- launchApp:
+    clearState: true
+
+# Should see the landing/login screen
+- extendedWaitUntil:
+    visible: "Log In"
+    timeout: 10000
+
+- assertVisible: "Choose how you'd like to continue"

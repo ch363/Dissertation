@@ -1,43 +1,16 @@
 import { Injectable } from '@nestjs/common';
+import { KNOWLEDGE_LEVEL } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { DEFAULT_SUGGESTIONS_LIMIT } from '../common/constants';
 import { LoggerService } from '../common/logger';
+import {
+  LessonSuggestion,
+  ModuleSuggestion,
+  SuggestionsResult,
+} from '../common/interfaces/learn.interface';
 
-/**
- * Lesson suggestion type
- */
-export interface LessonSuggestion {
-  lesson: {
-    id: string;
-    title: string;
-    imageUrl?: string | null;
-  };
-  module: {
-    id: string;
-    title: string;
-  };
-  reason: string;
-}
-
-/**
- * Module suggestion type
- */
-export interface ModuleSuggestion {
-  module: {
-    id: string;
-    title: string;
-    imageUrl?: string | null;
-  };
-  reason: string;
-}
-
-/**
- * Suggestions result type
- */
-export interface SuggestionsResult {
-  lessons: LessonSuggestion[];
-  modules: ModuleSuggestion[];
-}
+// Re-export for backward compatibility
+export type { LessonSuggestion, ModuleSuggestion, SuggestionsResult };
 
 /**
  * SuggestionService
@@ -174,7 +147,7 @@ export class SuggestionService {
    * Get lessons matching the user's knowledge level.
    */
   private async getLessonsMatchingLevel(
-    knowledgeLevel: string,
+    knowledgeLevel: KNOWLEDGE_LEVEL,
     startedLessonIds: Set<string>,
     moduleId: string | undefined,
     limit: number,

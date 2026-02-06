@@ -1,6 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { DELIVERY_METHOD } from '@prisma/client';
 import { DeliveryMethodStrategy } from './delivery-method-strategy.interface';
+import {
+  MultipleChoiceStrategy,
+  FillBlankStrategy,
+  TextTranslationStrategy,
+} from './strategies';
 
 /**
  * DeliveryMethodRegistry
@@ -18,8 +23,23 @@ import { DeliveryMethodStrategy } from './delivery-method-strategy.interface';
  * ```
  */
 @Injectable()
-export class DeliveryMethodRegistry {
+export class DeliveryMethodRegistry implements OnModuleInit {
   private strategies = new Map<DELIVERY_METHOD, DeliveryMethodStrategy>();
+
+  constructor(
+    private readonly mcStrategy: MultipleChoiceStrategy,
+    private readonly fbStrategy: FillBlankStrategy,
+    private readonly ttStrategy: TextTranslationStrategy,
+  ) {}
+
+  /**
+   * Register all strategies on module initialization.
+   */
+  onModuleInit() {
+    this.register(this.mcStrategy);
+    this.register(this.fbStrategy);
+    this.register(this.ttStrategy);
+  }
 
   /**
    * Register a strategy for a delivery method.
@@ -60,76 +80,5 @@ export class DeliveryMethodRegistry {
    */
   getRegisteredMethods(): DELIVERY_METHOD[] {
     return Array.from(this.strategies.keys());
-  }
-
-  /**
-   * Build step item using the appropriate strategy.
-   */
-  buildStepItem(
-    method: DELIVERY_METHOD,
-    question: any,
-    variantData: any,
-    teaching: any,
-    lessonId: string,
-  ) {
-    return this.get(method).buildStepItem(question, variantData, teaching, lessonId);
-  }
-
-  /**
-   * Build question data using the appropriate strategy.
-   */
-  buildQuestionData(
-    method: DELIVERY_METHOD,
-    question: any,
-    variant: any,
-    teaching: any,
-  ) {
-    return this.get(method).buildQuestionData(question, variant, teaching);
-  }
-
-  /**
-   * Build prompt using the appropriate strategy.
-   */
-  buildPrompt(method: DELIVERY_METHOD, context: any) {
-    return this.get(method).buildPrompt(context);
-  }
-
-  /**
-   * Validate answer using the appropriate strategy.
-   */
-  validateAnswer(
-    method: DELIVERY_METHOD,
-    userAnswer: string,
-    correctData: any,
-    teaching: any,
-    variantData: any,
-  ) {
-    return this.get(method).validateAnswer(
-      userAnswer,
-      correctData,
-      teaching,
-      variantData,
-    );
-  }
-
-  /**
-   * Get exercise type using the appropriate strategy.
-   */
-  getExerciseType(method: DELIVERY_METHOD) {
-    return this.get(method).getExerciseType();
-  }
-
-  /**
-   * Get time estimate using the appropriate strategy.
-   */
-  getTimeEstimate(method: DELIVERY_METHOD) {
-    return this.get(method).getTimeEstimate();
-  }
-
-  /**
-   * Check if method requires grammar checking.
-   */
-  requiresGrammarCheck(method: DELIVERY_METHOD) {
-    return this.get(method).requiresGrammarCheck();
   }
 }

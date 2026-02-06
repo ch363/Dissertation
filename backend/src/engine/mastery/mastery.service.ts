@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
 import { OnboardingPreferencesService } from '../../onboarding/onboarding-preferences.service';
+import { UserSkillMasteryRepository } from '../repositories';
 
 export interface BktParameters {
   prior: number; // P(L0)
@@ -18,6 +18,12 @@ export interface SkillMastery {
   slip: number;
 }
 
+/**
+ * MasteryService
+ *
+ * Manages user skill mastery using Bayesian Knowledge Tracing (BKT).
+ * Follows Dependency Inversion Principle - depends on repository interfaces.
+ */
 @Injectable()
 export class MasteryService {
   private readonly DEFAULT_PARAMETERS: BktParameters = {
@@ -28,7 +34,7 @@ export class MasteryService {
   };
 
   constructor(
-    private prisma: PrismaService,
+    private userSkillMasteryRepo: UserSkillMasteryRepository,
     private onboardingPreferences: OnboardingPreferencesService,
   ) {}
 
@@ -63,17 +69,11 @@ export class MasteryService {
 
     newMasteryProbability = Math.max(0, Math.min(1, newMasteryProbability));
 
-    await this.prisma.userSkillMastery.update({
-      where: {
-        userId_skillTag: {
-          userId,
-          skillTag,
-        },
-      },
-      data: {
-        masteryProbability: newMasteryProbability,
-      },
-    });
+    await this.userSkillMasteryRepo.updateMasteryProbability(
+      userId,
+      skillTag,
+      newMasteryProbability,
+    );
 
     return newMasteryProbability;
   }
@@ -87,14 +87,10 @@ export class MasteryService {
     userId: string,
     skillTag: string,
   ): Promise<SkillMastery | null> {
-    const record = await this.prisma.userSkillMastery.findUnique({
-      where: {
-        userId_skillTag: {
-          userId,
-          skillTag,
-        },
-      },
-    });
+    const record = await this.userSkillMasteryRepo.findByUserAndSkillTag(
+      userId,
+      skillTag,
+    );
 
     if (!record) {
       return null;
@@ -114,19 +110,7 @@ export class MasteryService {
     userId: string,
     threshold: number = 0.5,
   ): Promise<string[]> {
-    const records = await this.prisma.userSkillMastery.findMany({
-      where: {
-        userId,
-        masteryProbability: {
-          lt: threshold,
-        },
-      },
-      select: {
-        skillTag: true,
-      },
-    });
-
-    return records.map((r) => r.skillTag);
+    return this.userSkillMasteryRepo.findLowMasterySkills(userId, threshold);
   }
 
   async initializeMastery(
@@ -148,24 +132,17 @@ export class MasteryService {
       ...parameters,
     };
 
-    const record = await this.prisma.userSkillMastery.upsert({
-      where: {
-        userId_skillTag: {
-          userId,
-          skillTag,
-        },
-      },
-      create: {
-        userId,
-        skillTag,
+    const record = await this.userSkillMasteryRepo.upsertMastery(
+      userId,
+      skillTag,
+      {
         masteryProbability: params.prior,
         prior: params.prior,
         learn: params.learn,
         guess: params.guess,
         slip: params.slip,
       },
-      update: {},
-    });
+    );
 
     return {
       skillTag: record.skillTag,
@@ -181,14 +158,10 @@ export class MasteryService {
     userId: string,
     skillTags: string[],
   ): Promise<Map<string, number>> {
-    const records = await this.prisma.userSkillMastery.findMany({
-      where: {
-        userId,
-        skillTag: {
-          in: skillTags,
-        },
-      },
-    });
+    const records = await this.userSkillMasteryRepo.findManyByUserAndSkillTags(
+      userId,
+      skillTags,
+    );
 
     const map = new Map<string, number>();
     const defaultPrior = this.DEFAULT_PARAMETERS.prior;

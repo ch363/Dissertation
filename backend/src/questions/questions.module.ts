@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { QuestionsController } from './questions.controller';
 import { QuestionsService } from './questions.service';
 import { QuestionRepository } from './questions.repository';
+import { QuestionVariantRepository } from './repositories';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
@@ -9,12 +10,13 @@ import { PrismaModule } from '../prisma/prisma.module';
   controllers: [QuestionsController],
   providers: [
     QuestionRepository,
-    {
-      provide: 'IQuestionRepository',
-      useExisting: QuestionRepository,
-    },
+    QuestionVariantRepository,
     QuestionsService,
   ],
-  exports: [QuestionsService],
+  exports: [
+    QuestionsService,
+    QuestionRepository,
+    QuestionVariantRepository,
+  ],
 })
 export class QuestionsModule {}

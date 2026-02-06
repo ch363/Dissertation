@@ -2,7 +2,6 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
-  Inject,
 } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -20,10 +19,7 @@ import { LoggerService } from '../common/logger';
 export class UsersService {
   private readonly logger = new LoggerService(UsersService.name);
 
-  constructor(
-    @Inject('IUserRepository')
-    private readonly userRepository: UserRepository,
-  ) {}
+  constructor(private readonly userRepository: UserRepository) {}
 
   /**
    * Upsert a user by auth UID.

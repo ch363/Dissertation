@@ -1,14 +1,23 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
 import { DashboardPlanDto } from './types';
 import { SessionPlanService } from './session-plan.service';
 import { SessionPlanCacheService } from './session-plan-cache.service';
 import { SessionPlanDto, SessionContext } from './session-types';
+import { UserQuestionPerformanceRepository } from '../repositories';
+import { QuestionRepository } from '../../questions/questions.repository';
+import { TIME_ESTIMATES } from './session.config';
 
+/**
+ * ContentDeliveryService
+ *
+ * Orchestrates content delivery and session planning.
+ * Follows Dependency Inversion Principle - depends on repository interfaces.
+ */
 @Injectable()
 export class ContentDeliveryService {
   constructor(
-    private prisma: PrismaService,
+    private userQuestionPerformanceRepo: UserQuestionPerformanceRepository,
+    private questionRepository: QuestionRepository,
     private sessionPlanService: SessionPlanService,
     private sessionPlanCache: SessionPlanCacheService,
   ) {}
@@ -45,55 +54,45 @@ export class ContentDeliveryService {
   async getDashboardPlan(userId: string): Promise<DashboardPlanDto> {
     const now = new Date();
 
-    type Row = { count: bigint };
-    const dueResult = await this.prisma.$queryRaw<Row[]>`
-      SELECT COUNT(*) AS count FROM (
-        SELECT question_id, next_review_due,
-               ROW_NUMBER() OVER (PARTITION BY question_id ORDER BY created_at DESC) AS rn
-        FROM user_question_performance
-        WHERE user_id = ${userId}::uuid
-      ) sub
-      WHERE rn = 1 AND next_review_due IS NOT NULL AND next_review_due <= ${now}
-    `;
-    const dueQuestionCount = Number(dueResult[0]?.count ?? 0);
+    // Get due review count using repository
+    const dueQuestionCount =
+      await this.userQuestionPerformanceRepo.countDueReviewsLatestPerQuestion(
+        userId,
+        now,
+      );
 
     const dueReviews = Array(dueQuestionCount).fill({ dueAt: now });
 
-    const allQuestions = await this.prisma.question.findMany({
-      select: { id: true },
-    });
+    // Get all question IDs and attempted question IDs
+    const allQuestionIds = await this.questionRepository.findAllIds();
     const attemptedQuestionIds =
-      await this.prisma.userQuestionPerformance.findMany({
-        where: { userId },
-        select: { questionId: true },
-        distinct: ['questionId'],
-      });
-    const attemptedSet = new Set(attemptedQuestionIds.map((a) => a.questionId));
-    const newItemsCount = allQuestions.filter(
-      (q) => !attemptedSet.has(q.id),
+      await this.userQuestionPerformanceRepo.findDistinctQuestionIdsByUser(
+        userId,
+      );
+
+    const attemptedSet = new Set(attemptedQuestionIds);
+    const newItemsCount = allQuestionIds.filter(
+      (id) => !attemptedSet.has(id),
     ).length;
 
-    const nextQuestionReview =
-      await this.prisma.userQuestionPerformance.findFirst({
-        where: {
-          userId,
-          nextReviewDue: {
-            gt: now,
-            not: null,
-          },
-        },
-        orderBy: { nextReviewDue: 'asc' },
-        select: { nextReviewDue: true },
-      });
+    // Get next review due date
+    const nextReview =
+      await this.userQuestionPerformanceRepo.findFirstNextReviewDue(
+        userId,
+        now,
+      );
 
-    const nextReview = nextQuestionReview?.nextReviewDue ?? undefined;
-
-    const estimatedTimeMinutes = dueReviews.length * 5 + newItemsCount * 3;
+    // Convert seconds to minutes for time estimates
+    const reviewTimeMinutes =
+      (dueReviews.length * TIME_ESTIMATES.BY_DELIVERY_METHOD.MULTIPLE_CHOICE) / 60;
+    const newItemTimeMinutes =
+      (newItemsCount * TIME_ESTIMATES.TEACH_STEP_SECONDS) / 60;
+    const estimatedTimeMinutes = Math.ceil(reviewTimeMinutes + newItemTimeMinutes);
 
     return {
       dueReviews: dueReviews.length,
       newItemsAvailable: newItemsCount,
-      nextReviewDue: nextReview,
+      nextReviewDue: nextReview ?? undefined,
       estimatedTimeMinutes,
     };
   }

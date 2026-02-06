@@ -58,8 +58,8 @@ export class StepBuilderService {
       // Use strategy pattern to build step item
       // This replaces the large switch statement with polymorphic behavior
       if (this.deliveryMethodRegistry.has(deliveryMethod)) {
-        return this.deliveryMethodRegistry.buildStepItem(
-          deliveryMethod,
+        const strategy = this.deliveryMethodRegistry.get(deliveryMethod);
+        return strategy.buildStepItem(
           question,
           questionData,
           question.teaching,

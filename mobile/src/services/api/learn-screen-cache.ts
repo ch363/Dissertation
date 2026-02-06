@@ -2,12 +2,12 @@ import { getSuggestions } from './learn';
 import { getLessons, getModules } from './modules';
 import { getDashboard } from './profile';
 import { getUserLessons } from './progress';
-import { DEFAULT_CACHE_TTL_MS, DEFAULT_DASHBOARD_DATA } from './defaults';
+import { DEFAULT_DASHBOARD_DATA } from './defaults';
 
-import { CacheManager } from '@/services/cache/cache-utils';
-import { createLogger } from '@/services/logging';
-
-const logger = createLogger('LearnScreenCache');
+import {
+  ScreenCacheService,
+  safeApiCall,
+} from '@/services/cache/screen-cache';
 
 export interface LearnScreenCacheData {
   modules: Awaited<ReturnType<typeof getModules>>;
@@ -17,32 +17,31 @@ export interface LearnScreenCacheData {
   suggestions: Awaited<ReturnType<typeof getSuggestions>>;
 }
 
-const cache = new CacheManager<LearnScreenCacheData>(DEFAULT_CACHE_TTL_MS);
+const cacheService = new ScreenCacheService<LearnScreenCacheData>(
+  'learn-screen',
+  'LearnScreenCache',
+);
 
 export async function preloadLearnScreenData(): Promise<void> {
-  try {
-    const [modules, lessons, userProgress, dashboard, suggestions] = await Promise.all([
-      getModules().catch(() => []),
-      getLessons().catch(() => []),
-      getUserLessons().catch(() => []),
-      getDashboard().catch(() => DEFAULT_DASHBOARD_DATA),
-      getSuggestions({ limit: 8 }).catch(() => ({ lessons: [], modules: [] })),
-    ]);
+  await cacheService.preload(async () => {
+    const [modules, lessons, userProgress, dashboard, suggestions] =
+      await Promise.all([
+        safeApiCall(getModules, []),
+        safeApiCall(getLessons, []),
+        safeApiCall(getUserLessons, []),
+        safeApiCall(getDashboard, DEFAULT_DASHBOARD_DATA),
+        safeApiCall(() => getSuggestions({ limit: 8 }), {
+          lessons: [],
+          modules: [],
+        }),
+      ]);
 
-    cache.set('learn-screen', {
-      modules,
-      lessons,
-      userProgress,
-      dashboard,
-      suggestions,
-    });
-  } catch (error) {
-    logger.warn('Failed to preload Learn screen data (non-critical)', error);
-  }
+    return { modules, lessons, userProgress, dashboard, suggestions };
+  });
 }
 
 export function getCachedLearnScreenData(): LearnScreenCacheData | null {
-  return cache.get('learn-screen');
+  return cacheService.getCached();
 }
 
 export function getCachedModules(): LearnScreenCacheData['modules'] | null {
@@ -51,5 +50,5 @@ export function getCachedModules(): LearnScreenCacheData['modules'] | null {
 }
 
 export function clearLearnScreenCache(): void {
-  cache.clear();
+  cacheService.clearAll();
 }

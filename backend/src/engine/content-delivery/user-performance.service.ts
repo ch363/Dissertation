@@ -1,23 +1,31 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
 import { DELIVERY_METHOD } from '@prisma/client';
 import { UserTimeAverages } from './session-types';
 import { getDefaultTimeAverages } from './content-delivery.policy';
 import { OnboardingPreferencesService } from '../../onboarding/onboarding-preferences.service';
 import { LoggerService } from '../../common/logger';
+import { isMissingColumnOrSchemaMismatchError } from '../../common/utils/prisma-error.util';
+import {
+  UserQuestionPerformanceRepository,
+  UserDeliveryMethodScoreRepository,
+  UserTeachingViewRepository,
+} from '../repositories';
 
 /**
  * UserPerformanceService
- * 
+ *
  * Manages user performance data and preferences.
  * Follows Single Responsibility Principle - focused on user-specific data retrieval.
+ * Follows Dependency Inversion Principle - depends on repository interfaces.
  */
 @Injectable()
 export class UserPerformanceService {
   private readonly logger = new LoggerService(UserPerformanceService.name);
 
   constructor(
-    private prisma: PrismaService,
+    private userQuestionPerformanceRepo: UserQuestionPerformanceRepository,
+    private userDeliveryMethodScoreRepo: UserDeliveryMethodScoreRepository,
+    private userTeachingViewRepo: UserTeachingViewRepository,
     private onboardingPreferences: OnboardingPreferencesService,
   ) {}
 
@@ -27,20 +35,19 @@ export class UserPerformanceService {
   async getUserAverageTimes(userId: string): Promise<UserTimeAverages> {
     let performances;
     try {
-      performances = await this.prisma.userQuestionPerformance.findMany({
-        where: { userId },
-        select: {
-          timeToComplete: true,
-          deliveryMethod: true,
+      performances = await this.userQuestionPerformanceRepo.findManyByUserId(
+        userId,
+        {
+          take: 100,
+          select: {
+            timeToComplete: true,
+            deliveryMethod: true,
+          },
         },
-        take: 100,
-      });
-    } catch (error: any) {
-      if (
-        error?.message?.includes('column') ||
-        error?.message?.includes('does not exist') ||
-        error?.message?.includes('not available')
-      ) {
+      );
+    } catch (error: unknown) {
+      // Gracefully handle schema mismatch errors (e.g., during migrations)
+      if (isMissingColumnOrSchemaMismatchError(error)) {
         return getDefaultTimeAverages();
       }
       throw error;
@@ -87,27 +94,15 @@ export class UserPerformanceService {
    * Get set of teaching IDs the user has already seen.
    */
   async getSeenTeachingIds(userId: string): Promise<Set<string>> {
-    const viewedTeachings = await this.prisma.userTeachingView.findMany({
-      where: { userId },
-      select: { teachingId: true },
-    });
-
-    return new Set(viewedTeachings.map((v) => v.teachingId));
+    return this.userTeachingViewRepo.getSeenTeachingIdsByUserId(userId);
   }
 
   /**
    * Get user's delivery method performance scores.
    */
-  async getDeliveryMethodScores(userId: string): Promise<Map<DELIVERY_METHOD, number>> {
-    const scores = await this.prisma.userDeliveryMethodScore.findMany({
-      where: { userId },
-    });
-
-    const scoreMap = new Map<DELIVERY_METHOD, number>();
-    for (const score of scores) {
-      scoreMap.set(score.deliveryMethod, score.score);
-    }
-
-    return scoreMap;
+  async getDeliveryMethodScores(
+    userId: string,
+  ): Promise<Map<DELIVERY_METHOD, number>> {
+    return this.userDeliveryMethodScoreRepo.getScoreMapByUserId(userId);
   }
 }

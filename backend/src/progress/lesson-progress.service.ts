@@ -4,20 +4,30 @@ import { LoggerService } from '../common/logger';
 import { SessionPlanCacheService } from '../engine/content-delivery/session-plan-cache.service';
 import { getEndOfLocalDayUtc } from '../common/utils/date.util';
 import { normalizeTitle } from '../common/utils/string.util';
+import { UserLessonRepository } from './repositories/user-lesson.repository';
+import { UserTeachingCompletedRepository } from './repositories/user-teaching-completed.repository';
+import { TeachingRepository } from '../teachings/teachings.repository';
 
 /**
  * LessonProgressService
  * 
  * Manages user progress through lessons and modules.
  * Follows Single Responsibility Principle - focused on lesson lifecycle tracking.
+ * 
+ * DIP Compliance: Uses repositories for data access where possible.
+ * Note: Some Prisma calls remain for complex cross-entity queries
+ * (getUserLessons performances, markModuleCompleted module lookup).
  */
 @Injectable()
 export class LessonProgressService {
   private readonly logger = new LoggerService(LessonProgressService.name);
 
   constructor(
-    private prisma: PrismaService,
-    private sessionPlanCache: SessionPlanCacheService,
+    private readonly prisma: PrismaService, // Retained for complex cross-entity queries
+    private readonly sessionPlanCache: SessionPlanCacheService,
+    private readonly userLessonRepository: UserLessonRepository,
+    private readonly userTeachingCompletedRepository: UserTeachingCompletedRepository,
+    private readonly teachingRepository: TeachingRepository,
   ) {}
 
   /**
@@ -25,31 +35,12 @@ export class LessonProgressService {
    * Creates or updates the UserLesson record.
    */
   async startLesson(userId: string, lessonId: string) {
-    const now = new Date();
-    return this.prisma.userLesson.upsert({
-      where: {
-        userId_lessonId: {
-          userId,
-          lessonId,
-        },
-      },
-      update: {
-        startedAt: now,
-        updatedAt: now,
-      },
-      create: {
-        userId,
-        lessonId,
-        completedTeachings: 0,
-        startedAt: now,
-      },
-      include: {
-        lesson: {
-          select: {
-            id: true,
-            title: true,
-            imageUrl: true,
-          },
+    return this.userLessonRepository.startLesson(userId, lessonId, {
+      lesson: {
+        select: {
+          id: true,
+          title: true,
+          imageUrl: true,
         },
       },
     });
@@ -59,19 +50,7 @@ export class LessonProgressService {
    * Mark a lesson as ended for a user.
    */
   async endLesson(userId: string, lessonId: string) {
-    const now = new Date();
-    return this.prisma.userLesson.update({
-      where: {
-        userId_lessonId: {
-          userId,
-          lessonId,
-        },
-      },
-      data: {
-        endedAt: now,
-        updatedAt: now,
-      },
-    });
+    return this.userLessonRepository.endLesson(userId, lessonId);
   }
 
   /**
@@ -82,9 +61,25 @@ export class LessonProgressService {
     const nowUserLocal = new Date(Date.now() + offsetMs);
     const endOfTodayUtc = getEndOfLocalDayUtc(nowUserLocal, offsetMs);
 
-    // Get all user lessons with lesson details
-    const userLessons = await this.prisma.userLesson.findMany({
-      where: { userId },
+    // Get all user lessons with lesson details using repository
+    type UserLessonWithDetails = {
+      lessonId: string;
+      userId: string;
+      completedTeachings: number;
+      startedAt: Date | null;
+      endedAt: Date | null;
+      createdAt: Date;
+      updatedAt: Date;
+      lesson: {
+        id: string;
+        title: string;
+        imageUrl: string | null;
+        moduleId: string;
+        module: { id: string; title: string };
+        _count: { teachings: number };
+      };
+    };
+    const userLessons = (await this.userLessonRepository.findManyByUserId(userId, {
       include: {
         lesson: {
           include: {
@@ -92,13 +87,11 @@ export class LessonProgressService {
               select: {
                 id: true,
                 title: true,
-                slug: true,
               },
             },
             _count: {
               select: {
                 teachings: true,
-                questions: true,
               },
             },
           },
@@ -106,26 +99,32 @@ export class LessonProgressService {
       },
       orderBy: {
         lesson: {
-          order: 'asc',
+          title: 'asc',
         },
       },
-    });
+    })) as unknown as UserLessonWithDetails[];
 
-    // Get performance for questions in these lessons
+    // Get performance for questions in these lessons (through teaching relation)
     const lessonIds = userLessons.map((ul) => ul.lessonId);
     const performances = await this.prisma.userQuestionPerformance.findMany({
       where: {
         userId,
         question: {
-          lessonId: {
-            in: lessonIds,
+          teaching: {
+            lessonId: {
+              in: lessonIds,
+            },
           },
         },
       },
       include: {
         question: {
-          select: {
-            lessonId: true,
+          include: {
+            teaching: {
+              select: {
+                lessonId: true,
+              },
+            },
           },
         },
       },
@@ -134,7 +133,7 @@ export class LessonProgressService {
     // Group performances by lesson and count due reviews
     const performancesByLesson = new Map<string, any[]>();
     for (const perf of performances) {
-      const lessonId = perf.question.lessonId;
+      const lessonId = perf.question.teaching?.lessonId;
       if (!lessonId) continue;
       if (!performancesByLesson.has(lessonId)) {
         performancesByLesson.set(lessonId, []);
@@ -145,13 +144,12 @@ export class LessonProgressService {
     return userLessons.map((ul) => {
       const perfs = performancesByLesson.get(ul.lessonId) || [];
       const dueReviewCount = perfs.filter(
-        (p) => p.nextReviewAt && p.nextReviewAt <= endOfTodayUtc,
+        (p) => p.nextReviewDue && p.nextReviewDue <= endOfTodayUtc,
       ).length;
 
       return {
-        id: ul.id,
-        userId: ul.userId,
         lessonId: ul.lessonId,
+        userId: ul.userId,
         completedTeachings: ul.completedTeachings,
         startedAt: ul.startedAt,
         endedAt: ul.endedAt,
@@ -160,12 +158,9 @@ export class LessonProgressService {
         lesson: {
           id: ul.lesson.id,
           title: ul.lesson.title,
-          slug: ul.lesson.slug,
-          order: ul.lesson.order,
           imageUrl: ul.lesson.imageUrl,
           moduleId: ul.lesson.moduleId,
           totalTeachings: ul.lesson._count.teachings,
-          totalQuestions: ul.lesson._count.questions,
           module: ul.lesson.module,
         },
         dueReviewCount,
@@ -176,24 +171,15 @@ export class LessonProgressService {
   /**
    * Mark a teaching as completed for a user.
    * Increments completedTeachings count and invalidates session plan cache.
+   * Uses repositories for DIP compliance.
    */
   async completeTeaching(
     userId: string,
     teachingId: string,
     timeSpentMs?: number,
   ) {
-    // Get teaching to find associated lesson
-    const teaching = await this.prisma.teaching.findUnique({
-      where: { id: teachingId },
-      select: {
-        lessonId: true,
-        questions: {
-          select: {
-            id: true,
-          },
-        },
-      },
-    });
+    // Get teaching using repository
+    const teaching = await this.teachingRepository.findByIdWithQuestionIds(teachingId);
 
     if (!teaching) {
       throw new NotFoundException(`Teaching ${teachingId} not found`);
@@ -208,68 +194,24 @@ export class LessonProgressService {
       return null;
     }
 
-    // Record teaching view
-    const now = new Date();
-    await this.prisma.userTeachingView.upsert({
-      where: {
-        userId_teachingId: {
-          userId,
-          teachingId,
-        },
-      },
-      update: {
-        viewedAt: now,
-        ...(timeSpentMs !== undefined && { timeSpentMs }),
-      },
-      create: {
-        userId,
-        teachingId,
-        viewedAt: now,
-        ...(timeSpentMs !== undefined && { timeSpentMs }),
-      },
-    });
+    // Record teaching completion using repository
+    await this.userTeachingCompletedRepository.markCompleted(userId, teachingId);
 
-    // Get all teachings in this lesson
-    const allTeachings = await this.prisma.teaching.findMany({
-      where: { lessonId },
-      select: { id: true },
-    });
-
-    // Get viewed teachings for this user in this lesson
-    const viewedTeachings = await this.prisma.userTeachingView.findMany({
-      where: {
-        userId,
-        teaching: {
-          lessonId,
-        },
-      },
-      select: { teachingId: true },
-    });
+    // Get completed teachings for this user in this lesson using repository
+    const viewedTeachings = await this.userTeachingCompletedRepository.findManyByUserAndLesson(
+      userId,
+      lessonId,
+    );
 
     const completedCount = viewedTeachings.length;
 
-    // Update or create UserLesson with completed count
-    const updated = await this.prisma.userLesson.upsert({
-      where: {
-        userId_lessonId: {
-          userId,
-          lessonId,
-        },
-      },
-      update: {
-        completedTeachings: completedCount,
-        updatedAt: now,
-      },
-      create: {
-        userId,
-        lessonId,
-        completedTeachings: completedCount,
-        startedAt: now,
-      },
+    // Update or create UserLesson with completed count using repository
+    const updated = await this.userLessonRepository.upsert(userId, lessonId, {
+      completedTeachings: completedCount,
     });
 
     // Invalidate session plan cache for this lesson
-    this.sessionPlanCache.invalidate(userId, lessonId);
+    this.sessionPlanCache.invalidateLesson(userId, lessonId);
 
     return updated;
   }
@@ -278,10 +220,10 @@ export class LessonProgressService {
    * Mark all lessons in a module as completed.
    */
   async markModuleCompleted(userId: string, moduleIdOrSlug: string) {
-    // Find module by ID or slug
+    // Find module by ID or title (normalized)
     const module = await this.prisma.module.findFirst({
       where: {
-        OR: [{ id: moduleIdOrSlug }, { slug: normalizeTitle(moduleIdOrSlug) }],
+        OR: [{ id: moduleIdOrSlug }, { title: normalizeTitle(moduleIdOrSlug) }],
       },
       include: {
         lessons: {
@@ -302,51 +244,20 @@ export class LessonProgressService {
       );
     }
 
-    const now = new Date();
-
-    // Mark all teachings as viewed
+    // Mark all teachings and lessons as completed using repositories
     for (const lesson of module.lessons) {
-      for (const teaching of lesson.teachings) {
-        await this.prisma.userTeachingView.upsert({
-          where: {
-            userId_teachingId: {
-              userId,
-              teachingId: teaching.id,
-            },
-          },
-          update: {
-            viewedAt: now,
-          },
-          create: {
-            userId,
-            teachingId: teaching.id,
-            viewedAt: now,
-          },
-        });
-      }
+      const teachingIds = lesson.teachings.map((t) => t.id);
+      
+      // Mark all teachings as completed using repository batch operation
+      await this.userTeachingCompletedRepository.markManyCompleted(userId, teachingIds);
 
-      // Update UserLesson
-      await this.prisma.userLesson.upsert({
-        where: {
-          userId_lessonId: {
-            userId,
-            lessonId: lesson.id,
-          },
-        },
-        update: {
-          completedTeachings: lesson.teachings.length,
-          updatedAt: now,
-        },
-        create: {
-          userId,
-          lessonId: lesson.id,
-          completedTeachings: lesson.teachings.length,
-          startedAt: now,
-        },
+      // Update UserLesson using repository
+      await this.userLessonRepository.upsert(userId, lesson.id, {
+        completedTeachings: lesson.teachings.length,
       });
 
       // Invalidate cache
-      this.sessionPlanCache.invalidate(userId, lesson.id);
+      this.sessionPlanCache.invalidateLesson(userId, lesson.id);
     }
 
     return { moduleId: module.id, lessonsCompleted: module.lessons.length };

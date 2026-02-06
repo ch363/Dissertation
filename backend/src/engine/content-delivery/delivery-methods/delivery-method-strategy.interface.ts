@@ -1,20 +1,20 @@
 import { DELIVERY_METHOD } from '@prisma/client';
 
 /**
- * DeliveryMethodStrategy Interface
+ * Delivery Method Strategy Interfaces
  * 
- * Strategy pattern for delivery method-specific behavior.
- * Follows Open/Closed Principle - new delivery methods can be added
- * without modifying existing code.
+ * Split into focused interfaces following Interface Segregation Principle (ISP).
+ * Each interface represents a cohesive set of operations.
  * 
- * Each delivery method implements this interface to provide:
- * - Step item building
- * - Question data generation
- * - Prompt building
- * - Answer validation
- * - Exercise type classification
- * - Time estimation
+ * Benefits of ISP:
+ * - Consumers only depend on interfaces they use
+ * - Easier to implement partial strategies
+ * - Better testability with focused mocks
  */
+
+// =============================================================================
+// Data Types
+// =============================================================================
 
 export interface QuestionData {
   prompt?: string;
@@ -48,12 +48,29 @@ export interface PracticeStepItem {
   [key: string]: any; // Additional delivery-method-specific fields
 }
 
-export interface DeliveryMethodStrategy {
+// =============================================================================
+// ISP: Segregated Interfaces
+// =============================================================================
+
+/**
+ * IDeliveryMethodIdentifier
+ * 
+ * Basic identification for a delivery method strategy.
+ */
+export interface IDeliveryMethodIdentifier {
   /**
    * Get the delivery method this strategy handles.
    */
   getMethod(): DELIVERY_METHOD;
+}
 
+/**
+ * IStepItemBuilder
+ * 
+ * Builds step items and question data for session plans.
+ * Used by SessionPlanService and StepBuilderService.
+ */
+export interface IStepItemBuilder {
   /**
    * Build a practice step item with delivery-method-specific data.
    */
@@ -73,7 +90,15 @@ export interface DeliveryMethodStrategy {
    * Build prompt text for this delivery method.
    */
   buildPrompt(context: PromptContext): string;
+}
 
+/**
+ * IAnswerValidator
+ * 
+ * Validates user answers against correct answers.
+ * Used by AnswerValidationService.
+ */
+export interface IAnswerValidator {
   /**
    * Validate user answer against correct answer.
    */
@@ -83,7 +108,15 @@ export interface DeliveryMethodStrategy {
     teaching: any,
     variantData: any,
   ): ValidationResult;
+}
 
+/**
+ * IExerciseMetadata
+ * 
+ * Provides metadata about the delivery method.
+ * Used for exercise classification, time estimation, and feature flags.
+ */
+export interface IExerciseMetadata {
   /**
    * Get exercise type classification for this delivery method.
    */
@@ -99,3 +132,25 @@ export interface DeliveryMethodStrategy {
    */
   requiresGrammarCheck(): boolean;
 }
+
+// =============================================================================
+// Combined Interface (Backward Compatible)
+// =============================================================================
+
+/**
+ * DeliveryMethodStrategy
+ * 
+ * Complete strategy interface combining all capabilities.
+ * Maintains backward compatibility while allowing consumers
+ * to depend only on the interfaces they need.
+ * 
+ * Example usage:
+ * - Use IStepItemBuilder when only building step items
+ * - Use IAnswerValidator when only validating answers
+ * - Use DeliveryMethodStrategy for full implementation
+ */
+export interface DeliveryMethodStrategy
+  extends IDeliveryMethodIdentifier,
+    IStepItemBuilder,
+    IAnswerValidator,
+    IExerciseMetadata {}

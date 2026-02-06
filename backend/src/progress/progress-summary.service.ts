@@ -1,37 +1,52 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, forwardRef, Inject } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoggerService } from '../common/logger';
 import { getEndOfLocalDayUtc } from '../common/utils/date.util';
+import { QuestionAttemptService } from './question-attempt.service';
+import { UserLessonRepository } from './repositories';
+import { UserQuestionPerformanceRepository } from '../engine/repositories';
 
 /**
  * ProgressSummaryService
  * 
  * Provides aggregated progress statistics and summaries.
  * Follows Single Responsibility Principle - focused on progress reporting.
+ * Uses QuestionAttemptService for due review counting (DRY principle).
+ * 
+ * DIP Compliance: Uses repository abstractions where possible.
+ * Note: Some Prisma calls remain for cross-entity aggregations (User, Module, Lesson counts)
+ * that would be better served by dedicated services in the future.
  */
 @Injectable()
 export class ProgressSummaryService {
   private readonly logger = new LoggerService(ProgressSummaryService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService, // Retained for cross-entity aggregations
+    private readonly userLessonRepository: UserLessonRepository,
+    private readonly userQuestionPerformanceRepository: UserQuestionPerformanceRepository,
+    @Inject(forwardRef(() => QuestionAttemptService))
+    private readonly questionAttemptService: QuestionAttemptService,
+  ) {}
 
   /**
    * Calculate user's learning streak in days.
    * Returns 0 if no activity in last 48 hours.
+   * Uses repository for DIP compliance.
    */
   async calculateStreak(userId: string): Promise<number> {
     const now = new Date();
 
-    const performances = await this.prisma.userQuestionPerformance.findMany({
-      where: { userId },
-      select: {
-        lastRevisedAt: true,
-        createdAt: true,
+    // Use repository for performance data
+    const performances = await this.userQuestionPerformanceRepository.findManyByUserId(
+      userId,
+      {
+        select: {
+          lastRevisedAt: true,
+          createdAt: true,
+        } as any, // Cast needed for partial select
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    );
 
     if (performances.length === 0) {
       return 0;
@@ -101,49 +116,6 @@ export class ProgressSummaryService {
   }
 
   /**
-   * Get count of due reviews for a user.
-   * Uses latest performance per question (not all historical records).
-   */
-  async getDueReviewCount(
-    userId: string,
-    dueCutoff?: Date,
-  ): Promise<number> {
-    const cutoff = dueCutoff || getEndOfLocalDayUtc(new Date(), 0);
-
-    // Get latest performance per question
-    const latestPerformances =
-      await this.prisma.userQuestionPerformance.groupBy({
-        by: ['questionId'],
-        where: { userId },
-        _max: {
-          createdAt: true,
-        },
-      });
-
-    if (latestPerformances.length === 0) {
-      return 0;
-    }
-
-    // Fetch actual performance records
-    const performances = await this.prisma.userQuestionPerformance.findMany({
-      where: {
-        userId,
-        OR: latestPerformances.map((lp) => ({
-          questionId: lp.questionId,
-          createdAt: lp._max.createdAt!,
-        })),
-      },
-    });
-
-    // Count how many are due
-    const dueCount = performances.filter(
-      (p) => p.nextReviewAt && p.nextReviewAt <= cutoff,
-    ).length;
-
-    return dueCount;
-  }
-
-  /**
    * Get comprehensive progress summary for a user.
    * Includes XP, streak, completed lessons/modules, and due reviews.
    */
@@ -158,26 +130,15 @@ export class ProgressSummaryService {
 
     const xp = user?.knowledgePoints || 0;
 
-    // Get due review count
+    // Get due review count using QuestionAttemptService (single source of truth)
     const dueCutoff = getEndOfLocalDayUtc(now, tzOffsetMinutes);
-    const dueReviewCount = await this.getDueReviewCount(userId, dueCutoff);
+    const dueReviewCount = await this.questionAttemptService.getDueReviewCount(
+      userId,
+      dueCutoff,
+    );
 
-    // Get user lessons
-    const userLessons = await this.prisma.userLesson.findMany({
-      where: { userId },
-      include: {
-        lesson: {
-          include: {
-            teachings: {
-              select: { id: true },
-            },
-            module: {
-              select: { id: true },
-            },
-          },
-        },
-      },
-    });
+    // Get user lessons with details using repository
+    const userLessons = await this.userLessonRepository.findManyWithLessonDetails(userId);
 
     // Count completed lessons (where all teachings are viewed)
     const completedLessons = userLessons.filter(

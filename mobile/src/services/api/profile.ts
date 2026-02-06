@@ -2,9 +2,14 @@ import { apiClient } from './client';
 import { buildTzQueryString, appendQueryString } from './query-builder';
 
 import { cacheAvatarFile, clearCachedAvatar } from '@/services/cache/avatar-cache';
+import { readAvatarAsBytes } from '@/services/file/avatar-file-reader';
 import { createLogger } from '@/services/logging';
+import {
+  uploadAvatarToStorage,
+  getSignedAvatarUrl,
+  getPublicAvatarUrl,
+} from '@/services/storage/avatar-storage';
 import { getSupabaseClient } from '@/services/supabase/client';
-import { getFileSystemModule } from '@/services/utils/file-system-loader';
 
 const Logger = createLogger('ProfileAPI');
 
@@ -168,80 +173,24 @@ export async function getRecentActivity(): Promise<RecentActivity> {
   return apiClient.get<RecentActivity>('/me/recent');
 }
 
+/**
+ * Upload an avatar image.
+ *
+ * Orchestrates file reading, storage upload, and backend sync.
+ * Delegates to focused services following Single Responsibility Principle.
+ */
 export async function uploadAvatar(imageUri: string, userId: string): Promise<string> {
   try {
+    // Cache locally for quick access
     await cacheAvatarFile(imageUri, userId);
 
-    const FileSystem = await getFileSystemModule();
+    // Read file bytes (handles platform differences)
+    const { bytes, extension } = await readAvatarAsBytes(imageUri);
 
-    const extension = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
-    const fileName = `${userId}/avatar.${extension}`;
+    // Upload to Supabase Storage
+    const publicUrl = await uploadAvatarToStorage(bytes, userId, extension);
 
-    let bytes: Uint8Array;
-    if (FileSystem) {
-      const fileInfo = await FileSystem.getInfoAsync(imageUri);
-      if (!fileInfo.exists) {
-        throw new Error('Image file not found');
-      }
-
-      const base64Data = await FileSystem.readAsStringAsync(imageUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-      let output = '';
-      let i = 0;
-      const cleanBase64 = base64Data.replace(/[^A-Za-z0-9\+\/\=]/g, '');
-      while (i < cleanBase64.length) {
-        const enc1 = chars.indexOf(cleanBase64.charAt(i++));
-        const enc2 = chars.indexOf(cleanBase64.charAt(i++));
-        const enc3 = chars.indexOf(cleanBase64.charAt(i++));
-        const enc4 = chars.indexOf(cleanBase64.charAt(i++));
-        const chr1 = (enc1 << 2) | (enc2 >> 4);
-        const chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
-        const chr3 = ((enc3 & 3) << 6) | enc4;
-        output += String.fromCharCode(chr1);
-        if (enc3 !== 64) output += String.fromCharCode(chr2);
-        if (enc4 !== 64) output += String.fromCharCode(chr3);
-      }
-
-      bytes = new Uint8Array(output.length);
-      for (let j = 0; j < output.length; j++) {
-        bytes[j] = output.charCodeAt(j);
-      }
-    } else if (Platform.OS === 'web') {
-      const resp = await fetch(imageUri);
-      if (!resp.ok) {
-        throw new Error(`Failed to read image for upload (HTTP ${resp.status})`);
-      }
-      const ab = await resp.arrayBuffer();
-      bytes = new Uint8Array(ab);
-    } else {
-      throw new Error(
-        'File system is not available. Please rebuild the app (expo run:ios / expo run:android).',
-      );
-    }
-
-    const supabase = getSupabaseClient();
-
-    const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, bytes, {
-      contentType: `image/${extension === 'jpg' ? 'jpeg' : extension}`,
-      upsert: true,
-    });
-
-    if (uploadError) {
-      Logger.error('Supabase Storage upload error', uploadError);
-      throw new Error(`Failed to upload avatar: ${uploadError.message}`);
-    }
-
-    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
-
-    if (!urlData?.publicUrl) {
-      throw new Error('Failed to get public URL from Supabase Storage');
-    }
-
-    const publicUrl = urlData.publicUrl;
-
+    // Sync URL with backend (non-blocking)
     try {
       await apiClient.post<{ avatarUrl: string }>('/me/avatar', {
         avatarUrl: publicUrl,
@@ -257,16 +206,21 @@ export async function uploadAvatar(imageUri: string, userId: string): Promise<st
   }
 }
 
+/**
+ * Refresh a signed avatar URL if it's a Supabase Storage URL.
+ *
+ * Uses focused storage utilities following Single Responsibility Principle.
+ */
 export async function refreshSignedAvatarUrlFromUrl(url: string): Promise<string> {
   if (!url) {
     return url;
   }
 
   try {
-    const supabase = getSupabaseClient();
     const urlObj = new URL(url);
     const isSupabaseStorage =
-      urlObj.hostname.includes('supabase.co') && urlObj.pathname.includes('/storage/v1/object/');
+      urlObj.hostname.includes('supabase.co') &&
+      urlObj.pathname.includes('/storage/v1/object/');
 
     if (!isSupabaseStorage) {
       return url;
@@ -281,16 +235,16 @@ export async function refreshSignedAvatarUrlFromUrl(url: string): Promise<string
 
     const [, bucket, filePath] = pathMatch;
 
+    // Only refresh signed URLs (those with a token)
     if (urlObj.searchParams.has('token')) {
-      const { data, error } = await supabase.storage.from(bucket).createSignedUrl(filePath, 3600);
-
-      if (error) {
-        Logger.error('Failed to create signed URL', error);
-        const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(filePath);
-        return publicData?.publicUrl || url;
+      const signedUrl = await getSignedAvatarUrl(bucket, filePath);
+      if (signedUrl) {
+        return signedUrl;
       }
 
-      return data.signedUrl;
+      // Fall back to public URL if signed URL fails
+      const publicUrl = getPublicAvatarUrl(bucket, filePath);
+      return publicUrl || url;
     }
 
     return url;

@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import * as Haptics from 'expo-haptics';
 
-import { getDeliveryMethodForCardKind } from '../../delivery-methods';
+import { getDeliveryMethodForCardKind } from '../delivery-methods';
 
 import {
   validateAnswer,

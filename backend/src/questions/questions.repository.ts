@@ -99,4 +99,94 @@ export class QuestionRepository extends PrismaRepository<
       where: { teachingId },
     });
   }
+
+  /**
+   * Find a question by ID with teaching and skill tags included.
+   * Used by ContentDataService for engine operations.
+   */
+  async findByIdWithTeachingAndSkillTags(id: string): Promise<Question | null> {
+    return this.getModel().findUnique({
+      where: { id },
+      include: {
+        teaching: {
+          include: {
+            skillTags: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Find all question IDs.
+   * Used by ContentDeliveryService for dashboard calculations.
+   */
+  async findAllIds(): Promise<string[]> {
+    const questions = await this.getModel().findMany({
+      select: { id: true },
+    });
+    return questions.map((q) => q.id);
+  }
+
+  /**
+   * Find a question by ID with full details including teaching, lesson, and skill tags.
+   * Used by QuestionAttemptService for recording attempts.
+   */
+  async findByIdWithDetails(id: string) {
+    return this.getModel().findUnique({
+      where: { id },
+      include: {
+        teaching: {
+          include: {
+            lesson: {
+              select: {
+                id: true,
+                title: true,
+              },
+            },
+            skillTags: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+        skillTags: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Find a question by ID with variants and skill tags included.
+   * Used by AnswerValidationService for validating responses.
+   */
+  async findByIdWithVariantsAndSkillTags(id: string) {
+    return this.getModel().findUnique({
+      where: { id },
+      include: {
+        variants: true,
+        skillTags: {
+          select: {
+            name: true,
+          },
+        },
+        teaching: {
+          select: {
+            id: true,
+            learningLanguageString: true,
+            userLanguageString: true,
+            lessonId: true,
+          },
+        },
+      },
+    });
+  }
 }

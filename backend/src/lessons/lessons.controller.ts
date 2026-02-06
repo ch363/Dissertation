@@ -38,7 +38,7 @@ export class LessonsController {
 
   @Get()
   findAll(@Query() query: LessonsQueryDto) {
-    return this.lessonsService.findAll(query.moduleId);
+    return this.lessonsService.findAllByModule(query.moduleId);
   }
 
   @Post()

@@ -1,0 +1,32 @@
+# Tab Navigation Flow
+# Logs in and cycles through all tabs
+
+appId: com.ch363.fluentia
+---
+
+# Login first
+- runFlow: login.yaml
+
+# Should start on Home
+- assertVisible: Welcome back, Callum
+
+# Go to Learn
+- tapOn: Learn
+- waitForAnimationToEnd
+
+# Go to Profile
+- tapOn: Profile
+- waitForAnimationToEnd
+- assertVisible: Callum
+
+# Back to Home
+- tapOn:
+    id: "tab-home"
+- waitForAnimationToEnd
+- assertVisible: Welcome back, Callum
+
+# Cycle again quickly
+- tapOn: Learn
+- tapOn: Profile
+- tapOn:
+    id: "tab-home"

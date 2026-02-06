@@ -7,14 +7,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 @Module({
   imports: [PrismaModule],
   controllers: [TeachingsController],
-  providers: [
-    TeachingRepository,
-    {
-      provide: 'ITeachingRepository',
-      useExisting: TeachingRepository,
-    },
-    TeachingsService,
-  ],
-  exports: [TeachingsService],
+  providers: [TeachingRepository, TeachingsService],
+  exports: [TeachingsService, TeachingRepository],
 })
 export class TeachingsModule {}

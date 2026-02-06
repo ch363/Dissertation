@@ -1,0 +1,164 @@
+appId: com.ch363.fluentia
+---
+- launchApp:
+    clearState: true
+- tapOn: Log In
+- tapOn:
+    text: Email
+    index: -1
+- inputText: callumherzog@hotmail.co.uk
+- tapOn:
+    text: Password
+    index: -1
+- inputText: StAndrews1
+- tapOn:
+    point: 43%,26%
+- tapOn: Sign in with Email
+
+# Wait for home screen to load
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 15000
+
+# ===== EXPLORE LEARN TAB =====
+- tapOn:
+    id: "tab-learn"
+- waitForAnimationToEnd
+
+# Scroll Learn screen
+- swipe:
+    direction: UP
+- swipe:
+    direction: DOWN
+
+# Try scrolling the Learning Path carousel if visible
+- runFlow:
+    when:
+      visible:
+        id: "learning-path-carousel"
+    commands:
+      - swipe:
+          direction: LEFT
+      - swipe:
+          direction: RIGHT
+
+# ===== EXPLORE PROFILE TAB =====
+- tapOn:
+    id: "tab-profile"
+- waitForAnimationToEnd
+
+# Scroll Profile screen
+- swipe:
+    direction: UP
+- swipe:
+    direction: DOWN
+
+# ===== GO TO SETTINGS =====
+- tapOn:
+    id: "settings-button"
+- waitForAnimationToEnd
+
+# Scroll Settings screen
+- swipe:
+    direction: UP
+
+# ===== SIGN OUT =====
+- scrollUntilVisible:
+    element:
+      text: "Sign out"
+
+- tapOn: "Sign out"
+- waitForAnimationToEnd
+
+# Confirm sign out in alert
+- tapOn:
+    text: 0%
+    index: 2
+
+# Verify we're back on landing screen
+- extendedWaitUntil:
+    visible: "Choose how you’d like to continue"
+    timeout: 10000
+
+- tapOn:
+    text: Email
+    index: -1
+- inputText: callumherzog@hotmail.co.uk
+- tapOn:
+    text: Password
+    index: -1
+- inputText: StAndrews1
+- tapOn:
+    point: 43%,26%
+- tapOn: Sign in with Email
+
+# Wait for home screen to load
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 15000
+
+# ===== EXPLORE review =====
+- tapOn: Start Review
+- assertVisible: Preparing your session...
+- tapOn: Exit
+
+
+- tapOn: Exit session
+- assertVisible: Welcome back, Callum
+
+- tapOn: "Focus: Focus: Travel. Directions (4 min). Double tap to start lesson."
+- assertVisible: Lesson Practice
+
+- assertVisible: Welcome back, Callum
+- tapOn: Learn
+- tapOn: Start Review
+- assertVisible: Review Session
+
+- tapOn: Exit session
+- tapOn: Exit
+
+- swipe:
+    direction: UP
+
+- runFlow:
+    when:
+      visible:
+        id: "learning-path-carousel"
+    commands:
+      - swipe:
+          direction: LEFT
+- tapOn: "Next: Travel"
+- assertVisible: Travel
+- tapOn: Continue lesson
+- assertVisible: Lesson Practice
+- tapOn: Exit session
+- assertVisible: Travel
+- tapOn: Go back
+
+- swipe:
+    direction: UP
+    
+- tapOn: Browse all modules
+- assertVisible: Courses
+- tapOn: Back
+- tapOn: Profile
+- assertVisible: Callum
+- tapOn: Edit profile
+
+- swipe:
+    direction: UP
+- swipe:
+    direction: DOWN
+- tapOn: Cancel
+- tapOn: Settings
+
+- scrollUntilVisible:
+    element:
+      text: Sign out
+- tapOn: Sign out
+- tapOn: Sign out
+- assertVisible: Welcome back
+
+

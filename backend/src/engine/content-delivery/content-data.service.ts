@@ -1,21 +1,24 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
 import { DeliveryCandidate } from './types';
 import { CandidateService } from './candidate.service';
 import { LoggerService } from '../../common/logger';
+import { TeachingRepository } from '../../teachings/teachings.repository';
+import { QuestionRepository } from '../../questions/questions.repository';
 
 /**
  * ContentDataService
- * 
+ *
  * Retrieves teaching and question data from the database.
  * Follows Single Responsibility Principle - focused on content data retrieval.
+ * Follows Dependency Inversion Principle - depends on repository interfaces.
  */
 @Injectable()
 export class ContentDataService {
   private readonly logger = new LoggerService(ContentDataService.name);
 
   constructor(
-    private prisma: PrismaService,
+    private teachingRepository: TeachingRepository,
+    private questionRepository: QuestionRepository,
     private candidateService: CandidateService,
   ) {}
 
@@ -23,36 +26,14 @@ export class ContentDataService {
    * Get teaching data by ID.
    */
   async getTeachingData(teachingId: string) {
-    return this.prisma.teaching.findUnique({
-      where: { id: teachingId },
-      include: {
-        skillTags: {
-          select: {
-            name: true,
-          },
-        },
-      },
-    });
+    return this.teachingRepository.findByIdWithSkillTags(teachingId);
   }
 
   /**
    * Get question data by ID.
    */
   async getQuestionData(questionId: string) {
-    return this.prisma.question.findUnique({
-      where: { id: questionId },
-      include: {
-        teaching: {
-          include: {
-            skillTags: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    return this.questionRepository.findByIdWithTeachingAndSkillTags(questionId);
   }
 
   /**
@@ -76,26 +57,10 @@ export class ContentDataService {
       return [];
     }
 
-    const whereClause: any = {
-      id: { in: Array.from(teachingIds) },
-    };
-
-    if (lessonId) {
-      whereClause.lessonId = lessonId;
-    } else if (moduleId) {
-      whereClause.lesson = { moduleId };
-    }
-
-    const teachings = await this.prisma.teaching.findMany({
-      where: whereClause,
-      include: {
-        lesson: true,
-        skillTags: {
-          select: {
-            name: true,
-          },
-        },
-      },
+    const teachings = await this.teachingRepository.findManyWithFilters({
+      ids: Array.from(teachingIds),
+      lessonId,
+      moduleId,
     });
 
     return teachings

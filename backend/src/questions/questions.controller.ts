@@ -38,7 +38,7 @@ export class QuestionsController {
 
   @Get()
   findAll(@Query() query: QuestionsQueryDto) {
-    return this.questionsService.findAll(query.teachingId);
+    return this.questionsService.findAllByTeaching(query.teachingId);
   }
 
   @Post()

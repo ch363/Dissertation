@@ -13,18 +13,23 @@ import {
 import { DeliveryCandidate } from './types';
 import {
   calculateItemCount,
-  composeWithInterleaving,
   estimateTime,
-  planTeachThenTest,
-  rankCandidates,
   selectModality,
 } from './content-delivery.policy';
+import {
+  SELECTION,
+  TIME_ESTIMATES,
+  REWARDS,
+  MASTERY,
+} from './session.config';
 import { MasteryService } from '../mastery/mastery.service';
 import { OnboardingPreferencesService } from '../../onboarding/onboarding-preferences.service';
 import { CandidateService } from './candidate.service';
 import { UserPerformanceService } from './user-performance.service';
 import { ContentDataService } from './content-data.service';
 import { StepBuilderService } from './step-builder.service';
+import { CandidateSelectorService } from './candidate-selector.service';
+import { SequenceComposerService } from './sequence-composer.service';
 import { ISessionPlanService } from '../../common/interfaces';
 
 /**
@@ -49,6 +54,8 @@ export class SessionPlanService implements ISessionPlanService {
     private userPerformance: UserPerformanceService,
     private contentData: ContentDataService,
     private stepBuilder: StepBuilderService,
+    private candidateSelector: CandidateSelectorService,
+    private sequenceComposer: SequenceComposerService,
   ) {}
 
   /**
@@ -85,12 +92,12 @@ export class SessionPlanService implements ISessionPlanService {
       2;
     let targetItemCount = effectiveTimeBudgetSec
       ? calculateItemCount(effectiveTimeBudgetSec, avgTimePerItem)
-      : 15;
+      : SELECTION.DEFAULT_TARGET_ITEM_COUNT;
 
     // Get prioritized skills for personalization
     const prioritizedSkills = await this.masteryService.getLowMasterySkills(
       userId,
-      0.5,
+      MASTERY.LOW_MASTERY_THRESHOLD,
     );
 
     // Get candidates using CandidateService
@@ -106,21 +113,24 @@ export class SessionPlanService implements ISessionPlanService {
       }),
     ]);
 
-    // Select candidates based on session mode
-    const selectedCandidates = this.selectCandidates(
-      context.mode,
+    // Select candidates based on session mode using CandidateSelectorService
+    const selectedCandidates = this.candidateSelector.selectCandidates(
       reviewCandidates,
       newCandidates,
-      prioritizedSkills,
-      challengeWeight,
-      targetItemCount,
+      {
+        mode: context.mode,
+        prioritizedSkills,
+        challengeWeight,
+        targetItemCount,
+      },
     );
 
     // Adjust target for review mode
-    if (context.mode === 'review' && selectedCandidates.length > 1) {
-      const minReviewCount = Math.min(10, selectedCandidates.length);
-      targetItemCount = Math.max(targetItemCount, minReviewCount);
-    }
+    targetItemCount = this.candidateSelector.adjustTargetForReviewMode(
+      context.mode,
+      selectedCandidates.length,
+      targetItemCount,
+    );
 
     const finalSelected = selectedCandidates.slice(0, targetItemCount);
 
@@ -138,8 +148,8 @@ export class SessionPlanService implements ISessionPlanService {
       context.moduleId,
     );
 
-    // Compose final candidate sequence
-    const finalCandidates = this.composeCandidateSequence(
+    // Compose final candidate sequence using SequenceComposerService
+    const finalCandidates = this.sequenceComposer.composeSequence(
       context.mode,
       finalSelected,
       teachingCandidates,
@@ -161,7 +171,9 @@ export class SessionPlanService implements ISessionPlanService {
       (sum, step) => sum + step.estimatedTimeSec,
       0,
     );
-    const potentialXp = steps.filter((s) => s.type === 'practice').length * 15;
+    const potentialXp =
+      steps.filter((s) => s.type === 'practice').length *
+      REWARDS.XP_PER_PRACTICE_STEP;
 
     // Add recap step
     const recapItem: RecapStepItem = {
@@ -180,12 +192,12 @@ export class SessionPlanService implements ISessionPlanService {
       stepNumber: steps.length + 1,
       type: 'recap',
       item: recapItem,
-      estimatedTimeSec: 10,
+      estimatedTimeSec: TIME_ESTIMATES.RECAP_STEP_SECONDS,
     });
 
     // Build metadata
     const metadata: SessionMetadata = {
-      totalEstimatedTimeSec: totalEstimatedTime + 10,
+      totalEstimatedTimeSec: totalEstimatedTime + TIME_ESTIMATES.RECAP_STEP_SECONDS,
       totalSteps: steps.length,
       teachSteps: steps.filter((s) => s.type === 'teach').length,
       practiceSteps: steps.filter((s) => s.type === 'practice').length,
@@ -206,100 +218,6 @@ export class SessionPlanService implements ISessionPlanService {
       metadata,
       createdAt: now,
     };
-  }
-
-  /**
-   * Select candidates based on session mode.
-   */
-  private selectCandidates(
-    mode: string,
-    reviewCandidates: DeliveryCandidate[],
-    newCandidates: DeliveryCandidate[],
-    prioritizedSkills: string[],
-    challengeWeight: number,
-    targetItemCount: number,
-  ): DeliveryCandidate[] {
-    if (mode === 'review') {
-      // Deduplicate review candidates
-      const byId = new Map<string, DeliveryCandidate>();
-      for (const c of reviewCandidates) {
-        if (!byId.has(c.id)) byId.set(c.id, c);
-      }
-      return Array.from(byId.values());
-    }
-
-    if (mode === 'learn') {
-      const rankedNew = rankCandidates(
-        newCandidates,
-        prioritizedSkills,
-        challengeWeight,
-      );
-      const rankedReviews = rankCandidates(reviewCandidates, [], challengeWeight);
-
-      if (rankedNew.length >= targetItemCount) {
-        return rankedNew;
-      }
-
-      const newCount = rankedNew.length;
-      const reviewCount = targetItemCount - newCount;
-      return [...rankedNew, ...rankedReviews.slice(0, reviewCount)];
-    }
-
-    // Mixed mode
-    const rankedReviews = rankCandidates(reviewCandidates, [], challengeWeight);
-    const rankedNew = rankCandidates(
-      newCandidates,
-      prioritizedSkills,
-      challengeWeight,
-    );
-    const reviewCount = Math.floor(targetItemCount * 0.7);
-    const newCount = targetItemCount - reviewCount;
-    return [
-      ...rankedReviews.slice(0, reviewCount),
-      ...rankedNew.slice(0, newCount),
-    ];
-  }
-
-  /**
-   * Compose the final candidate sequence with interleaving.
-   */
-  private composeCandidateSequence(
-    mode: string,
-    selectedCandidates: DeliveryCandidate[],
-    teachingCandidates: DeliveryCandidate[],
-    newQuestions: DeliveryCandidate[],
-    reviews: DeliveryCandidate[],
-    seenTeachingIds: Set<string>,
-  ): DeliveryCandidate[] {
-    if (mode === 'learn' || mode === 'mixed') {
-      const teachingsForNew = teachingCandidates.filter((t) =>
-        newQuestions.some((q) => q.teachingId === t.teachingId),
-      );
-      const teachThenTestSequence = planTeachThenTest(
-        teachingsForNew,
-        newQuestions,
-        seenTeachingIds,
-      );
-
-      if (reviews.length > 0) {
-        const interleavedReviews = composeWithInterleaving(reviews, {
-          maxSameTypeInRow: 2,
-          requireModalityCoverage: false,
-          enableScaffolding: false,
-          consecutiveErrors: 0,
-        });
-        return this.interleaveWithPairs(interleavedReviews, teachThenTestSequence);
-      }
-
-      return teachThenTestSequence;
-    }
-
-    return composeWithInterleaving(selectedCandidates, {
-      maxSameTypeInRow: 2,
-      requireModalityCoverage: true,
-      enableScaffolding: true,
-      consecutiveErrors: 0,
-    });
   }
 
   /**
@@ -438,48 +356,6 @@ export class SessionPlanService implements ISessionPlanService {
       // Fallback if table doesn't exist
       return new Set();
     }
-  }
-
-  /**
-   * Interleave reviews with teach-test pairs.
-   */
-  private interleaveWithPairs(
-    reviews: DeliveryCandidate[],
-    teachTestSequence: DeliveryCandidate[],
-  ): DeliveryCandidate[] {
-    const result: DeliveryCandidate[] = [];
-    let reviewIndex = 0;
-
-    const pairs: DeliveryCandidate[][] = [];
-    for (let i = 0; i < teachTestSequence.length; i++) {
-      const item = teachTestSequence[i];
-      if (item.kind === 'teaching' && i + 1 < teachTestSequence.length) {
-        const nextItem = teachTestSequence[i + 1];
-        if (
-          nextItem.kind === 'question' &&
-          nextItem.teachingId === item.teachingId
-        ) {
-          pairs.push([item, nextItem]);
-          i++;
-          continue;
-        }
-      }
-      pairs.push([item]);
-    }
-
-    let pairIndex = 0;
-    while (pairIndex < pairs.length || reviewIndex < reviews.length) {
-      if (pairIndex < pairs.length) {
-        result.push(...pairs[pairIndex]);
-        pairIndex++;
-      }
-      if (reviewIndex < reviews.length) {
-        result.push(reviews[reviewIndex]);
-        reviewIndex++;
-      }
-    }
-
-    return result;
   }
 
   /**

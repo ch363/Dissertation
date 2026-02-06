@@ -1,0 +1,16 @@
+# Maestro E2E Configuration
+# See: https://maestro.mobile.dev/reference/configuration
+
+# Environment variables for test credentials
+# Set MAESTRO_E2E_EMAIL and MAESTRO_E2E_PASSWORD before running tests
+# Example: MAESTRO_E2E_EMAIL=test@example.com MAESTRO_E2E_PASSWORD=secret maestro test .maestro/flows
+
+# Default app ID (bundle identifier)
+appId: com.fluentia.mobile
+
+# Tags for organizing tests
+tags:
+  smoke:
+    - flows/smoke/*.yaml
+  full:
+    - flows/*.yaml

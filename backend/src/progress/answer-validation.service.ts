@@ -3,7 +3,6 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
 import { ValidateAnswerDto } from './dto/validate-answer.dto';
 import { ValidateAnswerResponseDto } from './dto/validate-answer-response.dto';
 import { ValidatePronunciationDto } from './dto/validate-pronunciation.dto';
@@ -17,12 +16,16 @@ import { ContentLookupService } from '../content/content-lookup.service';
 import { GrammarService } from '../grammar/grammar.service';
 import { PronunciationService } from '../speech/pronunciation/pronunciation.service';
 import { OnboardingPreferencesService } from '../onboarding/onboarding-preferences.service';
+import { QuestionRepository } from '../questions/questions.repository';
+import { QuestionVariantRepository } from '../questions/repositories';
 
 /**
  * AnswerValidationService
  * 
  * Validates user answers and pronunciation across different delivery methods.
  * Follows Single Responsibility Principle - focused on answer correctness checking.
+ * 
+ * DIP Compliance: Uses repository abstractions instead of direct Prisma access.
  */
 
 /** Delivery methods that use free-text input and get grammatical correctness. */
@@ -48,11 +51,12 @@ export class AnswerValidationService {
   private readonly logger = new LoggerService(AnswerValidationService.name);
 
   constructor(
-    private prisma: PrismaService,
-    private contentLookup: ContentLookupService,
-    private grammarService: GrammarService,
-    private pronunciationService: PronunciationService,
-    private onboardingPreferences: OnboardingPreferencesService,
+    private readonly questionRepository: QuestionRepository,
+    private readonly questionVariantRepository: QuestionVariantRepository,
+    private readonly contentLookup: ContentLookupService,
+    private readonly grammarService: GrammarService,
+    private readonly pronunciationService: PronunciationService,
+    private readonly onboardingPreferences: OnboardingPreferencesService,
   ) {}
 
   /**
@@ -185,34 +189,20 @@ export class AnswerValidationService {
 
   /**
    * Validate pronunciation for a question.
+   * Uses repositories for DIP compliance.
    */
   async validatePronunciation(
     userId: string,
     questionId: string,
     dto: ValidatePronunciationDto,
   ): Promise<PronunciationResponseDto> {
+    // Use repositories instead of direct Prisma calls
     const [question, variant] = await Promise.all([
-      this.prisma.question.findUnique({
-        where: { id: questionId },
-        include: {
-          teaching: {
-            select: {
-              id: true,
-              learningLanguageString: true,
-              userLanguageString: true,
-            },
-          },
-        },
-      }),
-      this.prisma.questionVariant.findUnique({
-        where: {
-          questionId_deliveryMethod: {
-            questionId,
-            deliveryMethod: DELIVERY_METHOD.TEXT_TO_SPEECH,
-          },
-        },
-        select: { data: true },
-      }),
+      this.questionRepository.findByIdWithVariantsAndSkillTags(questionId),
+      this.questionVariantRepository.findByQuestionAndMethod(
+        questionId,
+        DELIVERY_METHOD.TEXT_TO_SPEECH,
+      ),
     ]);
 
     if (!question) {
@@ -231,28 +221,32 @@ export class AnswerValidationService {
 
     // Call pronunciation service
     const pronunciationResult =
-      await this.pronunciationService.validatePronunciation({
+      await this.pronunciationService.assess({
         audioBase64: dto.audioBase64,
-        audioFormat: dto.audioFormat,
-        expectedText,
-        languageCode: 'it-IT',
+        referenceText: expectedText,
+        locale: 'it-IT',
       });
 
     // Map to response DTO
+    const ACCEPTABLE_THRESHOLD = 80;
     const wordAnalysis: WordAnalysisDto[] =
       pronunciationResult.words?.map((w) => ({
         word: w.word,
-        score: w.score,
-        feedback: w.feedback as 'perfect' | 'could_improve',
+        score: w.accuracy,
+        feedback: w.accuracy >= ACCEPTABLE_THRESHOLD ? 'perfect' : 'could_improve',
         errorType: w.errorType,
-        phonemes: w.phonemes,
+        phonemes: w.phonemes?.map((p) => ({
+          phoneme: p.phoneme,
+          accuracy: p.accuracy,
+        })),
       })) || [];
 
+    const overallScore = pronunciationResult.scores.pronunciation;
     return {
-      isCorrect: pronunciationResult.isCorrect,
-      score: pronunciationResult.score,
-      overallScore: pronunciationResult.overallScore,
-      transcription: pronunciationResult.transcription,
+      isCorrect: overallScore >= ACCEPTABLE_THRESHOLD,
+      score: overallScore,
+      overallScore,
+      transcription: pronunciationResult.recognizedText ?? '',
       words: wordAnalysis,
     };
   }
@@ -263,17 +257,11 @@ export class AnswerValidationService {
     questionId: string,
     deliveryMethod: DELIVERY_METHOD,
   ): Promise<any> {
-    const variant = await this.prisma.questionVariant.findUnique({
-      where: {
-        questionId_deliveryMethod: {
-          questionId,
-          deliveryMethod,
-        },
-      },
-      select: {
-        data: true,
-      },
-    });
+    // Use repository instead of direct Prisma call
+    const variant = await this.questionVariantRepository.findByQuestionAndMethod(
+      questionId,
+      deliveryMethod,
+    );
 
     if (!variant) {
       throw new BadRequestException(
@@ -289,20 +277,8 @@ export class AnswerValidationService {
     questionId: string,
     deliveryMethod: DELIVERY_METHOD,
   ) {
-    const question = await this.prisma.question.findUnique({
-      where: { id: questionId },
-      include: {
-        teaching: {
-          include: {
-            lesson: {
-              select: {
-                id: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    // Use repository instead of direct Prisma call
+    const question = await this.questionRepository.findByIdWithDetails(questionId);
 
     if (!question) {
       throw new NotFoundException(`Question with ID ${questionId} not found`);

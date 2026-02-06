@@ -1,0 +1,33 @@
+# Reusable Login Flow
+# Can be called from other flows with: - runFlow: login.yaml
+
+appId: com.ch363.fluentia
+---
+
+- launchApp:
+    clearState: true
+
+- tapOn: Log In
+
+- tapOn:
+    text: Email
+    index: -1
+- inputText: callumherzog@hotmail.co.uk
+
+- tapOn:
+    text: Password
+    index: -1
+- inputText: StAndrews1
+
+- tapOn:
+    point: 43%,26%
+
+- tapOn: Sign in with Email
+
+# Wait for home screen to load
+- extendedWaitUntil:
+    visible:
+      id: "tab-home"
+    timeout: 15000
+
+- assertVisible: Welcome back, Callum

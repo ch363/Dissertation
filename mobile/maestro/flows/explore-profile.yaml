@@ -1,0 +1,41 @@
+# Explore Profile Tab Flow
+# Logs in and explores the Profile tab
+
+appId: com.ch363.fluentia
+---
+
+# Login first
+- runFlow: login.yaml
+
+# Navigate to Profile tab
+- tapOn: Profile
+- waitForAnimationToEnd
+
+- assertVisible: Callum
+
+# Scroll through profile content
+- swipe:
+    direction: UP
+- swipe:
+    direction: DOWN
+
+# Go to Edit Profile
+- tapOn: Edit profile
+
+- swipe:
+    direction: UP
+- swipe:
+    direction: DOWN
+
+# Cancel editing
+- tapOn: Cancel
+
+# Go to Settings
+- tapOn: Settings
+- waitForAnimationToEnd
+
+# Explore settings
+- swipe:
+    direction: UP
+- swipe:
+    direction: DOWN

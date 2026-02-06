@@ -1,0 +1,39 @@
+# Lesson Flow
+# Logs in, starts a lesson from carousel, and exits
+
+appId: com.ch363.fluentia
+---
+
+# Login first
+- runFlow: login.yaml
+
+# Go to Learn
+- tapOn: Learn
+- waitForAnimationToEnd
+
+# Scroll to see carousel
+- swipe:
+    direction: UP
+
+# Swipe carousel and tap module
+- runFlow:
+    when:
+      visible:
+        id: "learning-path-carousel"
+    commands:
+      - swipe:
+          direction: LEFT
+
+- tapOn: "Next: Travel"
+- assertVisible: Travel
+
+# Start the lesson
+- tapOn: Continue lesson
+- assertVisible: Lesson Practice
+
+# Exit lesson
+- tapOn: Exit session
+- assertVisible: Travel
+
+# Go back to Learn
+- tapOn: Go back

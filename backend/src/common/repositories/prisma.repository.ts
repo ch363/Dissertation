@@ -158,6 +158,21 @@ export abstract class PrismaRepository<
     }
   }
 
+  /**
+   * Find an entity by ID or throw NotFoundException.
+   * Convenience method for services that need guaranteed entity existence.
+   */
+  async findByIdOrThrow(id: string, entityName?: string): Promise<T> {
+    const entity = await this.findById(id);
+    if (!entity) {
+      const { NotFoundException } = await import('@nestjs/common');
+      throw new NotFoundException(
+        `${entityName || this.modelName} with ID ${id} not found`,
+      );
+    }
+    return entity;
+  }
+
   async transaction<R>(
     fn: (tx: TransactionClient) => Promise<R>,
   ): Promise<R> {

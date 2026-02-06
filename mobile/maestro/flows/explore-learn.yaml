@@ -1,0 +1,52 @@
+# Explore Learn Tab Flow
+# Logs in and explores the Learn tab content
+
+appId: com.ch363.fluentia
+---
+
+# Login first
+- runFlow: login.yaml
+
+# Navigate to Learn tab
+- tapOn: Learn
+- waitForAnimationToEnd
+
+# Scroll through Learn content
+- swipe:
+    direction: UP
+- swipe:
+    direction: DOWN
+
+# Explore carousel if visible
+- runFlow:
+    when:
+      visible:
+        id: "learning-path-carousel"
+    commands:
+      - swipe:
+          direction: LEFT
+      - swipe:
+          direction: RIGHT
+
+# Tap on a module from carousel if visible
+- runFlow:
+    when:
+      visible: "Next: Travel"
+    commands:
+      - tapOn: "Next: Travel"
+      - assertVisible: Travel
+      - tapOn: Continue lesson
+      - assertVisible: Lesson Practice
+      - tapOn: Exit session
+      - assertVisible: Travel
+      - tapOn: Go back
+
+# Scroll down to browse all modules
+- swipe:
+    direction: UP
+
+- tapOn: Browse all modules
+- assertVisible: Courses
+
+# Go back to Learn
+- tapOn: Back

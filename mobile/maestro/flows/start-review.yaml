@@ -1,0 +1,23 @@
+# Start Review Session Flow
+# Logs in and starts a review session, then exits
+
+appId: com.ch363.fluentia
+---
+
+# Login first
+- runFlow: login.yaml
+
+# Start a review session from home
+- tapOn: Start Review
+- assertVisible: Preparing your session...
+
+# Wait for session to load
+- extendedWaitUntil:
+    visible: "Review Session"
+    timeout: 30000
+
+# Exit the session
+- tapOn: Exit session
+- tapOn: Exit
+
+- assertVisible: Welcome back, Callum

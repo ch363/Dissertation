@@ -7,14 +7,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 @Module({
   imports: [PrismaModule],
   controllers: [ModulesController],
-  providers: [
-    ModuleRepository,
-    {
-      provide: 'IModuleRepository',
-      useExisting: ModuleRepository,
-    },
-    ModulesService,
-  ],
+  providers: [ModuleRepository, ModulesService],
   exports: [ModulesService],
 })
 export class ModulesModule {}

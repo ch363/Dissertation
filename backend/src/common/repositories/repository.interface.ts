@@ -1,17 +1,18 @@
 import { Prisma } from '@prisma/client';
 
 /**
- * IRepository Interface
- * 
- * Generic repository interface for data access operations.
- * Demonstrates Dependency Inversion Principle:
- * - High-level services depend on this abstraction
- * - Low-level implementations (PrismaRepository) implement this interface
- * 
+ * Repository Interfaces
+ *
+ * Demonstrates Interface Segregation Principle (ISP):
+ * - IReadRepository: For consumers that only need read operations
+ * - IWriteRepository: For consumers that only need write operations
+ * - IRepository: Combined interface for full CRUD (backward compatible)
+ *
  * Benefits:
  * - Testability: Easy to mock for unit tests
  * - Flexibility: Can swap implementations (e.g., in-memory, different ORMs)
  * - Separation of Concerns: Data access logic isolated from business logic
+ * - ISP Compliance: Consumers only depend on operations they use
  */
 
 export interface FindOptions<T = any> {
@@ -27,7 +28,13 @@ export interface WhereClause {
   [key: string]: any;
 }
 
-export interface IRepository<T, CreateDto = Partial<T>, UpdateDto = Partial<T>> {
+/**
+ * IReadRepository - Read-only operations
+ *
+ * Use this interface when a service only needs to read data.
+ * Supports dependency inversion without exposing write capabilities.
+ */
+export interface IReadRepository<T> {
   /**
    * Find a single entity by ID.
    */
@@ -44,6 +51,28 @@ export interface IRepository<T, CreateDto = Partial<T>, UpdateDto = Partial<T>> 
   findAll(options?: FindOptions<T>): Promise<T[]>;
 
   /**
+   * Count entities matching criteria.
+   */
+  count(where?: WhereClause): Promise<number>;
+
+  /**
+   * Check if an entity exists.
+   */
+  exists(where: WhereClause): Promise<boolean>;
+}
+
+/**
+ * IWriteRepository - Write operations
+ *
+ * Use this interface when a service only needs to modify data.
+ * Supports dependency inversion without exposing read capabilities.
+ */
+export interface IWriteRepository<
+  T,
+  CreateDto = Partial<T>,
+  UpdateDto = Partial<T>,
+> {
+  /**
    * Create a new entity.
    */
   create(data: CreateDto): Promise<T>;
@@ -57,17 +86,17 @@ export interface IRepository<T, CreateDto = Partial<T>, UpdateDto = Partial<T>> 
    * Delete an entity by ID.
    */
   delete(id: string): Promise<void>;
-
-  /**
-   * Count entities matching criteria.
-   */
-  count(where?: WhereClause): Promise<number>;
-
-  /**
-   * Check if an entity exists.
-   */
-  exists(where: WhereClause): Promise<boolean>;
 }
+
+/**
+ * IRepository - Combined CRUD operations (backward compatible)
+ *
+ * Use this interface when a service needs both read and write operations.
+ * Extends both IReadRepository and IWriteRepository.
+ */
+export interface IRepository<T, CreateDto = Partial<T>, UpdateDto = Partial<T>>
+  extends IReadRepository<T>,
+    IWriteRepository<T, CreateDto, UpdateDto> {}
 
 /**
  * ITransactionalRepository Interface

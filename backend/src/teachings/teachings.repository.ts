@@ -1,11 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { Teaching, Prisma } from '@prisma/client';
+import { Teaching, Prisma, Lesson } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PrismaRepository } from '../common/repositories';
 import {
   lessonInclude,
   teachingQuestionsInclude,
 } from '../common/prisma/selects';
+
+/**
+ * Teaching with skill tags relation included.
+ */
+export type TeachingWithSkillTags = Teaching & {
+  skillTags: { name: string }[];
+  lesson?: Lesson;
+};
 
 /**
  * TeachingRepository
@@ -74,6 +82,77 @@ export class TeachingRepository extends PrismaRepository<
     return this.findAll({
       where: { knowledgeLevel: level },
       orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  /**
+   * Find a teaching by ID with skill tags included.
+   * Used by ContentDataService for engine operations.
+   */
+  async findByIdWithSkillTags(id: string): Promise<Teaching | null> {
+    return this.getModel().findUnique({
+      where: { id },
+      include: {
+        skillTags: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Find teachings with flexible filters.
+   * Used by ContentDataService for candidate selection.
+   * Returns teachings with skillTags included.
+   */
+  async findManyWithFilters(options: {
+    ids?: string[];
+    lessonId?: string;
+    moduleId?: string;
+  }): Promise<TeachingWithSkillTags[]> {
+    const whereClause: any = {};
+
+    if (options.ids && options.ids.length > 0) {
+      whereClause.id = { in: options.ids };
+    }
+
+    if (options.lessonId) {
+      whereClause.lessonId = options.lessonId;
+    } else if (options.moduleId) {
+      whereClause.lesson = { moduleId: options.moduleId };
+    }
+
+    return this.getModel().findMany({
+      where: whereClause,
+      include: {
+        lesson: true,
+        skillTags: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Find a teaching by ID with lessonId and question IDs.
+   * Used by LessonProgressService for marking completions.
+   */
+  async findByIdWithQuestionIds(
+    id: string,
+  ): Promise<{ id: string; lessonId: string | null; questions: { id: string }[] } | null> {
+    return this.getModel().findUnique({
+      where: { id },
+      select: {
+        id: true,
+        lessonId: true,
+        questions: {
+          select: { id: true },
+        },
+      },
     });
   }
 }

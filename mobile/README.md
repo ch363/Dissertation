@@ -79,20 +79,18 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=...
 - Run with: `npm test` (Jest with Expo mocks)
 - Key coverage: auth-flow, onboarding mapper/provider, progress repo, Home screen
 
-#### E2E Tests (Detox)
-- Location: `e2e/` directory (Jest + Detox)
-- **Prerequisites:** iOS Simulator, Xcode, and native project: `npx expo prebuild --platform ios` (generates `ios/`, which is gitignored)
-- **Build app for testing:** `npm run test:e2e:build`
-- **Run all E2E tests:** `npm run test:e2e`
+#### E2E Tests (Maestro)
+- Location: `maestro/flows/` directory (YAML test flows)
+- **Prerequisites:** Install Maestro CLI: `curl -Ls "https://get.maestro.mobile.dev" | bash`
+- **Run user journey test:** `npm run test:e2e`
+- **Run all E2E tests:** `npm run test:e2e:all`
 - **Smoke test (app launch only):** `npm run test:e2e:smoke`
 
-**Config:** `.detoxrc.js` — adjust `binaryPath` / scheme if your Expo prebuild output differs (e.g. different scheme or `.app` name).
+**Login flow:** Tests that need an authenticated user use `MAESTRO_E2E_EMAIL` and `MAESTRO_E2E_PASSWORD` environment variables. Add them to `.env` (do not commit real passwords), or run:
 
-**Login flow:** Tests that need an authenticated user (e.g. home-to-lesson, login) use `DETOX_E2E_EMAIL` and `DETOX_E2E_PASSWORD`. Add them to `.env` (do not commit real passwords), or run:
+`MAESTRO_E2E_EMAIL=... MAESTRO_E2E_PASSWORD=... npm run test:e2e`
 
-`DETOX_E2E_EMAIL=... DETOX_E2E_PASSWORD=... npm run test:e2e`
-
-**Coverage:** App launch (landing), login flow, Home → Learn and catalog. Add more flows in `e2e/*.e2e.ts` as needed.
+**Coverage:** App launch, login flow, Home → Learn → Course Index, Profile → Settings → Logout. Add more flows in `maestro/flows/*.yaml` as needed.
 
 ---
 

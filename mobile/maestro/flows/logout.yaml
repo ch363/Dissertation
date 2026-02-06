@@ -1,0 +1,32 @@
+# Logout Flow
+# Logs in, then logs out
+# Useful for testing auth state cleanup
+
+appId: com.ch363.fluentia
+---
+
+# Login first
+- runFlow: login.yaml
+
+# Go to Profile
+- tapOn: Profile
+- waitForAnimationToEnd
+
+# Go to Settings
+- tapOn: Settings
+- waitForAnimationToEnd
+
+# Find and tap Sign out
+- scrollUntilVisible:
+    element:
+      text: Sign out
+
+- tapOn: Sign out
+
+# Confirm sign out in alert
+- tapOn: Sign out
+
+# Verify we're back on landing screen
+- extendedWaitUntil:
+    visible: "Choose how you'd like to continue"
+    timeout: 10000

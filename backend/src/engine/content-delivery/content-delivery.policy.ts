@@ -1,7 +1,15 @@
 import { DELIVERY_METHOD } from '@prisma/client';
-import { classifyDifficulty } from './difficulty-calculator.service';
 import { DeliveryCandidate } from './types';
 import { UserTimeAverages } from './session-types';
+import {
+  InterleavingOrchestrator,
+  InterleavingOrchestratorOptions,
+} from './interleaving';
+import {
+  PRIORITY_SCORING,
+  SELECTION,
+  TIME_ESTIMATES,
+} from './session.config';
 
 export function rankCandidates(
   candidates: DeliveryCandidate[],
@@ -26,7 +34,11 @@ function calculatePriorityScore(
   challengeWeight: number = 0.5,
 ): number {
   if (candidate.dueScore > 0) {
-    return 1000 + candidate.dueScore + candidate.errorScore * 10;
+    return (
+      PRIORITY_SCORING.DUE_REVIEW_BASE_PRIORITY +
+      candidate.dueScore +
+      candidate.errorScore * PRIORITY_SCORING.DUE_ERROR_MULTIPLIER
+    );
   }
 
   const hasPrioritizedSkill =
@@ -34,320 +46,70 @@ function calculatePriorityScore(
     candidate.skillTags?.some((tag) => prioritizedSkills.includes(tag));
 
   let basePriority =
-    candidate.errorScore * 5 + candidate.timeSinceLastSeen / 1000;
+    candidate.errorScore * PRIORITY_SCORING.NEW_ERROR_MULTIPLIER +
+    candidate.timeSinceLastSeen / PRIORITY_SCORING.TIME_DIVISOR;
 
   if (hasPrioritizedSkill) {
-    basePriority += 500;
+    basePriority += PRIORITY_SCORING.PRIORITIZED_SKILL_BONUS;
   }
 
   const difficulty = candidate.difficulty ?? 0.5;
-  if (challengeWeight < 0.4) {
-    if (difficulty < 0.4) {
-      basePriority += 100;
+  if (challengeWeight < PRIORITY_SCORING.LOW_CHALLENGE_THRESHOLD) {
+    if (difficulty < PRIORITY_SCORING.LOW_DIFFICULTY_THRESHOLD) {
+      basePriority += PRIORITY_SCORING.DIFFICULTY_MATCH_BONUS;
     }
-  } else if (challengeWeight > 0.7) {
-    if (difficulty > 0.6) {
-      basePriority += 100;
+  } else if (challengeWeight > PRIORITY_SCORING.HIGH_CHALLENGE_THRESHOLD) {
+    if (difficulty > PRIORITY_SCORING.HIGH_DIFFICULTY_THRESHOLD) {
+      basePriority += PRIORITY_SCORING.DIFFICULTY_MATCH_BONUS;
     }
   }
 
   return basePriority;
 }
 
-export interface InterleavingOptions {
-  maxSameTypeInRow?: number;
-  requireModalityCoverage?: boolean;
-  enableScaffolding?: boolean;
-  consecutiveErrors?: number;
-}
+/**
+ * InterleavingOptions - Options for interleaving composition.
+ * Re-exported for backward compatibility.
+ */
+export type InterleavingOptions = InterleavingOrchestratorOptions;
 
+/**
+ * Compose candidates with interleaving logic.
+ *
+ * This function delegates to InterleavingOrchestrator which breaks down
+ * the complex logic into focused, testable components:
+ * - CandidateClassifier: Groups by difficulty/mastery
+ * - SkillErrorTracker: Tracks errors for scaffolding
+ * - ConstraintValidator: Validates selection constraints
+ * - AlternativeFinder: Finds alternative candidates
+ *
+ * @param candidates - Candidates to compose
+ * @param options - Interleaving options
+ * @returns Composed candidates in optimal order
+ */
 export function composeWithInterleaving(
   candidates: DeliveryCandidate[],
   options: InterleavingOptions = {},
 ): DeliveryCandidate[] {
-  const {
-    maxSameTypeInRow = 2,
-    requireModalityCoverage = true,
-    enableScaffolding = true,
-    consecutiveErrors = 0,
-  } = options;
-
-  if (candidates.length === 0) {
-    return [];
-  }
-
-  const composed: DeliveryCandidate[] = [];
-  const used = new Set<string>();
-  const recentTypes: string[] = [];
-  const recentSkillTags: string[] = [];
-  const usedModalities = new Set<DELIVERY_METHOD>();
-  let errorStreak = consecutiveErrors;
-
-  const skillTagErrorMap = new Map<string, number>();
-  for (const candidate of candidates) {
-    if (
-      candidate.skillTags &&
-      candidate.skillTags.length > 0 &&
-      candidate.errorScore > 0
-    ) {
-      for (const skillTag of candidate.skillTags) {
-        const currentErrorCount = skillTagErrorMap.get(skillTag) || 0;
-        skillTagErrorMap.set(
-          skillTag,
-          Math.max(currentErrorCount, candidate.errorScore),
-        );
-      }
-    }
-  }
-
-  const reviewItemsHighMastery: DeliveryCandidate[] = [];
-  const easyCandidates: DeliveryCandidate[] = [];
-  const mediumCandidates: DeliveryCandidate[] = [];
-  const hardCandidates: DeliveryCandidate[] = [];
-
-  for (const candidate of candidates) {
-    if (candidate.dueScore > 0 && (candidate.estimatedMastery ?? 0) > 0.7) {
-      reviewItemsHighMastery.push(candidate);
-    }
-
-    const difficulty = candidate.difficulty ?? 0.5;
-    const mastery = candidate.estimatedMastery ?? 0.5;
-    const band = classifyDifficulty(difficulty, mastery);
-    if (band === 'easy') {
-      easyCandidates.push(candidate);
-    } else if (band === 'hard') {
-      hardCandidates.push(candidate);
-    } else {
-      mediumCandidates.push(candidate);
-    }
-  }
-
-  const violatesConstraints = (candidate: DeliveryCandidate): boolean => {
-    const exerciseType = candidate.exerciseType || 'unknown';
-    const recentSameType = recentTypes.filter((t) => t === exerciseType).length;
-    if (recentSameType >= maxSameTypeInRow) {
-      return true;
-    }
-    return false;
-  };
-
-  const findAlternative = (
-    pool: DeliveryCandidate[],
-    avoidType?: string,
-    preferSkillTag?: string,
-    requireSkillTag?: string,
-    avoidSkillTags?: string[],
-  ): DeliveryCandidate | null => {
-    if (requireSkillTag) {
-      for (const candidate of pool) {
-        if (used.has(candidate.id)) continue;
-        if (violatesConstraints(candidate)) continue;
-        if (candidate.skillTags?.includes(requireSkillTag)) {
-          return candidate;
-        }
-      }
-    }
-
-    if (avoidSkillTags && avoidSkillTags.length > 0) {
-      for (const candidate of pool) {
-        if (used.has(candidate.id)) continue;
-        if (violatesConstraints(candidate)) continue;
-        if (avoidType && candidate.exerciseType === avoidType) continue;
-
-        const hasDifferentSkillTag = !candidate.skillTags?.some((tag) =>
-          avoidSkillTags.includes(tag),
-        );
-        if (hasDifferentSkillTag) {
-          return candidate;
-        }
-      }
-    }
-
-    if (avoidType) {
-      for (const candidate of pool) {
-        if (used.has(candidate.id)) continue;
-        if (violatesConstraints(candidate)) continue;
-        if (candidate.exerciseType !== avoidType) {
-          return candidate;
-        }
-      }
-    }
-
-    for (const candidate of pool) {
-      if (used.has(candidate.id)) continue;
-      if (violatesConstraints(candidate)) continue;
-      return candidate;
-    }
-
-    for (const candidate of pool) {
-      if (used.has(candidate.id)) continue;
-      return candidate;
-    }
-
-    return null;
-  };
-
-  let remaining = [...candidates];
-  let needsModalityCoverage = requireModalityCoverage;
-
-  while (remaining.length > 0 || needsModalityCoverage) {
-    let selected: DeliveryCandidate | null = null;
-
-    if (enableScaffolding) {
-      const skillTagsNeedingScaffolding: string[] = [];
-      for (const [skillTag, errorCount] of skillTagErrorMap.entries()) {
-        if (errorCount >= 3) {
-          skillTagsNeedingScaffolding.push(skillTag);
-        }
-      }
-
-      if (skillTagsNeedingScaffolding.length > 0) {
-        const targetSkillTag = skillTagsNeedingScaffolding[0];
-        selected = findAlternative(
-          reviewItemsHighMastery,
-          undefined,
-          undefined,
-          targetSkillTag,
-        );
-
-        if (selected) {
-          skillTagErrorMap.set(targetSkillTag, 0);
-        }
-      }
-    }
-
-    if (
-      !selected &&
-      enableScaffolding &&
-      errorStreak >= 2 &&
-      easyCandidates.length > 0
-    ) {
-      selected = findAlternative(easyCandidates);
-      if (selected) {
-        errorStreak = 0;
-      }
-    }
-
-    if (!selected && needsModalityCoverage) {
-      const listeningSpeaking: DELIVERY_METHOD[] = [
-        DELIVERY_METHOD.SPEECH_TO_TEXT,
-        DELIVERY_METHOD.TEXT_TO_SPEECH,
-      ];
-      for (const candidate of remaining) {
-        if (used.has(candidate.id)) continue;
-        const hasListeningSpeaking = candidate.deliveryMethods?.some((m) =>
-          listeningSpeaking.includes(m),
-        );
-        if (hasListeningSpeaking) {
-          selected = candidate;
-          needsModalityCoverage = false;
-          break;
-        }
-      }
-    }
-
-    if (!selected) {
-      const recentUniqueSkillTags = Array.from(new Set(recentSkillTags));
-      const lastExerciseType = recentTypes[recentTypes.length - 1];
-
-      if (recentUniqueSkillTags.length > 0) {
-        selected = findAlternative(
-          remaining,
-          lastExerciseType,
-          undefined,
-          undefined,
-          recentUniqueSkillTags,
-        );
-      }
-
-      if (!selected && lastExerciseType) {
-        selected = findAlternative(remaining, lastExerciseType);
-      }
-
-      if (!selected) {
-        for (const candidate of remaining) {
-          if (used.has(candidate.id)) continue;
-          if (!violatesConstraints(candidate)) {
-            selected = candidate;
-            break;
-          }
-        }
-      }
-
-      if (!selected) {
-        for (const candidate of remaining) {
-          if (used.has(candidate.id)) continue;
-          selected = candidate;
-          break;
-        }
-      }
-    }
-
-    if (!selected) {
-      break;
-    }
-
-    composed.push(selected);
-    used.add(selected.id);
-
-    if (selected.skillTags && selected.skillTags.length > 0) {
-      for (const skillTag of selected.skillTags) {
-        recentSkillTags.push(skillTag);
-      }
-      const seen = new Set<string>();
-      const deduplicated: string[] = [];
-      for (let i = recentSkillTags.length - 1; i >= 0; i--) {
-        const tag = recentSkillTags[i];
-        if (!seen.has(tag)) {
-          seen.add(tag);
-          deduplicated.unshift(tag);
-        }
-      }
-      recentSkillTags.length = 0;
-      recentSkillTags.push(...deduplicated.slice(-5));
-    }
-
-    const exerciseType = selected.exerciseType || 'unknown';
-    recentTypes.push(exerciseType);
-    if (recentTypes.length > maxSameTypeInRow) {
-      recentTypes.shift();
-    }
-
-    if (selected.deliveryMethods) {
-      selected.deliveryMethods.forEach((m) => usedModalities.add(m));
-    }
-
-    remaining = remaining.filter((c) => c.id !== selected.id);
-
-    if (needsModalityCoverage) {
-      const listeningSpeaking: DELIVERY_METHOD[] = [
-        DELIVERY_METHOD.SPEECH_TO_TEXT,
-        DELIVERY_METHOD.TEXT_TO_SPEECH,
-      ];
-      const hasCoverage = selected.deliveryMethods?.some((m) =>
-        listeningSpeaking.includes(m),
-      );
-      if (hasCoverage) {
-        needsModalityCoverage = false;
-      }
-    }
-  }
-
-  return composed;
+  const orchestrator = new InterleavingOrchestrator();
+  return orchestrator.compose(candidates, options);
 }
 
 export function calculateItemCount(
   timeBudgetSec: number,
   avgTimePerItem: number,
-  bufferRatio: number = 0.2,
+  bufferRatio: number = SELECTION.TIME_BUFFER_RATIO,
 ): number {
   if (avgTimePerItem <= 0) {
-    return 10;
+    return SELECTION.DEFAULT_TARGET_ITEM_COUNT;
   }
 
   const effectiveBudget = timeBudgetSec * (1 - bufferRatio);
   const count = Math.floor(effectiveBudget / avgTimePerItem);
-  return Math.max(1, Math.min(count, 50));
+  return Math.max(
+    SELECTION.MIN_ITEMS_PER_SESSION,
+    Math.min(count, SELECTION.MAX_ITEMS_PER_SESSION),
+  );
 }
 
 /**
@@ -414,7 +176,8 @@ export function selectModality(
   }));
 
   const totalWeight = weights.reduce((sum, w) => sum + w.weight, 0);
-  const useWeightedSelection = Math.random() < 0.85;
+  const useWeightedSelection =
+    Math.random() < SELECTION.WEIGHTED_SELECTION_PROBABILITY;
 
   if (useWeightedSelection) {
     let random = Math.random() * totalWeight;
@@ -457,7 +220,7 @@ export function estimateTime(
   deliveryMethod?: DELIVERY_METHOD,
 ): number {
   if (item.kind === 'teaching') {
-    return userHistory.avgTimePerTeachSec || 30;
+    return userHistory.avgTimePerTeachSec || TIME_ESTIMATES.TEACH_STEP_SECONDS;
   }
 
   if (item.kind === 'question' && deliveryMethod) {
@@ -467,7 +230,7 @@ export function estimateTime(
     }
   }
 
-  return userHistory.avgTimePerPracticeSec || 60;
+  return userHistory.avgTimePerPracticeSec || TIME_ESTIMATES.PRACTICE_STEP_SECONDS;
 }
 
 export function planTeachThenTest(
@@ -503,16 +266,14 @@ export function planTeachThenTest(
 
 export function getDefaultTimeAverages(): UserTimeAverages {
   return {
-    avgTimePerTeachSec: 30,
-    avgTimePerPracticeSec: 60,
-    avgTimeByDeliveryMethod: new Map([
-      [DELIVERY_METHOD.FLASHCARD, 20],
-      [DELIVERY_METHOD.MULTIPLE_CHOICE, 30],
-      [DELIVERY_METHOD.FILL_BLANK, 45],
-      [DELIVERY_METHOD.TEXT_TRANSLATION, 60],
-      [DELIVERY_METHOD.SPEECH_TO_TEXT, 90],
-      [DELIVERY_METHOD.TEXT_TO_SPEECH, 90],
-    ]),
+    avgTimePerTeachSec: TIME_ESTIMATES.TEACH_STEP_SECONDS,
+    avgTimePerPracticeSec: TIME_ESTIMATES.PRACTICE_STEP_SECONDS,
+    avgTimeByDeliveryMethod: new Map(
+      Object.entries(TIME_ESTIMATES.BY_DELIVERY_METHOD) as [
+        DELIVERY_METHOD,
+        number,
+      ][],
+    ),
     avgTimeByQuestionType: new Map(),
   };
 }

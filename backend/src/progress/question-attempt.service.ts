@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
 import { QuestionAttemptDto } from './dto/question-attempt.dto';
 import { SrsService } from '../engine/srs/srs.service';
 import { XpService } from '../engine/scoring/xp.service';
 import { MasteryService } from '../engine/mastery/mastery.service';
 import { SessionPlanCacheService } from '../engine/content-delivery/session-plan-cache.service';
+import { UserQuestionPerformanceRepository } from '../engine/repositories';
+import { QuestionRepository } from '../questions/questions.repository';
 import { extractSkillTags } from '../engine/mastery/skill-extraction.util';
 import { LoggerService } from '../common/logger';
 import { getEndOfLocalDayUtc } from '../common/utils/date.util';
@@ -14,17 +15,20 @@ import { getEndOfLocalDayUtc } from '../common/utils/date.util';
  * 
  * Manages question attempts, SRS scheduling, and due reviews.
  * Follows Single Responsibility Principle - focused on question practice tracking.
+ * 
+ * DIP Compliance: Uses repository abstractions instead of direct Prisma access.
  */
 @Injectable()
 export class QuestionAttemptService {
   private readonly logger = new LoggerService(QuestionAttemptService.name);
 
   constructor(
-    private prisma: PrismaService,
-    private srsService: SrsService,
-    private xpService: XpService,
-    private masteryService: MasteryService,
-    private sessionPlanCache: SessionPlanCacheService,
+    private readonly questionRepository: QuestionRepository,
+    private readonly userQuestionPerformanceRepository: UserQuestionPerformanceRepository,
+    private readonly srsService: SrsService,
+    private readonly xpService: XpService,
+    private readonly masteryService: MasteryService,
+    private readonly sessionPlanCache: SessionPlanCacheService,
   ) {}
 
   /**
@@ -35,31 +39,8 @@ export class QuestionAttemptService {
     questionId: string,
     attemptDto: QuestionAttemptDto,
   ) {
-    const question = await this.prisma.question.findUnique({
-      where: { id: questionId },
-      include: {
-        teaching: {
-          include: {
-            lesson: {
-              select: {
-                id: true,
-                title: true,
-              },
-            },
-            skillTags: {
-              select: {
-                name: true,
-              },
-            },
-          },
-        },
-        skillTags: {
-          select: {
-            name: true,
-          },
-        },
-      },
-    });
+    // Use repository for question lookup
+    const question = await this.questionRepository.findByIdWithDetails(questionId);
 
     if (!question) {
       throw new NotFoundException(`Question with ID ${questionId} not found`);
@@ -79,37 +60,21 @@ export class QuestionAttemptService {
       },
     );
 
-    // Create performance record
-    const performance = await this.prisma.userQuestionPerformance.create({
-      data: {
-        userId,
-        questionId,
-        deliveryMethod: attemptDto.deliveryMethod,
-        score: attemptDto.score,
-        timeToComplete: attemptDto.timeToComplete,
-        percentageAccuracy: attemptDto.percentageAccuracy,
-        attempts: attemptDto.attempts,
-        lastRevisedAt: now,
-        nextReviewDue: srsState.nextReviewDue,
-        intervalDays: srsState.intervalDays,
-        stability: srsState.stability,
-        difficulty: srsState.difficulty,
-        repetitions: srsState.repetitions,
-      },
-      include: {
-        question: {
-          select: {
-            id: true,
-            teaching: {
-              select: {
-                id: true,
-                userLanguageString: true,
-                learningLanguageString: true,
-              },
-            },
-          },
-        },
-      },
+    // Create performance record using repository
+    const performance = await this.userQuestionPerformanceRepository.createPerformance({
+      userId,
+      questionId,
+      deliveryMethod: attemptDto.deliveryMethod,
+      score: attemptDto.score,
+      timeToComplete: attemptDto.timeToComplete ?? 0,
+      percentageAccuracy: attemptDto.percentageAccuracy,
+      attempts: attemptDto.attempts,
+      lastRevisedAt: now,
+      nextReviewDue: srsState.nextReviewDue,
+      intervalDays: srsState.intervalDays,
+      stability: srsState.stability ?? 0,
+      difficulty: srsState.difficulty ?? 0,
+      repetitions: srsState.repetitions,
     });
 
     // Update mastery for all relevant skills
@@ -158,124 +123,52 @@ export class QuestionAttemptService {
 
   /**
    * Get all due reviews for a user (legacy method).
+   * Uses repository for DIP compliance.
    */
   async getDueReviews(userId: string) {
     const now = new Date();
 
-    return this.prisma.userQuestionPerformance.findMany({
-      where: {
-        userId,
-        nextReviewDue: {
-          lte: now,
-          not: null,
-        },
-      },
-      include: {
-        question: {
-          include: {
-            teaching: {
-              select: {
-                id: true,
-                userLanguageString: true,
-                learningLanguageString: true,
-                emoji: true,
-              },
-            },
+    return this.userQuestionPerformanceRepository.findManyByUserWithQuestion(
+      userId,
+      {
+        where: {
+          nextReviewDue: {
+            lte: now,
+            not: null,
           },
         },
       },
-      orderBy: {
-        nextReviewDue: 'asc',
-      },
-    });
+    );
   }
 
   /**
    * Get count of due reviews using latest performance per question.
+   * Delegates to UserQuestionPerformanceRepository for DRY compliance.
    */
   async getDueReviewCount(
     userId: string,
     dueCutoff?: Date,
   ): Promise<number> {
     const cutoff = dueCutoff || getEndOfLocalDayUtc(new Date(), 0);
-
-    // Get latest performance per question
-    const latestPerformances =
-      await this.prisma.userQuestionPerformance.groupBy({
-        by: ['questionId'],
-        where: { userId },
-        _max: {
-          createdAt: true,
-        },
-      });
-
-    if (latestPerformances.length === 0) {
-      return 0;
-    }
-
-    // Fetch actual performance records
-    const performances = await this.prisma.userQuestionPerformance.findMany({
-      where: {
-        userId,
-        OR: latestPerformances.map((lp) => ({
-          questionId: lp.questionId,
-          createdAt: lp._max.createdAt!,
-        })),
-      },
-    });
-
-    // Count how many are due
-    const dueCount = performances.filter(
-      (p) => p.nextReviewDue && p.nextReviewDue <= cutoff,
-    ).length;
-
-    return dueCount;
+    return this.userQuestionPerformanceRepository.countDueReviewsLatestPerQuestion(
+      userId,
+      cutoff,
+    );
   }
 
   /**
    * Get due reviews using latest performance per question (not all historical records).
+   * Uses repository's groupLatestByQuestion for DIP compliance.
    */
   async getDueReviewsLatest(userId: string) {
     const now = new Date();
 
-    // Get latest performance per question
-    const latestPerformances =
-      await this.prisma.userQuestionPerformance.groupBy({
-        by: ['questionId'],
-        where: { userId },
-        _max: {
-          createdAt: true,
-        },
-      });
+    // Get latest performance per question using repository
+    const performances = await this.userQuestionPerformanceRepository.groupLatestByQuestion(userId);
 
-    if (latestPerformances.length === 0) {
+    if (performances.length === 0) {
       return [];
     }
-
-    // Fetch actual performance records
-    const performances = await this.prisma.userQuestionPerformance.findMany({
-      where: {
-        userId,
-        OR: latestPerformances.map((lp) => ({
-          questionId: lp.questionId,
-          createdAt: lp._max.createdAt!,
-        })),
-      },
-      include: {
-        question: {
-          include: {
-            teaching: {
-              select: {
-                id: true,
-                userLanguageString: true,
-                learningLanguageString: true,
-                emoji: true,
-              },
-            },
-          },
-        },
-      },
-    });
 
     // Filter and sort due reviews
     return performances
@@ -289,27 +182,9 @@ export class QuestionAttemptService {
 
   /**
    * Get recent attempts for debugging purposes.
+   * Uses repository for DIP compliance.
    */
   async getRecentAttempts(userId: string, limit: number = 20) {
-    return this.prisma.userQuestionPerformance.findMany({
-      where: { userId },
-      include: {
-        question: {
-          select: {
-            id: true,
-            teaching: {
-              select: {
-                userLanguageString: true,
-                learningLanguageString: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: limit,
-    });
+    return this.userQuestionPerformanceRepository.findRecentByUser(userId, limit);
   }
 }

@@ -11,7 +11,7 @@ export interface LessonSuggestion {
   lesson: {
     id: string;
     title: string;
-    imageUrl?: string;
+    imageUrl?: string | null;
   };
   module: {
     id: string;
@@ -24,7 +24,7 @@ export interface ModuleSuggestion {
   module: {
     id: string;
     title: string;
-    imageUrl?: string;
+    imageUrl?: string | null;
   };
   reason: string;
 }

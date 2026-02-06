@@ -1,36 +1,39 @@
-import { Injectable, NotFoundException, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Lesson } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
 import { LessonRepository } from './lessons.repository';
-import { LoggerService } from '../common/logger';
+import { BaseCrudService } from '../common/services/base-crud.service';
+import { UsersService } from '../users/users.service';
 
 /**
  * LessonsService
  *
  * Business logic layer for Lesson operations.
+ * Extends BaseCrudService for standard CRUD (DRY principle).
  * Uses repository pattern for data access (Dependency Inversion Principle).
  */
 @Injectable()
-export class LessonsService {
-  private readonly logger = new LoggerService(LessonsService.name);
-
+export class LessonsService extends BaseCrudService<Lesson> {
   constructor(
-    @Inject('ILessonRepository')
     private readonly lessonRepository: LessonRepository,
-    private readonly prisma: PrismaService,
-  ) {}
+    private readonly usersService: UsersService,
+  ) {
+    // Cast required because Prisma's create input types include relation fields
+    // that aren't present in the entity type
+    super(lessonRepository as any, 'Lesson');
+  }
 
   /**
    * Find all lessons, optionally filtered by module.
    */
-  async findAll(moduleId?: string): Promise<Lesson[]> {
+  async findAllByModule(moduleId?: string): Promise<Lesson[]> {
     return this.lessonRepository.findAllWithModule(moduleId);
   }
 
   /**
-   * Find a lesson by ID.
+   * Find a lesson by ID with module info.
+   * Overrides base findOne for richer data.
    */
-  async findOne(id: string): Promise<Lesson> {
+  override async findOne(id: string): Promise<Lesson> {
     const lesson = await this.lessonRepository.findByIdWithModule(id);
     if (!lesson) {
       throw new NotFoundException(`Lesson with ID ${id} not found`);
@@ -42,33 +45,30 @@ export class LessonsService {
    * Find teachings for a lesson.
    */
   async findTeachings(lessonId: string): Promise<any[]> {
-    const lesson = await this.lessonRepository.findById(lessonId);
-    if (!lesson) {
-      throw new NotFoundException(`Lesson with ID ${lessonId} not found`);
-    }
+    await this.lessonRepository.findByIdOrThrow(lessonId, 'Lesson');
     return this.lessonRepository.findTeachings(lessonId);
   }
 
   /**
    * Find recommended lessons for a user.
+   * Sorts by relevance to user's knowledge level.
    */
   async findRecommended(userId?: string): Promise<any[]> {
     const lessons = await this.lessonRepository.findRecommended(10);
 
     if (userId) {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { knowledgeLevel: true },
-      });
+      const user = await this.usersService.findOne(userId);
 
       if (user?.knowledgeLevel) {
         lessons.sort((a: any, b: any) => {
-          const aMatches = a.teachings?.filter(
-            (t: any) => t.knowledgeLevel === user.knowledgeLevel,
-          ).length ?? 0;
-          const bMatches = b.teachings?.filter(
-            (t: any) => t.knowledgeLevel === user.knowledgeLevel,
-          ).length ?? 0;
+          const aMatches =
+            a.teachings?.filter(
+              (t: any) => t.knowledgeLevel === user.knowledgeLevel,
+            ).length ?? 0;
+          const bMatches =
+            b.teachings?.filter(
+              (t: any) => t.knowledgeLevel === user.knowledgeLevel,
+            ).length ?? 0;
           return bMatches - aMatches;
         });
       }
@@ -83,33 +83,5 @@ export class LessonsService {
       numberOfItems: lesson.numberOfItems,
       teachingCount: lesson.teachings?.length ?? 0,
     }));
-  }
-
-  /**
-   * Create a new lesson.
-   */
-  async create(data: any): Promise<Lesson> {
-    return this.lessonRepository.create(data);
-  }
-
-  /**
-   * Update a lesson.
-   */
-  async update(id: string, data: any): Promise<Lesson> {
-    return this.lessonRepository.update(id, data);
-  }
-
-  /**
-   * Delete a lesson.
-   */
-  async remove(id: string): Promise<void> {
-    await this.lessonRepository.delete(id);
-  }
-
-  /**
-   * Count lessons.
-   */
-  async count(where?: any): Promise<number> {
-    return this.lessonRepository.count(where);
   }
 }
